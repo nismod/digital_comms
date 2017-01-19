@@ -1,0 +1,20 @@
+MIT License
+
+Copyright (c) 2017 Dr Edward J. Oughton of Cambridge Nexus Limited 
+
+Except to the extent where it is owned by a third party, all right, title and 
+interest in the provided Cambridge Communications Assessment Model constructed 
+in Python Excel to understand the (i) capacity-demand, and (ii) risk, 
+vulnerability and resilience of digital communications infrastructure, are 
+owned by Cambridge Nexus Limited. Such title and interest is protected by United 
+Kingdom intellectual property laws and international treaty provisions. While you 
+may freely use the Cambridge Communications Assessment Model for the purposes for 
+which it is provided, it is not to be modified in any way or used for commercial 
+gain or otherwise without the prior written permission of Cambridge Nexus Limited. 
+Academic use of the model is encouraged in collaboration with Dr Edward J. Oughton.
+In no event will Cambridge Nexus Limited liable for any loss or damage including, 
+without limitation, indirect or consequential loss or damage, or any loss or damages 
+whatsoever arising from use or loss of use of, data or profits arising out of or 
+in connection with the use or otherwise of the Cambridge Communications Assessment 
+Model.
+
