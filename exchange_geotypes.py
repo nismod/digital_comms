@@ -2,30 +2,30 @@
 """
 Created on Sun Jan 15 21:14:16 2017
 
-@author: EJO31
+@author: oughtone
 """
 
 #%%
 import os
 #print (os.getcwd())
 #set working directory
-os.chdir('C:\\Users\\EJO31\\Dropbox\\Fixed Broadband Model\\UK Data')
+os.chdir('C:\\Users\\oughtone\\Dropbox\\Fixed Broadband Model\\UK Data')
 
 #import pandas as pd
 import pandas as pd #this is how I usually import pandas
 
 ####IMPORT CODEPOINT DATA#####
 #import codepoint
-codepoint = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\codepoint.csv'
+codepoint = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\codepoint.csv'
 codepoint = pd.read_csv(codepoint, low_memory=False)
 
 #rename columns
 codepoint.rename(columns={'POSTCODE':'pcd', 'tp':'all_premises', 'rp':'domestic', 'bp':'non_domestic', 'pd':'PO_box', 'ls':'pcd_type'}, inplace=True)
 
-#remove whitespace
+#remove whitespace in pcd column
 codepoint['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
 
-#remove whitespace
+#remove whitespace in pcd_type column (so small or large delivery point column)
 codepoint['pcd_type'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
 
 #subset columns
@@ -35,56 +35,50 @@ codepoint = codepoint[['pcd','GOR', 'all_premises', 'domestic', 'non_domestic', 
 codepoint = codepoint.loc[codepoint['pcd_type'] == 'S']
 
 ####IMPORT ACTUAL AND INTERPOLATED DISTANCE DATA FOR PCD 2 EXCHANGE#####
-#import distance data
-a_distance = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\exchanges.output.csv'
+#import actual distance data
+a_distance = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\exchanges.output.csv'
 a_distance = pd.read_csv(a_distance)
+#counts = a_distance.mdf.value_counts()
 
 #rename columns
-a_distance.rename(columns={'pcd':'actual_pcd'}, inplace=True)
-
-#rename columns
-a_distance.rename(columns={'distances':'actual_distance'}, inplace=True)
+a_distance.rename(columns={'pcd':'actual_pcd', 'distances':'actual_distance'}, inplace=True)
 
 #subset columns      
 a_distance = a_distance[['actual_pcd','actual_distance']]
 
+#covert from kms to meters 
 a_distance.loc[:,'actual_distance'] *= 1000
 #test = pd.merge(v_distance, a_distance, on=['pcd'], how='inner')
 
-#import distance data
-v_distance = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\distance.matrix.csv'
+#import interpolated distance data
+v_distance = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\distance.matrix.csv'
 v_distance = pd.read_csv(v_distance)
 
 #remove whitespace
 v_distance['InputID'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
 
+#delete unwanted variable
 del v_distance['TargetID']
 
 #rename columns
-v_distance.rename(columns={'InputID':'interpol_pcd'}, inplace=True)
-
-#rename columns
-v_distance.rename(columns={'Distance':'interpol_distance'}, inplace=True)
+v_distance.rename(columns={'InputID':'interpol_pcd', 'Distance':'interpol_distance'}, inplace=True)
 
 df_merge = a_distance.merge(v_distance, left_on="actual_pcd", right_on="interpol_pcd", how="right", indicator=True)
 df_merge["interpol_distance"] = df_merge["interpol_distance"].where(df_merge["_merge"] != "both", df_merge["actual_distance"]) 
 all_distances = df_merge.drop(["actual_pcd", "actual_distance", "_merge"], axis=1).sort_values("interpol_pcd")
 
-counts = df_merge._merge.value_counts()
-
+#remove unwanted dfs
 del a_distance
 del v_distance
 
 #rename columns
-all_distances.rename(columns={'interpol_pcd':'pcd'}, inplace=True)
+all_distances.rename(columns={'interpol_pcd':'pcd', 'interpol_distance':'distance'}, inplace=True)
 
-#rename columns
-all_distances.rename(columns={'interpol_distance':'distance'}, inplace=True)
-
-####IMPORT POSTCODE DIRECTORY####
-#import city geotype info
-pcd_2_exchanges = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\pcd2exchanges.csv'
+####IMPORT POSTCODE to EXCHANGE DATA####
+#pcd to exchange data - 5381 exchanges
+pcd_2_exchanges = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\pcd2exchanges.csv'
 pcd_2_exchanges = pd.read_csv(pcd_2_exchanges)
+#counts = pcd_2_exchanges.Postcode_1.value_counts()
 
 #rename columns
 pcd_2_exchanges.rename(columns={'POSTCODE':'pcd', 'Postcode_1':'exchange_pcd'}, inplace=True)
@@ -98,6 +92,9 @@ pcd_2_exchanges = pcd_2_exchanges[['pcd','exchange_pcd']]
 #merge all distance information with pcd_2_echange list
 df_merge = pd.merge(all_distances, pcd_2_exchanges, on='pcd', how='inner')
 
+#counts = df_merge.exchange_pcd.value_counts()
+
+#remove unwanted df
 del pcd_2_exchanges
 
 #create new line_length column
@@ -106,13 +103,12 @@ df_merge["line_length"] = "under_2k"
 #change line_length to over 2k
 df_merge.loc[ (df_merge['distance'] >= 2000), 'line_length'] = 'over_2k'
 
+#merge dfs
 data = pd.merge(codepoint, df_merge, on='pcd', how='inner')             
+#counts = data.exchange_pcd.value_counts()
     
 #sum all_premises to obtain 
 exchange_size = data.groupby(by=['exchange_pcd'])['all_premises'].sum()
-
-#rename columns
-#exchange_size = exchange_size.rename(columns={'all_premises':'exchange_premises'}, inplace=True)
 
 #merge a pandas.core.series with a pandas core.frame.dataframe
 data = data.merge(exchange_size.to_frame(), left_on='exchange_pcd', right_on='Index', right_index=True)
@@ -191,11 +187,12 @@ data.loc[ (data['geotype'] == '>10,000') & (data['distance'] <= 2000), 'geotype_
 data.loc[ (data['geotype'] == '>20,000') & (data['distance'] > 2000), 'geotype_name'] = 'Above 20,000 (b)'
 # >20000 lines, 2km
 data.loc[ (data['geotype'] == '>20,000') & (data['distance'] <= 2000), 'geotype_name'] = 'Above 20,000 (a)'        
-    
+
+counts = data.exchange_pcd.value_counts()
          
 ####IMPORT POSTCODE DIRECTORY####
 #set location and read in as df
-Location = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\ONSPD_AUG_2012_UK_O.csv'
+Location = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\ONSPD_AUG_2012_UK_O.csv'
 onsp = pd.read_csv(Location, header=None, low_memory=False)
 
 #rename columns
@@ -212,7 +209,7 @@ del onsp
 
 ###IMPORT kitz exchange list
 #set location and read in as df
-Location = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\exchange.data.kitz.csv'
+Location = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\exchange.data.kitz.csv'
 kitz_exchanges = pd.read_csv(Location)
 
 #remove whitespace
@@ -239,10 +236,9 @@ subset = (subset.drop_duplicates(['OLO']))
 #remove unwated data
 del kitz_exchanges
     
-        
          
 #import city geotype info
-geotypes1 = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\geotypes.csv'
+geotypes1 = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\geotypes.csv'
 geotypes1 = pd.read_csv(geotypes1)
 
 #merge 
@@ -270,6 +266,8 @@ exchanges['Rank'] = exchanges.groupby(['geotype'])['all_premises_y'].rank(ascend
 #subset = exchanges.loc[(exchanges.geotype == 'Large City') | (exchanges.geotype == 'Small City'),:]
 subset = exchanges.loc[exchanges['geotype'] == 'Large City']
 
+large_cities = subset.copy(deep=True)
+
 #subset = exchanges.loc[:,exchanges.loc['geotype'] == 'Large City']
 
 # <1000 lines
@@ -283,9 +281,9 @@ subset = exchanges.loc[exchanges['geotype'] == 'Large City']
 # >20000
 #subset.loc[ (subset['TotalLines'] >= 20000), 'geotype'] = '>20,000'
 
-large_cities = subset.sort(['Rank'])
+large_cities = large_cities.sort_values(by='Rank')
 
-large_cities = subset.loc[subset['Rank'] < 205]
+large_cities = large_cities.loc[large_cities['Rank'] < 205]
 
 large_cities.all_premises_y.values.sum()
 
@@ -293,6 +291,8 @@ large_cities["geotype"] = "Large City"
 
 #subset = exchanges.loc[(exchanges.geotype == 'Large City') | (exchanges.geotype == 'Small City'),:]
 subset = exchanges.loc[exchanges['geotype'] == 'Small City']
+
+small_cities = subset.copy(deep=True)
 
 # <1000 lines
 #subset.loc[ (subset.loc['TotalLines'] < 1000), 'geotype'] = '<1,000'
@@ -305,9 +305,9 @@ subset = exchanges.loc[exchanges['geotype'] == 'Small City']
 # >20000
 #subset.loc[ (subset['TotalLines'] >= 20000), 'geotype'] = '>20,000'
 
-small_cities = subset.sort(['Rank'])
+small_cities = small_cities.sort_values(by='Rank')
 
-small_cities = subset.loc[subset['Rank'] < 181]
+small_cities = small_cities.loc[small_cities['Rank'] < 181]
 
 small_cities.all_premises_y.values.sum()
 
@@ -330,7 +330,7 @@ subset = exchanges[['OLO','ID','oslaua']]
 #subset = exchanges[['pcd','oslaua']]
 
 #import city geotype info
-geotypes2 = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\geotypes2.csv'
+geotypes2 = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\geotypes2.csv'
 geotypes2 = pd.read_csv(geotypes2)
 
 #merge 
@@ -349,10 +349,25 @@ exchanges.geotype.update(exchanges.OLO.map(large_cities.set_index('OLO').geotype
 
 exchanges.geotype.update(exchanges.OLO.map(small_cities.set_index('OLO').geotype))
 
-counts = exchanges.geotype.value_counts()
-
 counts = exchanges.groupby(by=['geotype'])['all_premises_y'].sum()
 
+del data['geotype']
+del data['geotype']
+del large_cities
+del small_cities
+
+#subset columns      
+subset = exchanges[['OLO','geotype']]
+
+#merge 
+test = pd.merge(data, subset, on='OLO', how='outer')
+
+test2 = test.groupby(['OLO'])[["prem_under_2k", "prem_over_2k", "prem_under_1k", "prem_over_1k"]].sum()
+#%%
+counts = data.exchange_pcd.value_counts()
+
+
+#%%
 
 
 
@@ -361,6 +376,22 @@ counts = exchanges.groupby(by=['geotype'])['all_premises_y'].sum()
 
 
 
+counts = exchanges.geotype.value_counts()
+
+
+
+
+
+
+
+
+
+#subset columns      
+subset = data[['OLO','ID','geotype']]
+
+test = subset.drop_duplicates(['OLO','ID'])
+
+data['Rank'] = data.groupby(['geotype'])['all_premises_y'].rank(ascending=False)
 
 
 
