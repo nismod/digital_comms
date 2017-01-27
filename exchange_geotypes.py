@@ -13,6 +13,7 @@ os.chdir('C:\\Users\\EJO31\\Dropbox\\Fixed Broadband Model\\UK Data')
 
 #import pandas as pd
 import pandas as pd #this is how I usually import pandas
+import numpy as np
 
 ####IMPORT CODEPOINT DATA#####
 #import codepoint
@@ -164,29 +165,29 @@ data.loc[ (data['all_premises_y'] >= 20000), 'geotype'] = '>20,000'
 data["geotype_name"] = ""
          
 # <1000 lines, 1km
-data.loc[ (data['geotype'] == '<1,000') & (data['distance'] > 1000), 'geotype_name'] = 'm Below 1,000 (b)'
+data.loc[ (data['geotype'] == '<1,000') & (data['distance'] > 1000), 'geotype_name'] = 'Below 1,000 (b)'
 # <=1000 lines, 1km
-data.loc[ (data['geotype'] == '<1,000') & (data['distance'] <= 1000), 'geotype_name'] = 'l Below 1,000 (a)'
+data.loc[ (data['geotype'] == '<1,000') & (data['distance'] <= 1000), 'geotype_name'] = 'Below 1,000 (a)'
 
 # >1000 lines but <3000, 1km
-data.loc[ (data['geotype'] == '>1,000') & (data['distance'] > 1000), 'geotype_name'] = 'k Above 1,000 (b)'
+data.loc[ (data['geotype'] == '>1,000') & (data['distance'] > 1000), 'geotype_name'] = 'Above 1,000 (b)'
 # >1000 lines but <3000, 1km
-data.loc[ (data['geotype'] == '>1,000') & (data['distance'] <= 1000), 'geotype_name'] = 'j Above 1,000 (a)'
+data.loc[ (data['geotype'] == '>1,000') & (data['distance'] <= 1000), 'geotype_name'] = 'Above 1,000 (a)'
 
 # >3000 lines but <10000, 1km
-data.loc[ (data['geotype'] == '>3,000') & (data['distance'] > 1000), 'geotype_name'] = 'i Above 3,000 (b)'
+data.loc[ (data['geotype'] == '>3,000') & (data['distance'] > 1000), 'geotype_name'] = 'Above 3,000 (b)'
 # >3000 lines but <10000, 1km
-data.loc[ (data['geotype'] == '>3,000') & (data['distance'] <= 1000), 'geotype_name'] = 'h Above 3,000 (a)'
+data.loc[ (data['geotype'] == '>3,000') & (data['distance'] <= 1000), 'geotype_name'] = 'Above 3,000 (a)'
 
 # >10000 lines but <20000, 2km
-data.loc[ (data['geotype'] == '>10,000') & (data['distance'] > 2000), 'geotype_name'] = 'g Above 10,000 (b)'
+data.loc[ (data['geotype'] == '>10,000') & (data['distance'] > 2000), 'geotype_name'] = 'Above 10,000 (b)'
 # >10000 lines but <20000, 2km
-data.loc[ (data['geotype'] == '>10,000') & (data['distance'] <= 2000), 'geotype_name'] = 'f Above 10,000 (a)'
+data.loc[ (data['geotype'] == '>10,000') & (data['distance'] <= 2000), 'geotype_name'] = 'Above 10,000 (a)'
 
 # >20000 lines, 2km
-data.loc[ (data['geotype'] == '>20,000') & (data['distance'] > 2000), 'geotype_name'] = 'e Above 20,000 (b)'
+data.loc[ (data['geotype'] == '>20,000') & (data['distance'] > 2000), 'geotype_name'] = 'Above 20,000 (b)'
 # >20000 lines, 2km
-data.loc[ (data['geotype'] == '>20,000') & (data['distance'] <= 2000), 'geotype_name'] = 'd Above 20,000 (a)'        
+data.loc[ (data['geotype'] == '>20,000') & (data['distance'] <= 2000), 'geotype_name'] = 'Above 20,000 (a)'        
 
 counts = data.exchange_pcd.value_counts()
          
@@ -270,7 +271,7 @@ counts = exchanges.geotype.value_counts()
 exchanges['Rank'] = exchanges.groupby(['geotype'])['all_premises_y'].rank(ascending=False)
      
 #subset = exchanges.loc[(exchanges.geotype == 'Large City') | (exchanges.geotype == 'Small City'),:]
-subset = exchanges.loc[exchanges['geotype'] == 'b Large City']
+subset = exchanges.loc[exchanges['geotype'] == 'Large City']
 
 large_cities = subset.copy(deep=True)
 
@@ -293,10 +294,10 @@ large_cities = large_cities.loc[large_cities['Rank'] < 205]
 
 large_cities.all_premises_y.values.sum()
 
-large_cities["geotype"] = "b Large City"
+large_cities["geotype"] = "Large City"
 
 #subset = exchanges.loc[(exchanges.geotype == 'Large City') | (exchanges.geotype == 'Small City'),:]
-subset = exchanges.loc[exchanges['geotype'] == 'c Small City']
+subset = exchanges.loc[exchanges['geotype'] == 'Small City']
 
 small_cities = subset.copy(deep=True)
 
@@ -317,8 +318,9 @@ small_cities = small_cities.loc[small_cities['Rank'] < 181]
 
 small_cities.all_premises_y.values.sum()
 
-small_cities["geotype"] = "c Small City"
+small_cities["geotype"] = "Small City"
 
+exchanges["geotype"] = ""
 #segment exchanges by size again to eliinate previous large or small city geotypes
 # <1000 lines
 exchanges.loc[ (exchanges['all_premises_y'] < 1000), 'geotype'] = '<1,000'
@@ -355,19 +357,282 @@ exchanges.geotype.update(exchanges.OLO.map(large_cities.set_index('OLO').geotype
 
 exchanges.geotype.update(exchanges.OLO.map(small_cities.set_index('OLO').geotype))
 
+counts = exchanges.geotype.value_counts()
+
+exchanges = exchanges[(exchanges['geotype'] =='Inner London') | (exchanges['geotype'] =='Large City') | (exchanges['geotype'] =='Small City')]
+
 counts = exchanges.groupby(by=['geotype'])['all_premises_y'].sum()
 
-del data['geotype']
 del large_cities
 del small_cities
 
-#subset columns      
-subset = exchanges[['OLO','geotype']]
+# <1000 lines, 1km
+data.loc[ (data['geotype'] == '<1,000') & (data['distance'] > 1000), 'geotype_name'] = 'Below 1,000 (b)'
+# <=1000 lines, 1km
+data.loc[ (data['geotype'] == '<1,000') & (data['distance'] <= 1000), 'geotype_name'] = 'Below 1,000 (a)'
 
-#merge 
-test = pd.merge(data, subset, on='OLO', how='outer')
+# >1000 lines but <3000, 1km
+data.loc[ (data['geotype'] == '>1,000') & (data['distance'] > 1000), 'geotype_name'] = 'Above 1,000 (b)'
+# >1000 lines but <3000, 1km
+data.loc[ (data['geotype'] == '>1,000') & (data['distance'] <= 1000), 'geotype_name'] = 'Above 1,000 (a)'
+
+# >3000 lines but <10000, 1km
+data.loc[ (data['geotype'] == '>3,000') & (data['distance'] > 1000), 'geotype_name'] = 'Above 3,000 (b)'
+# >3000 lines but <10000, 1km
+data.loc[ (data['geotype'] == '>3,000') & (data['distance'] <= 1000), 'geotype_name'] = 'Above 3,000 (a)'
+
+# >10000 lines but <20000, 2km
+data.loc[ (data['geotype'] == '>10,000') & (data['distance'] > 2000), 'geotype_name'] = 'Above 10,000 (b)'
+# >10000 lines but <20000, 2km
+data.loc[ (data['geotype'] == '>10,000') & (data['distance'] <= 2000), 'geotype_name'] = 'Above 10,000 (a)'
+
+# >20000 lines, 2km
+data.loc[ (data['geotype'] == '>20,000') & (data['distance'] > 2000), 'geotype_name'] = 'Above 20,000 (b)'
+# >20000 lines, 2km
+data.loc[ (data['geotype'] == '>20,000') & (data['distance'] <= 2000), 'geotype_name'] = 'Above 20,000 (a)'        
+
+#subset columns      
+subset = exchanges[['pcd','geotype']]
+
+subset = subset.copy(deep=True)
+
+#rename columns
+subset.rename(columns={'pcd':'exchange_pcd'}, inplace=True)
+
+#subset = subset[(subset['geotype'] =='Inner London') | (subset['geotype'] =='Large City') | (subset['geotype'] =='Small City')]
+
+del data['geotype']
+# merge 
+data = pd.merge(data, subset, on='exchange_pcd', how='outer')
+
+counts = data.geotype_name.value_counts()
+
+data['geotype_name'] = data['geotype'].combine_first(data['geotype_name'])
+
+#not_matched = data[data.OLO ==""]
+#test = data[data.geotype_name !=""]
+
+exchanges = data.groupby(['geotype_name','OLO', 'Name', 'oslaua'], as_index=False).sum()
+
+counts = exchanges.geotype_name.value_counts()
+
+del exchanges['all_premises_x']
+del exchanges['domestic']
+del exchanges['non_domestic']
+del exchanges['PO_box']
+del exchanges['distance']
+del exchanges['ID']
+
+exchanges["geotype_number"] = ""
+
+# DON'T PUT NUMBERS IN '' AS IT MAKES THEM STRINGS!
+exchanges.loc[ (exchanges['geotype_name'] == 'Inner London'), 'geotype_number'] = 1
+exchanges.loc[ (exchanges['geotype_name'] == 'Large City'), 'geotype_number'] = 2
+exchanges.loc[ (exchanges['geotype_name'] == 'Small City'), 'geotype_number'] = 3
+exchanges.loc[ (exchanges['geotype_name'] == 'Above 20,000 (a)'), 'geotype_number'] = 4
+exchanges.loc[ (exchanges['geotype_name'] == 'Above 20,000 (b)'), 'geotype_number'] = 5
+exchanges.loc[ (exchanges['geotype_name'] == 'Above 10,000 (a)'), 'geotype_number'] = 6
+exchanges.loc[ (exchanges['geotype_name'] == 'Above 10,000 (b)'), 'geotype_number'] = 7
+exchanges.loc[ (exchanges['geotype_name'] == 'Above 3,000 (a)'), 'geotype_number'] = 8
+exchanges.loc[ (exchanges['geotype_name'] == 'Above 3,000 (b)'), 'geotype_number'] = 9
+exchanges.loc[ (exchanges['geotype_name'] == 'Above 1,000 (a)'), 'geotype_number'] = 10
+exchanges.loc[ (exchanges['geotype_name'] == 'Above 1,000 (b)'), 'geotype_number'] = 11
+exchanges.loc[ (exchanges['geotype_name'] == 'Below 1,000 (a)'), 'geotype_number'] = 12
+exchanges.loc[ (exchanges['geotype_name'] == 'Below 1,000 (b)'), 'geotype_number'] = 13
+
+#exchanges = exchanges.sort_values(by='geotype_name', 'all_premises_y')
+
+exchanges = exchanges.sort_values(by=['geotype_number','all_premises_y'], ascending=[True,False])
+
+###### LOTS OF LOST DATA!!!!!!!!!########
+counts = exchanges.geotype_name.value_counts()
+
+# DON'T PUT NUMBERS IN '' AS IT MAKES THEM STRINGS!
+exchanges.loc[ (exchanges['geotype_number'] == 1), 'Gfast_Pod'] = 200
+exchanges.loc[ (exchanges['geotype_number'] == 2), 'Gfast_Pod'] = 300
+exchanges.loc[ (exchanges['geotype_number'] == 3), 'Gfast_Pod'] = 400
+exchanges.loc[ (exchanges['geotype_number'] == 4), 'Gfast_Pod'] = 500
+exchanges.loc[ (exchanges['geotype_number'] == 5), 'Gfast_Pod'] = 600
+exchanges.loc[ (exchanges['geotype_number'] == 6), 'Gfast_Pod'] = 700
+exchanges.loc[ (exchanges['geotype_number'] == 7), 'Gfast_Pod'] = 800
+exchanges.loc[ (exchanges['geotype_number'] == 8), 'Gfast_Pod'] = 900
+exchanges.loc[ (exchanges['geotype_number'] == 9), 'Gfast_Pod'] = 1000
+exchanges.loc[ (exchanges['geotype_number'] == 10), 'Gfast_Pod'] = 1100
+exchanges.loc[ (exchanges['geotype_number'] == 11), 'Gfast_Pod'] = 1200
+exchanges.loc[ (exchanges['geotype_number'] == 12), 'Gfast_Pod'] = 1300
+exchanges.loc[ (exchanges['geotype_number'] == 13), 'Gfast_Pod'] = 1400
+
+# DON'T PUT NUMBERS IN '' AS IT MAKES THEM STRINGS!
+exchanges.loc[ (exchanges['geotype_number'] == 1), 'FTTdp'] = 400
+exchanges.loc[ (exchanges['geotype_number'] == 2), 'FTTdp'] = 441
+exchanges.loc[ (exchanges['geotype_number'] == 3), 'FTTdp'] = 432
+exchanges.loc[ (exchanges['geotype_number'] == 4), 'FTTdp'] = 401
+exchanges.loc[ (exchanges['geotype_number'] == 5), 'FTTdp'] = 710
+exchanges.loc[ (exchanges['geotype_number'] == 6), 'FTTdp'] = 377
+exchanges.loc[ (exchanges['geotype_number'] == 7), 'FTTdp'] = 538
+exchanges.loc[ (exchanges['geotype_number'] == 8), 'FTTdp'] = 463
+exchanges.loc[ (exchanges['geotype_number'] == 9), 'FTTdp'] = 1078
+exchanges.loc[ (exchanges['geotype_number'] == 10), 'FTTdp'] = 407
+exchanges.loc[ (exchanges['geotype_number'] == 11), 'FTTdp'] = 689
+exchanges.loc[ (exchanges['geotype_number'] == 12), 'FTTdp'] = 1200
+exchanges.loc[ (exchanges['geotype_number'] == 13), 'FTTdp'] = 3500              
+              
+# DON'T PUT NUMBERS IN '' AS IT MAKES THEM STRINGS!
+exchanges.loc[ (exchanges['geotype_number'] == 1), 'FTTH_GPON'] = 1300
+exchanges.loc[ (exchanges['geotype_number'] == 2), 'FTTH_GPON'] = 1800
+exchanges.loc[ (exchanges['geotype_number'] == 3), 'FTTH_GPON'] = 2000
+exchanges.loc[ (exchanges['geotype_number'] == 4), 'FTTH_GPON'] = 1700
+exchanges.loc[ (exchanges['geotype_number'] == 5), 'FTTH_GPON'] = 3300
+exchanges.loc[ (exchanges['geotype_number'] == 6), 'FTTH_GPON'] = 1900
+exchanges.loc[ (exchanges['geotype_number'] == 7), 'FTTH_GPON'] = 4300
+exchanges.loc[ (exchanges['geotype_number'] == 8), 'FTTH_GPON'] = 1500
+exchanges.loc[ (exchanges['geotype_number'] == 9), 'FTTH_GPON'] = 4000
+exchanges.loc[ (exchanges['geotype_number'] == 10), 'FTTH_GPON'] = 2200
+exchanges.loc[ (exchanges['geotype_number'] == 11), 'FTTH_GPON'] = 6700
+exchanges.loc[ (exchanges['geotype_number'] == 12), 'FTTH_GPON'] = 9000
+exchanges.loc[ (exchanges['geotype_number'] == 13), 'FTTH_GPON'] = 12000
+
+exchanges['cost_Gfast'] = exchanges.Gfast_Pod*exchanges.all_premises_y 
+exchanges['cost_FTTdp'] = exchanges.FTTdp*exchanges.all_premises_y               
+exchanges['FTTH_GPON'] = exchanges.FTTH_GPON*exchanges.all_premises_y                 
+
+exchanges['Rank'] = exchanges.groupby(['geotype_number'])['all_premises_y'].rank(ascending=False)
+
+# set up zero total amounts budgeted (to be calculated)
+exchanges["total_budgeted"] = np.zeros(len(exchanges))
+
+# set up NaN year completed (to be filled in)
+nans = np.empty(len(exchanges))
+nans[:] = np.NaN
+exchanges["year_completed"] = nans
+
+
+available_budget_each_year = [
+    15000000,
+    15000000,
+    15000000,
+    15000000,
+    15000000,
+    15000000,
+    15000000,
+    15000000,
+    15000000,
+    15000000]
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+# for each year and budget amount
+for year, budget in enumerate(available_budget_each_year):
+    # set up a budget column for this year
+    budget_colname = "budget_y{}".format(year)
+    df[budget_colname] = np.zeros(len(raw_data))
+
+    # for each row (each exchange),
+    # (!) assuming they are in ranked order
+    for row in df.itertuples():
+        # calculate outstanding cost
+        outstanding_cost = row.cost - row.total_budgeted
+        # if any,
+        if outstanding_cost > 0:
+            # if there is sufficient budget
+            if budget >= outstanding_cost:
+                # assign the total outstanding cost to the amount budgeted for
+                # this exchange in this year
+                df.set_value(row.Index, budget_colname, outstanding_cost)
+                # add that amount to the total amount budgeted for this exchange
+                df.set_value(row.Index, "total_budgeted", outstanding_cost + row.total_budgeted)
+                # set the year this exchange completed to this year
+                df.set_value(row.Index, "year_completed", year)
+                # decrement the remaing budget available this year
+                budget -= outstanding_cost
+
+            # if there is not enough budget
+            else:
+                # assign all remaining budget to this exchange
+                df.set_value(row.Index, budget_colname, budget)
+                # add that amount to the total amount budgeted for this exchange
+                df.set_value(row.Index, "total_budgeted", budget + row.total_budgeted)
+                # set remaining budget for this year to zero
+                budget = 0
+
+    # spare budget?
+    if budget > 0:
+        print("{} budget unspent in year {}".format(budget, year))
+
+
+
+#%%
+
+
+test = data.geotype.unique()
+
+#subset columns      
+subset = data[['pcd','geotype']]
+
+subset = subset.drop_duplicates('pcd')
+
+data.geotype_name.update(data.pcd.map(subset.set_index('pcd').geotype))
+
+
+
+
+#test = data.drop_duplicates('OLO')
+
+data = data.drop_duplicates()
+
+counts = data.geotype_name.value_counts()
+
+
+
+
+
+#%%
+
+
+
+
+subset = subset.drop_duplicates('OLO')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #test2 = test.groupby(['OLO'])[["prem_under_2k", "prem_over_2k", "prem_under_1k", "prem_over_1k"]].sum()
 
+
+
+
+
+#%%
+
+
+small_cities = subset.copy(deep=True)
+
+test = test.sort_values(by='geotype')
+
+test = test.sort(by='geotype', ascending=True)
+
+df.sort(['Player', 'Year', 'Tm'], ascending = [True, True, sorter])
+
+
+sorted(li,key=lambda x: x[1])
 
 #make data into dataframe shape
 
