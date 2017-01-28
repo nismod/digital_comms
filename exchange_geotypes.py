@@ -494,7 +494,7 @@ exchanges.loc[ (exchanges['geotype_number'] == 13), 'FTTH_GPON'] = 12000
 
 exchanges['cost_Gfast'] = exchanges.Gfast_Pod*exchanges.all_premises_y 
 exchanges['cost_FTTdp'] = exchanges.FTTdp*exchanges.all_premises_y               
-exchanges['FTTH_GPON'] = exchanges.FTTH_GPON*exchanges.all_premises_y                 
+exchanges['cost'] = exchanges.FTTH_GPON*exchanges.all_premises_y                 
 
 exchanges['Rank'] = exchanges.groupby(['geotype_number'])['all_premises_y'].rank(ascending=False)
 
@@ -508,24 +508,52 @@ exchanges["year_completed"] = nans
 
 
 available_budget_each_year = [
-    15000000,
-    15000000,
-    15000000,
-    15000000,
-    15000000,
-    15000000,
-    15000000,
-    15000000,
-    15000000,
-    15000000]
+    15000000000,
+    15000000000,
+    15000000000,
+    15000000000]
+  
+      
+   # for each year and budget amount
+for year, budget in enumerate(available_budget_each_year):
+    # set up a budget column for this year
+    budget_colname = "budget_y{}".format(year)
+    exchanges[budget_colname] = np.zeros(len(exchanges))
 
+    # for each row (each exchange),
+    # (!) assuming they are in ranked order
+    for row in exchanges.itertuples():
+        # calculate outstanding cost
+        outstanding_cost = row.cost - row.total_budgeted
+        # if any,
+        if outstanding_cost > 0:
+            # if there is sufficient budget
+            if budget >= outstanding_cost:
+                # assign the total outstanding cost to the amount budgeted for
+                # this exchange in this year
+                exchanges.set_value(row.Index, budget_colname, outstanding_cost)
+                # add that amount to the total amount budgeted for this exchange
+                exchanges.set_value(row.Index, "total_budgeted", outstanding_cost + row.total_budgeted)
+                # set the year this exchange completed to this year
+                exchanges.set_value(row.Index, "year_completed", year)
+                # decrement the remaing budget available this year
+                budget -= outstanding_cost
+
+            # if there is not enough budget
+            else:
+                # assign all remaining budget to this exchange
+                exchanges.set_value(row.Index, budget_colname, budget)
+                # add that amount to the total amount budgeted for this exchange
+                exchanges.set_value(row.Index, "total_budgeted", budget + row.total_budgeted)
+                # set remaining budget for this year to zero
+                budget = 0
+
+    # spare budget?
+    if budget > 0:
+        print("{} budget unspent in year {}".format(budget, year)) 
     
     
-    
-    
-    
-    
-    
+  #%%  
     
     
 # for each year and budget amount
