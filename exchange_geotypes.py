@@ -440,89 +440,77 @@ exchanges.loc[ (exchanges['geotype_name'] == 'Above 1,000 (b)'), 'geotype_number
 exchanges.loc[ (exchanges['geotype_name'] == 'Below 1,000 (a)'), 'geotype_number'] = 12
 exchanges.loc[ (exchanges['geotype_name'] == 'Below 1,000 (b)'), 'geotype_number'] = 13
 
-#exchanges = exchanges.sort_values(by='geotype_name', 'all_premises_y')
-
-exchanges = exchanges.sort_values(by=['geotype_number','all_premises_y'], ascending=[True,False])
-
 ###### LOTS OF LOST DATA!!!!!!!!!########
 counts = exchanges.geotype_name.value_counts()
 
-# DON'T PUT NUMBERS IN '' AS IT MAKES THEM STRINGS!
-exchanges.loc[ (exchanges['geotype_number'] == 1), 'Gfast_Pod'] = 200
-exchanges.loc[ (exchanges['geotype_number'] == 2), 'Gfast_Pod'] = 300
-exchanges.loc[ (exchanges['geotype_number'] == 3), 'Gfast_Pod'] = 400
-exchanges.loc[ (exchanges['geotype_number'] == 4), 'Gfast_Pod'] = 500
-exchanges.loc[ (exchanges['geotype_number'] == 5), 'Gfast_Pod'] = 600
-exchanges.loc[ (exchanges['geotype_number'] == 6), 'Gfast_Pod'] = 700
-exchanges.loc[ (exchanges['geotype_number'] == 7), 'Gfast_Pod'] = 800
-exchanges.loc[ (exchanges['geotype_number'] == 8), 'Gfast_Pod'] = 900
-exchanges.loc[ (exchanges['geotype_number'] == 9), 'Gfast_Pod'] = 1000
-exchanges.loc[ (exchanges['geotype_number'] == 10), 'Gfast_Pod'] = 1100
-exchanges.loc[ (exchanges['geotype_number'] == 11), 'Gfast_Pod'] = 1200
-exchanges.loc[ (exchanges['geotype_number'] == 12), 'Gfast_Pod'] = 1300
-exchanges.loc[ (exchanges['geotype_number'] == 13), 'Gfast_Pod'] = 1400
-
-# DON'T PUT NUMBERS IN '' AS IT MAKES THEM STRINGS!
-exchanges.loc[ (exchanges['geotype_number'] == 1), 'FTTdp'] = 400
-exchanges.loc[ (exchanges['geotype_number'] == 2), 'FTTdp'] = 441
-exchanges.loc[ (exchanges['geotype_number'] == 3), 'FTTdp'] = 432
-exchanges.loc[ (exchanges['geotype_number'] == 4), 'FTTdp'] = 401
-exchanges.loc[ (exchanges['geotype_number'] == 5), 'FTTdp'] = 710
-exchanges.loc[ (exchanges['geotype_number'] == 6), 'FTTdp'] = 377
-exchanges.loc[ (exchanges['geotype_number'] == 7), 'FTTdp'] = 538
-exchanges.loc[ (exchanges['geotype_number'] == 8), 'FTTdp'] = 463
-exchanges.loc[ (exchanges['geotype_number'] == 9), 'FTTdp'] = 1078
-exchanges.loc[ (exchanges['geotype_number'] == 10), 'FTTdp'] = 407
-exchanges.loc[ (exchanges['geotype_number'] == 11), 'FTTdp'] = 689
-exchanges.loc[ (exchanges['geotype_number'] == 12), 'FTTdp'] = 1200
-exchanges.loc[ (exchanges['geotype_number'] == 13), 'FTTdp'] = 3500              
-              
-# DON'T PUT NUMBERS IN '' AS IT MAKES THEM STRINGS!
-exchanges.loc[ (exchanges['geotype_number'] == 1), 'FTTH_GPON'] = 1300
-exchanges.loc[ (exchanges['geotype_number'] == 2), 'FTTH_GPON'] = 1800
-exchanges.loc[ (exchanges['geotype_number'] == 3), 'FTTH_GPON'] = 2000
-exchanges.loc[ (exchanges['geotype_number'] == 4), 'FTTH_GPON'] = 1700
-exchanges.loc[ (exchanges['geotype_number'] == 5), 'FTTH_GPON'] = 3300
-exchanges.loc[ (exchanges['geotype_number'] == 6), 'FTTH_GPON'] = 1900
-exchanges.loc[ (exchanges['geotype_number'] == 7), 'FTTH_GPON'] = 4300
-exchanges.loc[ (exchanges['geotype_number'] == 8), 'FTTH_GPON'] = 1500
-exchanges.loc[ (exchanges['geotype_number'] == 9), 'FTTH_GPON'] = 4000
-exchanges.loc[ (exchanges['geotype_number'] == 10), 'FTTH_GPON'] = 2200
-exchanges.loc[ (exchanges['geotype_number'] == 11), 'FTTH_GPON'] = 6700
-exchanges.loc[ (exchanges['geotype_number'] == 12), 'FTTH_GPON'] = 9000
-exchanges.loc[ (exchanges['geotype_number'] == 13), 'FTTH_GPON'] = 12000
-
-exchanges['cost_Gfast'] = exchanges.Gfast_Pod*exchanges.all_premises_y 
-exchanges['cost_FTTdp'] = exchanges.FTTdp*exchanges.all_premises_y               
-exchanges['cost'] = exchanges.FTTH_GPON*exchanges.all_premises_y                 
-
-exchanges['Rank'] = exchanges.groupby(['geotype_number'])['all_premises_y'].rank(ascending=False)
-
-# set up zero total amounts budgeted (to be calculated)
-exchanges["total_budgeted"] = np.zeros(len(exchanges))
-
-# set up NaN year completed (to be filled in)
-nans = np.empty(len(exchanges))
-nans[:] = np.NaN
-exchanges["year_completed"] = nans
-
+del all_distances             
+del codepoint
+del data
+del merge
+del pcd_directory
+del subset
+del counts               
+del Location
 
 available_budget_each_year = [
-    15000000000,
-    15000000000,
-    15000000000,
-    15000000000]
-  
-      
+    1500000000,
+    1500000000,
+    1500000000,
+    1500000000,
+    1500000000,
+    1500000000,
+    1500000000,
+    1500000000,
+    1500000000,
+    1500000000,
+    1500000000,
+    1500000000,
+    1500000000,
+    1500000000]
+    
+#sort exchanges based on geotype and then premises numbers
+exchanges = exchanges.sort_values(by=['geotype_number','all_premises_y'], ascending=[True,False])
+###############################################################################
+###### SET UP COPY FOR GFAST COSTINGS ######
+ex_Gfast = exchanges.copy(deep=True)
+
+# DON'T PUT NUMBERS IN '' AS IT MAKES THEM STRINGS!
+ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 1), 'prem_cost'] = 200
+ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 2), 'prem_cost'] = 300
+ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 3), 'prem_cost'] = 400
+ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 4), 'prem_cost'] = 500
+ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 5), 'prem_cost'] = 600
+ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 6), 'prem_cost'] = 700
+ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 7), 'prem_cost'] = 800
+ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 8), 'prem_cost'] = 900
+ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 9), 'prem_cost'] = 1000
+ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 10), 'prem_cost'] = 1100
+ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 11), 'prem_cost'] = 1200
+ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 12), 'prem_cost'] = 1300
+ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 13), 'prem_cost'] = 1400
+
+ex_Gfast['cost'] = ex_Gfast.prem_cost*ex_Gfast.all_premises_y             
+
+ex_Gfast['Rank'] = ex_Gfast.groupby(['geotype_number'])['all_premises_y'].rank(ascending=False)
+   
+# set up zero total amounts budgeted (to be calculated)
+ex_Gfast["total_budgeted"] = np.zeros(len(ex_Gfast))
+
+# set up NaN year completed (to be filled in)
+nans = np.empty(len(ex_Gfast))
+nans[:] = np.NaN
+ex_Gfast["year_completed"] = nans
+
+
    # for each year and budget amount
 for year, budget in enumerate(available_budget_each_year):
     # set up a budget column for this year
     budget_colname = "budget_y{}".format(year)
-    exchanges[budget_colname] = np.zeros(len(exchanges))
+    ex_Gfast[budget_colname] = np.zeros(len(ex_Gfast))
 
     # for each row (each exchange),
     # (!) assuming they are in ranked order
-    for row in exchanges.itertuples():
+    for row in ex_Gfast.itertuples():
         # calculate outstanding cost
         outstanding_cost = row.cost - row.total_budgeted
         # if any,
@@ -531,40 +519,67 @@ for year, budget in enumerate(available_budget_each_year):
             if budget >= outstanding_cost:
                 # assign the total outstanding cost to the amount budgeted for
                 # this exchange in this year
-                exchanges.set_value(row.Index, budget_colname, outstanding_cost)
+                ex_Gfast.set_value(row.Index, budget_colname, outstanding_cost)
                 # add that amount to the total amount budgeted for this exchange
-                exchanges.set_value(row.Index, "total_budgeted", outstanding_cost + row.total_budgeted)
+                ex_Gfast.set_value(row.Index, "total_budgeted", outstanding_cost + row.total_budgeted)
                 # set the year this exchange completed to this year
-                exchanges.set_value(row.Index, "year_completed", year)
+                ex_Gfast.set_value(row.Index, "year_completed", year)
                 # decrement the remaing budget available this year
                 budget -= outstanding_cost
 
             # if there is not enough budget
             else:
                 # assign all remaining budget to this exchange
-                exchanges.set_value(row.Index, budget_colname, budget)
+                ex_Gfast.set_value(row.Index, budget_colname, budget)
                 # add that amount to the total amount budgeted for this exchange
-                exchanges.set_value(row.Index, "total_budgeted", budget + row.total_budgeted)
+                ex_Gfast.set_value(row.Index, "total_budgeted", budget + row.total_budgeted)
                 # set remaining budget for this year to zero
                 budget = 0
 
     # spare budget?
     if budget > 0:
         print("{} budget unspent in year {}".format(budget, year)) 
-    
-    
-  #%%  
-    
-    
-# for each year and budget amount
+       
+###############################################################################
+###### SET UP COPY FOR GFAST COSTINGS ######
+ex_FTTdp = exchanges.copy(deep=True)
+
+# DON'T PUT NUMBERS IN '' AS IT MAKES THEM STRINGS!
+ex_FTTdp.loc[ (ex_FTTdp['geotype_number'] == 1), 'prem_cost'] = 400
+ex_FTTdp.loc[ (ex_FTTdp['geotype_number'] == 2), 'prem_cost'] = 441
+ex_FTTdp.loc[ (ex_FTTdp['geotype_number'] == 3), 'prem_cost'] = 432
+ex_FTTdp.loc[ (ex_FTTdp['geotype_number'] == 4), 'prem_cost'] = 401
+ex_FTTdp.loc[ (ex_FTTdp['geotype_number'] == 5), 'prem_cost'] = 710
+ex_FTTdp.loc[ (ex_FTTdp['geotype_number'] == 6), 'prem_cost'] = 377
+ex_FTTdp.loc[ (ex_FTTdp['geotype_number'] == 7), 'prem_cost'] = 538
+ex_FTTdp.loc[ (ex_FTTdp['geotype_number'] == 8), 'prem_cost'] = 463
+ex_FTTdp.loc[ (ex_FTTdp['geotype_number'] == 9), 'prem_cost'] = 1078
+ex_FTTdp.loc[ (ex_FTTdp['geotype_number'] == 10), 'prem_cost'] = 407
+ex_FTTdp.loc[ (ex_FTTdp['geotype_number'] == 11), 'prem_cost'] = 689
+ex_FTTdp.loc[ (ex_FTTdp['geotype_number'] == 12), 'prem_cost'] = 1200
+ex_FTTdp.loc[ (ex_FTTdp['geotype_number'] == 13), 'prem_cost'] = 3500     
+
+ex_FTTdp['cost'] = ex_FTTdp.prem_cost*ex_FTTdp.all_premises_y             
+
+ex_FTTdp['Rank'] = ex_FTTdp.groupby(['geotype_number'])['all_premises_y'].rank(ascending=False)
+   
+# set up zero total amounts budgeted (to be calculated)
+ex_FTTdp["total_budgeted"] = np.zeros(len(ex_FTTdp))
+
+# set up NaN year completed (to be filled in)
+nans = np.empty(len(ex_FTTdp))
+nans[:] = np.NaN
+ex_FTTdp["year_completed"] = nans
+
+   # for each year and budget amount
 for year, budget in enumerate(available_budget_each_year):
     # set up a budget column for this year
     budget_colname = "budget_y{}".format(year)
-    df[budget_colname] = np.zeros(len(raw_data))
+    ex_FTTdp[budget_colname] = np.zeros(len(ex_FTTdp))
 
     # for each row (each exchange),
     # (!) assuming they are in ranked order
-    for row in df.itertuples():
+    for row in ex_FTTdp.itertuples():
         # calculate outstanding cost
         outstanding_cost = row.cost - row.total_budgeted
         # if any,
@@ -573,129 +588,67 @@ for year, budget in enumerate(available_budget_each_year):
             if budget >= outstanding_cost:
                 # assign the total outstanding cost to the amount budgeted for
                 # this exchange in this year
-                df.set_value(row.Index, budget_colname, outstanding_cost)
+                ex_FTTdp.set_value(row.Index, budget_colname, outstanding_cost)
                 # add that amount to the total amount budgeted for this exchange
-                df.set_value(row.Index, "total_budgeted", outstanding_cost + row.total_budgeted)
+                ex_FTTdp.set_value(row.Index, "total_budgeted", outstanding_cost + row.total_budgeted)
                 # set the year this exchange completed to this year
-                df.set_value(row.Index, "year_completed", year)
+                ex_FTTdp.set_value(row.Index, "year_completed", year)
                 # decrement the remaing budget available this year
                 budget -= outstanding_cost
 
             # if there is not enough budget
             else:
                 # assign all remaining budget to this exchange
-                df.set_value(row.Index, budget_colname, budget)
+                ex_FTTdp.set_value(row.Index, budget_colname, budget)
                 # add that amount to the total amount budgeted for this exchange
-                df.set_value(row.Index, "total_budgeted", budget + row.total_budgeted)
+                ex_FTTdp.set_value(row.Index, "total_budgeted", budget + row.total_budgeted)
                 # set remaining budget for this year to zero
                 budget = 0
 
     # spare budget?
     if budget > 0:
-        print("{} budget unspent in year {}".format(budget, year))
-
-
-
-#%%
-
-
-test = data.geotype.unique()
-
-#subset columns      
-subset = data[['pcd','geotype']]
-
-subset = subset.drop_duplicates('pcd')
-
-data.geotype_name.update(data.pcd.map(subset.set_index('pcd').geotype))
-
-
-
-
-#test = data.drop_duplicates('OLO')
-
-data = data.drop_duplicates()
-
-counts = data.geotype_name.value_counts()
-
-
-
-
-
-#%%
-
-
-
-
-subset = subset.drop_duplicates('OLO')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#test2 = test.groupby(['OLO'])[["prem_under_2k", "prem_over_2k", "prem_under_1k", "prem_over_1k"]].sum()
-
-
-
-
-
-#%%
-
-
-small_cities = subset.copy(deep=True)
-
-test = test.sort_values(by='geotype')
-
-test = test.sort(by='geotype', ascending=True)
-
-df.sort(['Player', 'Year', 'Tm'], ascending = [True, True, sorter])
-
-
-sorted(li,key=lambda x: x[1])
-
-#make data into dataframe shape
-
-#1 turn geotype into number
-
-#%%
-
-
-
-
-
-
-
-
-
-
-
-
-
-# given a set of yearly budgets
-available_budget_each_year = [
-    1.5,
-    1.5,
-    1.5,
-    1.5]
-
-# for each year and budget amount
+        print("{} budget unspent in year {}".format(budget, year)) 
+
+###############################################################################
+###### SET UP COPY FOR GFAST COSTINGS ######
+ex_FTTH = exchanges.copy(deep=True)
+             
+# DON'T PUT NUMBERS IN '' AS IT MAKES THEM STRINGS!
+ex_FTTH.loc[ (ex_FTTH['geotype_number'] == 1), 'prem_cost'] = 1300
+ex_FTTH.loc[ (ex_FTTH['geotype_number'] == 2), 'prem_cost'] = 1800
+ex_FTTH.loc[ (ex_FTTH['geotype_number'] == 3), 'prem_cost'] = 2000
+ex_FTTH.loc[ (ex_FTTH['geotype_number'] == 4), 'prem_cost'] = 1700
+ex_FTTH.loc[ (ex_FTTH['geotype_number'] == 5), 'prem_cost'] = 3300
+ex_FTTH.loc[ (ex_FTTH['geotype_number'] == 6), 'prem_cost'] = 1900
+ex_FTTH.loc[ (ex_FTTH['geotype_number'] == 7), 'prem_cost'] = 4300
+ex_FTTH.loc[ (ex_FTTH['geotype_number'] == 8), 'prem_cost'] = 1500
+ex_FTTH.loc[ (ex_FTTH['geotype_number'] == 9), 'prem_cost'] = 4000
+ex_FTTH.loc[ (ex_FTTH['geotype_number'] == 10), 'prem_cost'] = 2200
+ex_FTTH.loc[ (ex_FTTH['geotype_number'] == 11), 'prem_cost'] = 6700
+ex_FTTH.loc[ (ex_FTTH['geotype_number'] == 12), 'prem_cost'] = 9000
+ex_FTTH.loc[ (ex_FTTH['geotype_number'] == 13), 'prem_cost'] = 12000
+         
+ex_FTTH['cost'] = ex_FTTH.prem_cost*ex_FTTH.all_premises_y                 
+
+ex_FTTH['Rank'] = ex_FTTH.groupby(['geotype_number'])['all_premises_y'].rank(ascending=False)
+
+# set up zero total amounts budgeted (to be calculated)
+ex_FTTH["total_budgeted"] = np.zeros(len(ex_FTTH))
+
+# set up NaN year completed (to be filled in)
+nans = np.empty(len(ex_FTTH))
+nans[:] = np.NaN
+ex_FTTH["year_completed"] = nans
+
+   # for each year and budget amount
 for year, budget in enumerate(available_budget_each_year):
     # set up a budget column for this year
     budget_colname = "budget_y{}".format(year)
-    df[budget_colname] = np.zeros(len(raw_data))
+    ex_FTTH[budget_colname] = np.zeros(len(ex_FTTH))
 
     # for each row (each exchange),
     # (!) assuming they are in ranked order
-    for row in df.itertuples():
+    for row in ex_FTTH.itertuples():
         # calculate outstanding cost
         outstanding_cost = row.cost - row.total_budgeted
         # if any,
@@ -704,49 +657,35 @@ for year, budget in enumerate(available_budget_each_year):
             if budget >= outstanding_cost:
                 # assign the total outstanding cost to the amount budgeted for
                 # this exchange in this year
-                df.set_value(row.Index, budget_colname, outstanding_cost)
+                ex_FTTH.set_value(row.Index, budget_colname, outstanding_cost)
                 # add that amount to the total amount budgeted for this exchange
-                df.set_value(row.Index, "total_budgeted", outstanding_cost + row.total_budgeted)
+                ex_FTTH.set_value(row.Index, "total_budgeted", outstanding_cost + row.total_budgeted)
                 # set the year this exchange completed to this year
-                df.set_value(row.Index, "year_completed", year)
+                ex_FTTH.set_value(row.Index, "year_completed", year)
                 # decrement the remaing budget available this year
                 budget -= outstanding_cost
 
             # if there is not enough budget
             else:
                 # assign all remaining budget to this exchange
-                df.set_value(row.Index, budget_colname, budget)
+                ex_FTTH.set_value(row.Index, budget_colname, budget)
                 # add that amount to the total amount budgeted for this exchange
-                df.set_value(row.Index, "total_budgeted", budget + row.total_budgeted)
+                ex_FTTH.set_value(row.Index, "total_budgeted", budget + row.total_budgeted)
                 # set remaining budget for this year to zero
                 budget = 0
 
     # spare budget?
     if budget > 0:
-        print("{} budget unspent in year {}".format(budget, year))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
+        print("{} budget unspent in year {}".format(budget, year))       
+ 
+del budget
+del budget_colname
+del nans
+del outstanding_cost
+del row
+del year
+del available_budget_each_year        
+###############################################################################
 
 
 
