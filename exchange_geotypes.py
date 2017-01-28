@@ -412,7 +412,7 @@ data['geotype_name'] = data['geotype'].combine_first(data['geotype_name'])
 #not_matched = data[data.OLO ==""]
 #test = data[data.geotype_name !=""]
 
-exchanges = data.groupby(['geotype_name','OLO', 'Name', 'oslaua'], as_index=False).sum()
+exchanges = data.groupby(['geotype_name','OLO', 'Name', 'exchange_pcd', 'oslaua'], as_index=False).sum()
 
 counts = exchanges.geotype_name.value_counts()
 
@@ -440,6 +440,38 @@ exchanges.loc[ (exchanges['geotype_name'] == 'Above 1,000 (b)'), 'geotype_number
 exchanges.loc[ (exchanges['geotype_name'] == 'Below 1,000 (a)'), 'geotype_number'] = 12
 exchanges.loc[ (exchanges['geotype_name'] == 'Below 1,000 (b)'), 'geotype_number'] = 13
 
+# DON'T PUT NUMBERS IN '' AS IT MAKES THEM STRINGS!
+exchanges.loc[ (exchanges['geotype_name'] == 'Inner London'), 'speed'] = 50
+exchanges.loc[ (exchanges['geotype_name'] == 'Large City'), 'speed'] = 50
+exchanges.loc[ (exchanges['geotype_name'] == 'Small City'), 'speed'] = 50
+exchanges.loc[ (exchanges['geotype_name'] == 'Above 20,000 (a)'), 'speed'] = 30
+exchanges.loc[ (exchanges['geotype_name'] == 'Above 20,000 (b)'), 'speed'] = 30
+exchanges.loc[ (exchanges['geotype_name'] == 'Above 10,000 (a)'), 'speed'] = 30
+exchanges.loc[ (exchanges['geotype_name'] == 'Above 10,000 (b)'), 'speed'] = 30
+exchanges.loc[ (exchanges['geotype_name'] == 'Above 3,000 (a)'), 'speed'] = 30
+exchanges.loc[ (exchanges['geotype_name'] == 'Above 3,000 (b)'), 'speed'] = 10
+exchanges.loc[ (exchanges['geotype_name'] == 'Above 1,000 (a)'), 'speed'] = 10
+exchanges.loc[ (exchanges['geotype_name'] == 'Above 1,000 (b)'), 'speed'] = 10
+exchanges.loc[ (exchanges['geotype_name'] == 'Below 1,000 (a)'), 'speed'] = 10
+exchanges.loc[ (exchanges['geotype_name'] == 'Below 1,000 (b)'), 'speed'] = 10
+
+####IMPORT POSTCODE DIRECTORY####
+#set location and read in as df
+Location = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\ONSPD_AUG_2012_UK_O.csv'
+onsp = pd.read_csv(Location, header=None, low_memory=False)
+
+#rename columns
+onsp.rename(columns={0:'pcd', 6:'oslaua', 9:'easting', 10:'northing', 13:'country', 15:'region'}, inplace=True)
+
+#remove whitespace from pcd columns
+onsp['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
+
+pcd_directory = onsp[['pcd', 'region', 'easting', 'northing', 'country']]
+
+#subset columns  ##   pcd_directory = onsp[['pcd','oslaua', 'region', 'easting', 'northing', 'country']]
+#pcd_directory = onsp[['pcd','oslaua']]
+exchanges = pd.merge(exchanges, pcd_directory, left_on = 'exchange_pcd', right_on = 'pcd', how='inner')
+ 
 ###### LOTS OF LOST DATA!!!!!!!!!########
 counts = exchanges.geotype_name.value_counts()
 
@@ -451,6 +483,7 @@ del pcd_directory
 del subset
 del counts               
 del Location
+del onsp
 
 available_budget_each_year = [
     1500000000,
@@ -539,7 +572,9 @@ for year, budget in enumerate(available_budget_each_year):
     # spare budget?
     if budget > 0:
         print("{} budget unspent in year {}".format(budget, year)) 
-       
+
+ex_Gfast.loc[:,'year_completed'] += 2017     
+        
 ###############################################################################
 ###### SET UP COPY FOR GFAST COSTINGS ######
 ex_FTTdp = exchanges.copy(deep=True)
@@ -608,6 +643,8 @@ for year, budget in enumerate(available_budget_each_year):
     # spare budget?
     if budget > 0:
         print("{} budget unspent in year {}".format(budget, year)) 
+
+ex_FTTdp.loc[:,'year_completed'] += 2017     
 
 ###############################################################################
 ###### SET UP COPY FOR GFAST COSTINGS ######
@@ -678,6 +715,8 @@ for year, budget in enumerate(available_budget_each_year):
     if budget > 0:
         print("{} budget unspent in year {}".format(budget, year))       
  
+ex_FTTH.loc[:,'year_completed'] += 2017        
+        
 del budget
 del budget_colname
 del nans
@@ -686,6 +725,145 @@ del row
 del year
 del available_budget_each_year        
 ###############################################################################
+# standard windows cmd prompt as administrator and typed  pip install ggplot
+
+##WORKING EXAMPLE
+
+# Learn about API authentication here: https://plot.ly/pandas/getting-started
+# Find your api_key here: https://plot.ly/settings/api
+
+import plotly.plotly as py
+import plotly.graph_objs as go
+import pandas as pd
+import numpy as np
+
+trace = go.Scatter( x=ex_Gfast['year_completed'], y=ex_Gfast['all_premises_y'] )
+data = [trace]
+url = py.plot(data, filename='ex_Gfast_time-series')
+
+trace = go.Scatter( x=ex_FTTdp['year_completed'], y=ex_FTTdp['all_premises_y'] )
+data = [trace]
+url = py.plot(data, filename='ex_FTTdp_time-series')
+
+trace = go.Scatter( x=ex_FTTH['year_completed'], y=ex_FTTH['all_premises_y'] )
+data = [trace]
+url = py.plot(data, filename='ex_FTTH_time-series')
+
+#%%
+
+df = (ex_Gfast.drop_duplicates(['exchange_pcd', 'year_completed']))
+#rename columns
+df.rename(columns={'exchange_pcd':'A', 'year_completed':'B'}, inplace=True)
+
+cols = list('AB')
+mux = pd.MultiIndex.from_product([df.A.unique(), df.B.unique()], names=cols)
+test = df.set_index(cols).reindex(mux, fill_value=0).reset_index()
+
+
+
+test = test.set_value('E148EZ', 'OLO', 10)
+
+
+
+
+
+#sum all_premises to obtain 
+test = ex_Gfast.groupby(by=['region', 'year_completed'])['all_premises_y'].sum()
+
+test = ex_Gfast.pivot(index='year_completed', columns='oslaua', values='all_premises_y')
+
+
+df = pd.DataFrame(np.random.rand(10, 4), columns=['a', 'b', 'c', 'd'])
+df.iplot(kind='area', fill=True, filename='cufflinks/stacked-area')
+
+
+
+
+
+
+
+
+df.iplot(subplots=True, shape=(4, 1), filename='pandas/cufflinks-subplot rows')
+
+
+
+
+
+
+N = 40
+x = np.linspace(0, 1, N)
+y = np.random.randn(N)
+df = pd.DataFrame({'x': x, 'y': y})
+df.head()
+
+data = [
+    go.Bar(
+        x=ex_Gfast['geotype_name'], # assign x as the dataframe column 'x'
+        y=ex_Gfast['total_budgeted']
+    )
+]
+
+url = py.plot(data, filename='pandas-bar-chart')
+
+
+
+# Learn about API authentication here: https://plot.ly/pandas/getting-started
+# Find your api_key here: https://plot.ly/settings/api
+import plotly.plotly as py
+import plotly.graph_objs as go
+
+import pandas as pd
+import numpy as np
+
+N = 20
+x = np.linspace(1, 10, N)
+y = np.random.randn(N)+3
+y2 = np.random.randn(N)+6
+y3 = np.random.randn(N)+9
+y4 = np.random.randn(N)+12
+df = pd.DataFrame({'x': x, 'y': y, 'y2':y2, 'y3':y3, 'y4':y4})
+df.head()
+
+data = [
+    go.Bar(
+        x=df['x'], # assign x as the dataframe column 'x'
+        y=df['y']
+    ),
+    go.Bar(
+        x=df['x'],
+        y=df['y2']
+    ),
+    go.Bar(
+        x=df['x'],
+        y=df['y3']
+    ),
+    go.Bar(
+        x=df['x'],
+        y=df['y4']
+    )
+
+]
+
+layout = go.Layout(
+    barmode='stack',
+    title='Stacked Bar with Pandas'
+)
+
+fig = go.Figure(data=data, layout=layout)
+
+# IPython notebook
+# py.iplot(fig, filename='pandas-bar-chart-layout')
+
+url = py.plot(data, filename='pandas-bar-chart-layout')
+
+
+
+
+
+
+
+
+
 
 
 
