@@ -2,14 +2,14 @@
 """
 Created on Sun Jan 15 21:14:16 2017
 
-@author: oughtone
+@author: EJO31
 """
 
 #%%
 import os
 #print (os.getcwd())
 #set working directory
-os.chdir('C:\\Users\\oughtone\\Dropbox\\Fixed Broadband Model\\UK Data')
+os.chdir('C:\\Users\\EJO31\\Dropbox\\Fixed Broadband Model\\UK Data')
 
 #import pandas as pd
 import pandas as pd #this is how I usually import pandas
@@ -17,7 +17,7 @@ import numpy as np
 
 ####IMPORT CODEPOINT DATA#####
 #import codepoint
-codepoint = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\codepoint.csv'
+codepoint = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\codepoint.csv'
 codepoint = pd.read_csv(codepoint, low_memory=False)
 
 #rename columns
@@ -37,7 +37,7 @@ codepoint = codepoint.loc[codepoint['pcd_type'] == 'S']
 
 ####IMPORT ACTUAL AND INTERPOLATED DISTANCE DATA FOR PCD 2 EXCHANGE#####   This data uses the ONSP_August_2012_UK_O.csv lookup
 #import actual distance data
-a_distance = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\exchanges.output.csv'
+a_distance = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\exchanges.output.csv'
 a_distance = pd.read_csv(a_distance)
 #counts = a_distance.mdf.value_counts()
 
@@ -52,7 +52,7 @@ a_distance.loc[:,'actual_distance'] *= 1000
 #test = pd.merge(v_distance, a_distance, on=['pcd'], how='inner')
 
 #import interpolated distance data
-v_distance = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\distance.matrix.csv'
+v_distance = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\distance.matrix.csv'
 v_distance = pd.read_csv(v_distance)
 
 #remove whitespace
@@ -77,7 +77,7 @@ all_distances.rename(columns={'interpol_pcd':'pcd', 'interpol_distance':'distanc
 
 ####IMPORT POSTCODE to EXCHANGE DATA####  
 #pcd to exchange data - 5381 exchanges
-pcd_2_exchanges = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\pcd2exchanges.csv'
+pcd_2_exchanges = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\pcd2exchanges.csv'
 pcd_2_exchanges = pd.read_csv(pcd_2_exchanges)
 #counts = pcd_2_exchanges.Postcode_1.value_counts()
 
@@ -193,7 +193,7 @@ counts = data.exchange_pcd.value_counts()
          
 ####IMPORT POSTCODE DIRECTORY####
 #set location and read in as df
-Location = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\ONSPD_AUG_2012_UK_O.csv'
+Location = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\ONSPD_AUG_2012_UK_O.csv'
 onsp = pd.read_csv(Location, header=None, low_memory=False)
 
 #rename columns
@@ -210,7 +210,7 @@ del onsp
 
 ###IMPORT kitz exchange list
 #set location and read in as df
-Location = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\exchange.data.kitz.csv'
+Location = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\SamKnows_Exchanges_All_Stats.csv'
 kitz_exchanges = pd.read_csv(Location)
 
 kitz_exchanges = kitz_exchanges[kitz_exchanges.Region != 'Northern Ireland']
@@ -221,10 +221,20 @@ kitz_exchanges['Postcode'].replace(regex=True,inplace=True,to_replace=r' ',value
 #rename columns
 kitz_exchanges.rename(columns={'Postcode':'pcd'}, inplace=True)
 
+#Import updated exchange pcd data
+Location = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\non_matching_codepoint_spatial_join_final.csv'
+pcd_updates = pd.read_csv(Location)
+
+pcd_updates = pcd_updates.drop_duplicates('OLO')
+
+kitz_exchanges = kitz_exchanges.drop_duplicates('OLO')
+
+kitz_exchanges.pcd.update(kitz_exchanges.OLO.map(pcd_updates.set_index('OLO').pcd))
+
 #merge based on kitz_exchanges
 exchanges = pd.merge(kitz_exchanges, pcd_directory, on='pcd', how='inner')
 
-exchanges = exchanges[['ID', 'pcd','oslaua', 'OLO', 'Name']]
+exchanges = exchanges[['pcd','oslaua', 'OLO', 'Name']]
 
 del data['oslaua']
 
@@ -245,7 +255,7 @@ subset = (subset.drop_duplicates(['OLO']))
 del kitz_exchanges
  
 #import city geotype info
-geotypes1 = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\geotypes.csv'
+geotypes1 = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\geotypes.csv'
 geotypes1 = pd.read_csv(geotypes1)
 
 #merge 
@@ -334,11 +344,11 @@ exchanges.loc[ (exchanges['all_premises_y'] >= 10000) & (exchanges['all_premises
 exchanges.loc[ (exchanges['all_premises_y'] >= 20000), 'geotype'] = '>20,000'
 
 #subset columns      
-subset = exchanges[['OLO','ID','oslaua']]
+subset = exchanges[['OLO','oslaua']]
 #subset = exchanges[['pcd','oslaua']]
 
 #import city geotype info
-geotypes2 = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\geotypes2.csv'
+geotypes2 = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\geotypes2.csv'
 geotypes2 = pd.read_csv(geotypes2)
 
 #merge 
@@ -416,13 +426,6 @@ exchanges = data.groupby(['geotype_name','OLO', 'Name', 'exchange_pcd', 'oslaua'
 
 counts = exchanges.geotype_name.value_counts()
 
-del exchanges['all_premises_x']
-del exchanges['domestic']
-del exchanges['non_domestic']
-del exchanges['PO_box']
-del exchanges['distance']
-del exchanges['ID']
-
 exchanges["geotype_number"] = ""
 
 # DON'T PUT NUMBERS IN '' AS IT MAKES THEM STRINGS!
@@ -457,7 +460,7 @@ exchanges.loc[ (exchanges['geotype_name'] == 'Below 1,000 (b)'), 'speed'] = 10
 
 ####IMPORT POSTCODE DIRECTORY####
 #set location and read in as df
-Location = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\ONSPD_AUG_2012_UK_O.csv'
+Location = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\ONSPD_AUG_2012_UK_O.csv'
 onsp = pd.read_csv(Location, header=None, low_memory=False)
 
 #rename columns
@@ -472,11 +475,11 @@ pcd_directory = onsp[['pcd', 'region', 'easting', 'northing', 'country']]
 #subset columns  ##   pcd_directory = onsp[['pcd','oslaua', 'region', 'easting', 'northing', 'country']]
 #pcd_directory = onsp[['pcd','oslaua']]
 exchanges = pd.merge(exchanges, pcd_directory, left_on = 'exchange_pcd', right_on = 'pcd', how='outer')
-#%%
+
 #right_pcd_directory = test[(test['_merge'] =='right_only')]
 #left_exchanges = test[(test['_merge'] =='left_only')]
 #########FIND NON MATCHING EXCHANGES#########
-pcd_2_exchanges = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\pcd2exchanges.csv'
+pcd_2_exchanges = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\pcd2exchanges.csv'
 pcd_2_exchanges = pd.read_csv(pcd_2_exchanges)
 total_list = (pcd_2_exchanges.drop_duplicates(['Postcode_1']))
 total_list = total_list[['Postcode_1']]
@@ -497,12 +500,12 @@ non_matching = total_list[(~total_list.exchange_pcd.isin(common.exchange_pcd))&(
 non_matching = pd.merge(non_matching, pcd_2_exchanges, left_on = 'exchange_pcd', right_on = 'Postcode_1', how='inner')
 non_matching = (non_matching.drop_duplicates(['exchange_pcd','Postcode_1']))  
 #set location and read in as df
-Location = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\exchange.data.kitz.csv'
+Location = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\exchange.data.kitz.csv'
 kitz_exchanges = pd.read_csv(Location)
 
 non_matching = pd.merge(non_matching, kitz_exchanges, left_on = 'exchange_pcd', right_on = 'Postcode', how='inner')
 
-path=r'C:\Users\oughtone\Dropbox\Fixed Broadband Model'
+path=r'C:\Users\EJO31\Dropbox\Fixed Broadband Model'
 non_matching.to_csv(os.path.join(path,r'non_matching.csv'))
 #########FIND NON MATCHING EXCHANGES#########                      
 ###### LOTS OF LOST DATA!!!!!!!!!########
@@ -522,8 +525,6 @@ del Location
 del onsp
 
 
-
-#%%
 available_budget_each_year = [
     1500000000,
     1500000000,
@@ -755,7 +756,7 @@ del row
 del year
 del available_budget_each_year   
 
-path=r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\R_model'
+path=r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\R_model'
 ex_Gfast.to_csv(os.path.join(path,r'ex_Gfast.csv'))
 ex_FTTdp.to_csv(os.path.join(path,r'ex_FTTdp.csv'))
 ex_FTTH.to_csv(os.path.join(path,r'ex_FTTH.csv'))
