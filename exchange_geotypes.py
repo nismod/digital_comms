@@ -9,7 +9,7 @@ Created on Sun Jan 15 21:14:16 2017
 import os
 #print (os.getcwd())
 #set working directory
-os.chdir('C:\\Users\\EJO31\\Dropbox\\Fixed Broadband Model\\UK Data')
+os.chdir('E:\Fixed Broadband Model\Data')
 
 #import pandas as pd
 import pandas as pd #this is how I usually import pandas
@@ -17,11 +17,14 @@ import numpy as np
 
 ####IMPORT CODEPOINT DATA#####
 #import codepoint
-codepoint = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\codepoint.csv'
-codepoint = pd.read_csv(codepoint, low_memory=False)
+codepoint = r'E:\Fixed Broadband Model\Data\all_codepoint.csv'
+codepoint = pd.read_csv(codepoint, header=None, low_memory=False)
+
+#subset columns
+codepoint = codepoint[[0, 3, 5, 6, 7, 16, 18]]
 
 #rename columns
-codepoint.rename(columns={'POSTCODE':'pcd', 'tp':'all_premises', 'rp':'domestic', 'bp':'non_domestic', 'pd':'PO_box', 'ls':'pcd_type', 'dc':'oslaua'}, inplace=True)
+codepoint.rename(columns={0:'pcd', 3:'all_premises', 5:'domestic', 6:'non_domestic', 7:'PO_box', 16:'oslaua', 18:'pcd_type'}, inplace=True)
 
 #remove whitespace in pcd column
 codepoint['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
@@ -29,74 +32,32 @@ codepoint['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
 #remove whitespace in pcd_type column (so small or large delivery point column)
 codepoint['pcd_type'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
 
-#subset columns
-codepoint = codepoint[['pcd','oslaua', 'GOR', 'all_premises', 'domestic', 'non_domestic', 'PO_box', 'pcd_type']]
-
 #subset = small user delivery points
 codepoint = codepoint.loc[codepoint['pcd_type'] == 'S']
 
-####IMPORT ACTUAL AND INTERPOLATED DISTANCE DATA FOR PCD 2 EXCHANGE#####   This data uses the ONSP_August_2012_UK_O.csv lookup
-#import actual distance data
-a_distance = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\exchanges.output.csv'
-a_distance = pd.read_csv(a_distance)
-#counts = a_distance.mdf.value_counts()
-
-#rename columns
-a_distance.rename(columns={'pcd':'actual_pcd', 'distances':'actual_distance'}, inplace=True)
-
-#subset columns      
-a_distance = a_distance[['actual_pcd','actual_distance']]
-
-#covert from kms to meters 
-a_distance.loc[:,'actual_distance'] *= 1000
-#test = pd.merge(v_distance, a_distance, on=['pcd'], how='inner')
-
-#import interpolated distance data
-v_distance = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\distance.matrix.csv'
-v_distance = pd.read_csv(v_distance)
-
-#remove whitespace
-v_distance['InputID'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
-
-#delete unwanted variable
-del v_distance['TargetID']
-
-#rename columns
-v_distance.rename(columns={'InputID':'interpol_pcd', 'Distance':'interpol_distance'}, inplace=True)
-
-df_merge = a_distance.merge(v_distance, left_on="actual_pcd", right_on="interpol_pcd", how="right", indicator=True)
-df_merge["interpol_distance"] = df_merge["interpol_distance"].where(df_merge["_merge"] != "both", df_merge["actual_distance"]) 
-all_distances = df_merge.drop(["actual_pcd", "actual_distance", "_merge"], axis=1).sort_values("interpol_pcd")
-
-#remove unwanted dfs
-del a_distance
-del v_distance
-
-#rename columns
-all_distances.rename(columns={'interpol_pcd':'pcd', 'interpol_distance':'distance'}, inplace=True)
+#subset columns
+codepoint = codepoint[['pcd', 'all_premises', 'oslaua']]
 
 ####IMPORT POSTCODE to EXCHANGE DATA####  
 #pcd to exchange data - 5381 exchanges
-pcd_2_exchanges = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\pcd2exchanges.csv'
+pcd_2_exchanges = r'E:\Fixed Broadband Model\Data\final_pcd_2_exchange_structure.csv'
 pcd_2_exchanges = pd.read_csv(pcd_2_exchanges)
-#counts = pcd_2_exchanges.Postcode_1.value_counts()
 
 #rename columns
-pcd_2_exchanges.rename(columns={'POSTCODE':'pcd', 'Postcode_1':'exchange_pcd'}, inplace=True)
+pcd_2_exchanges.rename(columns={'POSTCODE':'pcd', 'Distance m':'exchange_pcd', 'Distance_1':'distance'}, inplace=True)
 
 #remove whitespace
 pcd_2_exchanges['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
 
 #subset columns
-pcd_2_exchanges = pcd_2_exchanges[['pcd','exchange_pcd']]
+pcd_2_exchanges = pcd_2_exchanges[['pcd', 'exchange_pcd', 'distance']]
 
 #merge all distance information with pcd_2_echange list
-df_merge = pd.merge(all_distances, pcd_2_exchanges, on='pcd', how='inner')
-
-#counts = df_merge.exchange_pcd.value_counts()
+df_merge = pd.merge(pcd_2_exchanges, codepoint, on='pcd', how='inner')
 
 #remove unwanted df
 del pcd_2_exchanges
+del codepoint
 
 #create new line_length column
 df_merge["line_length"] = "under_2k"
@@ -104,12 +65,10 @@ df_merge["line_length"] = "under_2k"
 #change line_length to over 2k
 df_merge.loc[ (df_merge['distance'] >= 2000), 'line_length'] = 'over_2k'
 
-#merge dfs
-data = pd.merge(codepoint, df_merge, on='pcd', how='inner')             
-counts = data.exchange_pcd.value_counts()
-
 #sum all_premises to obtain 
-exchange_size = data.groupby(by=['exchange_pcd'])['all_premises'].sum()
+exchange_size = df_merge.groupby(by=['exchange_pcd'])['all_premises'].sum()
+
+data = df_merge
 
 #merge a pandas.core.series with a pandas core.frame.dataframe
 data = data.merge(exchange_size.to_frame(), left_on='exchange_pcd', right_on='Index', right_index=True)
@@ -193,67 +152,41 @@ counts = data.exchange_pcd.value_counts()
          
 ####IMPORT POSTCODE DIRECTORY####
 #set location and read in as df
-Location = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\ONSPD_AUG_2012_UK_O.csv'
-onsp = pd.read_csv(Location, header=None, low_memory=False)
+Location = r'E:\Fixed Broadband Model\Data\onspd_Nov_2016.csv'
+onsp = pd.read_csv(Location, low_memory=False)
+
+#subset columns 
+onsp = onsp[['pcd','oslaua', 'gor', 'ctry', 'msoa11', 'ru11ind']]
+
+pcd_directory = onsp.copy(deep=True)
 
 #rename columns
-onsp.rename(columns={0:'pcd', 6:'oslaua', 9:'easting', 10:'northing', 13:'country', 15:'region'}, inplace=True)
+pcd_directory.rename(columns={'ctry':'country', 'gor':'region'}, inplace=True)
 
 #remove whitespace from pcd columns
-onsp['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
-
-#subset columns  ##   pcd_directory = onsp[['pcd','oslaua', 'region', 'easting', 'northing', 'country']]
-pcd_directory = onsp[['pcd','oslaua']]
+pcd_directory['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
 
 #remove unwated data
 del onsp
 
-###IMPORT kitz exchange list
-#set location and read in as df
-Location = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\SamKnows_Exchanges_All_Stats.csv'
-kitz_exchanges = pd.read_csv(Location)
-
-kitz_exchanges = kitz_exchanges[kitz_exchanges.Region != 'Northern Ireland']
-   
-#remove whitespace
-kitz_exchanges['Postcode'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
-
-#rename columns
-kitz_exchanges.rename(columns={'Postcode':'pcd'}, inplace=True)
-
-#Import updated exchange pcd data
-Location = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\non_matching_codepoint_spatial_join_final.csv'
-pcd_updates = pd.read_csv(Location)
-
-pcd_updates = pcd_updates.drop_duplicates('OLO')
-
-kitz_exchanges = kitz_exchanges.drop_duplicates('OLO')
-
-kitz_exchanges.pcd.update(kitz_exchanges.OLO.map(pcd_updates.set_index('OLO').pcd))
-
-#merge based on kitz_exchanges
-exchanges = pd.merge(kitz_exchanges, pcd_directory, on='pcd', how='inner')
-
-exchanges = exchanges[['pcd','oslaua', 'OLO', 'Name']]
-
-del data['oslaua']
-
-#merge based on exchange data
-data = pd.merge(data, exchanges, on='pcd', how='outer', indicator=True)  
-
-#This is where you need to find the non matching exchange pcds
-#subset = test.loc[test['_merge'] == 'left_only']
-#test = (subset.drop_duplicates(['exchange_pcd']))
-#exchanges.to_csv('kitz.exchanges.w.geo.csv')
-
 #subset columns      
-subset = data[['OLO','pcd', 'oslaua', 'all_premises_y']]
+subset = data[['exchange_pcd', 'oslaua']]
 #subset = exchanges[['pcd','oslaua']]
 
-subset = (subset.drop_duplicates(['OLO']))
-#remove unwated data
-del kitz_exchanges
+subset = (subset.drop_duplicates(['exchange_pcd']))
  
+
+
+
+
+
+
+
+
+
+
+
+
 #import city geotype info
 geotypes1 = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\geotypes.csv'
 geotypes1 = pd.read_csv(geotypes1)
