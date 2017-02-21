@@ -9,7 +9,7 @@ Created on Sun Jan 15 21:14:16 2017
 import os
 #print (os.getcwd())
 #set working directory
-os.chdir('E:\Fixed Broadband Model\Data')
+os.chdir('C:\\Users\\EJO31\\Desktop\\Fixed Broadband Model\Data')
 
 #import pandas as pd
 import pandas as pd #this is how I usually import pandas
@@ -17,16 +17,36 @@ import numpy as np
 
 ####IMPORT CODEPOINT DATA#####
 #import codepoint
+codepoint = r'E:\Fixed Broadband Model\Data\codepoint_centroids.csv'
+codepoint = pd.read_csv(codepoint, low_memory=False)
+
+codepoint.rename(columns={'POSTCODE':'pcd'}, inplace=True)
+
+codepoint['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
+
+####IMPORT DISTANCE MATRIX#####
+distance = r'E:\Fixed Broadband Model\Data\distance_matrix.csv'
+distance = pd.read_csv(distance, low_memory=False)
+
+#rename columns
+distance.rename(columns={'InputID':'pcd', 'TargetID':'exchange', 'Distance':'distance'}, inplace=True)
+
+distance['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
+
+df_merge = pd.merge(codepoint, distance, on='pcd', how='inner')
+
+#subset columns
+df_merge = df_merge[['pcd', 'exchange', 'distance']]
+
 codepoint = r'E:\Fixed Broadband Model\Data\all_codepoint.csv'
 codepoint = pd.read_csv(codepoint, header=None, low_memory=False)
 
 #subset columns
-codepoint = codepoint[[0, 3, 5, 6, 7, 16, 18]]
+codepoint = codepoint[[0,3,5,6,7,16,18]]
 
 #rename columns
 codepoint.rename(columns={0:'pcd', 3:'all_premises', 5:'domestic', 6:'non_domestic', 7:'PO_box', 16:'oslaua', 18:'pcd_type'}, inplace=True)
 
-#remove whitespace in pcd column
 codepoint['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
 
 #remove whitespace in pcd_type column (so small or large delivery point column)
@@ -38,22 +58,14 @@ codepoint = codepoint.loc[codepoint['pcd_type'] == 'S']
 #subset columns
 codepoint = codepoint[['pcd', 'all_premises', 'oslaua']]
 
-####IMPORT POSTCODE to EXCHANGE DATA####  
-# This pcd_2_echange data has already had the vertical pcds removed using Vstreet_replace_2 in the E:/Fixed Broadband Model/ folder
-#pcd to exchange data 
-pcd_2_exchanges = r'E:\Fixed Broadband Model\Data\final_pcd_2_exchange_structure.csv'
-pcd_2_exchanges = pd.read_csv(pcd_2_exchanges)
+#counts = codepoint.exchange.value_counts()
 
-#rename columns
-pcd_2_exchanges.rename(columns={'POSTCODE':'pcd', 'Distance m':'exchange', 'Distance_1':'distance'}, inplace=True)
-
-#remove whitespace
-pcd_2_exchanges['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
+df_merge = pd.merge(codepoint, df_merge, on='pcd', how='inner')
 
 #subset columns
-pcd_2_exchanges = pcd_2_exchanges[['pcd', 'exchange', 'distance']]
+df_merge = df_merge[['pcd', 'exchange', 'all_premises', 'distance', 'oslaua']]
 
-pcd_2_exchanges = pcd_2_exchanges.drop_duplicates('pcd')
+df_merge = df_merge.drop_duplicates('pcd')
 
 Vstreets = r'E:\\Fixed Broadband Model\\Codepoint_shapes_Oct_2016\\Vstreet_lookup\\output.csv'
 Vstreets = pd.read_csv(Vstreets , low_memory=False)
@@ -62,16 +74,12 @@ Vstreets['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
 
 Vstreets = Vstreets.drop_duplicates('vertical')
 
-pcd_2_exchanges.pcd.update(pcd_2_exchanges.pcd.map(Vstreets.set_index('vertical').pcd))
-
-pcd_2_exchanges.rename(columns={'pcd':'POSTCODE'}, inplace=True)
-
-#merge all distance information with pcd_2_echange list
-df_merge = pd.merge(pcd_2_exchanges, codepoint, on='pcd', how='inner')
+df_merge.pcd.update(df_merge.pcd.map(Vstreets.set_index('vertical').pcd))
 
 #remove unwanted df
-del pcd_2_exchanges
+del distance
 del codepoint
+del Vstreets
 
 #create new line_length column
 df_merge["line_length"] = "under_2k"
@@ -166,41 +174,31 @@ counts = data.exchange.value_counts()
          
 ####IMPORT POSTCODE DIRECTORY####
 #set location and read in as df
-Location = r'E:\Fixed Broadband Model\Data\onspd_Nov_2016.csv'
-onsp = pd.read_csv(Location, low_memory=False)
+#Location = r'E:\Fixed Broadband Model\Data\onspd_Nov_2016.csv'
+#onsp = pd.read_csv(Location, low_memory=False)
 
 #subset columns 
-onsp = onsp[['pcd','oslaua', 'gor', 'ctry', 'msoa11', 'ru11ind']]
+#onsp = onsp[['pcd','oslaua', 'gor', 'ctry', 'msoa11', 'ru11ind']]
 
-pcd_directory = onsp.copy(deep=True)
+#pcd_directory = onsp.copy(deep=True)
 
 #rename columns
-pcd_directory.rename(columns={'ctry':'country', 'gor':'region'}, inplace=True)
+#pcd_directory.rename(columns={'ctry':'country', 'gor':'region'}, inplace=True)
 
 #remove whitespace from pcd columns
-pcd_directory['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
+#pcd_directory['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
 
 #remove unwated data
-del onsp
+#del onsp
+
+#test = pd.merge(data, pcd_directory, on='pcd', how='inner')
 
 #subset columns      
-subset = data[['exchange_pcd', 'oslaua']]
+subset = data[['exchange', 'oslaua']]
 #subset = exchanges[['pcd','oslaua']]
 
-subset = (subset.drop_duplicates(['exchange_pcd']))
+subset = (subset.drop_duplicates(['exchange']))
  
-
-
-
-
-
-
-
-
-
-
-
-
 #import city geotype info
 geotypes1 = r'E:\Fixed Broadband Model\Data\geotypes.csv'
 geotypes1 = pd.read_csv(geotypes1)
