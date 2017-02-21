@@ -39,18 +39,32 @@ codepoint = codepoint.loc[codepoint['pcd_type'] == 'S']
 codepoint = codepoint[['pcd', 'all_premises', 'oslaua']]
 
 ####IMPORT POSTCODE to EXCHANGE DATA####  
-#pcd to exchange data - 5381 exchanges
+# This pcd_2_echange data has already had the vertical pcds removed using Vstreet_replace_2 in the E:/Fixed Broadband Model/ folder
+#pcd to exchange data 
 pcd_2_exchanges = r'E:\Fixed Broadband Model\Data\final_pcd_2_exchange_structure.csv'
 pcd_2_exchanges = pd.read_csv(pcd_2_exchanges)
 
 #rename columns
-pcd_2_exchanges.rename(columns={'POSTCODE':'pcd', 'Distance m':'exchange_pcd', 'Distance_1':'distance'}, inplace=True)
+pcd_2_exchanges.rename(columns={'POSTCODE':'pcd', 'Distance m':'exchange', 'Distance_1':'distance'}, inplace=True)
 
 #remove whitespace
 pcd_2_exchanges['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
 
 #subset columns
-pcd_2_exchanges = pcd_2_exchanges[['pcd', 'exchange_pcd', 'distance']]
+pcd_2_exchanges = pcd_2_exchanges[['pcd', 'exchange', 'distance']]
+
+pcd_2_exchanges = pcd_2_exchanges.drop_duplicates('pcd')
+
+Vstreets = r'E:\\Fixed Broadband Model\\Codepoint_shapes_Oct_2016\\Vstreet_lookup\\output.csv'
+Vstreets = pd.read_csv(Vstreets , low_memory=False)
+
+Vstreets['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
+
+Vstreets = Vstreets.drop_duplicates('vertical')
+
+pcd_2_exchanges.pcd.update(pcd_2_exchanges.pcd.map(Vstreets.set_index('vertical').pcd))
+
+pcd_2_exchanges.rename(columns={'pcd':'POSTCODE'}, inplace=True)
 
 #merge all distance information with pcd_2_echange list
 df_merge = pd.merge(pcd_2_exchanges, codepoint, on='pcd', how='inner')
@@ -66,12 +80,12 @@ df_merge["line_length"] = "under_2k"
 df_merge.loc[ (df_merge['distance'] >= 2000), 'line_length'] = 'over_2k'
 
 #sum all_premises to obtain 
-exchange_size = df_merge.groupby(by=['exchange_pcd'])['all_premises'].sum()
+exchange_size = df_merge.groupby(by=['exchange'])['all_premises'].sum()
 
 data = df_merge
 
 #merge a pandas.core.series with a pandas core.frame.dataframe
-data = data.merge(exchange_size.to_frame(), left_on='exchange_pcd', right_on='Index', right_index=True)
+data = data.merge(exchange_size.to_frame(), left_on='exchange', right_on='Index', right_index=True)
 
 #rename columns
 #output = data.rename(columns={'all_premises_x':'all_premises'}, inplace=True)
@@ -148,7 +162,7 @@ data.loc[ (data['geotype'] == '>20,000') & (data['distance'] > 2000), 'geotype_n
 # >20000 lines, 2km
 data.loc[ (data['geotype'] == '>20,000') & (data['distance'] <= 2000), 'geotype_name'] = 'Above 20,000 (a)'        
 
-counts = data.exchange_pcd.value_counts()
+counts = data.exchange.value_counts()
          
 ####IMPORT POSTCODE DIRECTORY####
 #set location and read in as df
@@ -188,7 +202,7 @@ subset = (subset.drop_duplicates(['exchange_pcd']))
 
 
 #import city geotype info
-geotypes1 = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\geotypes.csv'
+geotypes1 = r'E:\Fixed Broadband Model\Data\geotypes.csv'
 geotypes1 = pd.read_csv(geotypes1)
 
 #merge 
