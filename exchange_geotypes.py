@@ -2,14 +2,14 @@
 """
 Created on Sun Jan 15 21:14:16 2017
 
-@author: EJO31
+@author: oughtone
 """
 
 #%%
 import os
 #print (os.getcwd())
 #set working directory
-os.chdir('C:\\Users\\EJO31\\Desktop\\Fixed Broadband Model\Data')
+os.chdir('C:\\Users\\oughtone\\Desktop\\Fixed Broadband Model\Data')
 
 #import pandas as pd
 import pandas as pd #this is how I usually import pandas
@@ -208,18 +208,15 @@ merge = pd.merge(subset, geotypes1, on='oslaua', how='outer')
 
 del geotypes1
 del merge['oslaua']
-del merge['pcd']
 
-exchanges = exchanges.drop_duplicates('OLO')
+exchanges = data[['exchange', 'oslaua', 'all_premises_y']]
 
-merge = merge.drop_duplicates('OLO')
+exchanges = exchanges.drop_duplicates('exchange')
 
-#exchanges["geotype"] = ""
-
-#exchanges.geotype.update(exchanges.OLO.map(merge.set_index('OLO').geotype))
+merge = merge.drop_duplicates('exchange')
 
 #merge 
-exchanges = pd.merge(exchanges, merge, on='OLO', how='outer')
+exchanges = pd.merge(exchanges, merge, on='exchange', how='outer')
 
 counts = exchanges.geotype.value_counts()
   
@@ -229,19 +226,6 @@ exchanges['Rank'] = exchanges.groupby(['geotype'])['all_premises_y'].rank(ascend
 subset = exchanges.loc[exchanges['geotype'] == 'Large City']
 
 large_cities = subset.copy(deep=True)
-
-#subset = exchanges.loc[:,exchanges.loc['geotype'] == 'Large City']
-
-# <1000 lines
-#subset.loc[subset['TotalLines'] < 1000, 'geotype'] = '<1,000'
-# >1000 lines but <3000
-#subset.loc[ (subset['TotalLines'] >= 1000) & (subset['TotalLines'] < 3000), 'geotype'] = '>1,000'
-# >3000 lines but <10000
-#subset.loc[ (subset['TotalLines'] >= 3000) & (subset['TotalLines'] < 10000), 'geotype'] = '>3,000'
-# >10000 lines but <20000
-#subset.loc[ (subset['TotalLines'] >= 10000) & (subset['TotalLines'] < 20000), 'geotype'] = '>10,000'
-# >20000
-#subset.loc[ (subset['TotalLines'] >= 20000), 'geotype'] = '>20,000'
 
 large_cities = large_cities.sort_values(by='Rank')
 
@@ -255,17 +239,6 @@ large_cities["geotype"] = "Large City"
 subset = exchanges.loc[exchanges['geotype'] == 'Small City']
 
 small_cities = subset.copy(deep=True)
-
-# <1000 lines
-#subset.loc[ (subset.loc['TotalLines'] < 1000), 'geotype'] = '<1,000'
-# >1000 lines but <3000
-#subset.loc[ (subset['TotalLines'] >= 1000) & (subset['TotalLines'] < 3000), 'geotype'] = '>1,000'
-# >3000 lines but <10000
-#subset.loc[ (subset['TotalLines'] >= 3000) & (subset['TotalLines'] < 10000), 'geotype'] = '>3,000'
-# >10000 lines but <20000
-#subset.loc[ (subset['TotalLines'] >= 10000) & (subset['TotalLines'] < 20000), 'geotype'] = '>10,000'
-# >20000
-#subset.loc[ (subset['TotalLines'] >= 20000), 'geotype'] = '>20,000'
 
 small_cities = small_cities.sort_values(by='Rank')
 
@@ -289,11 +262,11 @@ exchanges.loc[ (exchanges['all_premises_y'] >= 10000) & (exchanges['all_premises
 exchanges.loc[ (exchanges['all_premises_y'] >= 20000), 'geotype'] = '>20,000'
 
 #subset columns      
-subset = exchanges[['OLO','oslaua']]
+subset = exchanges[['exchange','oslaua']]
 #subset = exchanges[['pcd','oslaua']]
 
 #import city geotype info
-geotypes2 = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\geotypes2.csv'
+geotypes2 = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\geotypes2.csv'
 geotypes2 = pd.read_csv(geotypes2)
 
 #merge 
@@ -302,15 +275,15 @@ merge = pd.merge(subset, geotypes2, on='oslaua', how='outer')
 del geotypes2
 del merge['oslaua']
 
-exchanges = exchanges.drop_duplicates('OLO')
+exchanges = exchanges.drop_duplicates('exchange')
 
-merge = merge.drop_duplicates('OLO')
+merge = merge.drop_duplicates('exchange')
 
-exchanges.geotype.update(exchanges.OLO.map(merge.set_index('OLO').geotype))
+exchanges.geotype.update(exchanges.exchange.map(merge.set_index('exchange').geotype))
 
-exchanges.geotype.update(exchanges.OLO.map(large_cities.set_index('OLO').geotype))
+exchanges.geotype.update(exchanges.exchange.map(large_cities.set_index('exchange').geotype))
 
-exchanges.geotype.update(exchanges.OLO.map(small_cities.set_index('OLO').geotype))
+exchanges.geotype.update(exchanges.exchange.map(small_cities.set_index('exchange').geotype))
 
 counts = exchanges.geotype.value_counts()
 
@@ -347,27 +320,38 @@ data.loc[ (data['geotype'] == '>20,000') & (data['distance'] > 2000), 'geotype_n
 data.loc[ (data['geotype'] == '>20,000') & (data['distance'] <= 2000), 'geotype_name'] = 'Above 20,000 (a)'        
 
 #subset columns      
-subset = exchanges[['pcd','geotype']]
+subset = exchanges[['exchange','geotype']]
 
 subset = subset.copy(deep=True)
 
-#rename columns
-subset.rename(columns={'pcd':'exchange_pcd'}, inplace=True)
-
-#subset = subset[(subset['geotype'] =='Inner London') | (subset['geotype'] =='Large City') | (subset['geotype'] =='Small City')]
-
 del data['geotype']
 # merge 
-data = pd.merge(data, subset, on='exchange_pcd', how='outer')
+data = pd.merge(data, subset, on='exchange', how='outer')
 
 counts = data.geotype_name.value_counts()
 
 data['geotype_name'] = data['geotype'].combine_first(data['geotype_name'])
 
-#not_matched = data[data.OLO ==""]
-#test = data[data.geotype_name !=""]
+del data['geotype']
 
-exchanges = data.groupby(['geotype_name','OLO', 'Name', 'exchange_pcd', 'oslaua'], as_index=False).sum()
+#subset columns      
+subset = data[['exchange', 'oslaua', 'geotype_name']]
+
+#subset =
+subset = subset.drop_duplicates('exchange')
+
+#convert all non-numeric variables to numeric for summation
+data[["all_premises_x", "prem_under_2k", "prem_over_2k", "prem_under_1k", "prem_over_1k"]] = data[["all_premises_x", "prem_under_2k", "prem_over_2k", "prem_under_1k", "prem_over_1k"]].apply(pd.to_numeric)
+
+exchanges = data.groupby(['exchange'], as_index=False).sum()
+
+del exchanges['all_premises_y']
+
+#rename columns
+exchanges.rename(columns={'all_premises_x':'all_premises'}, inplace=True)
+
+#merge 
+exchanges = pd.merge(exchanges, subset, on='exchange', how='inner')
 
 counts = exchanges.geotype_name.value_counts()
 
@@ -402,72 +386,63 @@ exchanges.loc[ (exchanges['geotype_name'] == 'Above 1,000 (a)'), 'speed'] = 10
 exchanges.loc[ (exchanges['geotype_name'] == 'Above 1,000 (b)'), 'speed'] = 10
 exchanges.loc[ (exchanges['geotype_name'] == 'Below 1,000 (a)'), 'speed'] = 10
 exchanges.loc[ (exchanges['geotype_name'] == 'Below 1,000 (b)'), 'speed'] = 10
-
+            
 ####IMPORT POSTCODE DIRECTORY####
 #set location and read in as df
-Location = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\ONSPD_AUG_2012_UK_O.csv'
-onsp = pd.read_csv(Location, header=None, low_memory=False)
+#Location = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\ONSPD_AUG_2012_UK_O.csv'
+#onsp = pd.read_csv(Location, header=None, low_memory=False)
 
 #rename columns
-onsp.rename(columns={0:'pcd', 6:'oslaua', 9:'easting', 10:'northing', 13:'country', 15:'region'}, inplace=True)
+#onsp.rename(columns={0:'pcd', 6:'oslaua', 9:'easting', 10:'northing', 13:'country', 15:'region'}, inplace=True)
 
 #remove whitespace from pcd columns
-onsp['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
+#onsp['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
 
-pcd_directory = onsp[['pcd', 'region', 'easting', 'northing', 'country']]
+#pcd_directory = onsp[['pcd', 'region', 'easting', 'northing', 'country']]
 
 #common = exchanges.merge(pcd_directory,on=['exchange_pcd','pcd'])
 #subset columns  ##   pcd_directory = onsp[['pcd','oslaua', 'region', 'easting', 'northing', 'country']]
 #pcd_directory = onsp[['pcd','oslaua']]
-exchanges = pd.merge(exchanges, pcd_directory, left_on = 'exchange_pcd', right_on = 'pcd', how='outer')
+#exchanges = pd.merge(exchanges, pcd_directory, left_on = 'exchange_pcd', right_on = 'pcd', how='outer')
 
 #right_pcd_directory = test[(test['_merge'] =='right_only')]
 #left_exchanges = test[(test['_merge'] =='left_only')]
 #########FIND NON MATCHING EXCHANGES#########
-pcd_2_exchanges = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\pcd2exchanges.csv'
-pcd_2_exchanges = pd.read_csv(pcd_2_exchanges)
-total_list = (pcd_2_exchanges.drop_duplicates(['Postcode_1']))
-total_list = total_list[['Postcode_1']]
-total_list.rename(columns={'Postcode_1':'exchange_pcd'}, inplace=True)
-total_list['exchange_pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
-total_list = total_list.sort_values(by=['exchange_pcd'], ascending=[True])
-total_list = total_list.reset_index(drop=True)
+#pcd_2_exchanges = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\pcd2exchanges.csv'
+#pcd_2_exchanges = pd.read_csv(pcd_2_exchanges)
+#total_list = (pcd_2_exchanges.drop_duplicates(['Postcode_1']))
+#total_list = total_list[['Postcode_1']]
+#total_list.rename(columns={'Postcode_1':'exchange_pcd'}, inplace=True)
+#total_list['exchange_pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
+#total_list = total_list.sort_values(by=['exchange_pcd'], ascending=[True])
+#total_list = total_list.reset_index(drop=True)
 
-matching = (exchanges.drop_duplicates(['exchange_pcd','OLO', 'Name']))                       
-matching = matching[['exchange_pcd']]
-matching['exchange_pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
-matching = matching.sort_values(by=['exchange_pcd'], ascending=[True])
-matching = matching.reset_index(drop=True)
+#matching = (exchanges.drop_duplicates(['exchange_pcd','OLO', 'Name']))                       
+#matching = matching[['exchange_pcd']]
+#matching['exchange_pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
+#matching = matching.sort_values(by=['exchange_pcd'], ascending=[True])
+#matching = matching.reset_index(drop=True)
 
-common = total_list.merge(matching,on=['exchange_pcd','exchange_pcd'])
-print(common)
-non_matching = total_list[(~total_list.exchange_pcd.isin(common.exchange_pcd))&(~total_list.exchange_pcd.isin(common.exchange_pcd))]                      
-non_matching = pd.merge(non_matching, pcd_2_exchanges, left_on = 'exchange_pcd', right_on = 'Postcode_1', how='inner')
-non_matching = (non_matching.drop_duplicates(['exchange_pcd','Postcode_1']))  
+#common = total_list.merge(matching,on=['exchange_pcd','exchange_pcd'])
+#print(common)
+#non_matching = total_list[(~total_list.exchange_pcd.isin(common.exchange_pcd))&(~total_list.exchange_pcd.isin(common.exchange_pcd))]                      
+#non_matching = pd.merge(non_matching, pcd_2_exchanges, left_on = 'exchange_pcd', right_on = 'Postcode_1', how='inner')
+#non_matching = (non_matching.drop_duplicates(['exchange_pcd','Postcode_1']))  
 #set location and read in as df
-Location = r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\Data\exchange.data.kitz.csv'
-kitz_exchanges = pd.read_csv(Location)
+#Location = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\exchange.data.kitz.csv'
+#kitz_exchanges = pd.read_csv(Location)
 
-non_matching = pd.merge(non_matching, kitz_exchanges, left_on = 'exchange_pcd', right_on = 'Postcode', how='inner')
+#non_matching = pd.merge(non_matching, kitz_exchanges, left_on = 'exchange_pcd', right_on = 'Postcode', how='inner')
 
-path=r'C:\Users\EJO31\Dropbox\Fixed Broadband Model'
-non_matching.to_csv(os.path.join(path,r'non_matching.csv'))
+#path=r'C:\Users\oughtone\Dropbox\Fixed Broadband Model'
+#non_matching.to_csv(os.path.join(path,r'non_matching.csv'))
 #########FIND NON MATCHING EXCHANGES#########                      
 ###### LOTS OF LOST DATA!!!!!!!!!########
 counts = exchanges.geotype_name.value_counts()
-
-del kitz_exchanges
-del matching
-del common
-del all_distances             
-del codepoint
+           
 del data
 del merge
-del pcd_directory
 del subset
-del counts               
-del Location
-del onsp
 
 
 available_budget_each_year = [
@@ -475,15 +450,18 @@ available_budget_each_year = [
     1500000000,
     1500000000,
     1500000000,
+    1500000000,
+    1500000000,
+    1500000000,
 ]
     
 #sort exchanges based on geotype and then premises numbers
-exchanges = exchanges.sort_values(by=['geotype_number','all_premises_y'], ascending=[True,False])
+exchanges = exchanges.sort_values(by=['geotype_number','all_premises'], ascending=[True,False])
 ###############################################################################
 ###### SET UP COPY FOR GFAST COSTINGS ######
 ex_Gfast = exchanges.copy(deep=True)
 
-# DON'T PUT NUMBERS IN '' AS IT MAKES THEM STRINGS!
+# set cost per premises for G.fast
 ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 1), 'prem_cost'] = 200
 ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 2), 'prem_cost'] = 300
 ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 3), 'prem_cost'] = 400
@@ -498,9 +476,9 @@ ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 11), 'prem_cost'] = 1200
 ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 12), 'prem_cost'] = 1300
 ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 13), 'prem_cost'] = 1400
 
-ex_Gfast['cost'] = ex_Gfast.prem_cost*ex_Gfast.all_premises_y             
+ex_Gfast['cost'] = ex_Gfast.prem_cost*ex_Gfast.all_premises             
 
-ex_Gfast['Rank'] = ex_Gfast.groupby(['geotype_number'])['all_premises_y'].rank(ascending=False)
+ex_Gfast['Rank'] = ex_Gfast.groupby(['geotype_number'])['all_premises'].rank(ascending=False)
    
 # set up zero total amounts budgeted (to be calculated)
 ex_Gfast["total_budgeted"] = np.zeros(len(ex_Gfast))
@@ -550,9 +528,9 @@ for year, budget in enumerate(available_budget_each_year):
         print("{} budget unspent in year {}".format(budget, year)) 
 
 ex_Gfast.loc[:,'year_completed'] += 2017     
-        
+     
 ###############################################################################
-###### SET UP COPY FOR GFAST COSTINGS ######
+###### SET UP COPY FOR COSTINGS ######
 ex_FTTdp = exchanges.copy(deep=True)
 
 # DON'T PUT NUMBERS IN '' AS IT MAKES THEM STRINGS!
@@ -570,9 +548,9 @@ ex_FTTdp.loc[ (ex_FTTdp['geotype_number'] == 11), 'prem_cost'] = 689
 ex_FTTdp.loc[ (ex_FTTdp['geotype_number'] == 12), 'prem_cost'] = 1200
 ex_FTTdp.loc[ (ex_FTTdp['geotype_number'] == 13), 'prem_cost'] = 3500     
 
-ex_FTTdp['cost'] = ex_FTTdp.prem_cost*ex_FTTdp.all_premises_y             
+ex_FTTdp['cost'] = ex_FTTdp.prem_cost*ex_FTTdp.all_premises             
 
-ex_FTTdp['Rank'] = ex_FTTdp.groupby(['geotype_number'])['all_premises_y'].rank(ascending=False)
+ex_FTTdp['Rank'] = ex_FTTdp.groupby(['geotype_number'])['all_premises'].rank(ascending=False)
    
 # set up zero total amounts budgeted (to be calculated)
 ex_FTTdp["total_budgeted"] = np.zeros(len(ex_FTTdp))
@@ -623,7 +601,7 @@ for year, budget in enumerate(available_budget_each_year):
 ex_FTTdp.loc[:,'year_completed'] += 2017     
 
 ###############################################################################
-###### SET UP COPY FOR GFAST COSTINGS ######
+###### SET UP COPY FOR COSTINGS ######
 ex_FTTH = exchanges.copy(deep=True)
              
 # DON'T PUT NUMBERS IN '' AS IT MAKES THEM STRINGS!
@@ -641,9 +619,9 @@ ex_FTTH.loc[ (ex_FTTH['geotype_number'] == 11), 'prem_cost'] = 6700
 ex_FTTH.loc[ (ex_FTTH['geotype_number'] == 12), 'prem_cost'] = 9000
 ex_FTTH.loc[ (ex_FTTH['geotype_number'] == 13), 'prem_cost'] = 12000
          
-ex_FTTH['cost'] = ex_FTTH.prem_cost*ex_FTTH.all_premises_y                 
+ex_FTTH['cost'] = ex_FTTH.prem_cost*ex_FTTH.all_premises                 
 
-ex_FTTH['Rank'] = ex_FTTH.groupby(['geotype_number'])['all_premises_y'].rank(ascending=False)
+ex_FTTH['Rank'] = ex_FTTH.groupby(['geotype_number'])['all_premises'].rank(ascending=False)
 
 # set up zero total amounts budgeted (to be calculated)
 ex_FTTH["total_budgeted"] = np.zeros(len(ex_FTTH))
@@ -701,7 +679,7 @@ del row
 del year
 del available_budget_each_year   
 
-path=r'C:\Users\EJO31\Dropbox\Fixed Broadband Model\R_model'
+path=r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\R_model'
 ex_Gfast.to_csv(os.path.join(path,r'ex_Gfast.csv'))
 ex_FTTdp.to_csv(os.path.join(path,r'ex_FTTdp.csv'))
 ex_FTTH.to_csv(os.path.join(path,r'ex_FTTH.csv'))
