@@ -11,6 +11,29 @@ Description
 
 A longer description of your project goes here...
 
+Install
+=======
+
+For development purposes:
+
+Run this command once per machine::
+
+        python setup.py develop
+
+To install permanently::
+
+        python setup.py install
+
+To build the documentation::
+
+        python setup.py docs
+
+The docs are available in html format in ``/docs/_build/html/index.html``
+
+The run the tests
+
+        python setup.py test
+
 
 Note
 ====
