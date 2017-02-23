@@ -2,14 +2,14 @@
 """
 Created on Sun Jan 15 21:14:16 2017
 
-@author: oughtone
+@author: RDO
 """
 
 #%%
 import os
 #print (os.getcwd())
 #set working directory
-os.chdir('C:\\Users\\oughtone\\Desktop\\Fixed Broadband Model\Data')
+os.chdir('F:\Fixed Broadband Model\Data')
 
 #import pandas as pd
 import pandas as pd #this is how I usually import pandas
@@ -17,7 +17,7 @@ import numpy as np
 
 ####IMPORT CODEPOINT DATA#####
 #import codepoint
-codepoint = r'E:\Fixed Broadband Model\Data\codepoint_centroids.csv'
+codepoint = r'F:\Fixed Broadband Model\Data\codepoint_centroids.csv'
 codepoint = pd.read_csv(codepoint, low_memory=False)
 
 codepoint.rename(columns={'POSTCODE':'pcd'}, inplace=True)
@@ -25,7 +25,7 @@ codepoint.rename(columns={'POSTCODE':'pcd'}, inplace=True)
 codepoint['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
 
 ####IMPORT DISTANCE MATRIX#####
-distance = r'E:\Fixed Broadband Model\Data\distance_matrix.csv'
+distance = r'F:\Fixed Broadband Model\Data\distance_matrix.csv'
 distance = pd.read_csv(distance, low_memory=False)
 
 #rename columns
@@ -38,7 +38,7 @@ df_merge = pd.merge(codepoint, distance, on='pcd', how='inner')
 #subset columns
 df_merge = df_merge[['pcd', 'exchange', 'distance']]
 
-codepoint = r'E:\Fixed Broadband Model\Data\all_codepoint.csv'
+codepoint = r'F:\Fixed Broadband Model\Data\all_codepoint.csv'
 codepoint = pd.read_csv(codepoint, header=None, low_memory=False)
 
 #subset columns
@@ -67,7 +67,7 @@ df_merge = df_merge[['pcd', 'exchange', 'all_premises', 'distance', 'oslaua']]
 
 df_merge = df_merge.drop_duplicates('pcd')
 
-Vstreets = r'E:\\Fixed Broadband Model\\Codepoint_shapes_Oct_2016\\Vstreet_lookup\\output.csv'
+Vstreets = r'F:\\Fixed Broadband Model\\Codepoint_shapes_Oct_2016\\Vstreet_lookup\\output.csv'
 Vstreets = pd.read_csv(Vstreets , low_memory=False)
 
 Vstreets['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
@@ -174,7 +174,7 @@ counts = data.exchange.value_counts()
          
 ####IMPORT POSTCODE DIRECTORY####
 #set location and read in as df
-#Location = r'E:\Fixed Broadband Model\Data\onspd_Nov_2016.csv'
+#Location = r'F:\Fixed Broadband Model\Data\onspd_Nov_2016.csv'
 #onsp = pd.read_csv(Location, low_memory=False)
 
 #subset columns 
@@ -200,7 +200,7 @@ subset = data[['exchange', 'oslaua']]
 subset = (subset.drop_duplicates(['exchange']))
  
 #import city geotype info
-geotypes1 = r'E:\Fixed Broadband Model\Data\geotypes.csv'
+geotypes1 = r'F:\Fixed Broadband Model\Data\geotypes.csv'
 geotypes1 = pd.read_csv(geotypes1)
 
 #merge 
@@ -266,7 +266,7 @@ subset = exchanges[['exchange','oslaua']]
 #subset = exchanges[['pcd','oslaua']]
 
 #import city geotype info
-geotypes2 = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\geotypes2.csv'
+geotypes2 = r'C:\Users\ExecEducation\Dropbox\Fixed Broadband Model\Data\geotypes2.csv'
 geotypes2 = pd.read_csv(geotypes2)
 
 #merge 
@@ -389,7 +389,7 @@ exchanges.loc[ (exchanges['geotype_name'] == 'Below 1,000 (b)'), 'speed'] = 10
             
 ####IMPORT POSTCODE DIRECTORY####
 #set location and read in as df
-#Location = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\ONSPD_AUG_2012_UK_O.csv'
+#Location = r'C:\Users\RDO\Dropbox\Fixed Broadband Model\Data\ONSPD_AUG_2012_UK_O.csv'
 #onsp = pd.read_csv(Location, header=None, low_memory=False)
 
 #rename columns
@@ -408,7 +408,7 @@ exchanges.loc[ (exchanges['geotype_name'] == 'Below 1,000 (b)'), 'speed'] = 10
 #right_pcd_directory = test[(test['_merge'] =='right_only')]
 #left_exchanges = test[(test['_merge'] =='left_only')]
 #########FIND NON MATCHING EXCHANGES#########
-#pcd_2_exchanges = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\pcd2exchanges.csv'
+#pcd_2_exchanges = r'C:\Users\RDO\Dropbox\Fixed Broadband Model\Data\pcd2exchanges.csv'
 #pcd_2_exchanges = pd.read_csv(pcd_2_exchanges)
 #total_list = (pcd_2_exchanges.drop_duplicates(['Postcode_1']))
 #total_list = total_list[['Postcode_1']]
@@ -429,12 +429,12 @@ exchanges.loc[ (exchanges['geotype_name'] == 'Below 1,000 (b)'), 'speed'] = 10
 #non_matching = pd.merge(non_matching, pcd_2_exchanges, left_on = 'exchange_pcd', right_on = 'Postcode_1', how='inner')
 #non_matching = (non_matching.drop_duplicates(['exchange_pcd','Postcode_1']))  
 #set location and read in as df
-#Location = r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\Data\exchange.data.kitz.csv'
+#Location = r'C:\Users\RDO\Dropbox\Fixed Broadband Model\Data\exchange.data.kitz.csv'
 #kitz_exchanges = pd.read_csv(Location)
 
 #non_matching = pd.merge(non_matching, kitz_exchanges, left_on = 'exchange_pcd', right_on = 'Postcode', how='inner')
 
-#path=r'C:\Users\oughtone\Dropbox\Fixed Broadband Model'
+#path=r'C:\Users\RDO\Dropbox\Fixed Broadband Model'
 #non_matching.to_csv(os.path.join(path,r'non_matching.csv'))
 #########FIND NON MATCHING EXCHANGES#########                      
 ###### LOTS OF LOST DATA!!!!!!!!!########
@@ -444,6 +444,10 @@ del data
 del merge
 del subset
 
+path=r'C:\Users\ExecEducation\Dropbox\Fixed Broadband Model\model_outputs'
+exchanges.to_csv(os.path.join(path,r'exchanges.csv'))
+
+####################################################################
 
 available_budget_each_year = [
     1500000000,
@@ -679,7 +683,7 @@ del row
 del year
 del available_budget_each_year   
 
-path=r'C:\Users\oughtone\Dropbox\Fixed Broadband Model\R_model'
+path=r'C:\Users\ExecEducation\Dropbox\Fixed Broadband Model\model_outputs'
 ex_Gfast.to_csv(os.path.join(path,r'ex_Gfast.csv'))
 ex_FTTdp.to_csv(os.path.join(path,r'ex_FTTdp.csv'))
 ex_FTTH.to_csv(os.path.join(path,r'ex_FTTH.csv'))
