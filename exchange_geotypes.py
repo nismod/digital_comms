@@ -193,6 +193,13 @@ counts = data.exchange.value_counts()
 
 #test = pd.merge(data, pcd_directory, on='pcd', how='inner')
 
+#import codepoint
+ofcom_geography = r'F:\Fixed Broadband Model\Data\ofcom_geography.csv'
+ofcom_geography = pd.read_csv(ofcom_geography, low_memory=False)
+
+#merge 
+data = pd.merge(data, ofcom_geography, on='oslaua', how='outer')
+
 #subset columns      
 subset = data[['exchange', 'oslaua']]
 #subset = exchanges[['pcd','oslaua']]
@@ -335,7 +342,7 @@ data['geotype_name'] = data['geotype'].combine_first(data['geotype_name'])
 del data['geotype']
 
 #subset columns      
-subset = data[['exchange', 'oslaua', 'geotype_name']]
+subset = data[['exchange', 'oslaua', 'oscty', 'gor', 'code', 'geotype_name']]
 
 #subset =
 subset = subset.drop_duplicates('exchange')
@@ -346,6 +353,7 @@ data[["all_premises_x", "prem_under_2k", "prem_over_2k", "prem_under_1k", "prem_
 exchanges = data.groupby(['exchange'], as_index=False).sum()
 
 del exchanges['all_premises_y']
+del exchanges['distance']
 
 #rename columns
 exchanges.rename(columns={'all_premises_x':'all_premises'}, inplace=True)
@@ -446,6 +454,17 @@ del subset
 
 path=r'C:\Users\ExecEducation\Dropbox\Fixed Broadband Model\model_outputs'
 exchanges.to_csv(os.path.join(path,r'exchanges.csv'))
+
+####################################################################
+#%%
+exchanges = r'C:\Users\ExecEducation\Dropbox\Fixed Broadband Model\model_outputs\exchanges.csv'
+exchanges = pd.read_csv(exchanges, low_memory=False)
+
+summary = exchanges.groupby(['geotype_number']).mean()
+
+summary_2 = exchanges.groupby(['geotype_number']).sum()
+
+counts = exchanges.geotype_number.value_counts()
 
 ####################################################################
 
