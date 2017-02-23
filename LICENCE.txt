@@ -1,5 +1,3 @@
-MIT License
-
 Copyright (c) 2017 Dr Edward J. Oughton of Cambridge Nexus Limited 
 
 Except to the extent where it is owned by a third party, all right, title and 
