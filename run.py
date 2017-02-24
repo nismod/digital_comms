@@ -2,9 +2,12 @@
 """
 
 from smif.sector_model import SectorModel 
-from digital_comms.fixed import run_simulation 
+from digital_comms.fixed import run
 
 class DigitalCommsWrapper(SectorModel):
+
+    def extract_obj():
+        pass
 
     def simulate(self, decisions, state, data):
         """Runs the digital comms model
@@ -46,7 +49,11 @@ class DigitalCommsWrapper(SectorModel):
         """
         # Run the model
 
-        premises = data['premises']
-
-        results = run_simulation(decisions)
+        results = run(decisions, '/vagrant/models/digital_comms/data/exchanges.csv')
         return results
+
+if __name__ == '__main__':
+
+    decisions = []
+    digi = DigitalCommsWrapper()
+    print(digi.simulate(decisions, [], {}))
