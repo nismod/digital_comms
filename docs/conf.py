@@ -10,6 +10,13 @@
 
 import sys
 
+# Support markdown
+from recommonmark.parser import CommonMarkParser
+
+source_parsers = {
+    '.md': CommonMarkParser,
+}
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -52,7 +59,7 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.intersphinx', 'sphinx.ext.todo',
 templates_path = ['_templates']
 
 # The suffix of source filenames.
-source_suffix = '.rst'
+source_suffix = ['.rst', '.md']
 
 # The encoding of source files.
 # source_encoding = 'utf-8-sig'
@@ -62,7 +69,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'digital_comms'
-copyright = u'2017, Will Usher'
+copyright = u'2017, Edward Oughton'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -213,7 +220,7 @@ latex_elements = {
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
   ('index', 'user_guide.tex', u'digital_comms Documentation',
-   u'Will Usher', 'manual'),
+   u'Edward Oughton', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of

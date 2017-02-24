@@ -1,10 +1,6 @@
-=============
-digital_comms
-=============
-
+# Digital Communications
 
 The ITRC MISTRAL Digital Communications Model
-
 
 Description
 ===========
@@ -30,7 +26,7 @@ To build the documentation::
 
 The docs are available in html format in ``/docs/_build/html/index.html``
 
-The run the tests
+The run the tests::
 
         python setup.py test
 
