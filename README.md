@@ -12,29 +12,29 @@ All code is written in Python (Python>=3.5), avoiding external dependencies.
 ## A word from our sponsors
 
 **The Cambridge Communications Assessment Model** was written and 
-developed at the `Judge Business School <http://www.jbs.cam.ac.uk/home/>`_, 
-`University of Cambridge <http://www.cam.ac.uk/>`_ within the EPSRC-sponsored MISTRAL programme, 
-as part of the `Infrastructure Transition Research Consortium <http://www.itrc.org.uk/>`_.
+developed at the [Judge Business School](http://www.jbs.cam.ac.uk/home/), 
+[University of Cambridge](http://www.cam.ac.uk/) within the EPSRC-sponsored MISTRAL programme, 
+as part of the [Infrastructure Transition Research Consortium](http://www.itrc.org.uk/).
 
 ## Install
 
 For development purposes:
 
-Run this command once per machine::
+Run this command once per machine:
 
         python setup.py develop
 
-To install permanently::
+To install permanently:
 
         python setup.py install
 
-To build the documentation::
+To build the documentation:
 
         python setup.py docs
 
-The docs are available in html format in ``/docs/_build/html/index.html``
+The docs are available in html format in `/docs/_build/html/index.html`
 
-The run the tests::
+The run the tests:
 
         python setup.py test
 
