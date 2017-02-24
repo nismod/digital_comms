@@ -1,14 +1,22 @@
-# Digital Communications
+# The Cambridge Communications Assessment Model
 
-The ITRC MISTRAL Digital Communications Model
+**The Cambridge Communications Assessment Model** spans the fixed, 
+mobile, wireless and satellite sectors to provide analytics for 
+decision-makers on (i) capacity-demand and (ii) risk, vulnerability 
+and resilience. 
 
-Description
-===========
+## Setup and Configuration
 
-A longer description of your project goes here...
+All code is written in Python (Python>=3.5), avoiding external dependencies.
 
-Install
-=======
+## A word from our sponsors
+
+**The Cambridge Communications Assessment Model** was written and 
+developed at the `Judge Business School <http://www.jbs.cam.ac.uk/home/>`_, 
+`University of Cambridge <http://www.cam.ac.uk/>`_ within the EPSRC-sponsored MISTRAL programme, 
+as part of the `Infrastructure Transition Research Consortium <http://www.itrc.org.uk/>`_.
+
+## Install
 
 For development purposes:
 
@@ -31,8 +39,7 @@ The run the tests::
         python setup.py test
 
 
-Note
-====
+## Note
 
 This project has been set up using PyScaffold 2.5.7. For details and usage
 information on PyScaffold see http://pyscaffold.readthedocs.org/.
