@@ -400,6 +400,8 @@ del subset
 area = r'E:\Fixed Broadband Model\Data\all_codepoint_data.csv'
 area = pd.read_csv(area, low_memory=False)
 
+area.area = (area.area / 1000000)
+
 #rename columns
 area.rename(columns={'POSTCODE':'pcd', 'distance_m':'exchange'}, inplace=True)
 
