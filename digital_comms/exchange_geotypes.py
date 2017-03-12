@@ -394,6 +394,26 @@ del data
 del merge
 del subset
 
+####################################################################
+####IMPORT AREA DATA#####
+#import codepoint
+area = r'E:\Fixed Broadband Model\Data\all_codepoint_data.csv'
+area = pd.read_csv(area, low_memory=False)
+
+#rename columns
+area.rename(columns={'POSTCODE':'pcd', 'distance_m':'exchange'}, inplace=True)
+
+#subset columns
+area = area[['exchange', 'area']]
+
+area = area.groupby(['exchange'], as_index=False).sum()
+
+exchanges = pd.merge(exchanges, area, on='exchange', how='inner')
+
+del area
+
+####################################################################
+
 path=r'C:\Users\ejo31\Dropbox\Fixed Broadband Model\model_outputs'
 exchanges.to_csv(os.path.join(path,r'exchanges.csv'))
 
@@ -427,9 +447,9 @@ available_budget_each_year = [
      1500000000,
      1500000000,            
  ]
-     
+   
  #sort exchanges based on geotype and then premises numbers
-exchanges = exchanges.sort_values(by=['geotype_number','all_premises'], ascending=[True,False])
+#exchanges = exchanges.sort_values(by=['geotype_number','all_premises'], ascending=[True,False])
  ###############################################################################
  ###### SET UP COPY FOR GFAST COSTINGS ######
 ex_Gfast = exchanges.copy(deep=True)
@@ -451,8 +471,9 @@ ex_Gfast.loc[ (ex_Gfast['geotype_number'] == 13), 'prem_cost'] = 1400
  
 ex_Gfast['cost'] = ex_Gfast.prem_cost*ex_Gfast.all_premises             
  
-ex_Gfast['Rank'] = ex_Gfast.groupby(['geotype_number'])['all_premises'].rank(ascending=False)
-    
+#ex_Gfast['Rank'] = ex_Gfast.groupby(['geotype_number'])['all_premises'].rank(ascending=False)
+ex_Gfast['Rank'] = ex_Gfast['all_premises'].rank(ascending=False)  
+  
  # set up zero total amounts budgeted (to be calculated)
 ex_Gfast["total_budgeted"] = np.zeros(len(ex_Gfast))
  
@@ -523,8 +544,9 @@ ex_FTTdp.loc[ (ex_FTTdp['geotype_number'] == 13), 'prem_cost'] = 3500
 
 ex_FTTdp['cost'] = ex_FTTdp.prem_cost*ex_FTTdp.all_premises             
  
-ex_FTTdp['Rank'] = ex_FTTdp.groupby(['geotype_number'])['all_premises'].rank(ascending=False)
-    
+#ex_FTTdp['Rank'] = ex_FTTdp.groupby(['geotype_number'])['all_premises'].rank(ascending=False)
+ex_FTTdp['Rank'] = ex_FTTdp['all_premises'].rank(ascending=False)  
+   
  # set up zero total amounts budgeted (to be calculated)
 ex_FTTdp["total_budgeted"] = np.zeros(len(ex_FTTdp))
  
@@ -594,7 +616,8 @@ ex_FTTH.loc[ (ex_FTTH['geotype_number'] == 13), 'prem_cost'] = 10000
           
 ex_FTTH['cost'] = ex_FTTH.prem_cost*ex_FTTH.all_premises                 
  
-ex_FTTH['Rank'] = ex_FTTH.groupby(['geotype_number'])['all_premises'].rank(ascending=False)
+#ex_FTTH['Rank'] = ex_FTTH.groupby(['geotype_number'])['all_premises'].rank(ascending=False)
+ex_FTTH['Rank'] = ex_FTTH['all_premises'].rank(ascending=False)  
  
  # set up zero total amounts budgeted (to be calculated)
 ex_FTTH["total_budgeted"] = np.zeros(len(ex_FTTH))
