@@ -58,7 +58,7 @@ codepoint['pcd_type'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
 #codepoint = codepoint.loc[codepoint['pcd_type'] == 'S']
 
 #subset columns
-codepoint = codepoint[['pcd', 'all_premises', 'oslaua']]
+codepoint = codepoint[['pcd', 'all_premises','pcd_type', 'oslaua']]
 
 #REMOVE KINGSTON UPON HULL
 #hull = codepoint.loc[codepoint['oslaua'] == 'E06000010']
@@ -68,7 +68,7 @@ codepoint = codepoint.loc[codepoint['oslaua'] != 'E06000010']
 df_merge = pd.merge(codepoint, df_merge, on='pcd', how='inner')
 
 #subset columns
-df_merge = df_merge[['pcd', 'exchange', 'all_premises', 'distance', 'oslaua']]
+df_merge = df_merge[['pcd', 'exchange', 'all_premises', 'pcd_type', 'distance', 'oslaua']]
 
 df_merge = df_merge.drop_duplicates('pcd')
 
@@ -86,10 +86,15 @@ del distance
 del codepoint
 del Vstreets
 
+large_users = df_merge.loc[df_merge['pcd_type'] == 'L']
+
+df_merge = df_merge.loc[df_merge['pcd_type'] == 'S']
+
 #create new line_length column
 df_merge["line_length"] = "under_2k"
 
 #change line_length to over 2k
+#df_merge.loc[ (df_merge['distance'] >= 2000) & (df_merge['pcd_type'] == 'S'), 'line_length'] = 'over_2k'
 df_merge.loc[ (df_merge['distance'] >= 2000), 'line_length'] = 'over_2k'
 
 #sum all_premises to obtain 
@@ -348,6 +353,18 @@ data[["all_premises_x", "prem_under_2k", "prem_over_2k", "prem_under_1k", "prem_
 
 exchanges = data.groupby(['exchange'], as_index=False).sum()
 
+############ Subset Commercial ###############
+#subset columns      
+large_users = large_users[['exchange', 'all_premises']]
+
+large_users = large_users.groupby(['exchange'], as_index=False).sum()
+
+#rename columns
+large_users.rename(columns={'all_premises':'large_premises'}, inplace=True)
+
+# merge 
+exchanges = pd.merge(exchanges, large_users, on='exchange', how='outer')
+
 del exchanges['all_premises_y']
 del exchanges['distance']
 
@@ -427,7 +444,10 @@ samknows = pd.read_csv(samknows, low_memory=False)
 #rename columns
 samknows.rename(columns={'OLO':'exchange'}, inplace=True)
 
-test = pd.merge(exchanges, samknows, on='exchange', how='outer', indicator=True)
+#subset columns      
+samknows = samknows[['exchange', 'Name', 'Market', 'Cable', 'LLU', 'LLU_count']]
+
+exchanges = pd.merge(exchanges, samknows, on='exchange', how='outer', indicator=True)
 
 ####################################################################
 
