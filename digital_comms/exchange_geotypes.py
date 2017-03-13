@@ -55,13 +55,16 @@ codepoint['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
 codepoint['pcd_type'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
 
 #subset = small user delivery points
-codepoint = codepoint.loc[codepoint['pcd_type'] == 'S']
+#codepoint = codepoint.loc[codepoint['pcd_type'] == 'S']
 
 #subset columns
 codepoint = codepoint[['pcd', 'all_premises', 'oslaua']]
 
-#counts = codepoint.exchange.value_counts()
+#REMOVE KINGSTON UPON HULL
+#hull = codepoint.loc[codepoint['oslaua'] == 'E06000010']
+codepoint = codepoint.loc[codepoint['oslaua'] != 'E06000010']
 
+#counts = codepoint.exchange.value_counts()
 df_merge = pd.merge(codepoint, df_merge, on='pcd', how='inner')
 
 #subset columns
@@ -91,6 +94,8 @@ df_merge.loc[ (df_merge['distance'] >= 2000), 'line_length'] = 'over_2k'
 
 #sum all_premises to obtain 
 exchange_size = df_merge.groupby(by=['exchange'])['all_premises'].sum()
+
+#test = df_merge.loc[df_merge['exchange'] == 'CMSPR']
 
 data = df_merge
 
@@ -216,7 +221,7 @@ merge = merge.drop_duplicates('exchange')
 exchanges = pd.merge(exchanges, merge, on='exchange', how='outer')
 
 counts = exchanges.geotype.value_counts()
-  
+
 exchanges['Rank'] = exchanges.groupby(['geotype'])['all_premises_y'].rank(ascending=False)
 #exchanges['Rank'] = exchanges['all_premises_y'].rank(ascending=False)
      
@@ -389,7 +394,7 @@ exchanges.loc[ (exchanges['geotype_name'] == 'Below 1,000 (b)'), 'speed'] = 10
 counts = exchanges.groupby(by=['geotype_name'])['all_premises'].sum()
 
 counts = exchanges.geotype_name.value_counts()
-      
+
 del data
 del merge
 del subset
@@ -413,6 +418,16 @@ area = area.groupby(['exchange'], as_index=False).sum()
 exchanges = pd.merge(exchanges, area, on='exchange', how='inner')
 
 del area
+
+####IMPORT SAMKNOWS DATA TO CHECK#####
+#import codepoint
+samknows = r'E:\Fixed Broadband Model\Data\SamKnows_Exchanges_All_Stats.csv'
+samknows = pd.read_csv(samknows, low_memory=False)
+
+#rename columns
+samknows.rename(columns={'OLO':'exchange'}, inplace=True)
+
+test = pd.merge(exchanges, samknows, on='exchange', how='outer', indicator=True)
 
 ####################################################################
 
