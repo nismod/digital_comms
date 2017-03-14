@@ -147,6 +147,85 @@ output.to_csv('pcd_2_cab_2_exchange_data.csv', index=False)
 
 #cambridge.to_excel('cambridge.xlsx', index=False)
 
+#############################################################################
+#EXPLORATORY ANALYSIS OF CABINETS
+
+codepoint = r'E:\Fixed Broadband Model\Data\all_codepoint.csv'
+codepoint = pd.read_csv(codepoint, header=None, low_memory=False)
+
+#subset columns
+codepoint = codepoint[[0,3,5,6,7,16,18]]
+
+#rename columns
+codepoint.rename(columns={0:'pcd', 3:'all_premises', 5:'domestic', 6:'non_domestic', 7:'PO_box', 16:'oslaua', 18:'pcd_type'}, inplace=True)
+
+codepoint_oslaua = list(codepoint['oslaua'].unique())
+
+codepoint['pcd'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
+
+#remove whitespace in pcd_type column (so small or large delivery point column)
+codepoint['pcd_type'].replace(regex=True,inplace=True,to_replace=r' ',value=r'')
+
+#REMOVE KINGSTON UPON HULL
+#hull = codepoint.loc[codepoint['oslaua'] == 'E06000010']
+codepoint = codepoint.loc[codepoint['oslaua'] != 'E06000010']
+
+#counts = codepoint.exchange.value_counts()
+output = pd.merge(output, codepoint, on='pcd', how='inner')
+#%%
+output = output[['SAU_NODE_ID','all_premises','domestic','non_domestic','PO_box']]
+
+cabinet_size = output.groupby(by=['SAU_NODE_ID'], as_index=False)['all_premises'].sum()
+
+cabinet_size.all_premises.mean()
+
+import matplotlib.pyplot as plt
+
+#Plots in matplotlib reside within a figure object, use plt.figure to create new figure
+fig=plt.figure()
+
+#Create one or more subplots using add_subplot, because you can't create blank figure
+ax = fig.add_subplot(500,500,500)
+
+#Variable
+ax.hist(cabinet_size['all_premises'],bins = 5)
+
+#Labels and Tit
+plt.title('Age distribution')
+plt.xlabel('Age')
+plt.ylabel('#Employee')
+plt.show()
+
+#!/usr/bin/env python
+import numpy as np
+import matplotlib.mlab as mlab
+import matplotlib.pyplot as plt
+
+x = cabinet_size['all_premises']
+
+# the histogram of the data
+n, bins, patches = plt.hist(x, 200, facecolor='green')
+
+plt.xlabel('Smarts')
+plt.ylabel('Frequency')
+plt.title(r'$\mathrm{Histogram\ of\ IQ:}\ \mu=100,\ \sigma=15$')
+plt.axis([0, 2000, 0, 12000])
+plt.grid(True)
+
+plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
