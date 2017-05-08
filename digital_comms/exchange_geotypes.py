@@ -90,6 +90,33 @@ large_users = df_merge.loc[df_merge['pcd_type'] == 'L']
 
 df_merge = df_merge.loc[df_merge['pcd_type'] == 'S']
 
+###############################################################################
+####Cable Areas#####
+#import codepoint
+samknows = r'E:\Fixed Broadband Model\Data\SamKnows_Exchanges_All_Stats.csv'
+samknows = pd.read_csv(samknows, low_memory=False)
+
+#rename columns
+samknows.rename(columns={'OLO':'exchange'}, inplace=True)
+
+#subset columns      
+samknows = samknows[['exchange', 'Cable']]
+
+test = pd.merge(df_merge, samknows, on='exchange', how='inner')
+
+test = test.loc[test['Cable'] == 't']
+
+test['Rank'] = test['all_premises'].rank(ascending=False)  
+
+test.all_premises.values.sum()
+
+
+
+
+
+
+###############################################################################
+
 #create new line_length column
 df_merge["line_length"] = "under_2k"
 
