@@ -49,7 +49,9 @@ class ICTManager(object):
 		return {
 			"capacity": {area.name: area.capacity() for area in self.lads.values()},
 			"coverage": {area.name: area.coverage() for area in self.lads.values()},
-			"demand": {area.name: area.demand() for area in self.lads.values()}
+			"demand": {area.name: area.demand() for area in self.lads.values()},
+			"cost": {area.name: area.cost() for area in self.lads.values()},
+			"energy_demand": {area.name: area.energy_demand() for area in self.lads.values()}
 		}
 
 
@@ -64,7 +66,7 @@ class LAD(object):
 		self.population = data["population"]
 		self.area = data["area"]
 		self.user_demand = data["user_demand"]
-		self._pcd_sectors = {}
+		self._pcd_sectors = {} #I think 'self._postcode' means this is private and you shouldn't access it?
 
 	def add_pcd_sector(self, pcd_sector):
 		self._pcd_sectors[pcd_sector.id] = pcd_sector
@@ -86,6 +88,14 @@ class LAD(object):
 		population_with_coverage = sum([pcd_sector.population for pcd_sector in self._pcd_sectors.values() if pcd_sector.capacity() >= threshold])
 		total_pop = self.population  # or sum of PostcodeSector populations
 		return float(population_with_coverage) / total_pop
+
+	def cost(self):
+		'''returning the value from the method in pcd_sector object'''
+		return sum([pcd_sector.cost() for pcd_sector in self._pcd_sectors.values()])
+	
+	def energy_demand(self):
+		'''returning the value from the method in pcd_sector object'''
+		return sum([pcd_sector.energy_demand() for pcd_sector in self._pcd_sectors.values()])
 
 		
 class PostcodeSector(object):
@@ -119,8 +129,21 @@ class PostcodeSector(object):
 		# for a given site density and spectrum band, look up capacity
 		capacity = lookup_capacity(site_density)
 		return capacity
-
+	
+	def cost(self):
+    	# sites : count how many assets are sites
+		sites = len(list(filter(lambda asset: asset.type == "site", self._assets)))
+		# for a given number of sites, what is the total cost?	
+		cost = (sites * 10)
+		return cost
 		
+	def energy_demand(self):
+    	# cells : count how many cells there are in the assets database
+		cells = sum(map(lambda asset : asset.cells, self._assets))
+		# for a given number of cells, what is the total cost?	
+		energy_demand = (cells * 5)
+		return energy_demand
+
 
 class Asset(object):
 	"""Element of the communication infrastructure system,
@@ -131,7 +154,6 @@ class Asset(object):
 		self.pcd_sector_id = data["pcd_sector_id"]
 		self.cells = data["cells"]
 		self.technology = data["technology"]
-
 
 def lookup_capacity(site_density):
 	"""Use lookup table to find capacity by site density
@@ -148,7 +170,6 @@ def lookup_capacity(site_density):
 		0: 0
 	}
 	return lookup_table[site_density]
-
 
 if __name__ == '__main__':
 	lads = [
@@ -223,5 +244,3 @@ if __name__ == '__main__':
 	]
 	manager = ICTManager(lads, pcd_sectors, assets)
 	print(manager.results())
-
-	print(lads)
