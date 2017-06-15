@@ -113,7 +113,7 @@ class PostcodeSector(object):
 
 	def capacity(self):
 		# sites : count how many assets are sites
-		sites = len(filter(lambda asset: asset.type == "site", self._assets))
+		sites = len(list(filter(lambda asset: asset.type == "site", self._assets)))
 		# sites/km^2 : divide num_sites/area
 		site_density = float(sites) / self.area
 		# for a given site density and spectrum band, look up capacity
@@ -223,3 +223,5 @@ if __name__ == '__main__':
 	]
 	manager = ICTManager(lads, pcd_sectors, assets)
 	print(manager.results())
+
+	print(lads)
