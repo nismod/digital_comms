@@ -1,6 +1,8 @@
 """Cambridge Communications Assessment Model
 """
 
+import itertools
+
 class ICTManager(object):
 	"""Model controller class
 	"""
@@ -47,6 +49,7 @@ class ICTManager(object):
 
 	def results(self):
 		return {
+			#"system": {area.name: area.system() for area in self.lads.values()},
 			"capacity": {area.name: area.capacity() for area in self.lads.values()},
 			"coverage": {area.name: area.coverage() for area in self.lads.values()},
 			"demand": {area.name: area.demand() for area in self.lads.values()},
@@ -74,6 +77,10 @@ class LAD(object):
 	def add_asset(self, asset):
 		pcd_sector_id = asset.pcd_sector_id
 		self._pcd_sectors[pcd_sector_id].add_asset(asset)
+
+#	def system(self):
+		#"""returning the value from the method in pcd_sector object"""
+		#return sum([pcd_sector.system() for pcd_sector in self._pcd_sectors.values()])
 		
 	def capacity(self):
 		"""returning the value from the method in pcd_sector object"""
@@ -120,6 +127,17 @@ class PostcodeSector(object):
 		user_throughput = users * self.user_demand
 		capacity_per_kmsq = user_throughput / self.area
 		return capacity_per_kmsq
+
+	#def system(self):
+	#	keys = []
+	#	groups = []
+	#	sorted_assets = sorted(self._assets)
+	#	for k, g in itertools.groupby(sorted_assets):
+	#		keys.append(k)
+	#		groups.append(list(g))
+	#	count_per_group = [len(i) for i in groups]
+	#	#system = dict(zip(keys, count_per_group))
+	#	return count_per_group 
 
 	def capacity(self):
 		# sites : count how many assets are sites
@@ -244,3 +262,9 @@ if __name__ == '__main__':
 	]
 	manager = ICTManager(lads, pcd_sectors, assets)
 	print(manager.results())
+
+	test = LAD(lad_data)
+	attrs = vars(test)
+	print(attrs)
+
+	
