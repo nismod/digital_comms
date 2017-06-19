@@ -2,6 +2,7 @@
 """
 
 import itertools
+from operator import itemgetter
 
 class ICTManager(object):
 	"""Model controller class
@@ -49,7 +50,7 @@ class ICTManager(object):
 
 	def results(self):
 		return {
-			#"system": {area.name: area.system() for area in self.lads.values()},
+#			"system": {area.name: area.system() for area in self.lads.values()},
 			"capacity": {area.name: area.capacity() for area in self.lads.values()},
 			"coverage": {area.name: area.coverage() for area in self.lads.values()},
 			"demand": {area.name: area.demand() for area in self.lads.values()},
@@ -79,9 +80,9 @@ class LAD(object):
 		self._pcd_sectors[pcd_sector_id].add_asset(asset)
 
 #	def system(self):
-		#"""returning the value from the method in pcd_sector object"""
-		#return sum([pcd_sector.system() for pcd_sector in self._pcd_sectors.values()])
-		
+#		"""returning the value from the method in pcd_sector object"""
+#		return sum([pcd_sector.system() for pcd_sector in self._pcd_sectors.values()])
+
 	def capacity(self):
 		"""returning the value from the method in pcd_sector object"""
 		return sum([pcd_sector.capacity() for pcd_sector in self._pcd_sectors.values()])
@@ -118,6 +119,8 @@ class PostcodeSector(object):
 		self.user_demand = 2
 		self.penetration = 0.8
 		self._assets = []
+		#I've turned assets from a list of dictionaries, to an explicit list per asset type
+#		self.cells = data["cells"]
 		
 	def add_asset(self, asset):
 		self._assets.append(asset)
@@ -127,17 +130,10 @@ class PostcodeSector(object):
 		user_throughput = users * self.user_demand
 		capacity_per_kmsq = user_throughput / self.area
 		return capacity_per_kmsq
-
-	#def system(self):
-	#	keys = []
-	#	groups = []
-	#	sorted_assets = sorted(self._assets)
-	#	for k, g in itertools.groupby(sorted_assets):
-	#		keys.append(k)
-	#		groups.append(list(g))
-	#	count_per_group = [len(i) for i in groups]
-	#	#system = dict(zip(keys, count_per_group))
-	#	return count_per_group 
+	
+#	def system(self):
+#		system = sum(item['cells'] for item in self._assets)
+#		return system
 
 	def capacity(self):
 		# sites : count how many assets are sites
@@ -149,14 +145,14 @@ class PostcodeSector(object):
 		return capacity
 	
 	def cost(self):
-    	# sites : count how many assets are sites
+		# sites : count how many assets are sites
 		sites = len(list(filter(lambda asset: asset.type == "site", self._assets)))
 		# for a given number of sites, what is the total cost?	
 		cost = (sites * 10)
 		return cost
 		
 	def energy_demand(self):
-    	# cells : count how many cells there are in the assets database
+		# cells : count how many cells there are in the assets database
 		cells = sum(map(lambda asset : asset.cells, self._assets))
 		# for a given number of cells, what is the total cost?	
 		energy_demand = (cells * 5)
@@ -262,9 +258,3 @@ if __name__ == '__main__':
 	]
 	manager = ICTManager(lads, pcd_sectors, assets)
 	print(manager.results())
-
-	test = LAD(lad_data)
-	attrs = vars(test)
-	print(attrs)
-
-	
