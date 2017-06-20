@@ -2,7 +2,7 @@
 """
 
 import itertools
-from operator import itemgetter
+#from operator import itemgetter
 
 class ICTManager(object):
 	"""Model controller class
@@ -177,6 +177,10 @@ def lookup_capacity(site_density):
 	- handle any density - round/bin
 	"""
 	lookup_table = {
+		5:70,
+		3:24,
+		2:12,
+		1:6,
 		0.5: 3,
 		0.25: 2,
 		0.2: 1,
@@ -204,6 +208,10 @@ if __name__ == '__main__':
 			"population": 220000,
 			"area": 10,
 			"user_demand": 1,
+			"spectrum_available": {
+				"700": False,
+				"800": True
+			}
 		}
 	]
 	pcd_sectors = [
@@ -245,8 +253,20 @@ if __name__ == '__main__':
 		},
 		{
 			"type": "site",
-			"pcd_sector_id": 2,
+			"pcd_sector_id": 1,
 			"cells": 5,
+			"technology": "LTE-Advanced"
+		},
+		{
+			"type": "site",
+			"pcd_sector_id": 2,
+			"cells": 3,
+			"technology": "LTE"
+		},
+		{
+			"type": "site",
+			"pcd_sector_id": 2,
+			"cells": 6,
 			"technology": "LTE-Advanced"
 		},
 		{
@@ -254,7 +274,25 @@ if __name__ == '__main__':
 			"pcd_sector_id": 3,
 			"cells": 3,
 			"technology": "LTE"
-		}
-	]
+		},
+		{
+			"type": "site",
+			"pcd_sector_id": 3,
+			"cells": 2,
+			"technology": "LTE-Advanced"
+		},	
+		{
+			"type": "site",
+			"pcd_sector_id": 4,
+			"cells": 1,
+			"technology": "LTE"
+		},
+		{
+			"type": "site",
+			"pcd_sector_id": 4,
+			"cells": 3,
+			"technology": "LTE-Advanced"
+		}	
+]
 	manager = ICTManager(lads, pcd_sectors, assets)
 	print(manager.results())
