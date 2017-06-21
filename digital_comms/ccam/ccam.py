@@ -50,7 +50,7 @@ class ICTManager(object):
 
 	def results(self):
 		return {
-#			"system": {area.name: area.system() for area in self.lads.values()},
+			"system": {area.name: area.system() for area in self.lads.values()},
 			"capacity": {area.name: area.capacity() for area in self.lads.values()},
 			"coverage": {area.name: area.coverage() for area in self.lads.values()},
 			"demand": {area.name: area.demand() for area in self.lads.values()},
@@ -70,7 +70,7 @@ class LAD(object):
 		self.population = data["population"]
 		self.area = data["area"]
 		self.user_demand = data["user_demand"]
-		self._pcd_sectors = {} #I think 'self._postcode' means this is private and you shouldn't access it?
+		self._pcd_sectors = {} 
 
 	def add_pcd_sector(self, pcd_sector):
 		self._pcd_sectors[pcd_sector.id] = pcd_sector
@@ -79,9 +79,20 @@ class LAD(object):
 		pcd_sector_id = asset.pcd_sector_id
 		self._pcd_sectors[pcd_sector_id].add_asset(asset)
 
-#	def system(self):
-#		"""returning the value from the method in pcd_sector object"""
-#		return sum([pcd_sector.system() for pcd_sector in self._pcd_sectors.values()])
+	def system(self):
+		for asset in assets:
+			area_id = self._pcd_sectors['lad_id']
+			tech = self._pcd_sectors['technology']
+			cells = self._pcd_sectors['cells']
+			# check area is in system
+			if area_id not in system:
+				system[area_id] = {}
+			# check tech is in area
+			if tech not in system[area_id]:
+				system[area_id][tech] = 0
+				# add number of cells to tech in area
+				system[area_id][tech] += cells
+		return system
 
 	def capacity(self):
 		"""returning the value from the method in pcd_sector object"""
@@ -120,7 +131,6 @@ class PostcodeSector(object):
 		self.penetration = 0.8
 		self._assets = []
 		#I've turned assets from a list of dictionaries, to an explicit list per asset type
-#		self.cells = data["cells"]
 		
 	def add_asset(self, asset):
 		self._assets.append(asset)
@@ -131,9 +141,20 @@ class PostcodeSector(object):
 		capacity_per_kmsq = user_throughput / self.area
 		return capacity_per_kmsq
 	
-#	def system(self):
-#		system = sum(item['cells'] for item in self._assets)
-#		return system
+	def system(self):
+		for asset in assets:
+			area_id = asset['pcd_sector_id']
+			tech = asset['technology']
+			cells = asset['cells']
+			# check area is in system
+			if area_id not in system:
+				system[area_id] = {}
+			# check tech is in area
+			if tech not in system[area_id]:
+				system[area_id][tech] = 0
+				# add number of cells to tech in area
+				system[area_id][tech] += cells
+		return system
 
 	def capacity(self):
 		# sites : count how many assets are sites
