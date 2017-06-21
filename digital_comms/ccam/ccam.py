@@ -80,18 +80,15 @@ class LAD(object):
 		self._pcd_sectors[pcd_sector_id].add_asset(asset)
 
 	def system(self):
-		for asset in assets:
-			area_id = self._pcd_sectors['lad_id']
-			tech = self._pcd_sectors['technology']
-			cells = self._pcd_sectors['cells']
-			# check area is in system
-			if area_id not in system:
-				system[area_id] = {}
-			# check tech is in area
-			if tech not in system[area_id]:
-				system[area_id][tech] = 0
-				# add number of cells to tech in area
-				system[area_id][tech] += cells
+		system = {}
+		for pcd_sector in self._pcd_sectors.values():
+			pcd_system = pcd_sector.system()
+			for tech, cells in pcd_system.items():
+				# check tech is in system
+				if tech not in system:
+					system[tech] = 0
+					# add number of cells to tech in area
+					system[tech] += cells
 		return system
 
 	def capacity(self):
@@ -140,20 +137,17 @@ class PostcodeSector(object):
 		user_throughput = users * self.user_demand
 		capacity_per_kmsq = user_throughput / self.area
 		return capacity_per_kmsq
-	
+
 	def system(self):
-		for asset in assets:
-			area_id = asset['pcd_sector_id']
-			tech = asset['technology']
-			cells = asset['cells']
-			# check area is in system
-			if area_id not in system:
-				system[area_id] = {}
+		system = {}
+		for asset in self._assets:
+			tech = asset.technology
+			cells = asset.cells
 			# check tech is in area
-			if tech not in system[area_id]:
-				system[area_id][tech] = 0
+			if tech not in system:
+				system[tech] = 0
 				# add number of cells to tech in area
-				system[area_id][tech] += cells
+				system[tech] += cells
 		return system
 
 	def capacity(self):
