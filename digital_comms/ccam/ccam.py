@@ -87,8 +87,8 @@ class LAD(object):
 				# check tech is in system
 				if tech not in system:
 					system[tech] = 0
-					# add number of cells to tech in area
-					system[tech] += cells
+				# add number of cells to tech in area
+				system[tech] += cells
 		return system
 
 	def capacity(self):
