@@ -45,3 +45,5 @@ MANIFEST
 .vs
 .vscode
 
+# Jupyter
+.ipynb_checkpoints
