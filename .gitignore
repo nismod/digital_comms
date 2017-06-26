@@ -40,3 +40,10 @@ docs/api/*
 docs/_build/*
 cover/*
 MANIFEST
+
+# Text editor
+.vs
+.vscode
+
+# Jupyter
+.ipynb_checkpoints

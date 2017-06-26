@@ -1,4 +1,2 @@
 # Add your requirements here like:
 numpy
-pandas
-recommonmark
