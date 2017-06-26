@@ -58,7 +58,6 @@ class ICTManager(object):
 			"energy_demand": {area.name: area.energy_demand() for area in self.lads.values()}
 		}
 
-
 class LAD(object):
 	"""Represents an area to be modelled, contains
 	data for demand characterisation and assets for
@@ -195,7 +194,9 @@ def lookup_capacity(site_density):
 		5:70,
 		3:24,
 		2:12,
+		1.5:9,
 		1:6,
+		0.75:4.5,
 		0.5: 3,
 		0.25: 2,
 		0.2: 1,
@@ -213,8 +214,17 @@ if __name__ == '__main__':
 			"area": 10,
 			"user_demand": 1,
 			"spectrum_available": {
-				"700": False,
-				"800": True
+				"GSM 900": True,
+				"GSM 1800": True,
+				"UMTS 900": True,
+				"UMTS 2100": True,	
+				"LTE 800": True,
+				"LTE 1800": True,
+				"LTE 2600": True,
+				"5G 700": False,
+				"5G 3400": False,
+				"5G 3600": False,
+				"5G 26000": False,
 			}
 		},		
 		{
@@ -224,8 +234,17 @@ if __name__ == '__main__':
 			"area": 10,
 			"user_demand": 1,
 			"spectrum_available": {
-				"700": False,
-				"800": True
+				"GSM 900": True,
+				"GSM 1800": True,
+				"UMTS 900": True,
+				"UMTS 2100": True,	
+				"LTE 800": False,
+				"LTE 1800": False,
+				"LTE 2600": False,
+				"5G 700": False,
+				"5G 3400": False,
+				"5G 3600": False,
+				"5G 26000": False,
 			}
 		}
 	]
@@ -264,6 +283,12 @@ if __name__ == '__main__':
 			"type": "site",
 			"pcd_sector_id": 1,
 			"cells": 3,
+			"technology": "UMTS"
+		},
+		{
+			"type": "site",
+			"pcd_sector_id": 1,
+			"cells": 3,
 			"technology": "LTE"
 		},
 		{
@@ -271,6 +296,12 @@ if __name__ == '__main__':
 			"pcd_sector_id": 1,
 			"cells": 5,
 			"technology": "LTE-Advanced"
+		},
+		{
+			"type": "site",
+			"pcd_sector_id": 2,
+			"cells": 3,
+			"technology": "UMTS"
 		},
 		{
 			"type": "site",
@@ -288,6 +319,12 @@ if __name__ == '__main__':
 			"type": "site",
 			"pcd_sector_id": 3,
 			"cells": 3,
+			"technology": "UMTS"
+		},
+		{
+			"type": "site",
+			"pcd_sector_id": 3,
+			"cells": 3,
 			"technology": "LTE"
 		},
 		{
@@ -300,6 +337,12 @@ if __name__ == '__main__':
 			"type": "site",
 			"pcd_sector_id": 4,
 			"cells": 1,
+			"technology": "UMTS"
+		},
+		{
+			"type": "site",
+			"pcd_sector_id": 4,
+			"cells": 1,
 			"technology": "LTE"
 		},
 		{
@@ -307,7 +350,9 @@ if __name__ == '__main__':
 			"pcd_sector_id": 4,
 			"cells": 3,
 			"technology": "LTE-Advanced"
-		}	
-]
+		}
+	]	
+		
+
 	manager = ICTManager(lads, pcd_sectors, assets)
 	print(manager.results())
