@@ -18,6 +18,10 @@ for row in reader:
 
 pprint.pprint(data)
 
+for index in range(len(data)):
+	for key in data[
+
+
 #class pcd_sector(object):
 #	'''represents a postcode sector to be modelled'''
 #	def __init__(self, data):
@@ -34,3 +38,30 @@ pprint.pprint(data)
 #pcds = pcd_sector(data)
 #pcds.pop_density()
 	
+
+list_of_dicts = [{'id': 'a', 'population': '20', 'area': '10'},
+				{'id': 'a', 'population': '20', 'area': '10'}]
+				
+class pcd_sector(object):
+	'''represents a postcode sector to be modelled'''
+	def __init__(self, data):
+		self.id = int(data["id"])
+		self.population = int(data["population"])
+		self.area = int(data["area"])
+	
+	def pop_density(self):
+		for i in range(len(self.id)):
+			density[i] = self.population[i] / self.area[i]
+			density.append(i)
+		return density					
+				
+				
+def pop_density(self):
+	for i in range(len(self.id)):
+		density[i] = self.population[i] / self.area[i]
+		density.append(i)
+		return density	
+				
+				
+results = [{'id': 'a', 'population': '20', 'area': '10', 'pop_density': 2},
+		   {'id': 'a', 'population': '30', 'area': '5', 'pop_density': 6}]
