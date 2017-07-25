@@ -1,16 +1,33 @@
 import pprint
 
-l1 = [{'pcd_sector': 'ABDC', 'area_coverage_2014': '100'},
-	   {'pcd_sector': 'DEFG', 'area_coverage_2014': '0'}]
+lst = [{'pcd_sector': 'ABDC', 'area_coverage_2014': '100'},
+       {'pcd_sector': 'DEFG', 'area_coverage_2014': '0'},
+	   {'pcd_sector': 'DEFG', 'area_coverage_2014': 'NA'}]
+
+for sub in lst:
+	for key in ['area_coverage_2014']: # list of keys to convert
+		try:
+			sub[key] = float(sub[key]) if key !='NA' else None
+		except ValueError as e:
+			pass
 	   
-l2 = [{'pcd_sector': 'ABDC', 'asset': '3G', 'random': '2gs'},
-	   {'pcd_sector': 'DEFG', 'asset': '3G', 'random': '3je'},
-	   {'pcd_sector': 'CDEF', 'asset': '3G', 'random': '4jd'},
-	   {'pcd_sector': 'BCDE', 'asset': '3G', 'random': '5js'}]
+for d in lst:
+	try:
+		coverage = float(d['area_coverage_2014'])
+		if coverage > 0:
+			d['new_key'] = True
+		else:
+			d['new_key'] = False
+	except ValueError as e:
+		d['new_key'] = False
+		
+pprint.pprint (lst)
 
-grouped = {}
-for d in l1 + l2:
-	grouped.setdefault(d['pcd_sector'], {'asset':0, 'area_coverage_2014':0}).update(d)
 
-result = [d for d in grouped.values()]
-pprint.pprint(result)	
+
+
+
+
+
+
+

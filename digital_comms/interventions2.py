@@ -27,7 +27,9 @@ keys = ['Operator',
 		'Freqband',
 		'Anttype',
 		'pcd_sector',
-		'geo_code'
+		'geo_code',
+		'X',
+		'Y'
 		]
 assets = [dict((k, d[k]) for k in keys) for d in assets]
 
@@ -83,70 +85,58 @@ for sub in rollout_4G:
 			pass
 
 #### join two lists of dicts on a single key
-#from collections import defaultdict
-#from operator import itemgetter
 
-#d = defaultdict(dict)
-#for pcd_sector in (assets, rollout_4G):
-#    for elem in pcd_sector:
-#        d[elem['pcd_sector']].update(elem)
-#output =  sorted(d.values(), key=itemgetter("pcd_sector"))
-
-grouped = {}
-for d in assets + rollout_4G:
-	grouped.setdefault(d['pcd_sector'], {'Operator':0, 'area_coverage_2014':0}).update(d)
-
-output = [d for d in grouped.values()]
-pprint.pprint(output)	
-
-#output = {}
-#for d in assets + rollout_4G:
-#	output.setdefult(d['pcd_sector'], {'Operator': 0, 'Anttype': 0, 'Freqband': 0}).update(d)
+d1 = {d['pcd_sector']:d for d in rollout_4G}
+output = [dict(d, **d1.get(d['pcd_sector'], {})) for d in assets]	
 
 print('The length of output is {}'.format(len(output))) 
 
+for item in output:
+	try:
+		coverage = float(item['area_coverage_2014'])
+		if coverage > 0:
+			item["tech_2014"] = "4G"
+		else:
+			item["tech_2014"] = "other"
+	except (KeyError, ValueError) as e:
+		item["coverage"] = 0
+		item["tech_2014"] = "Other"
 
-#def merge_lists(l1, l2, key):
-#    merged = {}
-#    for item in l1+l2:
-#        if item[key] in merged:
-#            merged[item[key]].update(item)
-#        else:
-#            merged[item[key]] = item
-#    return merged.values()
+for item in output:
+	try:
+		coverage = float(item['area_coverage_2015'])
+		if coverage > 0:
+			item["tech_2015"] = "4G"
+		else:
+			item["tech_2015"] = "other"
+	except (KeyError, ValueError) as e:
+		item["coverage"] = 0
+		item["tech_2015"] = "Other"
 
-#output = merge_lists(assets, rollout_4G, 'pcd_sector')
+for item in output:
+	try:
+		coverage = float(item['area_coverage_2016'])
+		if coverage > 0:
+			item["tech_2016"] = "4G"
+		else:
+			item["tech_2016"] = "other"
+	except (KeyError, ValueError) as e:
+		item["coverage"] = 0
+		item["tech_2016"] = "Other"
 
-
-
-
-
-
-#for d in output:
-#	try:
-#		coverage = float(d['area_coverage_2014'])
-#		if coverage > 0:
-#			d['new_key'] = True
-#		else:
-#			d['new_key'] = False
-#	except ValueError as e:
-#		d['new_key'] = False
-
+		
 #pprint.pprint(output)
 
-#keys = set().union(*(d.keys() for d in output))
-#print (all_keys)
+keys = set().union(*(d.keys() for d in output))
+keys = output[0].keys()
+with open ('output.csv', 'w') as output_file:
+	dict_writer = csv.DictWriter(output_file, keys, 
+								extrasaction='ignore',
+								lineterminator = '\n')
+	dict_writer.writeheader()
+	dict_writer.writerows(output)
 
-#keys = output[0].keys()
-#keys = ['Transtype']
-#with open ('output.csv', 'w') as output_file:
-#	dict_writer = csv.DictWriter(output_file, keys, 
-#								extrasaction='ignore',
-#								lineterminator = '\n')
-#	dict_writer.writeheader()
-#	dict_writer.writerows(output)
-
-
+pprint.pprint (keys)
 
 
 
