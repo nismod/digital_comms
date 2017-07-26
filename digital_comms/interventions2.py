@@ -21,7 +21,7 @@ assets = []
 for row in reader:
     assets.append(row)
 
-keys = ['Operator', 
+keys = ['Operator',
 		'Sitengr',
 		'Transtype',
 		'Freqband',
@@ -33,7 +33,7 @@ keys = ['Operator',
 		]
 assets = [dict((k, d[k]) for k in keys) for d in assets]
 
-print('The length of assets is {}'.format(len(assets))) 
+print('The length of assets is {}'.format(len(assets)))
 
 #remove whitespace from 'pcd_sector' values
 for d in assets:
@@ -58,7 +58,7 @@ rollout_4G = []
 for row in reader:
     rollout_4G.append(row)
 
-keys = ['name', 
+keys = ['name',
 		'pcd_sector',
 		'area_coverage_2014',
 		'area_coverage_2015',
@@ -66,7 +66,7 @@ keys = ['name',
 		]
 rollout_4G = [dict((k, d[k]) for k in keys) for d in rollout_4G]#
 
-print('The length of rollout_4G is {}'.format(len(rollout_4G))) 
+print('The length of rollout_4G is {}'.format(len(rollout_4G)))
 
 #remove whitespace from 'pcd_sector' values
 for d in rollout_4G:
@@ -87,10 +87,11 @@ for sub in rollout_4G:
 #### join two lists of dicts on a single key
 
 d1 = {d['pcd_sector']:d for d in rollout_4G}
-output = [dict(d, **d1.get(d['pcd_sector'], {})) for d in assets]	
+output = [dict(d, **d1.get(d['pcd_sector'], {})) for d in assets]
 
-print('The length of output is {}'.format(len(output))) 
+print('The length of output is {}'.format(len(output)))
 
+#for 2014
 for item in output:
 	try:
 		coverage = float(item['area_coverage_2014'])
@@ -102,6 +103,7 @@ for item in output:
 		item["coverage"] = 0
 		item["tech_2014"] = "Other"
 
+#for 2015
 for item in output:
 	try:
 		coverage = float(item['area_coverage_2015'])
@@ -113,6 +115,7 @@ for item in output:
 		item["coverage"] = 0
 		item["tech_2015"] = "Other"
 
+##for 2016
 for item in output:
 	try:
 		coverage = float(item['area_coverage_2016'])
@@ -124,39 +127,74 @@ for item in output:
 		item["coverage"] = 0
 		item["tech_2016"] = "Other"
 
-		
-#pprint.pprint(output)
-
+#get keys for export
 keys = set().union(*(d.keys() for d in output))
 keys = output[0].keys()
-with open ('output.csv', 'w') as output_file:
-	dict_writer = csv.DictWriter(output_file, keys, 
+
+#set path for sitefinder asset data
+BASE_DIR = os.path.dirname(__file__)
+CONFIG_DIR = os.path.join(BASE_DIR, '..', 'Data')
+DATA_FILE = os.path.join(CONFIG_DIR, 'assets_with_4G_rollout.csv')
+
+with open (DATA_FILE, 'w') as output_file:
+	dict_writer = csv.DictWriter(output_file, keys,
 								extrasaction='ignore',
 								lineterminator = '\n')
 	dict_writer.writeheader()
 	dict_writer.writerows(output)
 
-pprint.pprint (keys)
+###get unique site information
 
+output = list({v['Sitengr']:v for v in output}.values())
 
+#get keys for export
+keys = set().union(*(d.keys() for d in output))
+keys = output[0].keys()
 
+#set path for site data
+BASE_DIR = os.path.dirname(__file__)
+CONFIG_DIR = os.path.join(BASE_DIR, '..', 'Data')
+DATA_FILE = os.path.join(CONFIG_DIR, 'sites_with_4G_rollout.csv')
 
+with open (DATA_FILE, 'w') as output_file:
+	dict_writer = csv.DictWriter(output_file, keys,
+								extrasaction='ignore',
+								lineterminator = '\n')
+	dict_writer.writeheader()
+	dict_writer.writerows(output)
 
+#pprint.pprint (output)
 
+# merged dictionary
+sites_by_postcode_sector = {}
+for i in output:
+	pcd_sector = i["pcd_sector"]
+	if pcd_sector not in sites_by_postcode_sector:
+		sites_by_postcode_sector[pcd_sector] = []
 
+	sites_by_postcode_sector[pcd_sector].append(i)
 
+# # counting and printing
+list_of_postcode_sector_sites = []
+for postcode_sector, sites in sites_by_postcode_sector.items():
+	print("{0}: {1}".format(postcode_sector, len(sites)))
+	site_ngrs = [site['Sitengr'] for site in sites]
+	list_of_postcode_sector_sites.append({
+		"pcd_sector": postcode_sector,
+		"site_ngrs": len(set(site_ngrs))
+	})
 
+#get keys for export
+keys = list_of_postcode_sector_sites[0].keys()
 
+#set path for site data
+BASE_DIR = os.path.dirname(__file__)
+CONFIG_DIR = os.path.join(BASE_DIR, '..', 'Data')
+DATA_FILE = os.path.join(CONFIG_DIR, 'sites_count_by_pcd_sector.csv')
 
-
-
-
-
-
-
-
-
-
-
-
-
+with open (DATA_FILE, 'w') as output_file:
+	dict_writer = csv.DictWriter(output_file, keys,
+								extrasaction='ignore',
+								lineterminator = '\n')
+	dict_writer.writeheader()
+	dict_writer.writerows(list_of_postcode_sector_sites)
