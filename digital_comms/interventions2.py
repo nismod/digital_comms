@@ -63,7 +63,8 @@ keys = ['name',
 		'area_coverage_2014',
 		'area_coverage_2015',
 		'area_coverage_2016',
-		]
+		'area_sq_km']
+
 rollout_4G = [dict((k, d[k]) for k in keys) for d in rollout_4G]#
 
 print('The length of rollout_4G is {}'.format(len(rollout_4G)))
@@ -78,7 +79,8 @@ for d in rollout_4G:
 for sub in rollout_4G:
 	for key in ['area_coverage_2014',
 				'area_coverage_2015',
-				'area_coverage_2016']: # list of keys to convert
+				'area_coverage_2016',
+				'area_sq_km']: # list of keys to convert
 		try:
 			sub[key] = float(sub[key]) if key !='NA' else None
 		except ValueError as e:
@@ -177,15 +179,21 @@ for i in output:
 # # counting and printing
 list_of_postcode_sector_sites = []
 for postcode_sector, sites in sites_by_postcode_sector.items():
-	print("{0}: {1}".format(postcode_sector, len(sites)))
+	#print("{0}: {1}".format(postcode_sector, len(sites)))
 	site_ngrs = [site['Sitengr'] for site in sites]
 	list_of_postcode_sector_sites.append({
 		"pcd_sector": postcode_sector,
 		"site_ngrs": len(set(site_ngrs))
 	})
 
+#### join the 'site_ngrs' count back to the output with the 'area_sq_km' key
+d1 = {d['pcd_sector']:d for d in output}
+site_count = [dict(d, **d1.get(d['pcd_sector'], {})) for d in list_of_postcode_sector_sites]
+
+print('The length of output is {}'.format(len(output)))
+
 #get keys for export
-keys = list_of_postcode_sector_sites[0].keys()
+keys = output[0].keys()
 
 #set path for site data
 BASE_DIR = os.path.dirname(__file__)
@@ -197,4 +205,6 @@ with open (DATA_FILE, 'w') as output_file:
 								extrasaction='ignore',
 								lineterminator = '\n')
 	dict_writer.writeheader()
-	dict_writer.writerows(list_of_postcode_sector_sites)
+	dict_writer.writerows(output)
+
+
