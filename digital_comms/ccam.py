@@ -128,12 +128,14 @@ class PostcodeSector(object):
 		self.population = data["population"]
 		self.area = data["area"]
 		# TODO: replace hard-coded parameters
-		self.user_demand = 2
+
+		### clarify the busy hour user demand parameters ###
+		self.user_demand = 2 * 1024 * 8 / 30 / 12 / 3600  #does this need to be bit/s or mbp/second? check with Zoraida
 		self.penetration = 0.8
 		self._assets = []
 		#I've turned assets from a list of dictionaries, to an explicit list per asset type
 
-	def add_asset(self, asset):
+	def add_asset(self, asset): #is asset an object? Should it be capitalised?
 		self._assets.append(asset)
 
 	def demand(self):
@@ -170,6 +172,10 @@ class PostcodeSector(object):
 		# for a given site density and spectrum band, look up capacity
 		capacity = lookup_capacity(site_density)
 		return capacity
+
+	def capacity_margin(self):
+		capacity_margin = self.capacity() - self.demand()
+		return capacity_margin
 
 	def cost(self):
 		# sites : count how many assets are sites

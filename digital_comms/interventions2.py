@@ -1,6 +1,7 @@
 import csv
 import os
 import pprint
+from digital_comms.ccam import PostcodeSector
 
 ################################################################
 #### IMPORT ASSET DATA
@@ -310,5 +311,40 @@ def lookup_capacity(lookup_table, environment, frequency, bandwidth, site_densit
 	_, lower_value = density_capacities[-1]
 	return lower_value
 
-
 lookup_capacity(lookup_table, "Urban", "700MHz", 50)
+
+################################################################
+#### EXAMPLE COST LOOKUP TABLE
+################################################################
+
+costs = {
+	'lte_present': [
+				{'new_carrier':1500}
+	],
+	'no_lte': [
+				{'multi_bs':40900, 'civils':18000}
+	],
+	'small_cells': [
+				{'small_cell':2500, 'civils':13300}
+	],
+	'core_upgrade': [
+				{'core_upgrade':1.1}
+	]
+}
+
+################################################################
+#### EXAMPLE UPGRADE PATH FOR INVESTMENT DECISIONS
+################################################################
+
+coverage = area_coverage_2016
+if coverage > 0:
+	cost = lte_present * sitengr_count
+else:
+    cost = no_lte * sitengr_count
+
+if capacity is not met:
+    	first_option = integrate_800
+		second_options = integrate_2.6
+    	third_option = integrate_700
+		forth_options = integrate_3.5
+
