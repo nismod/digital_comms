@@ -89,12 +89,17 @@ for sub in rollout_4G:
 #### join two lists of dicts on a single key
 
 d1 = {d['pcd_sector']:d for d in rollout_4G}
-output = [dict(d, **d1.get(d['pcd_sector'], {})) for d in assets]
+rollout_data = [dict(d, **d1.get(d['pcd_sector'], {})) for d in assets]
 
-print('The length of output is {}'.format(len(output)))
+print('The length of rollout_data is {}'.format(len(rollout_data)))
+
+
+################################################################
+#### ALLOCATE ANNUAL ROLLOUT COVERAGE TO ASSETS IN PCD_SECTORS
+################################################################
 
 #for 2014
-for item in output:
+for item in rollout_data:
 	try:
 		coverage = float(item['area_coverage_2014'])
 		if coverage > 0:
@@ -106,7 +111,7 @@ for item in output:
 		item["tech_2014"] = "Other"
 
 #for 2015
-for item in output:
+for item in rollout_data:
 	try:
 		coverage = float(item['area_coverage_2015'])
 		if coverage > 0:
@@ -118,7 +123,7 @@ for item in output:
 		item["tech_2015"] = "Other"
 
 ##for 2016
-for item in output:
+for item in rollout_data:
 	try:
 		coverage = float(item['area_coverage_2016'])
 		if coverage > 0:
@@ -129,9 +134,14 @@ for item in output:
 		item["coverage"] = 0
 		item["tech_2016"] = "Other"
 
+
+################################################################
+#### EXPORT ASSET-LEVEL ROLLOUT DATA
+################################################################
+
 #get keys for export
-keys = set().union(*(d.keys() for d in output))
-keys = output[0].keys()
+keys = set().union(*(d.keys() for d in rollout_data))
+keys = rollout_data[0].keys()
 
 #set path for sitefinder asset data
 BASE_DIR = os.path.dirname(__file__)
@@ -143,15 +153,18 @@ with open (DATA_FILE, 'w') as output_file:
 								extrasaction='ignore',
 								lineterminator = '\n')
 	dict_writer.writeheader()
-	dict_writer.writerows(output)
+	dict_writer.writerows(rollout_data)
+
+################################################################
+#### DETERMINE UNIQUE SITES, COUNT AND ADD DENSITY
+################################################################
 
 ###get unique site information
-
-output = list({v['Sitengr']:v for v in output}.values())
+site_info = list({v['Sitengr']:v for v in rollout_data}.values())
 
 #get keys for export
-keys = set().union(*(d.keys() for d in output))
-keys = output[0].keys()
+keys = set().union(*(d.keys() for d in site_info))
+keys = site_info[0].keys()
 
 #set path for site data
 BASE_DIR = os.path.dirname(__file__)
@@ -163,13 +176,26 @@ with open (DATA_FILE, 'w') as output_file:
 								extrasaction='ignore',
 								lineterminator = '\n')
 	dict_writer.writeheader()
-	dict_writer.writerows(output)
+	dict_writer.writerows(site_info)
 
-#pprint.pprint (output)
 
 # merged dictionary
+"""
+{
+	"CB11": [
+		{"sitengr": 123, "tech": "Other" ... },
+		{"sitengr": 123, "tech": "Other" ... },
+		{"sitengr": 123, "tech": "Other" ... },
+		{"sitengr": 123, "tech": "Other" ... },
+	]
+	"CB12": [
+		{"sitengr": 123, "tech": "Other" ... },
+		{"sitengr": 123, "tech": "Other" ... },
+	]
+}
+"""
 sites_by_postcode_sector = {}
-for i in output:
+for i in site_info:
 	pcd_sector = i["pcd_sector"]
 	if pcd_sector not in sites_by_postcode_sector:
 		sites_by_postcode_sector[pcd_sector] = []
@@ -177,23 +203,43 @@ for i in output:
 	sites_by_postcode_sector[pcd_sector].append(i)
 
 # # counting and printing
-list_of_postcode_sector_sites = []
+"""
+{
+	"CB11": 4
+	"CB12": 2
+}
+"""
+site_counts_by_postcode_sector = {}
 for postcode_sector, sites in sites_by_postcode_sector.items():
 	#print("{0}: {1}".format(postcode_sector, len(sites)))
 	site_ngrs = [site['Sitengr'] for site in sites]
-	list_of_postcode_sector_sites.append({
-		"pcd_sector": postcode_sector,
-		"site_ngrs": len(set(site_ngrs))
-	})
+	site_counts_by_postcode_sector[postcode_sector] = len(set(site_ngrs))
+
+print (rollout_4G[0])
 
 #### join the 'site_ngrs' count back to the output with the 'area_sq_km' key
-d1 = {d['pcd_sector']:d for d in output}
-site_count = [dict(d, **d1.get(d['pcd_sector'], {})) for d in list_of_postcode_sector_sites]
+for postcode_sector_data in rollout_4G:
+	postcode_sector = postcode_sector_data["pcd_sector"]
+	if postcode_sector in site_counts_by_postcode_sector:
+		site_count = site_counts_by_postcode_sector[postcode_sector]
+		postcode_sector_data["site_count"] = site_count
 
-print('The length of output is {}'.format(len(output)))
+		area_sq_km = postcode_sector_data["area_sq_km"]
+		site_density = site_count / area_sq_km
+		postcode_sector_data["site_density"] = site_density
+	else:
+		# assume zero for missing data
+		postcode_sector_data["site_count"] = 0
+		postcode_sector_data["site_density"] = 0
+
+print('The length of site_count is {}'.format(len(rollout_4G)))
+
+################################################################
+#### EXPORT SITES COUNT BY PCD_SECTOR
+################################################################
 
 #get keys for export
-keys = output[0].keys()
+keys =  rollout_4G[0].keys()
 
 #set path for site data
 BASE_DIR = os.path.dirname(__file__)
@@ -205,6 +251,64 @@ with open (DATA_FILE, 'w') as output_file:
 								extrasaction='ignore',
 								lineterminator = '\n')
 	dict_writer.writeheader()
-	dict_writer.writerows(output)
+	dict_writer.writerows(rollout_4G)
+
+################################################################
+#### IMPORT LOOKUP TABLES
+################################################################
+
+#set path for sitefinder asset data
+BASE_DIR = os.path.dirname(__file__)
+CONFIG_DIR = os.path.join(BASE_DIR, '..', 'Data')
+DATA_FILE = os.path.join(CONFIG_DIR, 'lookup_table_structure.csv')
+
+#set DictReader with file name for 4G rollout data
+reader = csv.DictReader(open(DATA_FILE))
+
+#create empty dictionary
+lookup_table = {}
+
+lookup_keys = ["Environment", "Frequency", "Bandwidth"]
+density_lower_bounds = [0, 0.5, 1, 10]  # must be in ascending order
+
+#populate dictionary - this gives a dict for each row, with each heading as a key
+for row in reader:
+	environment = row["Environment"]
+	frequency = row["Frequency"]
+	bandwidth = row["Bandwidth"]
+	if environment not in lookup_table:
+		lookup_table[environment] = {}
+	if frequency not in lookup_table[environment]:
+		lookup_table[environment][frequency] = {}
+
+	density_capacities = [(lower_bound, row[str(lower_bound)]) for lower_bound in density_lower_bounds]
+	lookup_table[environment][frequency][bandwidth] = density_capacities
 
 
+def lookup_capacity(lookup_table, environment, frequency, bandwidth, site_density):
+	if environment not in lookup_table:
+		raise KeyError("Environment %s not found in lookup table", environment)
+	if frequency not in lookup_table[environment]:
+		raise KeyError("Frequency %s not found in lookup table", frequency)
+	if bandwidth not in lookup_table[environment][frequency]:
+		raise KeyError("Bandwidth %s not found in lookup table", bandwidth)
+
+	density_capacities = lookup_table[environment][frequency][bandwidth]
+	for i, (lower_bound, capacity) in enumerate(density_capacities):
+		if site_density < lower_bound:
+			if i == 0:
+				raise ValueError("Site density %s less than lowest in lookup table", site_density)
+			else:
+				_, lower_value = density_capacities[i - 1]
+				return lower_value
+		elif site_density == lower_bound:
+			return capacity
+		else:
+			pass # site_density is greater than lower bound
+
+	# got to end of list, so return maximum value from last item
+	_, lower_value = density_capacities[-1]
+	return lower_value
+
+
+lookup_capacity(lookup_table, "Urban", "700MHz", 50)
