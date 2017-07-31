@@ -336,6 +336,29 @@ costs = {
 #### EXAMPLE UPGRADE PATH FOR INVESTMENT DECISIONS
 ################################################################
 
+
+
+### Intervention 1 ###
+### Minimal Intervention ### 'Do Nothing Scenario'
+### Build no more additional sites - > will lead to a capacity margin deficit
+### The cost will be the replacement of existing units annually based on the decommissioning rate of 10%
+### Capacity will be the sum of 800 and 2600 MHz
+
+
+
+### Intervention 2 ###
+### Integrate 700 and 3500 MHz on to the macrocellular layer
+### The cost will be the addtion of another carrier on each basestation ~£15k (providing thre is 4G already)
+### If 4G isn't present, the site will need major upgrades.
+
+
+
+### Intervention 3 ###
+### Deploy a small cell layer at 3700 MHz
+### The cost will include the small cell unit and the civil works per cell
+
+
+
 coverage = area_coverage_2016
 if coverage > 0:
 	cost = lte_present * sitengr_count
