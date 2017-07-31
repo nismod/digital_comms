@@ -2,8 +2,8 @@
 - run over multiple years
 - make rule-based intervention decisions at each timestep
 """
-from collections import defaultdict
 import csv
+import os
 import pprint
 from digital_comms.ccam import ICTManager
 
@@ -31,7 +31,10 @@ from digital_comms.ccam import ICTManager
 # 	},
 # ]
 lads = []
-lad_filename = r"C:\Users\EJO31\Dropbox\Digital Comms - Cambridge data\lads.csv"
+# base_path = r"C:\Users\EJO31\Dropbox\Digital Comms - Cambridge data"
+base_path = r"C:\Users\mert2014\Dropbox\Digital Comms - Cambridge data"
+lad_filename = os.path.join(base_path, "lads.csv")
+
 with open(lad_filename, 'r') as lad_file:
 	reader = csv.DictReader(lad_file)
 	for line in reader:
@@ -65,7 +68,7 @@ with open(lad_filename, 'r') as lad_file:
 # 	},
 # ]
 pcd_sectors = []
-pcd_sector_filename = r"C:\Users\EJO31\Dropbox\Digital Comms - Cambridge data\pcd_sectors.csv"
+pcd_sector_filename = os.path.join(base_path, "pcd_sectors.csv")
 with open(pcd_sector_filename, 'r') as pcd_sector_file:
 	reader = csv.DictReader(pcd_sector_file)
 	for line in reader:
@@ -80,9 +83,9 @@ with open(pcd_sector_filename, 'r') as pcd_sector_file:
 # Read in population
 # by scenario:  year, pcd_sector, population
 scenario_files = {
-	"high": r"C:\Users\EJO31\Dropbox\Digital Comms - Cambridge data\population_high_cambridge_pcd.csv",
-	"base": r"C:\Users\EJO31\Dropbox\Digital Comms - Cambridge data\population_base_cambridge_pcd.csv",
-	"low": r"C:\Users\EJO31\Dropbox\Digital Comms - Cambridge data\population_low_cambridge_pcd.csv"
+	"high": os.path.join(base_path, "population_high_cambridge_pcd.csv"),
+	"base": os.path.join(base_path, "population_base_cambridge_pcd.csv"),
+	"low": os.path.join(base_path, "population_low_cambridge_pcd.csv")
 }
 population_by_scenario_year_pcd = {}
 
@@ -113,7 +116,7 @@ for scenario, filename in scenario_files.items():
 sites_by_postcode = {}
 pcd_sector_ids = [pcd_sector["id"] for pcd_sector in pcd_sectors]
 
-assets_filename = r"C:\Users\EJO31\Dropbox\Digital Comms - Cambridge data\sitefinder_asset_data.csv"
+assets_filename = os.path.join(base_path, "sitefinder_asset_data.csv")
 with open(assets_filename, 'r') as assets_file:
 	reader = csv.DictReader(assets_file)
 	for line in reader:
