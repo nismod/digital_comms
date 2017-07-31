@@ -344,6 +344,40 @@ costs = {
     ]
 }
 
+# Postcode-sector level individual interventions
+[
+    {
+        'name': 'Upgrade site to LTE',
+        'description': 'If a site has only 2G/3G',
+        'result': '800 and 2600 bands available',
+        'cost': ((40900 + 18000) * 1.1),
+    },
+    {
+        'name': 'Replace LTE site',
+        'description': 'Available if a site has had LTE decommissioned',
+        'result': '800 and 2600 bands available',
+        'cost': (1500 * 1.1),
+    },
+    {
+        'name': 'Build 700 MHz carrier',
+        'description': 'Available if a site has LTE',
+        'result': '700 band available',
+        'cost': (1500 * 1.1),
+    },
+    {
+        'name': 'Build 1500 MHz carrier',
+        'description': 'Available if a site has LTE',
+        'result': '1500 band available',
+        'cost': (1500 * 1.1),
+    },
+    {
+        'name': 'Build a small cell',
+        'description': 'Must be deployed at preset densities to be modelled',
+        'result': '2x50 MHz small cells available at given density',
+        'cost': ((2500 + 13300) * 1.1),
+    },
+]
+
 ################################################################
 # EXAMPLE UPGRADE PATH FOR INVESTMENT DECISIONS
 ################################################################
