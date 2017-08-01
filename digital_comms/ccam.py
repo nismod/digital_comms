@@ -102,26 +102,45 @@ class LAD(object):
         return system
 
     def capacity(self):
-        """returning the value from the method in pcd_sector object"""
-        return sum([pcd_sector.capacity() for pcd_sector in self._pcd_sectors.values()])
+        """Return the mean capacity from all nested postcode sectors
+        """
+        summed_capacity = sum([
+            pcd_sector.capacity
+            for pcd_sector in self._pcd_sectors.values()])
+        return summed_capacity / len(self._pcd_sectors)
 
     def demand(self):
-        """returning the value from the method in pcd_sector object"""
-        return sum([pcd_sector.demand() for pcd_sector in self._pcd_sectors.values()]) / len(self._pcd_sectors)
+        """Return the mean capacity demand from all nested postcode sectors
+        """
+        summed_demand = sum([
+            pcd_sector.demand
+            for pcd_sector in self._pcd_sectors.values()])
+        return summed_demand / len(self._pcd_sectors)
 
     def coverage(self):
+        """Return proportion of population with capacity coverage over a threshold
+        """
+        # TODO replace hardcoded threshold value
         threshold = 2
-        population_with_coverage = sum([pcd_sector.population for pcd_sector in self._pcd_sectors.values() if pcd_sector.capacity() >= threshold])
-        total_pop = sum([pcd_sector.population for pcd_sector in self._pcd_sectors.values()])
+
+        population_with_coverage = sum([
+            pcd_sector.population
+            for pcd_sector in self._pcd_sectors.values()
+            if pcd_sector.capacity >= threshold])
+        total_pop = sum([
+            pcd_sector.population
+            for pcd_sector in self._pcd_sectors.values()])
         return float(population_with_coverage) / total_pop
 
     def cost(self):
-        '''returning the value from the method in pcd_sector object'''
-        return sum([pcd_sector.cost() for pcd_sector in self._pcd_sectors.values()])
+        """Return the sum of costs from all nested postcode sectors
+        """
+        return sum([pcd_sector.cost for pcd_sector in self._pcd_sectors.values()])
 
     def energy_demand(self):
-        '''returning the value from the method in pcd_sector object'''
-        return sum([pcd_sector.energy_demand() for pcd_sector in self._pcd_sectors.values()])
+        """Return the sum of energy demand from all nested postcode sectors
+        """
+        return sum([pcd_sector.energy_demand for pcd_sector in self._pcd_sectors.values()])
 
 class PostcodeSector(object):
     """Represents a pcd_sector to be modelled
