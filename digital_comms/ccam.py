@@ -212,12 +212,36 @@ class PostcodeSector(object):
 
     @property
     def capacity(self):
-        # sites : count how many assets are sites
-        sites = len(list(filter(lambda asset: asset.type == "site", self._assets)))
-        # sites/km^2 : divide num_sites/area
-        site_density = float(sites) / self.area
-        # for a given site density and spectrum band, look up capacity
-        capacity = lookup_capacity(site_density)
+        """Calculate capacity as sum of capacity based principally on the site
+        density of each frequency/bandwidth combination.
+        """
+        # Find unique frequency/bandwidth combinations
+        technology_combinations = set([
+            (asset.frequency, asset.bandwidth)
+            for asset in self._assets
+        ])
+
+        capacity = 0
+
+        for frequency, bandwidth in technology_combinations:
+            # count sites with this frequency/bandwidth combination
+            num_sites = len(set([
+                asset.site_ngr
+                for asset in self._assets
+                if asset.frequency == frequency and
+                asset.bandwidth == bandwidth
+            ]))
+            # sites/km^2 : divide num_sites/area
+            site_density = float(num_sites) / self.area
+
+            # for a given site density and spectrum band, look up capacity
+            capacity += lookup_capacity(
+                self._capacity_lookup_table,
+                self.clutter_environment,
+                frequency,
+                bandwidth,
+                site_density)
+
         return capacity
 
     @property
