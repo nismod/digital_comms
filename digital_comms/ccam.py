@@ -208,30 +208,36 @@ class Asset(object):
         return fmt.format(self.type, self.pcd_sector_id, self.cells, self.technology)
 
 
-def lookup_capacity(site_density):
-    """Use lookup table to find capacity by site density
+def lookup_capacity(lookup_table, environment, frequency, bandwidth, site_density):
+    """Use lookup table to find capacity by geotype, frequency, bandwidth and
+    site density
+
     TODO:
-    - extend to include spectrum band
-    - load from data source?
-    - handle any density - round/bin
+    - neat handling of loaded lookup_table
     """
-    lookup_table = {
-        5:70,
-        3:24,
-        2:12,
-        1.5:9,
-        1:6,
-        0.75:4.5,
-        0.5: 3,
-        0.25: 2,
-        0.2: 1,
-        0.1: 0.5,
-        0: 0
-    }
-    site_density = round(site_density, 1)
-    if site_density not in lookup_table:
-        site_density = 0.2 # TODO FIXME#####################################################################
-    return lookup_table[site_density]
+    if environment not in lookup_table:
+        raise KeyError("Environment %s not found in lookup table", environment)
+    if frequency not in lookup_table[environment]:
+        raise KeyError("Frequency %s not found in lookup table", frequency)
+    if bandwidth not in lookup_table[environment][frequency]:
+        raise KeyError("Bandwidth %s not found in lookup table", bandwidth)
+
+    density_capacities = lookup_table[environment][frequency][bandwidth]
+    for i, (lower_bound, capacity) in enumerate(density_capacities):
+        if site_density < lower_bound:
+            if i == 0:
+                raise ValueError("Site density %s less than lowest in lookup table", site_density)
+            else:
+                _, lower_value = density_capacities[i - 1]
+                return lower_value
+        elif site_density == lower_bound:
+            return capacity
+        else:
+            pass  # site_density is greater than lower bound
+
+    # got to end of list, so return maximum value from last item
+    _, lower_value = density_capacities[-1]
+    return lower_value
 
 
 # __name__ == '__main__' means that the module is bring run in standalone by the user
