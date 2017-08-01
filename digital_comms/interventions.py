@@ -4,8 +4,8 @@
 
 ################################################################
 # EXAMPLE COST LOOKUP TABLE
+# - TODO come back to net present value or total cost of ownership for costs
 ################################################################
-
 costs = {
     'lte_present': [
         {'new_carrier': 1500}
@@ -50,7 +50,7 @@ costs = {
     {
         'name': 'Build a small cell',
         'description': 'Must be deployed at preset densities to be modelled',
-        'result': '2x50 MHz small cells available at given density',
+        'result': '2x25 MHz small cells available at given density',
         'cost': ((2500 + 13300) * 1.1),
     },
 ]
@@ -85,10 +85,10 @@ costs = {
 # else:
 #     cost = no_lte * sitengr_count
 
-# if capacity is not met:
-#         first_option = integrate_800
-#         second_options = integrate_2.6
-#         third_option = integrate_700
-#         forth_options = integrate_3.5
+# while capacity is not met:
+#    integrate_800 and integrate_2.6
+#    integrate_700
+#    integrate_3.5
+#    build small cells to next density
+#    fail
 
-# Come back to net present value or total cost of ownership for costs
