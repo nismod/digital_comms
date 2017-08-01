@@ -145,50 +145,72 @@ class LAD(object):
 class PostcodeSector(object):
     """Represents a pcd_sector to be modelled
     """
-    def __init__(self, data):
+    def __init__(self, data, capacity_lookup_table, clutter_lookup):
         self.id = data["id"]
-        self.lad_id = ["lad_id"]
-        self.name = data["name"]
         self.population = data["population"]
         self.area = data["area"]
-        # TODO: replace hard-coded parameters
 
-        # clarify the busy hour user demand parameters ###
-        # does this need to be bit/s or mbp/second? check with Zoraida
-        self.user_demand = 2 * 1024 * 8 / 30 / 12 / 3600
+        user_throughput = data["user_throughput"]
+        self.user_demand = self._calculate_user_demand(user_throughput)
+
+        self._capacity_lookup_table = capacity_lookup_table
+        self._clutter_lookup = clutter_lookup
+
+        # TODO: replace hard-coded parameter
         self.penetration = 0.8
-        self._assets = []
-        # I've turned assets from a list of dictionaries, to an explicit list per asset type
 
-    def add_asset(self, asset):  # is asset an object? Should it be capitalised?
+        # Keep list of assets
+        self._assets = []
+
+    def __repr__(self):
+        return "<PostcodeSector id:{}>".format(self.id)
+
+    def _calculate_user_demand(self, user_throughput):
+        """Calculate Mb/second from GB/month supplied as throughput scenario
+
+        E.g.
+            2 GB per month
+                * 1024 to find MB
+                * 8 to covert bytes to bits
+                * 1/9 assuming 9 busy hours per day
+                * 1/30 assuming 30 days per month
+                * 1/3600 converting hours to seconds,
+            = ~0.02 Mbps required per user
+        """
+        return user_throughput * 1024 * 8 / 9 / 30 / 3600
+
+    def add_asset(self, asset):
+        """Add an instance of an Asset object to this area's assets
+        """
         self._assets.append(asset)
 
+    @property
     def demand(self):
+        """Estimate total demand based on population and penetration
+
+        E.g.
+            0.02 Mbps per user during busy hours
+                * 100 population
+                * 0.8 penetration
+                / 10 km^2 area
+            = ~0.16 Mbps/km^s area capacity demand
+        """
         users = self.population * self.penetration
         user_throughput = users * self.user_demand
         capacity_per_kmsq = user_throughput / self.area
         return capacity_per_kmsq
 
-    def system(self):
-        system = {
-            "GSM": 0,
-            "UMTS": 0,
-            "LTE": 0,
-            "LTE-Advanced": 0,
-            "5G": 0
-        }
-        print(self._assets)
-        for asset in self._assets:
-            tech = asset.technology
-            cells = asset.cells
-            # check tech is in area
-            if tech not in system:
-                system[tech] = 0
-            # add number of cells to tech in area
-            system[tech] += cells
-        print(system)
-        return system
+    @property
+    def clutter_environment(self):
+        """Estimate clutter_environment geotype based on population density
+        """
+        population_density = self.population / self.area
+        return lookup_clutter_geotype(
+            self._clutter_lookup,
+            population_density
+        )
 
+    @property
     def capacity(self):
         # sites : count how many assets are sites
         sites = len(list(filter(lambda asset: asset.type == "site", self._assets)))
@@ -198,22 +220,27 @@ class PostcodeSector(object):
         capacity = lookup_capacity(site_density)
         return capacity
 
+    @property
     def capacity_margin(self):
-        capacity_margin = self.capacity() - self.demand()
+        capacity_margin = self.capacity - self.demand
         return capacity_margin
 
+    @property
     def cost(self):
         # sites : count how many assets are sites
-        sites = len(list(filter(lambda asset: asset.type == "site", self._assets)))
+        sites = len(set([asset.site_ngr for asset in self._assets]))
         # for a given number of sites, what is the total cost?
-        cost = (sites * 10)  # TODO replace hardcoded value
+        # TODO replace hardcoded value
+        cost = (sites * 10)
         return cost
 
+    @property
     def energy_demand(self):
         # cells : count how many cells there are in the assets database
         cells = sum([asset.cells for asset in self._assets])
         # for a given number of cells, what is the total cost?
-        energy_demand = (cells * 5)  # TODO replace hardcoded value
+        # TODO replace hardcoded value
+        energy_demand = (cells * 5)
         return energy_demand
 
 
