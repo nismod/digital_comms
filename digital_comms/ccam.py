@@ -1,24 +1,34 @@
 """Cambridge Communications Assessment Model
 """
-# pylint: disable=W0312
-
+from itertools import tee
+from pprint import pprint
 
 class ICTManager(object):
     """Model controller class
     """
-    def __init__(self, lads, pcd_sectors, assets):
+    def __init__(self, lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup):
         """Create an instance of the model
 
         Parameters
         ----------
-        areas: list of dicts
-            Each area is an LAD, expect the dictionary to have values for
-            - ID
+        lads: list of dicts
+            Each LAD must have values for:
+            - id
             - name
+        pcd_sectors: list of dicts
+            Each postcode sector must have values for:
+            - id
+            - lad_id
             - population
-            - area (km^2)
-            - penetration
-            - user demand
+            - area
+            - user_throughput
+        assets: list of dicts
+            Each asset must have values for:
+            - pcd_sector
+            - site_ngr
+            - technology
+            - frequency
+            - bandwidth
         """
         # Area ID (integer?) => Area
         self.lads = {}
@@ -31,14 +41,14 @@ class ICTManager(object):
         # }
 
         for lad_data in lads:  # lad_data in lads <-'lads' is the list of dicts of lad data
-            id = lad_data["id"]  # find ID out of lads list of dicts
-            self.lads[id] = LAD(lad_data)  # create LAD object using lad_data and put in self.lads dict
+            lad_id = lad_data["id"]  # find ID out of lads list of dicts
+            self.lads[lad_id] = LAD(lad_data)  # create LAD object using lad_data and put in self.lads dict
 
         for pcd_sector_data in pcd_sectors:
             lad_id = pcd_sector_data["lad_id"]
             pcd_sector_id = pcd_sector_data["id"]
             # add PostcodeSector to LAD
-            pcd_sector = PostcodeSector(pcd_sector_data)
+            pcd_sector = PostcodeSector(pcd_sector_data, capacity_lookup_table, clutter_lookup)
             lad_containing_pcd_sector = self.lads[lad_id]
             lad_containing_pcd_sector.add_pcd_sector(pcd_sector)
             # add LAD id to lookup by pcd_sector_id
@@ -46,16 +56,12 @@ class ICTManager(object):
 
         for asset_data in assets:
             asset = Asset(asset_data)
-            lad_id = lad_id_by_pcd_sector[asset.pcd_sector_id]
+            lad_id = lad_id_by_pcd_sector[asset.pcd_sector]
             area_for_asset = self.lads[lad_id]
             area_for_asset.add_asset(asset)
 
-    def apply_interventions(self, interventions):
-        pass
-
     def results(self):
         return {
-            "system": {area.name: area.system() for area in self.lads.values()},
             "capacity": {area.name: area.capacity() for area in self.lads.values()},
             "coverage": {area.name: area.coverage() for area in self.lads.values()},
             "demand": {area.name: area.demand() for area in self.lads.values()},
@@ -71,7 +77,6 @@ class LAD(object):
     def __init__(self, data):
         self.id = data["id"]
         self.name = data["name"]
-        self.user_demand = data["user_demand"]
         self._pcd_sectors = {}
 
     def __repr__(self):
@@ -81,7 +86,7 @@ class LAD(object):
         self._pcd_sectors[pcd_sector.id] = pcd_sector
 
     def add_asset(self, asset):
-        pcd_sector_id = asset.pcd_sector_id
+        pcd_sector_id = asset.pcd_sector
         self._pcd_sectors[pcd_sector_id].add_asset(asset)
 
     def system(self):
@@ -198,216 +203,147 @@ class Asset(object):
     e.g. base station or distribution-point unit.
     """
     def __init__(self, data):
-        self.type = data["type"]
-        self.pcd_sector_id = data["pcd_sector_id"]
-        self.cells = data["cells"]
+        self.pcd_sector = data["pcd_sector"]
+        self.site_ngr = data["site_ngr"]
         self.technology = data["technology"]
+        self.frequency = data["frequency"]
+        self.bandwidth = data["bandwidth"]
+        # Assume any mobile asset has 3 cells
+        self.cells = 3
 
     def __repr__(self):
-        fmt = "Asset(type={}, pcd_sector_id={}, cells={}, technology={})"
-        return fmt.format(self.type, self.pcd_sector_id, self.cells, self.technology)
+        fmt = r'Asset(\{"pcd_sector": {}, "site_ngr": {}, "technology": {},' + \
+            r' "frequency": {}, "bandwidth": {}\})'
+        return fmt.format(self.pcd_sector, self.site_ngr, self.technology,
+                          self.frequency, self.bandwidth)
 
 
-def lookup_capacity(lookup_table, environment, frequency, bandwidth, site_density):
-    """Use lookup table to find capacity by geotype, frequency, bandwidth and
-    site density
+def pairwise(iterable):
+    """Return iterable of 2-tuples in a sliding window
+
+        >>> list(pairwise([1,2,3,4]))
+        [(1,2),(2,3),(3,4)]
+    """
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
+
+
+def lookup_clutter_geotype(clutter_lookup, population_density):
+    """Return geotype based on population density
+
+    Params:
+    ======
+    clutter_lookup : list of (population_density_upper_bound, geotype) tuples
+        sorted by population_density_upper_bound ascending
+    """
+    lowest_popd, lowest_geotype = clutter_lookup[0]
+    if population_density < lowest_popd:
+        # Never fail, simply return least dense geotype
+        return lowest_geotype
+
+    for (lower_popd, lower_geotype), (upper_popd, upper_geotype) in pairwise(clutter_lookup):
+        if lower_popd < population_density and population_density <= upper_popd:
+            # Be pessimistic about clutter, return upper bound
+            return upper_geotype
+
+    # If not caught between bounds, return highest geotype
+    highest_popd, highest_geotype = clutter_lookup[-1]
+    return highest_geotype
+
+
+def lookup_capacity(lookup_table, clutter_environment, frequency, bandwidth, site_density):
+    """Use lookup table to find capacity by clutter environment geotype,
+    frequency, bandwidth and site density
 
     TODO:
     - neat handling of loaded lookup_table
     """
-    if environment not in lookup_table:
-        raise KeyError("Environment %s not found in lookup table", environment)
-    if frequency not in lookup_table[environment]:
-        raise KeyError("Frequency %s not found in lookup table", frequency)
-    if bandwidth not in lookup_table[environment][frequency]:
-        raise KeyError("Bandwidth %s not found in lookup table", bandwidth)
+    if (clutter_environment, frequency, bandwidth) not in lookup_table:
+        raise KeyError("Combination %s not found in lookup table",
+                       (clutter_environment, frequency, bandwidth))
 
-    density_capacities = lookup_table[environment][frequency][bandwidth]
-    for i, (lower_bound, capacity) in enumerate(density_capacities):
-        if site_density < lower_bound:
-            if i == 0:
-                raise ValueError("Site density %s less than lowest in lookup table", site_density)
-            else:
-                _, lower_value = density_capacities[i - 1]
-                return lower_value
-        elif site_density == lower_bound:
-            return capacity
-        else:
-            pass  # site_density is greater than lower bound
+    density_capacities = lookup_table[(clutter_environment, frequency, bandwidth)]
 
-    # got to end of list, so return maximum value from last item
-    _, lower_value = density_capacities[-1]
-    return lower_value
+    lowest_density, lowest_capacity = density_capacities[0]
+    if site_density < lowest_density:
+        # Never fail, return zero capacity if site density is below range
+        return 0
+
+    for a, b in pairwise(density_capacities):
+        lower_density, lower_capacity = a
+        upper_density, upper_capacity = b
+        if lower_density <= site_density and site_density < upper_density:
+            # Be pessimistic about capacity, return lower bound
+            return lower_capacity
+
+    # If not caught between bounds return highest capacity
+    highest_density, highest_capacity = density_capacities[-1]
+    return highest_capacity
 
 
 # __name__ == '__main__' means that the module is bring run in standalone by the user
 if __name__ == '__main__':
-    lads = [
+    LADS = [
         {
             "id": 1,
             "name": "Cambridge",
-            "population": 250000,
-            "area": 10,
-            "user_demand": 1,
-            "spectrum_available": {
-                "GSM 900": True,
-                "GSM 1800": True,
-                "UMTS 900": True,
-                "UMTS 2100": True,
-                "LTE 800": True,
-                "LTE 1800": True,
-                "LTE 2600": True,
-                "5G 700": False,
-                "5G 3400": False,
-                "5G 3600": False,
-                "5G 26000": False,
-            }
-        },
-        {
-            "id": 2,
-            "name": "Oxford",
-            "population": 220000,
-            "area": 10,
-            "user_demand": 1,
-            "spectrum_available": {
-                "GSM 900": True,
-                "GSM 1800": True,
-                "UMTS 900": True,
-                "UMTS 2100": True,
-                "LTE 800": False,
-                "LTE 1800": False,
-                "LTE 2600": False,
-                "5G 700": False,
-                "5G 3400": False,
-                "5G 3600": False,
-                "5G 26000": False,
-            }
         }
     ]
-    pcd_sectors = [
+    PCD_SECTORS = [
         {
-            "id": 1,
+            "id": "CB11",
             "lad_id": 1,
-            "name": "CB1G",
-            "population": 50000,
+            "population": 500,
             "area": 2,
+            "user_throughput": 2
         },
         {
-            "id": 2,
+            "id": "CB12",
             "lad_id": 1,
-            "name": "CB1H",
-            "population": 50000,
+            "population": 200,
             "area": 2,
-        },
-        {
-            "id": 3,
-            "lad_id": 2,
-            "name": "OX1A",
-            "population": 50000,
-            "area": 4,
-        },
-        {
-            "id": 4,
-            "lad_id": 2,
-            "name": "OX1B",
-            "population": 50000,
-            "area": 4
+            "user_throughput": 2
         }
     ]
-    assets = [
+    ASSETS = [
         {
-            "type": "site",
-            "pcd_sector_id": 1,
-            "cells": 3,
-            "technology": "UMTS",
-            "year": 2017
-        },
-        {
-            "type": "site",
-            "pcd_sector_id": 1,
-            "cells": 3,
+            "pcd_sector": "CB11",
+            "site_ngr": 100,
             "technology": "LTE",
-            "year": 2017
+            "frequency": "800",
+            "bandwidth": "2x10MHz",
+            "build_date": 2017
         },
         {
-            "type": "site",
-            "pcd_sector_id": 1,
-            "cells": 5,
-            "technology": "LTE-Advanced",
-            "year": 2018
-        },
-        {
-            "type": "site",
-            "pcd_sector_id": 2,
-            "cells": 3,
-            "technology": "UMTS",
-            "year": 2017
-        },
-        {
-            "type": "site",
-            "pcd_sector_id": 2,
-            "cells": 3,
+            "pcd_sector": "CB12",
+            "site_ngr": 200,
             "technology": "LTE",
-            "year": 2017
-        },
-        {
-            "type": "site",
-            "pcd_sector_id": 2,
-            "cells": 6,
-            "technology": "LTE-Advanced",
-            "year": 2018
-        },
-        {
-            "type": "site",
-            "pcd_sector_id": 3,
-            "cells": 3,
-            "technology": "UMTS",
-            "year": 2017
-        },
-        {
-            "type": "site",
-            "pcd_sector_id": 3,
-            "cells": 3,
-            "technology": "LTE",
-            "year": 2017
-        },
-        {
-            "type": "site",
-            "pcd_sector_id": 3,
-            "cells": 2,
-            "technology": "LTE-Advanced",
-            "year": 2018
-        },
-        {
-            "type": "site",
-            "pcd_sector_id": 4,
-            "cells": 1,
-            "technology": "UMTS",
-            "year": 2017
-        },
-        {
-            "type": "site",
-            "pcd_sector_id": 4,
-            "cells": 1,
-            "technology": "LTE",
-            "year": 2017
-        },
-        {
-            "type": "site",
-            "pcd_sector_id": 4,
-            "cells": 3,
-            "technology": "LTE-Advanced",
-            "year": 2018
+            "frequency": "2600",
+            "bandwidth": "2x10MHz",
+            "build_date": 2017
         }
     ]
 
+    CAPACITY_LOOKUP = {
+        ("Urban", "800", "2x10MHz"): [
+            (0, 1),
+            (1, 2),
+        ],
+        ("Urban", "2600", "2x10MHz"): [
+            (0, 3),
+            (3, 5),
+        ]
+    }
 
-    manager = ICTManager(lads, pcd_sectors, assets)
-    import pprint
-    pprint.pprint(manager.results())
+    CLUTTER_LOOKUP = [
+        (5, "Urban")
+    ]
 
-    print(manager.lads)
-    for lad in manager.lads.values():
-        print(lad.name)
-        print(lad._pcd_sectors)
+    MANAGER = ICTManager(LADS, PCD_SECTORS, ASSETS, CAPACITY_LOOKUP, CLUTTER_LOOKUP)
+    pprint(MANAGER.results())
 
+    for lad in MANAGER.lads.values():
+        pprint(lad)
+        for pcd in lad._pcd_sectors.values():
+            print(" ", pcd, "capacity:{:.2f} demand:{:.2f}".format(pcd.capacity, pcd.demand))
