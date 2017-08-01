@@ -5,15 +5,42 @@
 import csv
 import os
 import pprint
+
 from digital_comms.ccam import ICTManager
+
+import digital_comms.interventions
+
+################################################################
+# SETUP MODEL RUN CONFIGURATION
+# - timesteps, scenarios, strategies
+# - data files base path
+################################################################
+
+# BASE_PATH = r"C:\Users\EJO31\Dropbox\Digital Comms - Cambridge data"
+# BASE_PATH = r"C:\Users\mert2014\Dropbox\Digital Comms - Cambridge data"
+BASE_PATH = "/home/tom/Dropbox/Digital Comms - Cambridge data"
 
 BASE_YEAR = 2017
 END_YEAR = 2020
 TIMESTEP_INCREMENT = 1
 
-# BASE_PATH = r"C:\Users\EJO31\Dropbox\Digital Comms - Cambridge data"
-# BASE_PATH = r"C:\Users\mert2014\Dropbox\Digital Comms - Cambridge data"
-BASE_PATH = "/home/tom/Dropbox/Digital Comms - Cambridge data"
+POPULATION_SCENARIOS = [
+    "high",
+    "base",
+    "low",
+]
+THROUGHPUT_SCENARIOS = [
+    "high",
+    "base",
+    "low",
+]
+INTERVENTION_STRATEGIES = [
+    "minimal",
+    "macrocell_no_so",
+    "macrocell_with_so",
+    "small_cell_no_so",
+    "small_cell_with_so",
+]
 
 
 ################################################################
@@ -26,7 +53,6 @@ BASE_PATH = "/home/tom/Dropbox/Digital Comms - Cambridge data"
 # 	{
 # 		"id": 1,
 # 		"name": "Cambridge",
-# 		"area": 10,
 # 		"user_demand": 1,
 # 		"spectrum_available": {
 # 			"GSM 900": True,
@@ -52,20 +78,7 @@ with open(lad_filename, 'r') as lad_file:
         lads.append({
             "id": line["id"],
             "name": line["name"],
-            "user_demand": 1,
-            "spectrum_available": {
-                "GSM 900": True,
-                "GSM 1800": True,
-                "UMTS 900": True,
-                "UMTS 2100": True,
-                "LTE 800": True,
-                "LTE 1800": True,
-                "LTE 2600": True,
-                "5G 700": False,
-                "5G 3400": False,
-                "5G 3600": False,
-                "5G 26000": False,
-            }
+
         })
 
 # Read in postcode sectors (without population)
@@ -115,63 +128,26 @@ for scenario, filename in scenario_files.items():
             year = int(year)
             if year not in population_by_scenario_year_pcd[scenario]:
                 population_by_scenario_year_pcd[scenario][year] = {}
+
             population_by_scenario_year_pcd[scenario][year][pcd_sector] = int(population)
 
 
 
 ################################################################
 # LOAD INITIAL SYSTEM ASSETS/SITES
-# -
 ################################################################
 # Read in assets (for initial timestep)
 # assets = [
 # 	{
-# 		"type": "site",
-# 		"pcd_sector_id": 1,
-# 		"cells": 3,
-# 		"technology": "UMTS",
-# 		"year": 2017
+#       'pcd_sector': 'CB12',
+#       'site_ngr': 'EF006234',
+#       'build_date': 2015,
+#       'technology': 'LTE',
+#       'frequency': '800',
+#       'bandwidth': '2x10MHz',
 # 	}
 # ]
-sites_by_postcode = {}
-pcd_sector_ids = [pcd_sector["id"] for pcd_sector in pcd_sectors]
 
-assets_filename = os.path.join(base_path, "sitefinder_asset_data.csv")
-with open(assets_filename, 'r') as assets_file:
-    reader = csv.DictReader(assets_file)
-    for line in reader:
-        postcode = line["pcd.sector"].replace(" ", "")
-        technology = line["Transtype"]
-        site_ngr = line["Sitengr"]
-        # ignore assets from non-matching postcodes
-        if postcode not in pcd_sector_ids:
-            continue
-
-        # otherwise add site
-        if postcode not in sites_by_postcode:
-            sites_by_postcode[postcode] = {
-                "pcd_sector_id": postcode,
-                "technology": {}
-            }
-
-        if technology not in sites_by_postcode[postcode]["technology"]:
-            sites_by_postcode[postcode]["technology"][technology] = set()
-
-        sites_by_postcode[postcode]["technology"][technology].add(site_ngr)
-
-assets = []
-for asset_mix in sites_by_postcode.values():
-    pcd_sector_id = asset_mix["pcd_sector_id"]
-    for tech, sites in asset_mix["technology"].items():
-        num_sites = len(sites)
-        asset = {
-            "type": "site",
-            "pcd_sector_id": pcd_sector_id,
-            "technology": tech,
-            "cells": num_sites * 3,  # Assuming three cells per sitengr #####################
-            "year": 2010  # Assuming at least as old as sitefinder data ###########################
-        }
-        assets.append(asset)
 
 
 ################################################################
@@ -182,7 +158,7 @@ for asset_mix in sites_by_postcode.values():
 
 CAPACITY_LOOKUP_FILENAME = os.path.join(BASE_PATH, 'lookup_table_long.csv')
 
-# create empty dictionary
+# create empty dictionary for capacity lookup
 capacity_lookup_table = {}
 
 with open(CAPACITY_LOOKUP_FILENAME, 'r') as capacity_lookup_file:
@@ -202,12 +178,29 @@ with open(CAPACITY_LOOKUP_FILENAME, 'r') as capacity_lookup_file:
         if (environment, frequency, bandwidth) not in capacity_lookup_table:
             capacity_lookup_table[(environment, frequency, bandwidth)] = []
 
-        capacity_lookup_table[(environment, frequency, bandwidth)].append((density, capacity))
+        capacity_lookup_table[(environment, frequency, bandwidth)].append((density, capacity, ))
 
-    for key, value_list in capacity_lookup_table.items()
+    for key, value_list in capacity_lookup_table.items():
+        # sort each environment/frequency/bandwith list by site density
         value_list.sort(key=lambda tup: tup[0])
 
-# lookup_capacity(lookup_table, "Urban", "700 MHz", "2x10 MHz", 50)
+
+CLUTTER_GEOTYPE_FILENAME = os.path.join(BASE_PATH, 'lookup_table_geotype.csv')
+
+# Create empty list for clutter geotype lookup
+clutter_lookup = []
+
+with open(CLUTTER_GEOTYPE_FILENAME, 'r') as clutter_geotype_file:
+    # set DictReader with file name for 4G rollout data
+    reader = csv.DictReader(clutter_geotype_file)
+    for row in reader:
+        geotype = row['geotype']
+        population_density = row['population_density']
+        clutter_lookup.append(population_density, geotype)
+
+    # sort list by population density (first entry in each tuple)
+    clutter_lookup.sort(key=lambda tup: tup[0])
+
 
 ################################################################
 # START RUNNING MODEL
@@ -221,33 +214,29 @@ timesteps = range(BASE_YEAR, END_YEAR, TIMESTEP_INCREMENT)
 metrics_filename = 'Data/outputs/metrics.csv'
 system_filename = 'Data/outputs/system.csv'
 
-pop_scenario = "high"
-
-with open(metrics_filename, 'w', newline='') as metrics_file:
-    with open(system_filename, 'w', newline='') as system_file:
-        metrics_writer = csv.writer(metrics_file)
-        metrics_writer.writerow(('year', 'area_id', 'area_name', 'cost', 'coverage', 'demand', 'capacity', 'energy_demand'))
-        system_writer = csv.writer(system_file)
-        system_writer.writerow(('year', 'area_id', 'area_name', 'GSM', 'UMTS', 'LTE', 'LTE-A', '5G'))
-
-        for year in timesteps:
+for pop_scenario, throughput_scenario, intervention_strategy in itertools.product(
+        POPULATION_SCENARIOS,
+        THROUGHPUT_SCENARIOS,
+        INTERVENTION_STRATEGIES):
+    print("Running")
+    for year in timesteps:
+        for pcd_sector in pcd_sectors:
             # Update population from scenario values
-            for pcd_sector in pcd_sectors:
-                pcd_sector_id = pcd_sector["id"]
-                pcd_sector["population"] = population_by_scenario_year_pcd[pop_scenario][year][pcd_sector_id]
+            pcd_sector_id = pcd_sector["id"]
+            pcd_sector["population"] = population_by_scenario_year_pcd[pop_scenario][year][pcd_sector_id]
 
-            # decide which new interventions to apply
-            # add new interventions to assets
-            # simply filter from total pipeline list for now
-            timestep_assets = [asset for asset in assets if asset["year"] <= year]
+        # decide which new interventions to apply
+        # add new interventions to assets
+        # simply filter from total pipeline list for now
+        timestep_assets = [asset for asset in assets if asset["year"] <= year]
 
-            # run model for timestep
-            manager = ICTManager(lads, pcd_sectors, timestep_assets)
+        # run model for timestep
+        manager = ICTManager(lads, pcd_sectors, timestep_assets)
 
-            # output and report results for this timestep
-            timestep_results = manager.results()
-            print("Running model for", year)
-            pprint.pprint(timestep_results)
+        # output and report results for this timestep
+        timestep_results = manager.results()
+        print("Running model for", year)
+        pprint.pprint(timestep_results)
 
             for lad in manager.lads.values():
                 area_id = lad.id
