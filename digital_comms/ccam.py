@@ -219,6 +219,8 @@ class PostcodeSector(object):
         technology_combinations = set([
             (asset.frequency, asset.bandwidth)
             for asset in self._assets
+            # TODO check list of assessable technology - i.e. excluding 2G/3G
+            if asset.technology in ("LTE", "LTE-A")
         ])
 
         capacity = 0
