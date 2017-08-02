@@ -129,8 +129,9 @@ class PostcodeSector(object):
 		self.area = data["area"]
 		# TODO: replace hard-coded parameters
 
-		### clarify the busy hour user demand parameters ###
-		self.user_demand = 2 * 1024 * 8 / 30 / 12 / 3600  #does this need to be bit/s or mbp/second? check with Zoraida
+		### 2 GB per month * 1024 to find MB * 8 to covert bytes to bits * 1/9 assuming 9 busy hours per day *
+		### 1/30 assuming 30 days per month * 1/3600 converting hours to seconds, leading to ~0.02 Mbps required per user
+		self.user_demand = 2 * 1024 * 8 * (1/9) * (1/30) * (1/3600)
 		self.penetration = 0.8
 		self._assets = []
 		#I've turned assets from a list of dictionaries, to an explicit list per asset type
