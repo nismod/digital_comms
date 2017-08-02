@@ -33,6 +33,9 @@ class ICTManager(object):
         # Area ID (integer?) => Area
         self.lads = {}
 
+        # List of all postcode sectors
+        self.postcode_sectors = []
+
         # pcd_sector id =? LAD id
         lad_id_by_pcd_sector = {}
         # {
@@ -47,10 +50,15 @@ class ICTManager(object):
         for pcd_sector_data in pcd_sectors:
             lad_id = pcd_sector_data["lad_id"]
             pcd_sector_id = pcd_sector_data["id"]
-            # add PostcodeSector to LAD
             pcd_sector = PostcodeSector(pcd_sector_data, capacity_lookup_table, clutter_lookup)
+
+            # add PostcodeSector to simple list
+            self.postcode_sectors.append(pcd_sector)
+
+            # add PostcodeSector to LAD
             lad_containing_pcd_sector = self.lads[lad_id]
             lad_containing_pcd_sector.add_pcd_sector(pcd_sector)
+
             # add LAD id to lookup by pcd_sector_id
             lad_id_by_pcd_sector[pcd_sector_id] = lad_id
 
@@ -160,7 +168,7 @@ class PostcodeSector(object):
         self.penetration = 0.8
 
         # Keep list of assets
-        self._assets = []
+        self.assets = []
 
     def __repr__(self):
         return "<PostcodeSector id:{}>".format(self.id)
@@ -182,7 +190,7 @@ class PostcodeSector(object):
     def add_asset(self, asset):
         """Add an instance of an Asset object to this area's assets
         """
-        self._assets.append(asset)
+        self.assets.append(asset)
 
     @property
     def demand(self):
@@ -215,12 +223,16 @@ class PostcodeSector(object):
         """Calculate capacity as sum of capacity based principally on the site
         density of each frequency/bandwidth combination.
         """
+        return self._macrocell_site_capacity() + self._small_cell_capacity()
+
+    def _macrocell_site_capacity(self):
         # Find unique frequency/bandwidth combinations
         technology_combinations = set([
             (asset.frequency, asset.bandwidth)
-            for asset in self._assets
+            for asset in self.assets
             # TODO check list of assessable technology - i.e. excluding 2G/3G
-            if asset.technology in ("LTE", "LTE-A")
+            if asset.technology in ("LTE")
+            and asset.type == "macrocell_site"
         ])
 
         capacity = 0
@@ -229,7 +241,7 @@ class PostcodeSector(object):
             # count sites with this frequency/bandwidth combination
             num_sites = len(set([
                 asset.site_ngr
-                for asset in self._assets
+                for asset in self.assets
                 if asset.frequency == frequency and
                 asset.bandwidth == bandwidth
             ]))
@@ -246,6 +258,37 @@ class PostcodeSector(object):
 
         return capacity
 
+    def _small_cell_capacity(self):
+        # Find unique frequency/bandwidth combinations for small cells
+        technology_combinations = set([
+            (asset.frequency, asset.bandwidth)
+            for asset in self.assets
+            if asset.type == "small_cell"
+        ])
+
+        capacity = 0
+
+        for frequency, bandwidth in technology_combinations:
+            # count all small_cells with this frequency/bandwidth combination
+            num_small_cells = len([
+                asset
+                for asset in self.assets
+                if asset.frequency == frequency and
+                asset.bandwidth == bandwidth
+            ])
+            # sites/km^2 : divide num_small_cells/area
+            site_density = float(num_small_cells) / self.area
+
+            # for a given site density and spectrum band, look up capacity
+            capacity += lookup_capacity(
+                self._capacity_lookup_table,
+                "Small cells",  # TODO check that overriding clutter environment is correct
+                frequency,
+                bandwidth,
+                site_density)
+
+        return capacity
+
     @property
     def capacity_margin(self):
         capacity_margin = self.capacity - self.demand
@@ -254,7 +297,7 @@ class PostcodeSector(object):
     @property
     def cost(self):
         # sites : count how many assets are sites
-        sites = len(set([asset.site_ngr for asset in self._assets]))
+        sites = len(set([asset.site_ngr for asset in self.assets]))
         # for a given number of sites, what is the total cost?
         # TODO replace hardcoded value
         cost = (sites * 10)
@@ -263,7 +306,7 @@ class PostcodeSector(object):
     @property
     def energy_demand(self):
         # cells : count how many cells there are in the assets database
-        cells = sum([asset.cells for asset in self._assets])
+        cells = sum([asset.cells for asset in self.assets])
         # for a given number of cells, what is the total cost?
         # TODO replace hardcoded value
         energy_demand = (cells * 5)
@@ -277,6 +320,7 @@ class Asset(object):
     def __init__(self, data):
         self.pcd_sector = data["pcd_sector"]
         self.site_ngr = data["site_ngr"]
+        self.type = data["type"]
         self.technology = data["technology"]
         self.frequency = data["frequency"]
         self.bandwidth = data["bandwidth"]
