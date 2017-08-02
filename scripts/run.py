@@ -2,15 +2,14 @@
 - run over multiple years
 - make rule-based intervention decisions at each timestep
 """
-# pylint disable=C0103
+# pylint: disable=C0103
 import csv
 import itertools
 import os
 import pprint
 
 from digital_comms.ccam import ICTManager
-
-import digital_comms.interventions
+from digital_comms.interventions import decide_interventions
 
 ################################################################
 # SETUP MODEL RUN CONFIGURATION
@@ -23,7 +22,7 @@ import digital_comms.interventions
 BASE_PATH = "/home/tom/Dropbox/Digital Comms - Cambridge data"
 
 BASE_YEAR = 2017
-END_YEAR = 2020
+END_YEAR = 2030
 TIMESTEP_INCREMENT = 1
 
 POPULATION_SCENARIOS = [
@@ -38,12 +37,15 @@ THROUGHPUT_SCENARIOS = [
 ]
 INTERVENTION_STRATEGIES = [
     "minimal",
-    # "macrocell_no_so",
-    # "macrocell_with_so",
-    # "small_cell_no_so",
-    # "small_cell_with_so",
+    "macrocell",
+    "small_cell",
 ]
 
+# Annual capital budget constraint, GBP
+ANNUAL_BUDGET = 2 * 10^9
+
+# Target threshold for universal mobile service, in Mbps/km^2
+SERVICE_OBLIGATION_CAPACITY = 0.2
 
 ################################################################
 # LOAD REGIONS
@@ -58,7 +60,7 @@ INTERVENTION_STRATEGIES = [
 # 	},
 # ]
 lads = []
-LAD_FILENAME = os.path.join(BASE_PATH, "lads.csv")
+LAD_FILENAME = os.path.join(BASE_PATH, 'initial_system', 'lads.csv')
 
 with open(LAD_FILENAME, 'r') as lad_file:
     reader = csv.DictReader(lad_file)
@@ -74,12 +76,12 @@ with open(LAD_FILENAME, 'r') as lad_file:
 # 	{
 # 		"id": "CB1G",
 # 		"lad_id": 1,
-# 		"population": 50000,
+# 		"population": 50000,  # to be loaded from scenario data
 # 		"area": 2,
 # 	},
 # ]
 pcd_sectors = []
-PCD_SECTOR_FILENAME = os.path.join(BASE_PATH, "pcd_sectors.csv")
+PCD_SECTOR_FILENAME = os.path.join(BASE_PATH, 'initial_system', 'pcd_sectors.csv')
 with open(PCD_SECTOR_FILENAME, 'r') as pcd_sector_file:
     reader = csv.DictReader(pcd_sector_file)
     for line in reader:
@@ -149,7 +151,7 @@ with open(THROUGHPUT_FILENAME, 'r') as throughput_file:
 #       'bandwidth': '2x10MHz',
 # 	}
 # ]
-SYSTEM_FILENAME = os.path.join(BASE_PATH, 'initial_system_with_4G.csv')
+SYSTEM_FILENAME = os.path.join(BASE_PATH, 'initial_system', 'initial_system_with_4G.csv')
 
 initial_system = []
 pcd_sector_ids = [pcd_sector["id"] for pcd_sector in pcd_sectors]
@@ -161,6 +163,7 @@ with open(SYSTEM_FILENAME, 'r') as system_file:
             initial_system.append({
                 'pcd_sector': line['pcd_sector'],
                 'site_ngr': line['site_ngr'],
+                'type': 'macrocell_site',
                 'build_date': int(line['build_date']),
                 'technology': line['technology'],
                 'frequency': line['frequency'],
@@ -253,6 +256,36 @@ def write_results(ict_manager, year, pop_scenario, throughput_scenario, interven
 
     metrics_file.close()
 
+def write_decisions(decisions, year, pop_scenario, throughput_scenario, intervention_strategy):
+    suffix = 'pop_{}_throughput_{}_strategy_{}'.format(
+        pop_scenario, throughput_scenario, intervention_strategy)
+    decisions_filename = os.path.join(BASE_PATH, 'outputs', 'decisions_{}.csv'.format(suffix))
+
+    if year == BASE_YEAR:
+        decisions_file = open(decisions_filename, 'w')
+        metrics_writer = csv.writer(decisions_file)
+        metrics_writer.writerow(
+            ('year', 'pcd_sector', 'site_ngr', 'build_date', 'type', 'technology', 'frequency', 'bandwidth',))
+    else:
+        decisions_file = open(decisions_filename, 'a')
+        decisions_writer = csv.writer(decisions_file)
+
+    # output and report results for this timestep
+    for intervention in decisions:
+        # Output decisions
+        pcd_sector = intervention['pcd_sector']
+        site_ngr = intervention['site_ngr']
+        build_date = intervention['build_date']
+        intervention_type = intervention['type']
+        technology = intervention['technology']
+        frequency = intervention['frequency']
+        bandwidth = intervention['bandwidth']
+
+        decisions_writer.writerow(
+            (year, pcd_sector, site_ngr, build_date, intervention_type, technology, frequency, bandwidth,))
+
+    decisions_file.close()
+
 
 ################################################################
 # START RUNNING MODEL
@@ -267,6 +300,7 @@ for pop_scenario, throughput_scenario, intervention_strategy in itertools.produc
         POPULATION_SCENARIOS,
         THROUGHPUT_SCENARIOS,
         INTERVENTION_STRATEGIES):
+    print( "Running:", pop_scenario, throughput_scenario, intervention_strategy)
 
     assets = initial_system
     for year in timesteps:
@@ -279,15 +313,26 @@ for pop_scenario, throughput_scenario, intervention_strategy in itertools.produc
 
         # Decommission assets
         asset_lifetime = 10
-        assets = [asset for asset in assets if asset["build_date"] > year - asset_lifetime]
         decommissioned = [asset for asset in assets if asset["build_date"] <= year - asset_lifetime]
-
-        # Run without intervention in the system
-        manager_before = ICTManager(lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup)
+        assets = [asset for asset in assets if asset["build_date"] > year - asset_lifetime]
 
         # Decide on new interventions
+        budget = ANNUAL_BUDGET
+        service_obligation_capacity = SERVICE_OBLIGATION_CAPACITY
+        timestep_interventions = []
+        while True:
+            # simulate
+            system = ICTManager(lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup)
+            # decide
+            interventions_built, budget = decide_interventions(intervention_strategy, budget, service_obligation_capacity, decommissioned, system)
 
+            if not interventions_built:
+                # no more decisions (feasible or desirable)
+                break
+            else:
+                # accumulate decisions
+                timestep_interventions += interventions_built
+                assets += interventions_built
 
-        # run model for timestep
-        manager_after = ICTManager(lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup)
-        write_results(manager_after, year, pop_scenario, throughput_scenario, intervention_strategy)
+        write_decisions(timestep_interventions, year, pop_scenario, throughput_scenario, intervention_strategy)
+        write_results(system, year, pop_scenario, throughput_scenario, intervention_strategy)
