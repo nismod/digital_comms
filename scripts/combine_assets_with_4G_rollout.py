@@ -45,7 +45,6 @@ with open(SITEFINDER_FILENAME, 'r') as sitefinder_file:
             'technology': row['Transtype'],
             # assume any macrocell has 2x10MHz bandwidth
             'bandwidth': '2x10MHz',
-            # mark build date as unknown, to estimate later
             'build_date': build_date,
         })
 
@@ -124,8 +123,8 @@ for pcd_sector, rollout_datum in rollout_4G_by_postcode_sector.items():
                     'frequency': '800',
                     'technology': 'LTE',
                     # assume any macrocell has 2x10MHz bandwidth
+                    'type': 'macrocell_site',
                     'bandwidth': '2x10MHz',
-                    # mark build date as unknown, to estimate later
                     'build_date': build_year,
                 })
                 existing_assets.append({
@@ -133,8 +132,8 @@ for pcd_sector, rollout_datum in rollout_4G_by_postcode_sector.items():
                     'frequency': '2600',
                     'technology': 'LTE',
                     # assume any macrocell has 2x10MHz bandwidth
+                    'type': 'macrocell_site',
                     'bandwidth': '2x10MHz',
-                    # mark build date as unknown, to estimate later
                     'build_date': build_year,
                 })
             else:
@@ -147,8 +146,8 @@ for pcd_sector, rollout_datum in rollout_4G_by_postcode_sector.items():
                         'frequency': '800',
                         'technology': 'LTE',
                         # assume any macrocell has 2x10MHz bandwidth
+                        'type': 'macrocell_site',
                         'bandwidth': '2x10MHz',
-                        # mark build date as unknown, to estimate later
                         'build_date': build_year,
                     })
                     existing_assets.append({
@@ -156,8 +155,8 @@ for pcd_sector, rollout_datum in rollout_4G_by_postcode_sector.items():
                         'frequency': '2600',
                         'technology': 'LTE',
                         # assume any macrocell has 2x10MHz bandwidth
+                        'type': 'macrocell_site',
                         'bandwidth': '2x10MHz',
-                        # mark build date as unknown, to estimate later
                         'build_date': build_year,
                     })
             # Stop looping through coverage years
@@ -172,6 +171,7 @@ keys = (
     'pcd_sector',
     'site_ngr',
     'build_date',
+    'type',
     'technology',
     'frequency',
     'bandwidth',
