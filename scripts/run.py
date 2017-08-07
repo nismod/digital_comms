@@ -25,15 +25,16 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 BASE_YEAR = 2017
 END_YEAR = 2030
 TIMESTEP_INCREMENT = 1
+TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
 
 POPULATION_SCENARIOS = [
     "high",
-    "base",
+    "baseline",
     "low",
 ]
 THROUGHPUT_SCENARIOS = [
     "high",
-    "base",
+    "baseline",
     "low",
 ]
 INTERVENTION_STRATEGIES = [
@@ -53,6 +54,7 @@ SERVICE_OBLIGATION_CAPACITY = 0.2
 # - LADs
 # - Postcode Sectors
 ################################################################
+print('Loading regions')
 
 # lads = [
 # 	{
@@ -64,12 +66,12 @@ lads = []
 LAD_FILENAME = os.path.join(BASE_PATH, 'initial_system', 'lads.csv')
 
 with open(LAD_FILENAME, 'r') as lad_file:
-    reader = csv.DictReader(lad_file)
-    for line in reader:
+    reader = csv.reader(lad_file)
+    next(reader)  # skip header
+    for lad_id, name in reader:
         lads.append({
-            "id": line["id"],
-            "name": line["name"],
-
+            "id": lad_id,
+            "name": name
         })
 
 # Read in postcode sectors (without population)
@@ -84,12 +86,13 @@ with open(LAD_FILENAME, 'r') as lad_file:
 pcd_sectors = []
 PCD_SECTOR_FILENAME = os.path.join(BASE_PATH, 'initial_system', 'pcd_sectors.csv')
 with open(PCD_SECTOR_FILENAME, 'r') as pcd_sector_file:
-    reader = csv.DictReader(pcd_sector_file)
-    for line in reader:
+    reader = csv.reader(pcd_sector_file)
+    next(reader)  # skip header
+    for lad_id, pcd_sector, _, area in reader:
         pcd_sectors.append({
-            "id": line["pcd_sector"].replace(" ", ""),
-            "lad_id": line["oslaua"],
-            "area": float(line["area_sq_km"])
+            "id": pcd_sector.replace(" ", ""),
+            "lad_id": lad_id,
+            "area": float(area)
         })
 
 
@@ -99,48 +102,52 @@ with open(PCD_SECTOR_FILENAME, 'r') as pcd_sector_file:
 # - population by scenario: year, pcd_sector, population
 # - user throughput demand by scenario: year, demand per capita (GB/month?)
 ################################################################
+print('Loading scenario data')
+
 scenario_files = {
-    "high": os.path.join(BASE_PATH, 'scenario_data', 'population_high_pcd.csv'),
-    "base": os.path.join(BASE_PATH, 'scenario_data', 'population_baseline_pcd.csv'),
-    "low": os.path.join(BASE_PATH, 'scenario_data', 'population_low_pcd.csv')
+    scenario: os.path.join(BASE_PATH, 'scenario_data', 'population_{}_pcd.csv'.format(scenario))
+    for scenario in POPULATION_SCENARIOS
 }
-population_by_scenario_year_pcd = {}
+population_by_scenario_year_pcd = {
+    scenario: {
+        year: {} for year in TIMESTEPS
+    }
+    for scenario in POPULATION_SCENARIOS
+}
 
 for scenario, filename in scenario_files.items():
     # Open file
     with open(filename, 'r') as scenario_file:
         scenario_reader = csv.reader(scenario_file)
-        population_by_scenario_year_pcd[scenario] = {}
 
         # Put the values in the population dict
         for year, pcd_sector, population in scenario_reader:
             year = int(year)
-            if year not in population_by_scenario_year_pcd[scenario]:
-                population_by_scenario_year_pcd[scenario][year] = {}
-
-            population_by_scenario_year_pcd[scenario][year][pcd_sector] = int(population)
+            if year in TIMESTEPS:
+                population_by_scenario_year_pcd[scenario][year][pcd_sector] = int(population)
 
 user_throughput_by_scenario_year = {
-    "high": {},
-    "base": {},
-    "low": {}
+    scenario: {} for scenario in THROUGHPUT_SCENARIOS
 }
-
 THROUGHPUT_FILENAME = os.path.join(BASE_PATH, 'scenario_data', 'data_growth_scenarios.csv')
 with open(THROUGHPUT_FILENAME, 'r') as throughput_file:
     reader = csv.reader(throughput_file)
     next(reader)  # skip header
     for year, low, base, high in reader:
         year = int(year)
-        user_throughput_by_scenario_year["high"][year] = float(high)
-        user_throughput_by_scenario_year["base"][year] = float(base)
-        user_throughput_by_scenario_year["low"][year] = float(low)
-
+        if "high" in THROUGHPUT_SCENARIOS:
+            user_throughput_by_scenario_year["high"][year] = float(high)
+        if "baseline" in THROUGHPUT_SCENARIOS:
+            user_throughput_by_scenario_year["baseline"][year] = float(base)
+        if "low" in THROUGHPUT_SCENARIOS:
+            user_throughput_by_scenario_year["low"][year] = float(low)
 
 
 ################################################################
 # LOAD INITIAL SYSTEM ASSETS/SITES
 ################################################################
+print('Loading initial system')
+
 # Read in assets (for initial timestep)
 # assets = [
 # 	{
@@ -155,20 +162,21 @@ with open(THROUGHPUT_FILENAME, 'r') as throughput_file:
 SYSTEM_FILENAME = os.path.join(BASE_PATH, 'initial_system', 'initial_system_with_4G.csv')
 
 initial_system = []
-pcd_sector_ids = [pcd_sector["id"] for pcd_sector in pcd_sectors]
+pcd_sector_ids = {pcd_sector["id"]: True for pcd_sector in pcd_sectors}
 with open(SYSTEM_FILENAME, 'r') as system_file:
-    reader = csv.DictReader(system_file)
-    for line in reader:
+    reader = csv.reader(system_file)
+    next(reader)  # skip header
+    for pcd_sector, site_ngr, build_date, tech, freq, bandwidth in reader:
         # If asset is in a known postcode, go ahead
-        if line['pcd_sector'] in pcd_sector_ids:
+        if pcd_sector in pcd_sector_ids:
             initial_system.append({
-                'pcd_sector': line['pcd_sector'],
-                'site_ngr': line['site_ngr'],
+                'pcd_sector': pcd_sector,
+                'site_ngr': site_ngr,
                 'type': 'macrocell_site',
-                'build_date': int(line['build_date']),
-                'technology': line['technology'],
-                'frequency': line['frequency'],
-                'bandwidth': line['bandwidth'],
+                'build_date': int(build_date),
+                'technology': tech,
+                'frequency': freq,
+                'bandwidth': bandwidth,
             })
 
 
@@ -177,6 +185,7 @@ with open(SYSTEM_FILENAME, 'r') as system_file:
 # - mobile capacity, by environment, frequency, bandwidth and site density
 # - clutter environment geotype, by population density
 ################################################################
+print('Loading lookup tables')
 
 CAPACITY_LOOKUP_FILENAME = os.path.join(BASE_PATH, 'lookup_tables', 'lookup_table_long.csv')
 
@@ -187,9 +196,7 @@ with open(CAPACITY_LOOKUP_FILENAME, 'r') as capacity_lookup_file:
     # set DictReader with file name for 4G rollout data
     reader = csv.DictReader(capacity_lookup_file)
 
-    lookup_keys = ["Environment", "Frequency", "Bandwidth"]
-
-    # populate dictionary - this gives a dict for each row, with each heading as a key
+        # populate dictionary - this gives a dict for each row, with each heading as a key
     for row in reader:
         environment = row["type"]
         frequency = row["frequency"].replace(' MHz', '')
@@ -226,6 +233,7 @@ with open(CLUTTER_GEOTYPE_FILENAME, 'r') as clutter_geotype_file:
 def write_results(ict_manager, year, pop_scenario, throughput_scenario, intervention_strategy):
     suffix = 'pop_{}_throughput_{}_strategy_{}'.format(
         pop_scenario, throughput_scenario, intervention_strategy)
+    suffix = suffix.replace('baseline', 'base')  # for length, use 'base' for baseline scenarios
     metrics_filename = os.path.join(BASE_PATH, 'outputs', 'metrics_{}.csv'.format(suffix))
 
     if year == BASE_YEAR:
@@ -295,16 +303,15 @@ def write_decisions(decisions, year, pop_scenario, throughput_scenario, interven
 # - output demand, capacity, opex, energy demand, built interventions, build costs per year
 ################################################################
 
-timesteps = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
-
 for pop_scenario, throughput_scenario, intervention_strategy in itertools.product(
         POPULATION_SCENARIOS,
         THROUGHPUT_SCENARIOS,
         INTERVENTION_STRATEGIES):
-    print( "Running:", pop_scenario, throughput_scenario, intervention_strategy)
+    print("Running:", pop_scenario, throughput_scenario, intervention_strategy)
 
     assets = initial_system
-    for year in timesteps:
+    for year in TIMESTEPS:
+        print("-", year)
 
         # Update population from scenario values
         for pcd_sector in pcd_sectors:
