@@ -43,6 +43,7 @@ for scenario in SCENARIOS:
     with open(in_filename, 'r') as in_file:
         with open(out_filename, 'w') as out_file:
             r = csv.reader(in_file)
+            next(r)  # skip header
             w = csv.writer(out_file)
             for year, lad, lad_pop in r:
                 for pcd in pcd_sectors_by_lad[lad]:
