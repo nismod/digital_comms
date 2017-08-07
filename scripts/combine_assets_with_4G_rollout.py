@@ -3,6 +3,7 @@
 - export sites by postcode sector with possible
 """
 # pylint: disable=C0103
+import configparser
 import csv
 import os
 import random
@@ -11,9 +12,9 @@ import random
 # IMPORT ASSET DATA
 ################################################################
 
-# BASE_PATH = r"C:\Users\EJO31\Dropbox\Digital Comms - Cambridge data"
-# BASE_PATH = r"C:\Users\mert2014\Dropbox\Digital Comms - Cambridge data"
-BASE_PATH = "/home/tom/Dropbox/Digital Comms - Cambridge data"
+CONFIG = configparser.ConfigParser()
+CONFIG.read(os.path.join(os.path.dirname(__file__),'script_config.ini'))
+BASE_PATH = CONFIG['file_locations']['base_path']
 
 SITEFINDER_FILENAME = os.path.join(BASE_PATH, 'sitefinder_with_geo_IDs.csv')
 

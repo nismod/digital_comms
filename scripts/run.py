@@ -3,6 +3,7 @@
 - make rule-based intervention decisions at each timestep
 """
 # pylint: disable=C0103
+import configparser
 import csv
 import itertools
 import os
@@ -17,9 +18,9 @@ from digital_comms.interventions import decide_interventions
 # - data files base path
 ################################################################
 
-# BASE_PATH = r"C:\Users\EJO31\Dropbox\Digital Comms - Cambridge data"
-# BASE_PATH = r"C:\Users\mert2014\Dropbox\Digital Comms - Cambridge data"
-BASE_PATH = "/home/tom/Dropbox/Digital Comms - Cambridge data"
+CONFIG = configparser.ConfigParser()
+CONFIG.read(os.path.join(os.path.dirname(__file__),'script_config.ini'))
+BASE_PATH = CONFIG['file_locations']['base_path']
 
 BASE_YEAR = 2017
 END_YEAR = 2030
@@ -99,9 +100,9 @@ with open(PCD_SECTOR_FILENAME, 'r') as pcd_sector_file:
 # - user throughput demand by scenario: year, demand per capita (GB/month?)
 ################################################################
 scenario_files = {
-    "high": os.path.join(BASE_PATH, 'scenario_data', 'population_high_cambridge_pcd.csv'),
-    "base": os.path.join(BASE_PATH, 'scenario_data', 'population_base_cambridge_pcd.csv'),
-    "low": os.path.join(BASE_PATH, 'scenario_data', 'population_low_cambridge_pcd.csv')
+    "high": os.path.join(BASE_PATH, 'scenario_data', 'population_high_pcd.csv'),
+    "base": os.path.join(BASE_PATH, 'scenario_data', 'population_baseline_pcd.csv'),
+    "low": os.path.join(BASE_PATH, 'scenario_data', 'population_low_pcd.csv')
 }
 population_by_scenario_year_pcd = {}
 
