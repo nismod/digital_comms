@@ -112,6 +112,9 @@ class LAD(object):
     def capacity(self):
         """Return the mean capacity from all nested postcode sectors
         """
+        if not self._pcd_sectors:
+            return 0
+
         summed_capacity = sum([
             pcd_sector.capacity
             for pcd_sector in self._pcd_sectors.values()])
@@ -120,6 +123,9 @@ class LAD(object):
     def demand(self):
         """Return the mean capacity demand from all nested postcode sectors
         """
+        if not self._pcd_sectors:
+            return 0
+
         summed_demand = sum([
             pcd_sector.demand
             for pcd_sector in self._pcd_sectors.values()])
@@ -128,6 +134,9 @@ class LAD(object):
     def coverage(self):
         """Return proportion of population with capacity coverage over a threshold
         """
+        if not self._pcd_sectors:
+            return 0
+
         # TODO replace hardcoded threshold value
         threshold = 2
 
