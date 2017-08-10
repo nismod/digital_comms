@@ -1,6 +1,7 @@
 """Decide on interventions
 """
 # pylint: disable=C0103
+import copy
 
 ################################################################
 # EXAMPLE COST LOOKUP TABLE
@@ -97,7 +98,7 @@ INTERVENTIONS = {
             },
         ]
     },
-    'carrier_1500': {
+    'carrier_3500': {
         'name': 'Build 3500 MHz carrier',
         'description': 'Available if a site has LTE',
         'result': '3500 band available',
@@ -150,13 +151,13 @@ AVAILABLE_STRATEGY_INTERVENTIONS = {
     # (providing thre is 4G already)
     # If 4G isn't present, the site will need major upgrades.
     'macrocell': ('upgrade_to_lte', 'lte_replacement', 'carrier_700',
-                  'carrier_1500'),
+                  'carrier_3500'),
 
     # Intervention Strategy 3
     # Deploy a small cell layer at 3700 MHz
     # The cost will include the small cell unit and the civil works per cell
     'small_cell': ('upgrade_to_lte', 'lte_replacement', 'carrier_700',
-                   'carrier_1500', 'small_cell'),
+                   'carrier_3500', 'small_cell'),
 }
 
 
@@ -180,59 +181,67 @@ def decide_interventions(strategy, budget, service_obligation_capacity,
     available_interventions = AVAILABLE_STRATEGY_INTERVENTIONS[strategy]
 
     # Replace decommissioned
-    replace, budget = replace_decommissioned(budget, decommissioned, timestep)
+    replace, budget = replace_decommissioned(
+        budget, decommissioned, available_interventions, timestep)
 
     obligation = []
-    if not replace:
+    if not replace and budget > 0:
         # Build to meet service obligation (up to threshold,
         # set to zero to disable)
         obligation, budget = meet_service_obligation(
-            budget, available_interventions, service_obligation_capacity, system)
+            budget, available_interventions, timestep, service_obligation_capacity, system)
 
     demand = []
-    if not obligation:
+    if not replace and not obligation and budget > 0:
         # Build to meet demand
-        demand, budget = meet_demand(budget, available_interventions, system)
+        demand, budget = meet_demand(budget, available_interventions, timestep, system)
 
     built = replace + obligation + demand
-
+    print("replaced", len(replace))
+    print("obligation", len(obligation))
+    print("demand", len(demand))
     return built, budget
 
 
-def replace_decommissioned(budget, decommissioned, timestep):
+def replace_decommissioned(budget, decommissioned, available_interventions, timestep):
     assets_replaced = []
     for asset in decommissioned:
         if asset['type'] == 'macrocell_site' and asset['technology'] == 'LTE':
-            asset['build_date'] = timestep
-            assets_replaced.append(asset)
-            budget -= INTERVENTIONS['lte_replacement']['cost']
+            if 'lte_replacement' in available_interventions:
+                asset['build_date'] = timestep
+                assets_replaced.append(asset)
+                budget -= INTERVENTIONS['lte_replacement']['cost']
         elif asset['type'] == 'small_cell':
-            asset['build_date'] = timestep
-            assets_replaced.append(asset)
-            budget -= INTERVENTIONS['small_cell']['cost']
+            if 'small_cell' in available_interventions:
+                asset['build_date'] = timestep
+                assets_replaced.append(asset)
+                budget -= INTERVENTIONS['small_cell']['cost']
         else:
-            # LTE upgrade?
+            # not replacing non-LTE
             pass
+
         if budget < 0:
             break
     return assets_replaced, budget
 
 
-def meet_service_obligation(budget, available_interventions, service_obligation_capacity, system):
+def meet_service_obligation(budget, available_interventions, timestep,
+                            service_obligation_capacity, system):
+    areas = _suggest_target_postcodes(system, service_obligation_capacity)
+    return _suggest_interventions(
+        budget, available_interventions, areas, timestep, service_obligation_capacity)
+
+
+def meet_demand(budget, available_interventions, timestep, system):
     areas = _suggest_target_postcodes(system)
     return _suggest_interventions(
-        budget, available_interventions, areas, service_obligation_capacity)
+        budget, available_interventions, areas, timestep)
 
 
-def meet_demand(budget, available_interventions, system):
-    areas = _suggest_target_postcodes(system)
-    return _suggest_interventions(
-        budget, available_interventions, areas)
-
-
-def _suggest_interventions(budget, available_interventions, areas, threshold=None):
+def _suggest_interventions(budget, available_interventions, areas, timestep, threshold=None):
     built_interventions = []
     for area in areas:
+        print(area.id, area.population_density)
         # group assets by site
         assets_by_site = {}
         for asset in area.assets:
@@ -243,21 +252,75 @@ def _suggest_interventions(budget, available_interventions, areas, threshold=Non
 
         # integrate_800 and integrate_2.6
         if 'upgrade_to_lte' in available_interventions:
-            for site_assets in assets_by_site.values():
-                pass
+            build_option = copy.deepcopy(INTERVENTIONS['upgrade_to_lte']['assets_to_build'])
+            cost = INTERVENTIONS['upgrade_to_lte']['cost']
+            for site_ngr, site_assets in assets_by_site.items():
+                if 'LTE' not in [asset.technology for asset in site_assets]:
+                    # set both assets to this site_ngr
+                    to_build = copy.deepcopy(build_option)
+                    to_build[0]['site_ngr'] = site_ngr
+                    to_build[0]['pcd_sector'] = area.id
+                    to_build[0]['build_date'] = timestep
+                    to_build[1]['site_ngr'] = site_ngr
+                    to_build[1]['pcd_sector'] = area.id
+                    to_build[1]['build_date'] = timestep
+
+                    built_interventions += to_build
+                    budget -= cost
+                    if budget < 0:
+                        break
+
+        if budget < 0:
+            break
 
         # integrate_700
         if 'carrier_700' in available_interventions:
-            pass
+            build_option = INTERVENTIONS['carrier_700']['assets_to_build']
+            cost = INTERVENTIONS['carrier_700']['cost']
+            for site_ngr, site_assets in assets_by_site.items():
+                if 'LTE' in [asset.technology for asset in site_assets] and \
+                        '700' not in [asset.frequency for asset in site_assets]:
+                    # set both assets to this site_ngr
+                    to_build = copy.deepcopy(build_option)
+                    to_build[0]['site_ngr'] = site_ngr
+                    to_build[0]['pcd_sector'] = area.id
+                    to_build[0]['build_date'] = timestep
+
+                    built_interventions += to_build
+                    budget -= cost
+                    if budget < 0:
+                        break
+
+        if budget < 0:
+            break
 
         # integrate_3.5
         if 'carrier_3500' in available_interventions:
-            pass
+            build_option = INTERVENTIONS['carrier_3500']['assets_to_build']
+            cost = INTERVENTIONS['carrier_3500']['cost']
+            for site_ngr, site_assets in assets_by_site.items():
+                if 'LTE' in [asset.technology for asset in site_assets] and \
+                        '3500' not in [asset.frequency for asset in site_assets]:
+                    # set both assets to this site_ngr
+                    to_build = copy.deepcopy(build_option)
+                    to_build[0]['site_ngr'] = site_ngr
+                    to_build[0]['pcd_sector'] = area.id
+                    to_build[0]['build_date'] = timestep
+
+                    built_interventions += to_build
+                    budget -= cost
+                    if budget < 0:
+                        break
+
+        if budget < 0:
+            break
 
         # build small cells to next density
         if 'small_cell' in available_interventions:
             pass
 
+    for intervention in built_interventions:
+        print(intervention)
     return built_interventions, budget
 
 
@@ -266,7 +329,10 @@ def _suggest_target_postcodes(system, threshold=None):
     - if considering threshold, filter out any with capacity above threshold
     """
     postcodes = system.postcode_sectors
+    total_postcodes = len(postcodes)
     if threshold is not None:
-        postcodes = [pcd for pcd in postcodes if pcd.capacity < threshold]
-    postcodes = sorted(postcodes, key=lambda pcd: -pcd.population_density)
-    return postcodes
+        considered_postcodes = [pcd for pcd in postcodes if pcd.capacity < threshold]
+    else:
+        considered_postcodes = postcodes[:]
+    print("Considering {} of {} postcodes".format(len(considered_postcodes), total_postcodes))
+    return sorted(considered_postcodes, key=lambda pcd: -pcd.population_density)
