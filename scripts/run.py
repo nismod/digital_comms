@@ -28,18 +28,18 @@ TIMESTEP_INCREMENT = 1
 TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
 
 POPULATION_SCENARIOS = [
-    # "high",
+    "high",
     "baseline",
-    # "low",
+    "low",
 ]
 THROUGHPUT_SCENARIOS = [
-    # "high",
+    "high",
     "baseline",
-    # "low",
+    "low",
 ]
 INTERVENTION_STRATEGIES = [
-    # "minimal",
-    # "macrocell",
+    "minimal",
+    "macrocell",
     "small_cell",
 ]
 
