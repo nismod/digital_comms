@@ -19,7 +19,7 @@ from digital_comms.interventions import decide_interventions
 ################################################################
 
 CONFIG = configparser.ConfigParser()
-CONFIG.read(os.path.join(os.path.dirname(__file__),'script_config.ini'))
+CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
 BASE_YEAR = 2017
@@ -241,7 +241,7 @@ def write_lad_results(ict_manager, year, pop_scenario, throughput_scenario,
         metrics_file = open(metrics_filename, 'w', newline='')
         metrics_writer = csv.writer(metrics_file)
         metrics_writer.writerow(
-            ('year', 'area_id', 'area_name', 'cost', 'coverage', 'demand', 'capacity', 'capacity_deficit', 'energy_demand'))
+            ('year', 'area_id', 'area_name', 'cost', 'coverage', 'demand', 'capacity', 'capacity_deficit', 'energy_demand', 'population', 'pop_density'))
     else:
         metrics_file = open(metrics_filename, 'a', newline='')
         metrics_writer = csv.writer(metrics_file)
@@ -261,9 +261,11 @@ def write_lad_results(ict_manager, year, pop_scenario, throughput_scenario,
         capacity = results["capacity"][area_name]
         energy_demand = results["energy_demand"][area_name]
         capacity_deficit = capacity - demand
+        pop = lad.population
+        pop_d = lad.population_density
 
         metrics_writer.writerow(
-            (year, area_id, area_name, cost, coverage, demand, capacity, capacity_deficit, energy_demand))
+            (year, area_id, area_name, cost, coverage, demand, capacity, capacity_deficit, energy_demand, pop, pop_d))
 
     metrics_file.close()
 
@@ -278,7 +280,7 @@ def write_pcd_results(ict_manager, year, pop_scenario, throughput_scenario,
         metrics_file = open(metrics_filename, 'w', newline='')
         metrics_writer = csv.writer(metrics_file)
         metrics_writer.writerow(
-            ('year', 'postcode', 'demand', 'capacity', 'capacity_deficit'))
+            ('year', 'postcode', 'demand', 'capacity', 'capacity_deficit', 'population', 'pop_density'))
     else:
         metrics_file = open(metrics_filename, 'a', newline='')
         metrics_writer = csv.writer(metrics_file)
@@ -290,9 +292,11 @@ def write_pcd_results(ict_manager, year, pop_scenario, throughput_scenario,
         demand = pcd.demand
         capacity = pcd.capacity
         capacity_deficit = capacity - demand
+        pop = pcd.population
+        pop_d = pcd.population_density
 
         metrics_writer.writerow(
-            (year, pcd.id, demand, capacity, capacity_deficit))
+            (year, pcd.id, demand, capacity, capacity_deficit, pop, pop_d))
 
     metrics_file.close()
 
