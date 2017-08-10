@@ -41,7 +41,7 @@ for scenario in SCENARIOS:
         'population_{}_pcd.csv'.format(scenario)
     )
     with open(in_filename, 'r') as in_file:
-        with open(out_filename, 'w') as out_file:
+        with open(out_filename, 'w', newline='') as out_file:
             r = csv.reader(in_file)
             next(r)  # skip header
             w = csv.writer(out_file)
