@@ -2,6 +2,7 @@
 """
 # pylint: disable=C0103
 import copy
+import math
 
 ################################################################
 # EXAMPLE COST LOOKUP TABLE
@@ -207,18 +208,19 @@ def replace_decommissioned(budget, decommissioned, available_interventions, time
     assets_replaced = []
     for asset in decommissioned:
         if asset['type'] == 'macrocell_site' and asset['technology'] == 'LTE':
+            # replace LTE
             if 'lte_replacement' in available_interventions:
-                asset['build_date'] = timestep
-                assets_replaced.append(asset)
+                to_replace = copy.deepcopy(asset)
+                to_replace['build_date'] = timestep
+                assets_replaced.append(to_replace)
                 budget -= INTERVENTIONS['lte_replacement']['cost']
         elif asset['type'] == 'small_cell':
+            # replace small cell
             if 'small_cell' in available_interventions:
-                asset['build_date'] = timestep
-                assets_replaced.append(asset)
+                to_replace = copy.deepcopy(asset)
+                to_replace['build_date'] = timestep
+                assets_replaced.append(to_replace)
                 budget -= INTERVENTIONS['small_cell']['cost']
-        else:
-            # not replacing non-LTE
-            pass
 
         if budget < 0:
             break
@@ -241,7 +243,8 @@ def meet_demand(budget, available_interventions, timestep, system):
 def _suggest_interventions(budget, available_interventions, areas, timestep, threshold=None):
     built_interventions = []
     for area in areas:
-        print(area.id, area.population_density)
+        # print(area.id, area.population_density)
+
         # group assets by site
         assets_by_site = {}
         for asset in area.assets:
@@ -317,11 +320,55 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
 
         # build small cells to next density
         if 'small_cell' in available_interventions:
-            pass
+            area_sq_km = area.area
+            if 'small_cell_sites' in assets_by_site:
+                current_number = len(assets_by_site['small_cell_sites'])
+            else:
+                current_number = 0
+            current_density = current_number / area_sq_km
+            build_option = INTERVENTIONS['small_cell']['assets_to_build']
+            cost = INTERVENTIONS['small_cell']['cost']
 
-    for intervention in built_interventions:
-        print(intervention)
+            target_densities = [
+                3.98,
+                7.07,
+                10.19,
+                17.63,
+                22.03,
+                28.29,
+                37.67,
+                52.61,
+                78.6,
+                129.92,
+                254.65,
+            ]
+            target_density = next_larger_value(current_density, target_densities)
+
+            if target_density > current_density:
+                target_number = math.ceil(area_sq_km * target_density)
+                aim_to_build_number = target_number - current_number
+                budgetable_number = math.floor(budget / cost)
+                number_to_build = min(aim_to_build_number, budgetable_number)
+
+                to_build = copy.deepcopy(build_option)
+                to_build[0]['build_date'] = timestep
+                to_build[0]['pcd_sector'] = area.id
+                to_build = to_build * number_to_build
+
+                built_interventions += to_build
+                budget -= number_to_build * cost
+
+    # for intervention in built_interventions:
+    #     print(intervention)
+
     return built_interventions, budget
+
+def next_larger_value(x, vals):
+    for val in vals:
+        if val > x:
+            return val
+    else:
+        return vals[-1]
 
 
 def _suggest_target_postcodes(system, threshold=None):
