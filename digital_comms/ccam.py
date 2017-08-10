@@ -280,12 +280,13 @@ class PostcodeSector(object):
             site_density = float(num_sites) / self.area
 
             # for a given site density and spectrum band, look up capacity
-            capacity += lookup_capacity(
+            tech_capacity = lookup_capacity(
                 self._capacity_lookup_table,
                 self.clutter_environment,
                 frequency,
                 bandwidth,
                 site_density)
+            capacity += tech_capacity
 
         return capacity
 
@@ -313,7 +314,7 @@ class PostcodeSector(object):
             # for a given site density and spectrum band, look up capacity
             capacity += lookup_capacity(
                 self._capacity_lookup_table,
-                "Small cells",  # TODO check that overriding clutter environment is correct
+                "Small cells",  # Override clutter environment for small cells
                 frequency,
                 bandwidth,
                 site_density)
@@ -421,13 +422,18 @@ def lookup_capacity(lookup_table, clutter_environment, frequency, bandwidth, sit
         lower_density, lower_capacity = a
         upper_density, upper_capacity = b
         if lower_density <= site_density and site_density < upper_density:
-            # Be pessimistic about capacity, return lower bound
-            return lower_capacity
+            # Interpolate between values
+            return interpolate(lower_density, lower_capacity, upper_density, upper_capacity, site_density)
 
     # If not caught between bounds return highest capacity
     highest_density, highest_capacity = density_capacities[-1]
     return highest_capacity
 
+def interpolate(x0, y0, x1, y1, x):
+    """Linear interpolation between two values
+    """
+    y = (y0 * (x1 - x) + y1 * (x - x0)) / (x1 - x0)
+    return y
 
 # __name__ == '__main__' means that the module is bring run in standalone by the user
 if __name__ == '__main__':
