@@ -15,7 +15,7 @@ LAD_CODE_FILENAME = os.path.join(BASE_PATH, 'source_data', 'lad_codes.csv')
 lad_code_lookup = {}
 with open(LAD_CODE_FILENAME, 'r', encoding='utf-8-sig') as input_file:
     r = csv.DictReader(input_file)
-    with open(LAD_OUTPUT_FILENAME, 'w') as output_file:
+    with open(LAD_OUTPUT_FILENAME, 'w', newline='') as output_file:
         w = csv.writer(output_file)
         w.writerow(('id', 'name',))
         for line in r:
