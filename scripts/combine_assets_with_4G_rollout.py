@@ -16,7 +16,7 @@ CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__),'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
-SITEFINDER_FILENAME = os.path.join(BASE_PATH, 'sitefinder_with_geo_IDs.csv')
+SITEFINDER_FILENAME = os.path.join(BASE_PATH, 'initial_system', 'sitefinder_with_geo_IDs.csv')
 
 # set path for sitefinder asset data
 with open(SITEFINDER_FILENAME, 'r') as sitefinder_file:
@@ -59,7 +59,7 @@ print('Read {} assets across {} postcode sectors'.format(num_assets, num_pcd_sec
 ################################################################
 
 # set path for 4G rollout data
-ROLLOUT_FILENAME = os.path.join(BASE_PATH, 'rollout_4G.csv')
+ROLLOUT_FILENAME = os.path.join(BASE_PATH, 'initial_system', 'rollout_4G.csv')
 
 with open(ROLLOUT_FILENAME, 'r') as rollout_file:
     # set DictReader with file name for 4G rollout data
@@ -178,11 +178,12 @@ keys = (
     'bandwidth',
 )
 
-SYSTEM_FILENAME =  os.path.join(BASE_PATH, 'initial_system_with_4G.csv')
+SYSTEM_FILENAME =  os.path.join(BASE_PATH, 'initial_system', 'initial_system_with_4G.csv')
 with open(SYSTEM_FILENAME, 'w', newline='') as system_file:
     writer = csv.DictWriter(system_file, fieldnames=keys)
     writer.writeheader()
     for pcd_sector, assets in assets_by_postcode_sector.items():
         for asset in assets:
             asset['pcd_sector'] = pcd_sector
+            asset['type'] = 'macrocell_site'  # assume all sitefinder assets relate to macrocell sites
             writer.writerow(asset)
