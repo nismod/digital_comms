@@ -303,6 +303,7 @@ def write_pcd_results(ict_manager, year, pop_scenario, throughput_scenario,
 def write_decisions(decisions, year, pop_scenario, throughput_scenario, intervention_strategy):
     suffix = 'pop_{}_throughput_{}_strategy_{}'.format(
         pop_scenario, throughput_scenario, intervention_strategy)
+    suffix = suffix.replace('baseline', 'base')  # for length, use 'base' for baseline scenarios
     decisions_filename = os.path.join(BASE_PATH, 'outputs', 'decisions_{}.csv'.format(suffix))
 
     if year == BASE_YEAR:
