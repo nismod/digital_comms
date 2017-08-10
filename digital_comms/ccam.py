@@ -159,6 +159,7 @@ class LAD(object):
         """
         return sum([pcd_sector.energy_demand for pcd_sector in self._pcd_sectors.values()])
 
+
 class PostcodeSector(object):
     """Represents a pcd_sector to be modelled
     """
@@ -218,13 +219,18 @@ class PostcodeSector(object):
         return capacity_per_kmsq
 
     @property
+    def population_density(self):
+        """Calculate population density
+        """
+        return self.population / self.area
+
+    @property
     def clutter_environment(self):
         """Estimate clutter_environment geotype based on population density
         """
-        population_density = self.population / self.area
         return lookup_clutter_geotype(
             self._clutter_lookup,
-            population_density
+            self.population_density
         )
 
     @property
