@@ -28,23 +28,23 @@ TIMESTEP_INCREMENT = 1
 TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
 
 POPULATION_SCENARIOS = [
-    "high",
+    # "high",
     "baseline",
-    "low",
+    # "low",
 ]
 THROUGHPUT_SCENARIOS = [
-    "high",
+    # "high",
     "baseline",
-    "low",
+    # "low",
 ]
 INTERVENTION_STRATEGIES = [
-    "minimal",
-    "macrocell",
+    # "minimal",
+    # "macrocell",
     "small_cell",
 ]
 
 # Annual capital budget constraint, GBP
-ANNUAL_BUDGET = 2 * 10^9
+ANNUAL_BUDGET = 2 * 10 ** 9
 
 # Target threshold for universal mobile service, in Mbps/km^2
 SERVICE_OBLIGATION_CAPACITY = 0.2
@@ -237,12 +237,12 @@ def write_results(ict_manager, year, pop_scenario, throughput_scenario, interven
     metrics_filename = os.path.join(BASE_PATH, 'outputs', 'metrics_{}.csv'.format(suffix))
 
     if year == BASE_YEAR:
-        metrics_file = open(metrics_filename, 'w')
+        metrics_file = open(metrics_filename, 'w', newline='')
         metrics_writer = csv.writer(metrics_file)
         metrics_writer.writerow(
             ('year', 'area_id', 'area_name', 'cost', 'coverage', 'demand', 'capacity', 'energy_demand'))
     else:
-        metrics_file = open(metrics_filename, 'a')
+        metrics_file = open(metrics_filename, 'a', newline='')
         metrics_writer = csv.writer(metrics_file)
 
     # output and report results for this timestep
@@ -271,12 +271,12 @@ def write_decisions(decisions, year, pop_scenario, throughput_scenario, interven
     decisions_filename = os.path.join(BASE_PATH, 'outputs', 'decisions_{}.csv'.format(suffix))
 
     if year == BASE_YEAR:
-        decisions_file = open(decisions_filename, 'w')
+        decisions_file = open(decisions_filename, 'w', newline='')
         metrics_writer = csv.writer(decisions_file)
         metrics_writer.writerow(
             ('year', 'pcd_sector', 'site_ngr', 'build_date', 'type', 'technology', 'frequency', 'bandwidth',))
     else:
-        decisions_file = open(decisions_filename, 'a')
+        decisions_file = open(decisions_filename, 'a', newline='')
         decisions_writer = csv.writer(decisions_file)
 
     # output and report results for this timestep
@@ -322,6 +322,7 @@ for pop_scenario, throughput_scenario, intervention_strategy in itertools.produc
         # Decommission assets
         asset_lifetime = 10
         decommissioned = [asset for asset in assets if asset["build_date"] <= year - asset_lifetime]
+        print("decommissiond", len(decommissioned))
         assets = [asset for asset in assets if asset["build_date"] > year - asset_lifetime]
 
         # Decide on new interventions
@@ -329,10 +330,15 @@ for pop_scenario, throughput_scenario, intervention_strategy in itertools.produc
         service_obligation_capacity = SERVICE_OBLIGATION_CAPACITY
         timestep_interventions = []
         while True:
+            print("budget", budget)
             # simulate
             system = ICTManager(lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup)
             # decide
-            interventions_built, budget = decide_interventions(intervention_strategy, budget, service_obligation_capacity, decommissioned, system)
+            interventions_built, budget = decide_interventions(intervention_strategy, budget, service_obligation_capacity, decommissioned, system, year)
+            decommissioned = []  # Hack to set decommissioned to empty after first decision attempt
+            print("built", len(interventions_built))
+            print("spent", ANNUAL_BUDGET - budget)
+
 
             if not interventions_built:
                 # no more decisions (feasible or desirable)
