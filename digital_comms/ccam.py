@@ -90,6 +90,22 @@ class LAD(object):
     def __repr__(self):
         return "<LAD id:{} name:{}>".format(self.id, self.name)
 
+    @property
+    def population(self):
+        return sum([
+            pcd_sector.population
+            for pcd_sector in self._pcd_sectors.values()])
+
+    @property
+    def population_density(self):
+        total_area = sum([
+            pcd_sector.area
+            for pcd_sector in self._pcd_sectors.values()])
+        if total_area == 0:
+            return 0
+        else:
+            return self.population / total_area
+
     def add_pcd_sector(self, pcd_sector):
         self._pcd_sectors[pcd_sector.id] = pcd_sector
 
