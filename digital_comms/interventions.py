@@ -175,10 +175,16 @@ def decide_interventions(strategy, budget, service_obligation_capacity, decommis
 
     # Replace decommissioned
     replace, budget = replace_decommissioned(budget, decommissioned)
-    # Build to meet service obligation (up to threshold, set to zero to disable)
-    obligation, budget = meet_service_obligation(budget, available_interventions, service_obligation_capacity, system)
-    # Build to meet demand
-    demand, budget = meet_demand(budget, available_interventions, system)
+
+    obligation = []
+    if not replace:
+        # Build to meet service obligation (up to threshold, set to zero to disable)
+        obligation, budget = meet_service_obligation(budget, available_interventions, service_obligation_capacity, system)
+
+    demand = []
+    if not obligation:
+        # Build to meet demand
+        demand, budget = meet_demand(budget, available_interventions, system)
 
     built = replace + obligation + demand
 
@@ -191,27 +197,21 @@ def replace_decommissioned(budget, decommissioned):
     return assets_replaced, budget
 
 def meet_service_obligation(budget, available_interventions, service_obligation_capacity, system):
-    interventions_built = []
-    for area in system.postcode_sectors:
-        built, budget = meet_area_capacity(budget, available_interventions, area.assets, service_obligation_capacity)
-        interventions_built += built
-
-    return interventions_built, budget
+    area = _suggest_target_postcode(system)
+    return _suggest_interventions(
+        budget, available_interventions, area.assets, service_obligation_capacity)
 
 def meet_demand(budget, available_interventions, system):
-    interventions_built = []
-    for area in system.postcode_sectors:
-        built, budget = meet_area_capacity(budget, available_interventions, area.assets, area.demand)
-        interventions_built += built
+    area = _suggest_target_postcode(system)
+    return _suggest_interventions(
+        budget, available_interventions, area.assets, area.demand)
 
-    return interventions_built, budget
-
-def meet_area_capacity(budget, available_interventions, existing_assets, capacity_threshold):
-    # while capacity is not met:
-    #    integrate_800 and integrate_2.6
-    #    integrate_700
-    #    integrate_3.5
-    #    build small cells to next density
-    #    fail
+def _suggest_interventions(budget, available_interventions, existing_assets, capacity_threshold):
+    # integrate_800 and integrate_2.6
+    # integrate_700
+    # integrate_3.5
+    # build small cells to next density
     return [], budget
 
+def _suggest_target_postcode(system):
+    return system.postcode_sectors[0]
