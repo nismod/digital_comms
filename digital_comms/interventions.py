@@ -98,15 +98,15 @@ INTERVENTIONS = {
         ]
     },
     'carrier_1500': {
-        'name': 'Build 1500 MHz carrier',
+        'name': 'Build 3500 MHz carrier',
         'description': 'Available if a site has LTE',
-        'result': '1500 band available',
+        'result': '3500 band available',
         'cost': (1500 * 1.1),
         'assets_to_build': [
             {
                 # site_ngr to match upgraded
                 'site_ngr': None,
-                'frequency': '1500',
+                'frequency': '3500',
                 'technology': 'LTE',
                 'type': 'macrocell_site',
                 'bandwidth': '2x10MHz',
@@ -123,7 +123,7 @@ INTERVENTIONS = {
         'assets_to_build': [
             {
                 # site_ngr not used
-                'site_ngr': None,
+                'site_ngr': 'small_cell_sites',
                 'frequency': '3700',
                 'technology': '5G',
                 'type': 'small_cell',
@@ -136,26 +136,32 @@ INTERVENTIONS = {
 }
 
 AVAILABLE_STRATEGY_INTERVENTIONS = {
-    ### Intervention Strategy 1 ###
-    ### Minimal Intervention ### 'Do Nothing Scenario'
-    ### Build no more additional sites -> will lead to a capacity margin deficit
-    ### The cost will be the replacement of existing units annually based on the decommissioning rate of 10%
-    ### Capacity will be the sum of 800 and 2600 MHz
+    # Intervention Strategy 1
+    # Minimal Intervention 'Do Nothing Scenario'
+    # Build no more additional sites -> will lead to a capacity margin deficit
+    # The cost will be the replacement of existing units annually based on the
+    # (decommissioning rate of 10%) common asset lifetime of 10 years
+    # Capacity will be the sum of 800 and 2600 MHz
     'minimal': ('lte_replacement'),
 
-    ### Intervention Strategy 2 ###
-    ### Integrate 700 and 3500 MHz on to the macrocellular layer
-    ### The cost will be the addtion of another carrier on each basestation ~£15k (providing thre is 4G already)
-    ### If 4G isn't present, the site will need major upgrades.
-    'macrocell': ('upgrade_to_lte', 'lte_replacement', 'carrier_700', 'carrier_1500'),
+    # Intervention Strategy 2
+    # Integrate 700 and 3500 MHz on to the macrocellular layer
+    # The cost will be the addtion of another carrier on each basestation ~£15k
+    # (providing thre is 4G already)
+    # If 4G isn't present, the site will need major upgrades.
+    'macrocell': ('upgrade_to_lte', 'lte_replacement', 'carrier_700',
+                  'carrier_1500'),
 
-    ### Intervention Strategy 3 ###
-    ### Deploy a small cell layer at 3700 MHz
-    ### The cost will include the small cell unit and the civil works per cell
-    'small_cell': ('upgrade_to_lte', 'lte_replacement', 'carrier_700', 'carrier_1500', 'small_cell'),
+    # Intervention Strategy 3
+    # Deploy a small cell layer at 3700 MHz
+    # The cost will include the small cell unit and the civil works per cell
+    'small_cell': ('upgrade_to_lte', 'lte_replacement', 'carrier_700',
+                   'carrier_1500', 'small_cell'),
 }
 
-def decide_interventions(strategy, budget, service_obligation_capacity, decommissioned, system):
+
+def decide_interventions(strategy, budget, service_obligation_capacity,
+                         decommissioned, system, timestep):
     """Given strategy parameters and a system return some next best intervention
 
     Params
@@ -174,12 +180,14 @@ def decide_interventions(strategy, budget, service_obligation_capacity, decommis
     available_interventions = AVAILABLE_STRATEGY_INTERVENTIONS[strategy]
 
     # Replace decommissioned
-    replace, budget = replace_decommissioned(budget, decommissioned)
+    replace, budget = replace_decommissioned(budget, decommissioned, timestep)
 
     obligation = []
     if not replace:
-        # Build to meet service obligation (up to threshold, set to zero to disable)
-        obligation, budget = meet_service_obligation(budget, available_interventions, service_obligation_capacity, system)
+        # Build to meet service obligation (up to threshold,
+        # set to zero to disable)
+        obligation, budget = meet_service_obligation(
+            budget, available_interventions, service_obligation_capacity, system)
 
     demand = []
     if not obligation:
@@ -190,28 +198,75 @@ def decide_interventions(strategy, budget, service_obligation_capacity, decommis
 
     return built, budget
 
-def replace_decommissioned(budget, decommissioned):
+
+def replace_decommissioned(budget, decommissioned, timestep):
     assets_replaced = []
     for asset in decommissioned:
-        pass
+        if asset['type'] == 'macrocell_site' and asset['technology'] == 'LTE':
+            asset['build_date'] = timestep
+            assets_replaced.append(asset)
+            budget -= INTERVENTIONS['lte_replacement']['cost']
+        elif asset['type'] == 'small_cell':
+            asset['build_date'] = timestep
+            assets_replaced.append(asset)
+            budget -= INTERVENTIONS['small_cell']['cost']
+        else:
+            # LTE upgrade?
+            pass
+        if budget < 0:
+            break
     return assets_replaced, budget
 
+
 def meet_service_obligation(budget, available_interventions, service_obligation_capacity, system):
-    area = _suggest_target_postcode(system)
+    areas = _suggest_target_postcodes(system)
     return _suggest_interventions(
-        budget, available_interventions, area.assets, service_obligation_capacity)
+        budget, available_interventions, areas, service_obligation_capacity)
+
 
 def meet_demand(budget, available_interventions, system):
-    area = _suggest_target_postcode(system)
+    areas = _suggest_target_postcodes(system)
     return _suggest_interventions(
-        budget, available_interventions, area.assets, area.demand)
+        budget, available_interventions, areas)
 
-def _suggest_interventions(budget, available_interventions, existing_assets, capacity_threshold):
-    # integrate_800 and integrate_2.6
-    # integrate_700
-    # integrate_3.5
-    # build small cells to next density
-    return [], budget
 
-def _suggest_target_postcode(system):
-    return system.postcode_sectors[0]
+def _suggest_interventions(budget, available_interventions, areas, threshold=None):
+    built_interventions = []
+    for area in areas:
+        # group assets by site
+        assets_by_site = {}
+        for asset in area.assets:
+            if asset.site_ngr not in assets_by_site:
+                assets_by_site[asset.site_ngr] = [asset]
+            else:
+                assets_by_site[asset.site_ngr].append(asset)
+
+        # integrate_800 and integrate_2.6
+        if 'upgrade_to_lte' in available_interventions:
+            for site_assets in assets_by_site.values():
+                pass
+
+        # integrate_700
+        if 'carrier_700' in available_interventions:
+            pass
+
+        # integrate_3.5
+        if 'carrier_3500' in available_interventions:
+            pass
+
+        # build small cells to next density
+        if 'small_cell' in available_interventions:
+            pass
+
+    return built_interventions, budget
+
+
+def _suggest_target_postcodes(system, threshold=None):
+    """Sort postcodes by population density (descending)
+    - if considering threshold, filter out any with capacity above threshold
+    """
+    postcodes = system.postcode_sectors
+    if threshold is not None:
+        postcodes = [pcd for pcd in postcodes if pcd.capacity < threshold]
+    postcodes = sorted(postcodes, key=lambda pcd: -pcd.population_density)
+    return postcodes
