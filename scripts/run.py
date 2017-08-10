@@ -230,7 +230,8 @@ with open(CLUTTER_GEOTYPE_FILENAME, 'r') as clutter_geotype_file:
     # sort list by population density (first entry in each tuple)
     clutter_lookup.sort(key=lambda tup: tup[0])
 
-def write_results(ict_manager, year, pop_scenario, throughput_scenario, intervention_strategy):
+def write_lad_results(ict_manager, year, pop_scenario, throughput_scenario,
+                      intervention_strategy):
     suffix = 'pop_{}_throughput_{}_strategy_{}'.format(
         pop_scenario, throughput_scenario, intervention_strategy)
     suffix = suffix.replace('baseline', 'base')  # for length, use 'base' for baseline scenarios
@@ -240,7 +241,7 @@ def write_results(ict_manager, year, pop_scenario, throughput_scenario, interven
         metrics_file = open(metrics_filename, 'w', newline='')
         metrics_writer = csv.writer(metrics_file)
         metrics_writer.writerow(
-            ('year', 'area_id', 'area_name', 'cost', 'coverage', 'demand', 'capacity', 'energy_demand'))
+            ('year', 'area_id', 'area_name', 'cost', 'coverage', 'demand', 'capacity', 'capacity_deficit', 'energy_demand'))
     else:
         metrics_file = open(metrics_filename, 'a', newline='')
         metrics_writer = csv.writer(metrics_file)
@@ -259,9 +260,39 @@ def write_results(ict_manager, year, pop_scenario, throughput_scenario, interven
         demand = results["demand"][area_name]
         capacity = results["capacity"][area_name]
         energy_demand = results["energy_demand"][area_name]
+        capacity_deficit = capacity - demand
 
         metrics_writer.writerow(
-            (year, area_id, area_name, cost, coverage, demand, capacity, energy_demand))
+            (year, area_id, area_name, cost, coverage, demand, capacity, capacity_deficit, energy_demand))
+
+    metrics_file.close()
+
+def write_pcd_results(ict_manager, year, pop_scenario, throughput_scenario,
+                      intervention_strategy):
+    suffix = 'pop_{}_throughput_{}_strategy_{}'.format(
+        pop_scenario, throughput_scenario, intervention_strategy)
+    suffix = suffix.replace('baseline', 'base')  # for length, use 'base' for baseline scenarios
+    metrics_filename = os.path.join(BASE_PATH, 'outputs', 'pcd_metrics_{}.csv'.format(suffix))
+
+    if year == BASE_YEAR:
+        metrics_file = open(metrics_filename, 'w', newline='')
+        metrics_writer = csv.writer(metrics_file)
+        metrics_writer.writerow(
+            ('year', 'postcode', 'demand', 'capacity', 'capacity_deficit'))
+    else:
+        metrics_file = open(metrics_filename, 'a', newline='')
+        metrics_writer = csv.writer(metrics_file)
+
+    # output and report results for this timestep
+    for pcd in ict_manager.postcode_sectors:
+        # Output metrics
+        # year,postcode,demand,capacity,capacity_deficit
+        demand = pcd.demand
+        capacity = pcd.capacity
+        capacity_deficit = capacity - demand
+
+        metrics_writer.writerow(
+            (year, pcd.id, demand, capacity, capacity_deficit))
 
     metrics_file.close()
 
@@ -272,8 +303,8 @@ def write_decisions(decisions, year, pop_scenario, throughput_scenario, interven
 
     if year == BASE_YEAR:
         decisions_file = open(decisions_filename, 'w', newline='')
-        metrics_writer = csv.writer(decisions_file)
-        metrics_writer.writerow(
+        decisions_writer = csv.writer(decisions_file)
+        decisions_writer.writerow(
             ('year', 'pcd_sector', 'site_ngr', 'build_date', 'type', 'technology', 'frequency', 'bandwidth',))
     else:
         decisions_file = open(decisions_filename, 'a', newline='')
@@ -322,31 +353,34 @@ for pop_scenario, throughput_scenario, intervention_strategy in itertools.produc
         # Decommission assets
         asset_lifetime = 10
         decommissioned = [asset for asset in assets if asset["build_date"] <= year - asset_lifetime]
-        print("decommissiond", len(decommissioned))
         assets = [asset for asset in assets if asset["build_date"] > year - asset_lifetime]
 
         # Decide on new interventions
         budget = ANNUAL_BUDGET
         service_obligation_capacity = SERVICE_OBLIGATION_CAPACITY
         timestep_interventions = []
+
+        print("budget", budget)
+        print("decommissioned", len(decommissioned))
         while True:
-            print("budget", budget)
             # simulate
             system = ICTManager(lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup)
             # decide
             interventions_built, budget = decide_interventions(intervention_strategy, budget, service_obligation_capacity, decommissioned, system, year)
-            decommissioned = []  # Hack to set decommissioned to empty after first decision attempt
-            print("built", len(interventions_built))
-            print("spent", ANNUAL_BUDGET - budget)
+            decommissioned = []  # Hack to set decommissioned to empty
 
+            # accumulate decisions
+            timestep_interventions += interventions_built
+            assets += interventions_built
+            print("remaining budget", budget)
 
-            if not interventions_built:
+            if not interventions_built or budget <= 0:
                 # no more decisions (feasible or desirable)
                 break
-            else:
-                # accumulate decisions
-                timestep_interventions += interventions_built
-                assets += interventions_built
 
-        write_decisions(timestep_interventions, year, pop_scenario, throughput_scenario, intervention_strategy)
-        write_results(system, year, pop_scenario, throughput_scenario, intervention_strategy)
+        write_decisions(timestep_interventions, year, pop_scenario,
+                        throughput_scenario, intervention_strategy)
+        write_lad_results(system, year, pop_scenario, throughput_scenario,
+                          intervention_strategy)
+        write_pcd_results(system, year, pop_scenario, throughput_scenario,
+                          intervention_strategy)
