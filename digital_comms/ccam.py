@@ -1,5 +1,6 @@
 """Cambridge Communications Assessment Model
 """
+from collections import defaultdict
 from itertools import tee
 from pprint import pprint
 
@@ -34,47 +35,34 @@ class ICTManager(object):
         self.lads = {}
 
         # List of all postcode sectors
-        self.postcode_sectors = []
+        self.postcode_sectors = {}
 
-        # pcd_sector id =? LAD id
-        lad_id_by_pcd_sector = {}
-        # {
-        # 	"pcd_sector_1": "lad_0",
-        # 	"pcd_sector_2": "lad_0"
-        # }
+        # lad_data in lads <-'lads' is the list of dicts of lad data
+        for lad_data in lads:
+            # find ID out of lads list of dicts
+            lad_id = lad_data["id"]
+            # create LAD object using lad_data and put in self.lads dict
+            self.lads[lad_id] = LAD(lad_data)
 
-        for lad_data in lads:  # lad_data in lads <-'lads' is the list of dicts of lad data
-            lad_id = lad_data["id"]  # find ID out of lads list of dicts
-            self.lads[lad_id] = LAD(lad_data)  # create LAD object using lad_data and put in self.lads dict
+        assets_by_pcd = defaultdict(list)
+        for asset in assets:
+            assets_by_pcd[asset['pcd_sector']].append(asset)
 
         for pcd_sector_data in pcd_sectors:
             lad_id = pcd_sector_data["lad_id"]
             pcd_sector_id = pcd_sector_data["id"]
-            pcd_sector = PostcodeSector(pcd_sector_data, capacity_lookup_table, clutter_lookup)
+            assets = assets_by_pcd[pcd_sector_id]
+            pcd_sector = PostcodeSector(
+                pcd_sector_data, assets, capacity_lookup_table, clutter_lookup)
 
             # add PostcodeSector to simple list
-            self.postcode_sectors.append(pcd_sector)
+            self.postcode_sectors[pcd_sector_id] = pcd_sector
 
             # add PostcodeSector to LAD
             lad_containing_pcd_sector = self.lads[lad_id]
             lad_containing_pcd_sector.add_pcd_sector(pcd_sector)
 
-            # add LAD id to lookup by pcd_sector_id
-            lad_id_by_pcd_sector[pcd_sector_id] = lad_id
 
-        for asset_data in assets:
-            asset = Asset(asset_data)
-            lad_id = lad_id_by_pcd_sector[asset.pcd_sector]
-            area_for_asset = self.lads[lad_id]
-            area_for_asset.add_asset(asset)
-
-    def results(self):
-        return {
-            "capacity": {area.name: area.capacity() for area in self.lads.values()},
-            "coverage": {area.name: area.coverage() for area in self.lads.values()},
-            "demand": {area.name: area.demand() for area in self.lads.values()},
-            "energy_demand": {area.name: area.energy_demand() for area in self.lads.values()}
-        }
 
 class LAD(object):
     """Represents an area to be modelled, contains
@@ -164,16 +152,11 @@ class LAD(object):
             for pcd_sector in self._pcd_sectors.values()])
         return float(population_with_coverage) / total_pop
 
-    def energy_demand(self):
-        """Return the sum of energy demand from all nested postcode sectors
-        """
-        return sum([pcd_sector.energy_demand for pcd_sector in self._pcd_sectors.values()])
-
 
 class PostcodeSector(object):
     """Represents a pcd_sector to be modelled
     """
-    def __init__(self, data, capacity_lookup_table, clutter_lookup):
+    def __init__(self, data, assets, capacity_lookup_table, clutter_lookup):
         self.id = data["id"]
         self.lad_id = data["lad_id"]
         self.population = data["population"]
@@ -185,11 +168,17 @@ class PostcodeSector(object):
         self._capacity_lookup_table = capacity_lookup_table
         self._clutter_lookup = clutter_lookup
 
+        self.clutter_environment = lookup_clutter_geotype(
+            self._clutter_lookup,
+            self.population_density
+        )
+
         # TODO: replace hard-coded parameter
         self.penetration = 0.8
 
         # Keep list of assets
-        self.assets = []
+        self.assets = assets
+        self.capacity = self._macrocell_site_capacity() + self._small_cell_capacity()
 
     def __repr__(self):
         return "<PostcodeSector id:{}>".format(self.id)
@@ -207,11 +196,6 @@ class PostcodeSector(object):
             = ~0.02 Mbps required per user
         """
         return user_throughput * 1024 * 8 / 9 / 30 / 3600
-
-    def add_asset(self, asset):
-        """Add an instance of an Asset object to this area's assets
-        """
-        self.assets.append(asset)
 
     @property
     def demand(self):
@@ -235,42 +219,16 @@ class PostcodeSector(object):
         """
         return self.population / self.area
 
-    @property
-    def clutter_environment(self):
-        """Estimate clutter_environment geotype based on population density
-        """
-        return lookup_clutter_geotype(
-            self._clutter_lookup,
-            self.population_density
-        )
-
-    @property
-    def capacity(self):
-        """Calculate capacity as sum of capacity based principally on the site
-        density of each frequency/bandwidth combination.
-        """
-        return self._macrocell_site_capacity() + self._small_cell_capacity()
-
     def _macrocell_site_capacity(self):
-        # Find unique frequency/bandwidth combinations
-        technology_combinations = set([
-            (asset.frequency, asset.bandwidth)
-            for asset in self.assets
-            # TODO check list of assessable technology - i.e. excluding 2G/3G
-            if asset.technology == "LTE"
-            and asset.type == "macrocell_site"
-        ])
-
         capacity = 0
 
-        for frequency, bandwidth in technology_combinations:
+        for frequency in ['800', '2600', '700', '3500']:
             # count sites with this frequency/bandwidth combination
-            num_sites = len(set([
-                asset.site_ngr
-                for asset in self.assets
-                if asset.frequency == frequency and
-                asset.bandwidth == bandwidth
-            ]))
+            num_sites = 0
+            for asset in self.assets:
+                if asset['frequency'] == frequency:
+                    num_sites += 1
+
             # sites/km^2 : divide num_sites/area
             site_density = float(num_sites) / self.area
 
@@ -279,40 +237,29 @@ class PostcodeSector(object):
                 self._capacity_lookup_table,
                 self.clutter_environment,
                 frequency,
-                bandwidth,
+                "2x10MHz",
                 site_density)
             capacity += tech_capacity
 
         return capacity
 
     def _small_cell_capacity(self):
-        # Find unique frequency/bandwidth combinations for small cells
-        technology_combinations = set([
-            (asset.frequency, asset.bandwidth)
+        # count small_cells
+        num_small_cells = len([
+            asset
             for asset in self.assets
-            if asset.type == "small_cell"
+            if asset['type'] == "small_cell"
         ])
+        # sites/km^2 : divide num_small_cells/area
+        site_density = float(num_small_cells) / self.area
 
-        capacity = 0
-
-        for frequency, bandwidth in technology_combinations:
-            # count all small_cells with this frequency/bandwidth combination
-            num_small_cells = len([
-                asset
-                for asset in self.assets
-                if asset.frequency == frequency and
-                asset.bandwidth == bandwidth
-            ])
-            # sites/km^2 : divide num_small_cells/area
-            site_density = float(num_small_cells) / self.area
-
-            # for a given site density and spectrum band, look up capacity
-            capacity += lookup_capacity(
-                self._capacity_lookup_table,
-                "Small cells",  # Override clutter environment for small cells
-                frequency,
-                bandwidth,
-                site_density)
+        # for a given site density and spectrum band, look up capacity
+        capacity = lookup_capacity(
+            self._capacity_lookup_table,
+            "Small cells",  # Override clutter environment for small cells
+            "3700",
+            "2x25MHz",
+            site_density)
 
         return capacity
 
@@ -320,36 +267,6 @@ class PostcodeSector(object):
     def capacity_margin(self):
         capacity_margin = self.capacity - self.demand
         return capacity_margin
-
-    @property
-    def energy_demand(self):
-        # cells : count how many cells there are in the assets database
-        cells = sum([asset.cells for asset in self.assets])
-        # for a given number of cells, what is the total cost?
-        # TODO replace hardcoded value
-        energy_demand = (cells * 5)
-        return energy_demand
-
-
-class Asset(object):
-    """Element of the communication infrastructure system,
-    e.g. base station or distribution-point unit.
-    """
-    def __init__(self, data):
-        self.pcd_sector = data["pcd_sector"]
-        self.site_ngr = data["site_ngr"]
-        self.type = data["type"]
-        self.technology = data["technology"]
-        self.frequency = data["frequency"]
-        self.bandwidth = data["bandwidth"]
-        # Assume any mobile asset has 3 cells
-        self.cells = 3
-
-    def __repr__(self):
-        fmt = r'Asset(\{"pcd_sector": {}, "site_ngr": {}, "technology": {},' + \
-            r' "frequency": {}, "bandwidth": {}\})'
-        return fmt.format(self.pcd_sector, self.site_ngr, self.technology,
-                          self.frequency, self.bandwidth)
 
 
 def pairwise(iterable):
@@ -389,9 +306,6 @@ def lookup_clutter_geotype(clutter_lookup, population_density):
 def lookup_capacity(lookup_table, clutter_environment, frequency, bandwidth, site_density):
     """Use lookup table to find capacity by clutter environment geotype,
     frequency, bandwidth and site density
-
-    TODO:
-    - neat handling of loaded lookup_table
     """
     if (clutter_environment, frequency, bandwidth) not in lookup_table:
         raise KeyError("Combination %s not found in lookup table",
