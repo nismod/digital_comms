@@ -184,8 +184,8 @@ class PostcodeSector(object):
         self.population = data["population"]
         self.area = data["area"]
 
-        user_throughput = data["user_throughput"]
-        self.user_demand = self._calculate_user_demand(user_throughput)
+        self.user_throughput = data["user_throughput"]
+        self.user_demand = self._calculate_user_demand(self.user_throughput)
 
         self._capacity_lookup_table = capacity_lookup_table
         self._clutter_lookup = clutter_lookup
