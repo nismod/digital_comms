@@ -1,6 +1,8 @@
 """Decide on interventions
 """
 # pylint: disable=C0103
+from digital_comms.ccam import Asset, PostcodeSector
+
 import copy
 import math
 
@@ -184,23 +186,25 @@ def decide_interventions(strategy, budget, service_obligation_capacity,
     # Replace decommissioned
     replace, budget = replace_decommissioned(
         budget, decommissioned, available_interventions, timestep)
+    # print("replaced", len(replace))
 
     obligation = []
-    if not replace and budget > 0:
+    if budget > 0:
         # Build to meet service obligation (up to threshold,
         # set to zero to disable)
         obligation, budget = meet_service_obligation(
-            budget, available_interventions, timestep, service_obligation_capacity, system)
+            budget, available_interventions, timestep,
+            service_obligation_capacity, system)
+    # print("obligation", len(obligation))
 
     demand = []
-    if not replace and not obligation and budget > 0:
+    if budget > 0:
         # Build to meet demand
-        demand, budget = meet_demand(budget, available_interventions, timestep, system)
+        demand, budget = meet_demand(
+            budget, available_interventions, timestep, system)
+    # print("demand", len(demand))
 
     built = replace + obligation + demand
-    print("replaced", len(replace))
-    print("obligation", len(obligation))
-    print("demand", len(demand))
     return built, budget
 
 
@@ -243,8 +247,6 @@ def meet_demand(budget, available_interventions, timestep, system):
 def _suggest_interventions(budget, available_interventions, areas, timestep, threshold=None):
     built_interventions = []
     for area in areas:
-        # print(area.id, area.population_density)
-
         # group assets by site
         assets_by_site = {}
         for asset in area.assets:
@@ -258,6 +260,8 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
             build_option = copy.deepcopy(INTERVENTIONS['upgrade_to_lte']['assets_to_build'])
             cost = INTERVENTIONS['upgrade_to_lte']['cost']
             for site_ngr, site_assets in assets_by_site.items():
+                if site_ngr == 'small_cell_sites':
+                    continue
                 if 'LTE' not in [asset.technology for asset in site_assets]:
                     # set both assets to this site_ngr
                     to_build = copy.deepcopy(build_option)
@@ -276,11 +280,16 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
         if budget < 0:
             break
 
+        if _area_satisfied(area, built_interventions, threshold):
+            continue
+
         # integrate_700
         if 'carrier_700' in available_interventions:
             build_option = INTERVENTIONS['carrier_700']['assets_to_build']
             cost = INTERVENTIONS['carrier_700']['cost']
             for site_ngr, site_assets in assets_by_site.items():
+                if site_ngr == 'small_cell_sites':
+                    continue
                 if 'LTE' in [asset.technology for asset in site_assets] and \
                         '700' not in [asset.frequency for asset in site_assets]:
                     # set both assets to this site_ngr
@@ -297,11 +306,16 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
         if budget < 0:
             break
 
+        if _area_satisfied(area, built_interventions, threshold):
+            continue
+
         # integrate_3.5
         if 'carrier_3500' in available_interventions:
             build_option = INTERVENTIONS['carrier_3500']['assets_to_build']
             cost = INTERVENTIONS['carrier_3500']['cost']
             for site_ngr, site_assets in assets_by_site.items():
+                if site_ngr == 'small_cell_sites':
+                    continue
                 if 'LTE' in [asset.technology for asset in site_assets] and \
                         '3500' not in [asset.frequency for asset in site_assets]:
                     # set both assets to this site_ngr
@@ -318,45 +332,54 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
         if budget < 0:
             break
 
-        # build small cells to next density
-        if 'small_cell' in available_interventions:
-            area_sq_km = area.area
-            if 'small_cell_sites' in assets_by_site:
-                current_number = len(assets_by_site['small_cell_sites'])
+        if _area_satisfied(area, built_interventions, threshold):
+            continue
+
+        while True:
+            # build small cells to next density
+            if 'small_cell' in available_interventions:
+                area_sq_km = area.area
+                if 'small_cell_sites' in assets_by_site:
+                    current_number = len(assets_by_site['small_cell_sites'])
+                else:
+                    current_number = 0
+                current_density = current_number / area_sq_km
+                build_option = INTERVENTIONS['small_cell']['assets_to_build']
+                cost = INTERVENTIONS['small_cell']['cost']
+
+                target_densities = [
+                    3.98,
+                    7.07,
+                    10.19,
+                    17.63,
+                    22.03,
+                    28.29,
+                    37.67,
+                    52.61,
+                    78.6,
+                    129.92,
+                    254.65,
+                ]
+                target_density = next_larger_value(current_density, target_densities)
+
+                if target_density > current_density:
+                    target_number = math.ceil(area_sq_km * target_density)
+                    aim_to_build_number = target_number - current_number
+                    budgetable_number = math.floor(budget / cost)
+                    number_to_build = min(aim_to_build_number, budgetable_number)
+
+                    to_build = copy.deepcopy(build_option)
+                    to_build[0]['build_date'] = timestep
+                    to_build[0]['pcd_sector'] = area.id
+                    to_build = to_build * number_to_build
+
+                    built_interventions += to_build
+                    budget -= number_to_build * cost
+
+                if budget < 0 or _area_satisfied(area, built_interventions, threshold):
+                    break
             else:
-                current_number = 0
-            current_density = current_number / area_sq_km
-            build_option = INTERVENTIONS['small_cell']['assets_to_build']
-            cost = INTERVENTIONS['small_cell']['cost']
-
-            target_densities = [
-                3.98,
-                7.07,
-                10.19,
-                17.63,
-                22.03,
-                28.29,
-                37.67,
-                52.61,
-                78.6,
-                129.92,
-                254.65,
-            ]
-            target_density = next_larger_value(current_density, target_densities)
-
-            if target_density > current_density:
-                target_number = math.ceil(area_sq_km * target_density)
-                aim_to_build_number = target_number - current_number
-                budgetable_number = math.floor(budget / cost)
-                number_to_build = min(aim_to_build_number, budgetable_number)
-
-                to_build = copy.deepcopy(build_option)
-                to_build[0]['build_date'] = timestep
-                to_build[0]['pcd_sector'] = area.id
-                to_build = to_build * number_to_build
-
-                built_interventions += to_build
-                budget -= number_to_build * cost
+                break
 
     # for intervention in built_interventions:
     #     print(intervention)
@@ -381,5 +404,32 @@ def _suggest_target_postcodes(system, threshold=None):
         considered_postcodes = [pcd for pcd in postcodes if pcd.capacity < threshold]
     else:
         considered_postcodes = postcodes[:]
-    print("Considering {} of {} postcodes".format(len(considered_postcodes), total_postcodes))
+    # print("Considering {} of {} postcodes".format(len(considered_postcodes), total_postcodes))
     return sorted(considered_postcodes, key=lambda pcd: -pcd.population_density)
+
+def _area_satisfied(area, built_interventions, threshold):
+    if threshold is None:
+        target_capacity = area.demand
+    else:
+        target_capacity = threshold
+
+    data = {
+        "id": area.id,
+        "population": area.population,
+        "area": area.area,
+        "user_throughput": area.user_throughput,
+    }
+    test_area = PostcodeSector(
+        data,
+        area._capacity_lookup_table,
+        area._clutter_lookup
+    )
+    for asset in area.assets:
+        test_area.add_asset(asset)
+
+    for intervention in built_interventions:
+        asset = Asset(intervention)
+        test_area.add_asset(asset)
+    reached_capacity = test_area.capacity
+
+    return reached_capacity >= target_capacity
