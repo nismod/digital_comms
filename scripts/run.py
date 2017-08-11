@@ -30,18 +30,18 @@ TIMESTEP_INCREMENT = 1
 TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
 
 POPULATION_SCENARIOS = [
-    # "high",
+    "high",
     "baseline",
-    # "low",
+    "low",
 ]
 THROUGHPUT_SCENARIOS = [
-    # "high",
+    "high",
     "baseline",
-    # "low",
+    "low",
 ]
 INTERVENTION_STRATEGIES = [
-    # "minimal",
-    # "macrocell",
+    "minimal",
+    "macrocell",
     "small_cell",
 ]
 
@@ -247,18 +247,13 @@ def write_lad_results(ict_manager, year, pop_scenario, throughput_scenario,
         metrics_writer = csv.writer(metrics_file)
 
     # output and report results for this timestep
-    results = ict_manager.results()
-
     for lad in ict_manager.lads.values():
+        # year,area,name,cost,demand,capacity,capacity_deficit,population,population_density
         area_id = lad.id
         area_name = lad.name
-
-        # Output metrics
-        # year,area,name,cost,demand,capacity,capacity_deficity,population,population_density
         cost = cost_by_lad[lad.id]
-        demand = results["demand"][area_name]
-        capacity = results["capacity"][area_name]
-        energy_demand = results["energy_demand"][area_name]
+        demand = lad.demand()
+        capacity = lad.capacity()
         capacity_deficit = capacity - demand
         pop = lad.population
         pop_d = lad.population_density
@@ -283,7 +278,7 @@ def write_pcd_results(ict_manager, year, pop_scenario, throughput_scenario,
         metrics_writer = csv.writer(metrics_file)
 
     # output and report results for this timestep
-    for pcd in ict_manager.postcode_sectors:
+    for pcd in ict_manager.postcode_sectors.values():
         # Output metrics
         # year,postcode,demand,capacity,capacity_deficit
         demand = pcd.demand
@@ -386,7 +381,8 @@ for pop_scenario, throughput_scenario, intervention_strategy in itertools.produc
         # print("budget", budget)
 
         # simulate first
-        system = ICTManager(lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup)
+        if year == BASE_YEAR:
+            system = ICTManager(lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup)
 
         # decide
         interventions_built, budget, spend = decide_interventions(intervention_strategy, budget, service_obligation_capacity, system, year)
