@@ -73,7 +73,6 @@ class ICTManager(object):
             "capacity": {area.name: area.capacity() for area in self.lads.values()},
             "coverage": {area.name: area.coverage() for area in self.lads.values()},
             "demand": {area.name: area.demand() for area in self.lads.values()},
-            "cost": {area.name: area.cost() for area in self.lads.values()},
             "energy_demand": {area.name: area.energy_demand() for area in self.lads.values()}
         }
 
@@ -165,11 +164,6 @@ class LAD(object):
             for pcd_sector in self._pcd_sectors.values()])
         return float(population_with_coverage) / total_pop
 
-    def cost(self):
-        """Return the sum of costs from all nested postcode sectors
-        """
-        return sum([pcd_sector.cost for pcd_sector in self._pcd_sectors.values()])
-
     def energy_demand(self):
         """Return the sum of energy demand from all nested postcode sectors
         """
@@ -181,6 +175,7 @@ class PostcodeSector(object):
     """
     def __init__(self, data, capacity_lookup_table, clutter_lookup):
         self.id = data["id"]
+        self.lad_id = data["lad_id"]
         self.population = data["population"]
         self.area = data["area"]
 
@@ -262,7 +257,7 @@ class PostcodeSector(object):
             (asset.frequency, asset.bandwidth)
             for asset in self.assets
             # TODO check list of assessable technology - i.e. excluding 2G/3G
-            if asset.technology in ("LTE")
+            if asset.technology == "LTE"
             and asset.type == "macrocell_site"
         ])
 
@@ -325,15 +320,6 @@ class PostcodeSector(object):
     def capacity_margin(self):
         capacity_margin = self.capacity - self.demand
         return capacity_margin
-
-    @property
-    def cost(self):
-        # sites : count how many assets are sites
-        sites = len(set([asset.site_ngr for asset in self.assets]))
-        # for a given number of sites, what is the total cost?
-        # TODO replace hardcoded value
-        cost = (sites * 10)
-        return cost
 
     @property
     def energy_demand(self):

@@ -31,7 +31,7 @@ INTERVENTIONS = {
         'name': 'Upgrade site to LTE',
         'description': 'If a site has only 2G/3G',
         'result': '800 and 2600 bands available',
-        'cost': ((40900 + 18000) * 1.1),
+        'cost': 142446,
         'assets_to_build': [
             {
                 # site_ngr to match upgraded
@@ -45,34 +45,6 @@ INTERVENTIONS = {
             },
             {
                 # site_ngr to match upgraded
-                'site_ngr': None,
-                'frequency': '2600',
-                'technology': 'LTE',
-                'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
-                # set build date when deciding
-                'build_date': None,
-            },
-        ]
-    },
-    'lte_replacement': {
-        'name': 'Replace LTE site',
-        'description': 'Available if a site has had LTE decommissioned',
-        'result': '800 and 2600 bands available',
-        'cost': (1500 * 1.1),
-        'assets_to_build': [
-            {
-                # site_ngr to match replaced
-                'site_ngr': None,
-                'frequency': '800',
-                'technology': 'LTE',
-                'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
-                # set build date when deciding
-                'build_date': None,
-            },
-            {
-                # site_ngr to match replaced
                 'site_ngr': None,
                 'frequency': '2600',
                 'technology': 'LTE',
@@ -87,7 +59,7 @@ INTERVENTIONS = {
         'name': 'Build 700 MHz carrier',
         'description': 'Available if a site has LTE',
         'result': '700 band available',
-        'cost': (1500 * 1.1),
+        'cost': 50917,
         'assets_to_build': [
             {
                 # site_ngr to match upgraded
@@ -105,7 +77,7 @@ INTERVENTIONS = {
         'name': 'Build 3500 MHz carrier',
         'description': 'Available if a site has LTE',
         'result': '3500 band available',
-        'cost': (1500 * 1.1),
+        'cost': 50917,
         'assets_to_build': [
             {
                 # site_ngr to match upgraded
@@ -123,7 +95,7 @@ INTERVENTIONS = {
         'name': 'Build a small cell',
         'description': 'Must be deployed at preset densities to be modelled',
         'result': '2x25 MHz small cells available at given density',
-        'cost': ((2500 + 13300) * 1.1),
+        'cost': 111451,
         'assets_to_build': [
             {
                 # site_ngr not used
@@ -146,26 +118,26 @@ AVAILABLE_STRATEGY_INTERVENTIONS = {
     # The cost will be the replacement of existing units annually based on the
     # (decommissioning rate of 10%) common asset lifetime of 10 years
     # Capacity will be the sum of 800 and 2600 MHz
-    'minimal': ('lte_replacement'),
+    'minimal': (),
 
     # Intervention Strategy 2
     # Integrate 700 and 3500 MHz on to the macrocellular layer
     # The cost will be the addtion of another carrier on each basestation ~£15k
     # (providing thre is 4G already)
     # If 4G isn't present, the site will need major upgrades.
-    'macrocell': ('upgrade_to_lte', 'lte_replacement', 'carrier_700',
+    'macrocell': ('upgrade_to_lte', 'carrier_700',
                   'carrier_3500'),
 
     # Intervention Strategy 3
     # Deploy a small cell layer at 3700 MHz
     # The cost will include the small cell unit and the civil works per cell
-    'small_cell': ('upgrade_to_lte', 'lte_replacement', 'carrier_700',
+    'small_cell': ('upgrade_to_lte', 'carrier_700',
                    'carrier_3500', 'small_cell'),
 }
 
 
 def decide_interventions(strategy, budget, service_obligation_capacity,
-                         decommissioned, system, timestep):
+                         system, timestep):
     """Given strategy parameters and a system return some next best intervention
 
     Params
@@ -176,59 +148,30 @@ def decide_interventions(strategy, budget, service_obligation_capacity,
         Annual budget in GBP
     service_obligation_capacity : float
         Threshold for universal mobile service, in Mbps/km^2
-    decommissioned : list of dict
-        Assets decommissioned at the beginning of this timestep (no longer available)
     system : ICTManager
         Gives areas (postcode sectors) with population density, demand
     """
     available_interventions = AVAILABLE_STRATEGY_INTERVENTIONS[strategy]
 
-    # Replace decommissioned
-    replace, budget = replace_decommissioned(
-        budget, decommissioned, available_interventions, timestep)
-    # print("replaced", len(replace))
-
     obligation = []
     if budget > 0:
         # Build to meet service obligation (up to threshold,
         # set to zero to disable)
-        obligation, budget = meet_service_obligation(
+        obligation, budget, obligation_spend = meet_service_obligation(
             budget, available_interventions, timestep,
             service_obligation_capacity, system)
-    # print("obligation", len(obligation))
+    print("obligation", len(obligation))
 
     demand = []
     if budget > 0:
         # Build to meet demand
-        demand, budget = meet_demand(
+        demand, budget, demand_spend = meet_demand(
             budget, available_interventions, timestep, system)
-    # print("demand", len(demand))
+    print("demand", len(demand))
 
-    built = replace + obligation + demand
-    return built, budget
-
-
-def replace_decommissioned(budget, decommissioned, available_interventions, timestep):
-    assets_replaced = []
-    for asset in decommissioned:
-        if asset['type'] == 'macrocell_site' and asset['technology'] == 'LTE':
-            # replace LTE
-            if 'lte_replacement' in available_interventions:
-                to_replace = copy.deepcopy(asset)
-                to_replace['build_date'] = timestep
-                assets_replaced.append(to_replace)
-                budget -= INTERVENTIONS['lte_replacement']['cost']
-        elif asset['type'] == 'small_cell':
-            # replace small cell
-            if 'small_cell' in available_interventions:
-                to_replace = copy.deepcopy(asset)
-                to_replace['build_date'] = timestep
-                assets_replaced.append(to_replace)
-                budget -= INTERVENTIONS['small_cell']['cost']
-
-        if budget < 0:
-            break
-    return assets_replaced, budget
+    built = obligation + demand
+    spend = obligation_spend + demand_spend
+    return built, budget, spend
 
 
 def meet_service_obligation(budget, available_interventions, timestep,
@@ -246,7 +189,11 @@ def meet_demand(budget, available_interventions, timestep, system):
 
 def _suggest_interventions(budget, available_interventions, areas, timestep, threshold=None):
     built_interventions = []
+    spend = []
     for area in areas:
+        if _area_satisfied(area, built_interventions, threshold):
+            continue
+
         # group assets by site
         assets_by_site = {}
         for asset in area.assets:
@@ -274,6 +221,7 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
 
                     built_interventions += to_build
                     budget -= cost
+                    spend.append((area.id, area.lad_id, 'upgrade_to_lte', cost))
                     if budget < 0:
                         break
 
@@ -299,6 +247,7 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
                     to_build[0]['build_date'] = timestep
 
                     built_interventions += to_build
+                    spend.append((area.id, area.lad_id, 'carrier_700', cost))
                     budget -= cost
                     if budget < 0:
                         break
@@ -325,6 +274,7 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
                     to_build[0]['build_date'] = timestep
 
                     built_interventions += to_build
+                    spend.append((area.id, area.lad_id, 'carrier_3500', cost))
                     budget -= cost
                     if budget < 0:
                         break
@@ -335,9 +285,9 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
         if _area_satisfied(area, built_interventions, threshold):
             continue
 
-        while True:
-            # build small cells to next density
-            if 'small_cell' in available_interventions:
+        # build small cells to next density
+        if 'small_cell' in available_interventions:
+            while True:
                 area_sq_km = area.area
                 if 'small_cell_sites' in assets_by_site:
                     current_number = len(assets_by_site['small_cell_sites'])
@@ -368,23 +318,24 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
                     budgetable_number = math.floor(budget / cost)
                     number_to_build = min(aim_to_build_number, budgetable_number)
 
+                    if number_to_build <= 0:
+                        break
+
                     to_build = copy.deepcopy(build_option)
                     to_build[0]['build_date'] = timestep
                     to_build[0]['pcd_sector'] = area.id
                     to_build = to_build * number_to_build
 
                     built_interventions += to_build
+                    spend.append((area.id, area.lad_id, 'small_cells', number_to_build * cost))
                     budget -= number_to_build * cost
 
-                if budget < 0 or _area_satisfied(area, built_interventions, threshold):
+                    if budget <= 0 or _area_satisfied(area, built_interventions, threshold):
+                        break
+                else:
                     break
-            else:
-                break
 
-    # for intervention in built_interventions:
-    #     print(intervention)
-
-    return built_interventions, budget
+    return built_interventions, budget, spend
 
 def next_larger_value(x, vals):
     for val in vals:
@@ -415,6 +366,7 @@ def _area_satisfied(area, built_interventions, threshold):
 
     data = {
         "id": area.id,
+        "lad_id": area.lad_id,
         "population": area.population,
         "area": area.area,
         "user_throughput": area.user_throughput,
