@@ -227,7 +227,7 @@ class PostcodeSector(object):
                 * 100 population
                 * 0.8 penetration
                 / 10 km^2 area
-            = ~0.16 Mbps/km^s area capacity demand
+            = ~0.16 Mbps/km^2 area capacity demand
         """
         users = self.population * self.penetration
         user_throughput = users * self.user_demand
