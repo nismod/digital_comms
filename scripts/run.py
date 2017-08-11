@@ -365,25 +365,22 @@ for pop_scenario, throughput_scenario, intervention_strategy in itertools.produc
         service_obligation_capacity = SERVICE_OBLIGATION_CAPACITY
         timestep_interventions = []
 
-        print("budget", budget)
-        print("decommissioned", len(decommissioned))
-        while True:
-            # simulate
-            system = ICTManager(lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup)
-            # decide
-            interventions_built, budget = decide_interventions(intervention_strategy, budget, service_obligation_capacity, decommissioned, system, year)
-            decommissioned = []  # Hack to set decommissioned to empty
+        # print("budget", budget)
+        # print("decommissioned", len(decommissioned))
 
-            # accumulate decisions
-            timestep_interventions += interventions_built
-            assets += interventions_built
-            print("remaining budget", budget)
+        # simulate first
+        system = ICTManager(lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup)
 
-            if not interventions_built or budget <= 0:
-                # no more decisions (feasible or desirable)
-                break
+        # decide
+        interventions_built, budget = decide_interventions(intervention_strategy, budget, service_obligation_capacity, decommissioned, system, year)
 
-        write_decisions(timestep_interventions, year, pop_scenario,
+        # simulate with decisions
+        system = ICTManager(lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup)
+
+        # accumulate decisions
+        assets += interventions_built
+
+        write_decisions(interventions_built, year, pop_scenario,
                         throughput_scenario, intervention_strategy)
         write_lad_results(system, year, pop_scenario, throughput_scenario,
                           intervention_strategy)
