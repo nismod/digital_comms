@@ -190,12 +190,12 @@ class PostcodeSector(object):
             2 GB per month
                 * 1024 to find MB
                 * 8 to covert bytes to bits
-                * 1/9 assuming 9 busy hours per day
+                * 0.075 represents 7.5% of daily traffic taking place in the busy hour
                 * 1/30 assuming 30 days per month
                 * 1/3600 converting hours to seconds,
-            = ~0.02 Mbps required per user
+            = ~0.01 Mbps required per user
         """
-        return user_throughput * 1024 * 8 / 9 / 30 / 3600
+        return user_throughput * 1024 * 8 * 0.075 / 30 / 3600
 
     @property
     def demand(self):
