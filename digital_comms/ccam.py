@@ -197,6 +197,21 @@ class PostcodeSector(object):
         """
         return user_throughput * 1024 * 8 * 0.075 / 30 / 3600
 
+    def threshold_demand(self, threshold):
+        """Calculate capacity required to meet a service obligation.
+
+        Effectively calculating Mb/s/km^2 from Mb/s/user
+
+        E.g.
+            100 people in this area
+            * 0.8 penetration proportion
+            * 2 Mb/s/person service obligation
+            / 10 km^2 area
+            = ~16 Mbps/km^2
+        """
+        threshold_demand = self.population * self.penetration * threshold / self.area
+        return threshold_demand
+
     @property
     def demand(self):
         """Estimate total demand based on population and penetration
