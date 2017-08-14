@@ -363,7 +363,7 @@ for pop_scenario, throughput_scenario, intervention_strategy in itertools.produc
         INTERVENTION_STRATEGIES):
     print("Running:", pop_scenario, throughput_scenario, intervention_strategy)
 
-    assets = initial_system
+    assets = initial_system[:]
     for year in TIMESTEPS:
         print("-", year)
 
