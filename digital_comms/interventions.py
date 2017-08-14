@@ -153,24 +153,10 @@ def decide_interventions(strategy, budget, service_obligation_capacity,
     """
     available_interventions = AVAILABLE_STRATEGY_INTERVENTIONS[strategy]
 
-    obligation = []
-    if budget > 0:
-        # Build to meet service obligation (up to threshold,
-        # set to zero to disable)
-        obligation, budget, obligation_spend = meet_service_obligation(
-            budget, available_interventions, timestep,
-            service_obligation_capacity, system)
-    print("obligation", len(obligation))
+    # Build to meet demand
+    built, budget, spend = meet_demand(
+        budget, available_interventions, timestep, system)
 
-    demand = []
-    if budget > 0:
-        # Build to meet demand
-        demand, budget, demand_spend = meet_demand(
-            budget, available_interventions, timestep, system)
-    print("demand", len(demand))
-
-    built = obligation + demand
-    spend = obligation_spend + demand_spend
     return built, budget, spend
 
 
