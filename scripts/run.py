@@ -376,9 +376,6 @@ for pop_scenario, throughput_scenario, intervention_strategy in itertools.produc
         # Decide on new interventions
         budget = ANNUAL_BUDGET
         service_obligation_capacity = SERVICE_OBLIGATION_CAPACITY
-        timestep_interventions = []
-
-        # print("budget", budget)
 
         # simulate first
         if year == BASE_YEAR:
@@ -387,11 +384,11 @@ for pop_scenario, throughput_scenario, intervention_strategy in itertools.produc
         # decide
         interventions_built, budget, spend = decide_interventions(intervention_strategy, budget, service_obligation_capacity, system, year)
 
-        # simulate with decisions
-        system = ICTManager(lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup)
-
         # accumulate decisions
         assets += interventions_built
+
+        # simulate with decisions
+        system = ICTManager(lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup)
 
         cost_by_lad = defaultdict(int)
         cost_by_pcd = defaultdict(int)
