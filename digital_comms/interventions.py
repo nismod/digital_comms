@@ -338,7 +338,7 @@ def _suggest_target_postcodes(system, threshold=None):
     postcodes = system.postcode_sectors.values()
     total_postcodes = len(postcodes)
     if threshold is not None:
-        considered_postcodes = [pcd for pcd in postcodes if pcd.capacity < pcd.threshold_demand(threshold)]
+        considered_postcodes = [pcd for pcd in postcodes if pcd.capacity < threshold]
     else:
         considered_postcodes = [p for p in postcodes]
     # print("Considering {} of {} postcodes".format(len(considered_postcodes), total_postcodes))
@@ -348,7 +348,7 @@ def _area_satisfied(area, built_interventions, threshold):
     if threshold is None:
         target_capacity = area.demand
     else:
-        target_capacity = area.threshold_demand(threshold)
+        target_capacity = threshold
 
     data = {
         "id": area.id,
