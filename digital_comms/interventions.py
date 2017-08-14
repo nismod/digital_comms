@@ -191,10 +191,11 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
     built_interventions = []
     spend = []
     for area in areas:
+        area_interventions = []
         if budget < 0:
             break
 
-        if _area_satisfied(area, built_interventions, threshold):
+        if _area_satisfied(area, area_interventions, threshold):
             continue
 
         # group assets by site
@@ -207,22 +208,21 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
 
         # integrate_800 and integrate_2.6
         if 'upgrade_to_lte' in available_interventions:
-            build_option = copy.deepcopy(INTERVENTIONS['upgrade_to_lte']['assets_to_build'])
+            build_option = INTERVENTIONS['upgrade_to_lte']['assets_to_build']
             cost = INTERVENTIONS['upgrade_to_lte']['cost']
             for site_ngr, site_assets in assets_by_site.items():
                 if site_ngr == 'small_cell_sites':
                     continue
                 if 'LTE' not in [asset['technology'] for asset in site_assets]:
                     # set both assets to this site_ngr
-                    to_build = copy.deepcopy(build_option)
-                    to_build[0]['site_ngr'] = site_ngr
-                    to_build[0]['pcd_sector'] = area.id
-                    to_build[0]['build_date'] = timestep
-                    to_build[1]['site_ngr'] = site_ngr
-                    to_build[1]['pcd_sector'] = area.id
-                    to_build[1]['build_date'] = timestep
+                    for option in build_option:
+                        to_build = copy.copy(option)
+                        to_build['site_ngr'] = site_ngr
+                        to_build['pcd_sector'] = area.id
+                        to_build['build_date'] = timestep
+                        area_interventions.append(to_build)
+                        built_interventions.append(to_build)
 
-                    built_interventions += to_build
                     budget -= cost
                     spend.append((area.id, area.lad_id, 'upgrade_to_lte', cost))
                     if budget < 0:
@@ -233,7 +233,7 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
 
         # integrate_700
         if 'carrier_700' in available_interventions:
-            if _area_satisfied(area, built_interventions, threshold):
+            if _area_satisfied(area, area_interventions, threshold):
                 continue
 
             build_option = INTERVENTIONS['carrier_700']['assets_to_build']
@@ -244,12 +244,14 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
                 if 'LTE' in [asset['technology'] for asset in site_assets] and \
                         '700' not in [asset['frequency'] for asset in site_assets]:
                     # set both assets to this site_ngr
-                    to_build = copy.deepcopy(build_option)
-                    to_build[0]['site_ngr'] = site_ngr
-                    to_build[0]['pcd_sector'] = area.id
-                    to_build[0]['build_date'] = timestep
+                    for option in build_option:
+                        to_build = copy.copy(option)
+                        to_build['site_ngr'] = site_ngr
+                        to_build['pcd_sector'] = area.id
+                        to_build['build_date'] = timestep
+                        area_interventions.append(to_build)
+                        built_interventions.append(to_build)
 
-                    built_interventions += to_build
                     spend.append((area.id, area.lad_id, 'carrier_700', cost))
                     budget -= cost
                     if budget < 0:
@@ -260,7 +262,7 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
 
         # integrate_3.5
         if 'carrier_3500' in available_interventions:
-            if _area_satisfied(area, built_interventions, threshold):
+            if _area_satisfied(area, area_interventions, threshold):
                 continue
 
             build_option = INTERVENTIONS['carrier_3500']['assets_to_build']
@@ -271,12 +273,14 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
                 if 'LTE' in [asset['technology'] for asset in site_assets] and \
                         '3500' not in [asset['frequency'] for asset in site_assets]:
                     # set both assets to this site_ngr
-                    to_build = copy.deepcopy(build_option)
-                    to_build[0]['site_ngr'] = site_ngr
-                    to_build[0]['pcd_sector'] = area.id
-                    to_build[0]['build_date'] = timestep
+                    for option in build_option:
+                        to_build = copy.copy(option)
+                        to_build['site_ngr'] = site_ngr
+                        to_build['pcd_sector'] = area.id
+                        to_build['build_date'] = timestep
+                        area_interventions.append(to_build)
+                        built_interventions.append(to_build)
 
-                    built_interventions += to_build
                     spend.append((area.id, area.lad_id, 'carrier_3500', cost))
                     budget -= cost
                     if budget < 0:
@@ -287,7 +291,7 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
 
         # build small cells to next density
         if 'small_cell' in available_interventions:
-            if _area_satisfied(area, built_interventions, threshold):
+            if _area_satisfied(area, area_interventions, threshold):
                 continue
 
             area_sq_km = area.area
@@ -326,6 +330,7 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
                     to_build[0]['pcd_sector'] = area.id
                     to_build = to_build * number_to_build
 
+                    area_interventions += to_build
                     built_interventions += to_build
                     spend.append((area.id, area.lad_id, 'small_cells', number_to_build * cost))
                     budget -= number_to_build * cost
