@@ -95,7 +95,7 @@ INTERVENTIONS = {
         'name': 'Build a small cell',
         'description': 'Must be deployed at preset densities to be modelled',
         'result': '2x25 MHz small cells available at given density',
-        'cost': 111451,
+        'cost': 40220,
         'assets_to_build': [
             {
                 # site_ngr not used
