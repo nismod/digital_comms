@@ -48,7 +48,7 @@ INTERVENTION_STRATEGIES = [
 # Annual capital budget constraint, GBP
 ANNUAL_BUDGET = 2 * 10 ** 9
 
-# Target threshold for universal mobile service, in Mbps/km^2
+# Target threshold for universal mobile service, in Mbps/user
 SERVICE_OBLIGATION_CAPACITY = 5
 
 ################################################################
