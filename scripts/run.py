@@ -33,6 +33,7 @@ POPULATION_SCENARIOS = [
     "high",
     "baseline",
     "low",
+    "static2017",
 ]
 THROUGHPUT_SCENARIOS = [
     "high",
@@ -143,6 +144,8 @@ with open(THROUGHPUT_FILENAME, 'r') as throughput_file:
             user_throughput_by_scenario_year["baseline"][year] = float(base)
         if "low" in THROUGHPUT_SCENARIOS:
             user_throughput_by_scenario_year["low"][year] = float(low)
+        if "static2017" in THROUGHPUT_SCENARIOS:
+            user_throughput_by_scenario_year["baseline"][year] = float(low)
 
 
 ################################################################
