@@ -129,10 +129,15 @@ AVAILABLE_STRATEGY_INTERVENTIONS = {
                   'carrier_3500'),
 
     # Intervention Strategy 3
+    # Deploy a small cell layer and upgrade spectrum
+    # The cost will include the small cell unit and the civil works per cell
+    'small_cell_and_spectrum': ('upgrade_to_lte', 'carrier_700',
+                                'carrier_3500', 'small_cell'),
+
+    # Intervention Strategy 4
     # Deploy a small cell layer at 3700 MHz
     # The cost will include the small cell unit and the civil works per cell
-    'small_cell': ('upgrade_to_lte', 'carrier_700',
-                   'carrier_3500', 'small_cell'),
+    'small_cell': ('upgrade_to_lte', 'small_cell'),
 }
 
 
