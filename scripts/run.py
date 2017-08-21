@@ -44,6 +44,7 @@ INTERVENTION_STRATEGIES = [
     "minimal",
     "macrocell",
     "small_cell",
+    "small_cell_and_spectrum"
 ]
 
 # Annual capital budget constraint, GBP
