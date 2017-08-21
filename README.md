@@ -5,7 +5,7 @@ the mobile sector to provide analytics for
 decision-makers on (i) capacity-demand and (ii) risk, vulnerability 
 and resilience. The fixed, wireless and satellite sectors are currently under development. 
 
-## Setup and Configuration
+## Setup and configuration
 
 All code is written in Python (Python>=3.5), avoiding external dependencies.
 
