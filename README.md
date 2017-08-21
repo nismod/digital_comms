@@ -1,9 +1,9 @@
 # The Cambridge Communications Assessment Model
 
-**The Cambridge Communications Assessment Model** spans the fixed, 
-mobile, wireless and satellite sectors to provide analytics for 
+**The Cambridge Communications Assessment Model** currently focuses on 
+the mobile sector to provide analytics for 
 decision-makers on (i) capacity-demand and (ii) risk, vulnerability 
-and resilience. 
+and resilience. The fixed, wireless and satellite sectors currently under development. 
 
 ## Setup and Configuration
 
@@ -13,7 +13,8 @@ All code is written in Python (Python>=3.5), avoiding external dependencies.
 
 **The Cambridge Communications Assessment Model** was written and 
 developed at the [Judge Business School](http://www.jbs.cam.ac.uk/home/), 
-[University of Cambridge](http://www.cam.ac.uk/) within the EPSRC-sponsored MISTRAL programme, 
+[University of Cambridge](http://www.cam.ac.uk/) and at the [Environmental Change Institute](http://www.eci.ox.ac.uk/), 
+[University of Oxford](https://www.ox.ac.uk/) within the EPSRC-sponsored MISTRAL programme, 
 as part of the [Infrastructure Transition Research Consortium](http://www.itrc.org.uk/).
 
 ## Install
@@ -37,9 +38,3 @@ The docs are available in html format in `/docs/_build/html/index.html`
 The run the tests:
 
         python setup.py test
-
-
-## Note
-
-This project has been set up using PyScaffold 2.5.7. For details and usage
-information on PyScaffold see http://pyscaffold.readthedocs.org/.
