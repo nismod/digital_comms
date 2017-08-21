@@ -3,7 +3,7 @@
 **The Cambridge Communications Assessment Model** currently focuses on 
 the mobile sector to provide analytics for 
 decision-makers on (i) capacity-demand and (ii) risk, vulnerability 
-and resilience. The fixed, wireless and satellite sectors currently under development. 
+and resilience. The fixed, wireless and satellite sectors are currently under development. 
 
 ## Setup and Configuration
 
