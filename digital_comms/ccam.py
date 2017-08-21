@@ -193,9 +193,10 @@ class PostcodeSector(object):
                 * 0.075 represents 7.5% of daily traffic taking place in the busy hour
                 * 1/30 assuming 30 days per month
                 * 1/3600 converting hours to seconds,
+                * assume 30% market shared for hypithetical operator similar to EE
             = ~0.01 Mbps required per user
         """
-        return user_throughput * 1024 * 8 * 0.075 / 30 / 3600
+        return user_throughput * 1024 * 8 * 0.075 / 30 / 3600 * 0.3
 
     def threshold_demand(self, threshold):
         """Calculate capacity required to meet a service obligation.

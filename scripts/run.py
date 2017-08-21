@@ -52,6 +52,8 @@ ANNUAL_BUDGET = 2 * 10 ** 9
 # Target threshold for universal mobile service, in Mbps/user
 SERVICE_OBLIGATION_CAPACITY = 5
 
+NETWORKS_TO_INCLUDE = ('A',)
+
 ################################################################
 # LOAD REGIONS
 # - LADs
@@ -171,9 +173,9 @@ pcd_sector_ids = {pcd_sector["id"]: True for pcd_sector in pcd_sectors}
 with open(SYSTEM_FILENAME, 'r') as system_file:
     reader = csv.reader(system_file)
     next(reader)  # skip header
-    for pcd_sector, site_ngr, build_date, site_type, tech, freq, bandwidth in reader:
+    for pcd_sector, site_ngr, build_date, site_type, tech, freq, bandwidth, network in reader:
         # If asset is in a known postcode, go ahead
-        if pcd_sector in pcd_sector_ids:
+        if pcd_sector in pcd_sector_ids and network in NETWORKS_TO_INCLUDE:
             initial_system.append({
                 'pcd_sector': pcd_sector,
                 'site_ngr': site_ngr,

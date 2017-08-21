@@ -163,6 +163,34 @@ for pcd_sector, rollout_datum in rollout_4G_by_postcode_sector.items():
             # Stop looping through coverage years
             break
 
+################################################################
+# SPLIT ASSETS BETWEEN NETWORKS (2x2)
+# - each network has equal number of sites
+# - each network has equal number of sites-with-4G
+# - networks don't share sites
+################################################################
+
+for pcd_sector, assets in assets_by_postcode_sector.items():
+    assets_by_site_ngr = {}  # dict of list of assets for each site_ngr
+    for asset in assets:
+        if asset['site_ngr'] not in assets_by_site_ngr:
+            assets_by_site_ngr[asset['site_ngr']] = []
+        assets_by_site_ngr[asset['site_ngr']].append(asset)
+
+    num_sites_per_network = round(len(assets_by_site_ngr.keys()) / 2)
+    site_ngrs = list(assets_by_site_ngr.keys())
+    a_sites = site_ngrs[:num_sites_per_network]
+    b_sites = site_ngrs[num_sites_per_network:]
+
+    for site_ngr in a_sites:
+        for asset in assets_by_site_ngr[site_ngr]:
+            asset['network'] = 'A'
+
+    for site_ngr in b_sites:
+        for asset in assets_by_site_ngr[site_ngr]:
+            asset['network'] = 'B'
+
+
 
 ################################################################
 # OUTPUT INITIAL SYSTEM
@@ -176,6 +204,7 @@ keys = (
     'technology',
     'frequency',
     'bandwidth',
+    'network',
 )
 
 SYSTEM_FILENAME =  os.path.join(BASE_PATH, 'initial_system', 'initial_system_with_4G.csv')
