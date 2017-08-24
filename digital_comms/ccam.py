@@ -129,10 +129,15 @@ class LAD(object):
         if not self._pcd_sectors:
             return 0
 
-        summed_demand = sum([
-            pcd_sector.demand
-            for pcd_sector in self._pcd_sectors.values()])
-        return summed_demand / len(self._pcd_sectors)
+        summed_demand = sum(
+            pcd_sector.demand * pcd_sector.area
+            for pcd_sector in self._pcd_sectors.values()
+        )
+        summed_area = sum(
+            pcd_sector.area
+            for pcd_sector in self._pcd_sectors.values()
+        )
+        return summed_demand / summed_area
 
     def coverage(self):
         """Return proportion of population with capacity coverage over a threshold
@@ -193,10 +198,11 @@ class PostcodeSector(object):
                 * 0.075 represents 7.5% of daily traffic taking place in the busy hour
                 * 1/30 assuming 30 days per month
                 * 1/3600 converting hours to seconds,
-                * assume 30% market shared for hypithetical operator similar to EE
             = ~0.01 Mbps required per user
         """
-        return user_throughput * 1024 * 8 * 0.075 / 30 / 3600 * 0.3
+        #return user_throughput * 1024 * 8 * 0.075 / 30 / 3600 ### i have removed market share and place in def demand below
+        return user_throughput / 20 # assume we want to give X Mbps per second, with an OBF of  20
+
 
     def threshold_demand(self, threshold):
         """Calculate capacity required to meet a service obligation.
@@ -206,11 +212,13 @@ class PostcodeSector(object):
         E.g.
             100 people in this area
             * 0.8 penetration proportion
+            * 0.3 market share
             * 2 Mb/s/person service obligation
             / 10 km^2 area
-            = ~16 Mbps/km^2
+            = ~4.8 Mbps/km^2
         """
-        threshold_demand = self.population * self.penetration * threshold / self.area
+        ### MARKET SHARE? ###
+        threshold_demand = self.population * self.penetration * threshold / self.area ##Do we not need to put market share in here?
         return threshold_demand
 
     @property
@@ -224,7 +232,7 @@ class PostcodeSector(object):
                 / 10 km^2 area
             = ~0.16 Mbps/km^2 area capacity demand
         """
-        users = self.population * self.penetration
+        users = self.population * self.penetration * 0.3 #market share
         user_throughput = users * self.user_demand
         capacity_per_kmsq = user_throughput / self.area
         return capacity_per_kmsq
