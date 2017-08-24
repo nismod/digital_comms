@@ -135,7 +135,7 @@ for scenario, filename in scenario_files.items():
 user_throughput_by_scenario_year = {
     scenario: {} for scenario in THROUGHPUT_SCENARIOS
 }
-THROUGHPUT_FILENAME = os.path.join(BASE_PATH, 'scenario_data', 'data_growth_scenarios.csv')
+THROUGHPUT_FILENAME = os.path.join(BASE_PATH, 'scenario_data', 'per_user_monthly_data_growth_scenarios.csv')
 with open(THROUGHPUT_FILENAME, 'r') as throughput_file:
     reader = csv.reader(throughput_file)
     next(reader)  # skip header
