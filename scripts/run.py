@@ -24,7 +24,7 @@ CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
-BASE_YEAR = 2017
+BASE_YEAR = 2016
 END_YEAR = 2030
 TIMESTEP_INCREMENT = 1
 TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
@@ -47,8 +47,8 @@ INTERVENTION_STRATEGIES = [
     "small_cell_and_spectrum"
 ]
 
-# Annual capital budget constraint, GBP
-ANNUAL_BUDGET = 2 * 10 ** 9
+# Annual capital budget constraint for the whole industry, GBP * market share
+ANNUAL_BUDGET = (2 * 10 ** 9) * 0.3
 
 # Target threshold for universal mobile service, in Mbps/user
 SERVICE_OBLIGATION_CAPACITY = 5
@@ -101,8 +101,6 @@ with open(PCD_SECTOR_FILENAME, 'r') as pcd_sector_file:
             "area": float(area)
         })
 
-
-
 ################################################################
 # LOAD SCENARIO DATA
 # - population by scenario: year, pcd_sector, population
@@ -135,7 +133,7 @@ for scenario, filename in scenario_files.items():
 user_throughput_by_scenario_year = {
     scenario: {} for scenario in THROUGHPUT_SCENARIOS
 }
-THROUGHPUT_FILENAME = os.path.join(BASE_PATH, 'scenario_data', 'per_user_monthly_data_growth_scenarios.csv')
+THROUGHPUT_FILENAME = os.path.join(BASE_PATH, 'scenario_data', 'monthly_data_growth_scenarios.csv')
 with open(THROUGHPUT_FILENAME, 'r') as throughput_file:
     reader = csv.reader(throughput_file)
     next(reader)  # skip header

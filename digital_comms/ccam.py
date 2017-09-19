@@ -200,8 +200,8 @@ class PostcodeSector(object):
                 * 1/3600 converting hours to seconds,
             = ~0.01 Mbps required per user
         """
-        #return user_throughput * 1024 * 8 * 0.075 / 30 / 3600 ### i have removed market share and place in def demand below
-        return user_throughput / 20 # assume we want to give X Mbps per second, with an OBF of  20
+        return user_throughput * 1024 * 8 * 0.15 / 30 / 3600 ### i have removed market share and place in def demand below
+        #return user_throughput / 20 # assume we want to give X Mbps per second, with an OBF of  20
 
 
     def threshold_demand(self, threshold):
