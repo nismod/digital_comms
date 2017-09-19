@@ -43,6 +43,7 @@ THROUGHPUT_SCENARIOS = [
 INTERVENTION_STRATEGIES = [
     "minimal",
     "macrocell",
+    "macrocell_700",
     "small_cell",
     "small_cell_and_spectrum"
 ]
@@ -361,10 +362,32 @@ def _get_suffix(pop_scenario, throughput_scenario, intervention_strategy):
 # - output demand, capacity, opex, energy demand, built interventions, build costs per year
 ################################################################
 
-for pop_scenario, throughput_scenario, intervention_strategy in itertools.product(
-        POPULATION_SCENARIOS,
-        THROUGHPUT_SCENARIOS,
-        INTERVENTION_STRATEGIES):
+for pop_scenario, throughput_scenario, intervention_strategy in [
+        ('low', 'low', 'minimal'),
+        ('baseline', 'baseline', 'minimal'),
+        ('high', 'high', 'minimal'),
+        ('static2017', 'baseline', 'minimal'),
+
+        ('low', 'low', 'macrocell'),
+        ('baseline', 'baseline', 'macrocell'),
+        ('high', 'high', 'macrocell'),
+        ('static2017', 'baseline', 'macrocell'),
+
+        ('low', 'low', 'macrocell_700'),
+        ('baseline', 'baseline', 'macrocell_700'),
+        ('high', 'high', 'macrocell_700'),
+        ('static2017', 'baseline', 'macrocell_700'),
+
+        ('low', 'low', 'small_cell'),
+        ('baseline', 'baseline', 'small_cell'),
+        ('high', 'high', 'small_cell'),
+        ('static2017', 'baseline', 'small_cell'),
+
+        ('low', 'low', 'small_cell_and_spectrum'),
+        ('baseline', 'baseline', 'small_cell_and_spectrum'),
+        ('high', 'high', 'small_cell_and_spectrum'),
+        ('static2017', 'baseline', 'small_cell_and_spectrum')
+    ]:
     print("Running:", pop_scenario, throughput_scenario, intervention_strategy)
 
     assets = initial_system[:]

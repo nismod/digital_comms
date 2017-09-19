@@ -10,20 +10,6 @@ import math
 # EXAMPLE COST LOOKUP TABLE
 # - TODO come back to net present value or total cost of ownership for costs
 ################################################################
-COST_STRUCTURE = {
-    'lte_present': [
-        {'new_carrier': 1500}
-    ],
-    'no_lte': [
-        {'multi_bs': 40900, 'civils': 18000}
-    ],
-    'small_cells': [
-        {'small_cell': 2500, 'civils': 13300}
-    ],
-    'core_upgrade': [
-        {'core_upgrade': 1.1}
-    ]
-}
 
 # Postcode-sector level individual interventions
 INTERVENTIONS = {
@@ -127,6 +113,9 @@ AVAILABLE_STRATEGY_INTERVENTIONS = {
     # If 4G isn't present, the site will need major upgrades.
     'macrocell': ('upgrade_to_lte', 'carrier_700',
                   'carrier_3500'),
+     # Intervention Strategy 2.
+     # Integrate 700
+    'macrocell_700': ('upgrade_to_lte', 'carrier_700'),
 
     # Intervention Strategy 3
     # Deploy a small cell layer at 3700 MHz
@@ -158,11 +147,21 @@ def decide_interventions(strategy, budget, service_obligation_capacity,
     """
     available_interventions = AVAILABLE_STRATEGY_INTERVENTIONS[strategy]
 
+    if service_obligation_capacity > 0:
+        service_built, budget, service_spend = meet_service_obligation(budget,
+            available_interventions, timestep, service_obligation_capacity, system)
+    else:
+        service_built = []
+        service_spend = []
+
     # Build to meet demand
     built, budget, spend = meet_demand(
         budget, available_interventions, timestep, system)
 
-    return built, budget, spend
+    print("Service", len(service_built))
+    print("Demand", len(built))
+
+    return built + service_built, budget, spend + service_spend
 
 
 def meet_service_obligation(budget, available_interventions, timestep,
@@ -223,7 +222,7 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
             break
 
         # integrate_700
-        if 'carrier_700' in available_interventions:
+        if 'carrier_700' in available_interventions and timestep >= 2020:
             if _area_satisfied(area, area_interventions, threshold):
                 continue
 
@@ -252,7 +251,7 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
             break
 
         # integrate_3.5
-        if 'carrier_3500' in available_interventions:
+        if 'carrier_3500' in available_interventions and timestep >= 2020:
             if _area_satisfied(area, area_interventions, threshold):
                 continue
 
@@ -281,7 +280,7 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
             break
 
         # build small cells to next density
-        if 'small_cell' in available_interventions:
+        if 'small_cell' in available_interventions and timestep >= 2020:
             if _area_satisfied(area, area_interventions, threshold):
                 continue
 
@@ -294,37 +293,18 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
             build_option = INTERVENTIONS['small_cell']['assets_to_build']
             cost = INTERVENTIONS['small_cell']['cost']
 
-            target_densities = [
-                3.98,
-                7.07,
-                10.19,
-                17.63,
-                22.03,
-                28.29,
-                37.67,
-                52.61,
-                78.6,
-                129.92,
-                254.65,
-            ]
-            target_density = next_larger_value(current_density, target_densities)
+            while True:
+                to_build = copy.deepcopy(build_option)
+                to_build[0]['build_date'] = timestep
+                to_build[0]['pcd_sector'] = area.id
 
-            if target_density > current_density:
-                target_number = math.ceil(area_sq_km * target_density)
-                aim_to_build_number = target_number - current_number
-                budgetable_number = math.floor(budget / cost)
-                number_to_build = min(aim_to_build_number, budgetable_number)
+                area_interventions += to_build
+                built_interventions += to_build
+                spend.append((area.id, area.lad_id, 'small_cells', cost))
+                budget -= cost
 
-                if number_to_build > 0:
-                    to_build = copy.deepcopy(build_option)
-                    to_build[0]['build_date'] = timestep
-                    to_build[0]['pcd_sector'] = area.id
-                    to_build = to_build * number_to_build
-
-                    area_interventions += to_build
-                    built_interventions += to_build
-                    spend.append((area.id, area.lad_id, 'small_cells', number_to_build * cost))
-                    budget -= number_to_build * cost
+                if budget < 0 or _area_satisfied(area, area_interventions, threshold):
+                    break
 
     return built_interventions, budget, spend
 
