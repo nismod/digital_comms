@@ -4,6 +4,10 @@ from collections import defaultdict
 from itertools import tee
 from pprint import pprint
 
+PERCENTAGE_OF_TRAFFIC_IN_BUSY_HOUR = 0.15
+
+SERVICE_OBLIGATION_CAPACITY = 2
+
 class ICTManager(object):
     """Model controller class
     """
@@ -145,13 +149,10 @@ class LAD(object):
         if not self._pcd_sectors:
             return 0
 
-        # TODO replace hardcoded threshold value
-        threshold = 2
-
         population_with_coverage = sum([
             pcd_sector.population
             for pcd_sector in self._pcd_sectors.values()
-            if pcd_sector.capacity >= threshold])
+            if pcd_sector.capacity >= SERVICE_OBLIGATION_CAPACITY])
         total_pop = sum([
             pcd_sector.population
             for pcd_sector in self._pcd_sectors.values()])
@@ -200,11 +201,10 @@ class PostcodeSector(object):
                 * 1/3600 converting hours to seconds,
             = ~0.01 Mbps required per user
         """
-        return user_throughput * 1024 * 8 * 0.15 / 30 / 3600 ### i have removed market share and place in def demand below
+        return user_throughput * 1024 * 8 * PERCENTAGE_OF_TRAFFIC_IN_BUSY_HOUR / 30 / 3600 ### i have removed market share and place in def demand below
         #return user_throughput / 20 # assume we want to give X Mbps per second, with an OBF of  20
 
-
-    def threshold_demand(self, threshold):
+    def threshold_demand(self, SERVICE_OBLIGATION_CAPACITY):
         """Calculate capacity required to meet a service obligation.
 
         Effectively calculating Mb/s/km^2 from Mb/s/user
@@ -218,7 +218,7 @@ class PostcodeSector(object):
             = ~4.8 Mbps/km^2
         """
         ### MARKET SHARE? ###
-        threshold_demand = self.population * self.penetration * threshold / self.area ##Do we not need to put market share in here?
+        threshold_demand = self.population * self.penetration * SERVICE_OBLIGATION_CAPACITY / self.area ##Do we not need to put market share in here?
         return threshold_demand
 
     @property
