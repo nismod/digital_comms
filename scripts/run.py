@@ -48,11 +48,13 @@ INTERVENTION_STRATEGIES = [
     "small_cell_and_spectrum"
 ]
 
+MARKET_SHARE = 0.3
+
 # Annual capital budget constraint for the whole industry, GBP * market share
-ANNUAL_BUDGET = (2 * 10 ** 9) * 0.3
+ANNUAL_BUDGET = (2 * 10 ** 9) * MARKET_SHARE
 
 # Target threshold for universal mobile service, in Mbps/user
-SERVICE_OBLIGATION_CAPACITY = 5
+SERVICE_OBLIGATION_CAPACITY = 10
 
 NETWORKS_TO_INCLUDE = ('A',)
 

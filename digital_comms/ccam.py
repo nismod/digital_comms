@@ -6,7 +6,7 @@ from pprint import pprint
 
 PERCENTAGE_OF_TRAFFIC_IN_BUSY_HOUR = 0.15
 
-SERVICE_OBLIGATION_CAPACITY = 2
+SERVICE_OBLIGATION_CAPACITY = 10
 
 class ICTManager(object):
     """Model controller class
