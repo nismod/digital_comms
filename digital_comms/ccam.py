@@ -9,32 +9,81 @@ PERCENTAGE_OF_TRAFFIC_IN_BUSY_HOUR = 0.15
 SERVICE_OBLIGATION_CAPACITY = 10
 
 class ICTManager(object):
-    """Model controller class
-    """
-    def __init__(self, lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup):
-        """Create an instance of the model
+    """Model controller class.
 
-        Parameters
-        ----------
-        lads: list of dicts
-            Each LAD must have values for:
-            - id
-            - name
-        pcd_sectors: list of dicts
-            Each postcode sector must have values for:
-            - id
-            - lad_id
-            - population
-            - area
-            - user_throughput
-        assets: list of dicts
-            Each asset must have values for:
-            - pcd_sector
-            - site_ngr
-            - technology
-            - frequency
-            - bandwidth
+    Represents local area districts and postcode sectors with their assets, capacities and clutters.
+    
+    Parameters
+    ----------
+    lads: :obj:`list` of :obj:`dict`
+        List of local area districts
+
+        * id: :obj:`int`
+            Unique ID
+        * name: :obj:`str`
+            Name of the LAD
+
+    pcd_sectors: :obj:`list` of :obj:`dict`
+        List of postcode sectors (pcd)
+
+        * id: :obj:`str`
+            Postcode name
+        * lad_id: :obj:`int`
+            Unique ID
+        * population: :obj:`int`
+            Number of inhabitants
+        * area: :obj:`int`
+            Size in TODO
+        * user_throughput: :obj:`int`
+            TODO
+
+    assets: :obj:`list` of :obj:`dict`
+        List of assets
+
+        * pcd_sector: :obj:`str`
+            Code of the postcode sector
+        * site_ngr: :obj:`int`
+            TODO
+        * technology: :obj:`str`
+            Abbreviation of the asset technology (LTE, 3G, 4G, ..)
+        * frequency: :obj:`str`
+            Frequency of the asset (800, 2600, ..)
+        * bandwidth: :obj:`str`
+            Bandwith of the asset (2x10MHz, ..)
+        * build_date: :obj:`int`
+            Build year of the asset
+
+    capacity_lookup_table: dict
+        Dictionary that represents the capacity of an asset configuration as a function of population density, per district type
+
+        * key: :obj:`tuple`
+            * 0: :obj:`str`
+                Area type ('urban', ..)
+            * 1: :obj:`str`
+                Frequency of the asset configuration (800, 2600, ..)
+            * 2: :obj:`str`
+                Bandwith of the asset configuration (2x10MHz, ..)
+
+        * value: :obj:`list` of :obj:`tuple`
+            * 0: :obj:`int`
+                Population density
+            * 1: :obj:`int`
+                Capacity
+
+    clutter_lookup: list of tuple
+        Each element represents TODO
+
+        * 0: :obj:`int`
+            TODO
+        * 1: :obj:`int`
+            TODO
+    """
+
+    def __init__(self, lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup):
+        """ Load the `lads` in local :obj:`dict` attribute `lad`
+        Record the assets, capacity and clutter per postcode sector in the :obj:`dict` attribute `postcode_sectors`
         """
+
         # Area ID (integer?) => Area
         self.lads = {}
 
@@ -66,12 +115,21 @@ class ICTManager(object):
             lad_containing_pcd_sector = self.lads[lad_id]
             lad_containing_pcd_sector.add_pcd_sector(pcd_sector)
 
-
-
 class LAD(object):
-    """Represents an area to be modelled, contains
-    data for demand characterisation and assets for
-    supply assessment
+    """Local area district. 
+    
+    Represents an area to be modelled, contains data for demand 
+    characterisation and assets for supply assessment.
+
+    Arguments
+    ---------
+    data: dict
+        Metadata and info for the LAD
+        
+        * id: :obj:`int`
+            Unique ID
+        * name: :obj:`str`
+            Name of the LAD
     """
     def __init__(self, data):
         self.id = data["id"]
@@ -83,12 +141,16 @@ class LAD(object):
 
     @property
     def population(self):
+        """obj: Sum of all postcode sectors populations in the local area district
+        """
         return sum([
             pcd_sector.population
             for pcd_sector in self._pcd_sectors.values()])
 
     @property
     def population_density(self):
+        """obj: The average population density in the local area district
+        """
         total_area = sum([
             pcd_sector.area
             for pcd_sector in self._pcd_sectors.values()])
@@ -98,13 +160,35 @@ class LAD(object):
             return self.population / total_area
 
     def add_pcd_sector(self, pcd_sector):
+        """Add a postcode sector to the local area district.
+
+        Arguments
+        ---------
+        pcd_sector: PostcodeSector
+            Representation of a postcode sector that needs to be
+            added to the local area district
+        """
         self._pcd_sectors[pcd_sector.id] = pcd_sector
 
     def add_asset(self, asset):
+        """Add an asset to postcode sector to the local area district
+
+        Arguments
+        ---------
+        asset: TODO
+            TODO
+        """
         pcd_sector_id = asset.pcd_sector
         self._pcd_sectors[pcd_sector_id].add_asset(asset)
 
     def system(self):
+        """TODO
+
+        Returns
+        -------
+        dict
+            TODO
+        """
         system = {}
         for pcd_sector in self._pcd_sectors.values():
             pcd_system = pcd_sector.system()
@@ -117,7 +201,16 @@ class LAD(object):
         return system
 
     def capacity(self):
-        """Return the mean capacity from all nested postcode sectors
+        """Calculate capacity as the mean capacity from all nested postcode sectors
+
+        Returns
+        -------
+        obj
+            Mean capacity of the local area district
+
+        Notes
+        -----
+        Function returns `0` when no postcode sectors are configured to the LAD.
         """
         if not self._pcd_sectors:
             return 0
@@ -128,7 +221,16 @@ class LAD(object):
         return summed_capacity / len(self._pcd_sectors)
 
     def demand(self):
-        """Return the mean capacity demand from all nested postcode sectors
+        """Calculate demand as the mean capacity demand from all nested postcode sectors
+
+        Returns
+        -------
+        obj 
+            Demand of the local area district
+
+        Notes
+        -----
+        Function returns `0` when no postcode sectors are configured to the LAD.
         """
         if not self._pcd_sectors:
             return 0
@@ -144,7 +246,16 @@ class LAD(object):
         return summed_demand / summed_area
 
     def coverage(self):
-        """Return proportion of population with capacity coverage over a threshold
+        """Calculate coverage as the proportion of population with capacity coverage over a threshold
+
+        Returns
+        -------
+        obj
+            Coverage in the local area district
+
+        Notes
+        -----
+        Function returns `0` when no postcode sectors are configured to the LAD.
         """
         if not self._pcd_sectors:
             return 0
@@ -160,7 +271,7 @@ class LAD(object):
 
 
 class PostcodeSector(object):
-    """Represents a pcd_sector to be modelled
+    """""Represents a Postcode sector to be modelled
     """
     def __init__(self, data, assets, capacity_lookup_table, clutter_lookup):
         self.id = data["id"]
@@ -192,6 +303,8 @@ class PostcodeSector(object):
     def _calculate_user_demand(self, user_throughput):
         """Calculate Mb/second from GB/month supplied as throughput scenario
 
+        Notes
+        -----
         E.g.
             2 GB per month
                 * 1024 to find MB
@@ -207,6 +320,18 @@ class PostcodeSector(object):
     def threshold_demand(self, SERVICE_OBLIGATION_CAPACITY):
         """Calculate capacity required to meet a service obligation.
 
+        Parameters
+        ----------
+        SERVICE_OBLIGATION_CAPACITY: int
+            The required service obligation in Mb/s
+
+        Returns
+        -------
+        int
+            The threshold demand in Mbps/km^2
+
+        Notes
+        -----
         Effectively calculating Mb/s/km^2 from Mb/s/user
 
         E.g.
@@ -223,9 +348,10 @@ class PostcodeSector(object):
 
     @property
     def demand(self):
-        """Estimate total demand based on population and penetration
+        """obj: The demand in capacity per km^2
 
-        E.g.
+        Notes
+        -----
             0.02 Mbps per user during busy hours
                 * 100 population
                 * 0.8 penetration
@@ -239,7 +365,7 @@ class PostcodeSector(object):
 
     @property
     def population_density(self):
-        """Calculate population density
+        """obj: The population density in people per TODO
         """
         return self.population / self.area
 
@@ -289,6 +415,8 @@ class PostcodeSector(object):
 
     @property
     def capacity_margin(self):
+        """obj: The capacity margin in this postcode sector TODO
+        """
         capacity_margin = self.capacity - self.demand
         return capacity_margin
 
@@ -296,8 +424,20 @@ class PostcodeSector(object):
 def pairwise(iterable):
     """Return iterable of 2-tuples in a sliding window
 
+    Parameters
+    ----------
+    iterable: list
+        Sliding window
+
+    Returns
+    -------
+    list of tuple
+        Iterable of 2-tuples
+
+    Example
+    -------
         >>> list(pairwise([1,2,3,4]))
-        [(1,2),(2,3),(3,4)]
+            [(1,2),(2,3),(3,4)]
     """
     a, b = tee(iterable)
     next(b, None)
@@ -307,10 +447,39 @@ def pairwise(iterable):
 def lookup_clutter_geotype(clutter_lookup, population_density):
     """Return geotype based on population density
 
-    Params:
-    ======
-    clutter_lookup : list of (population_density_upper_bound, geotype) tuples
-        sorted by population_density_upper_bound ascending
+    Parameters
+    ----------
+    clutter_lookup: list of tuple
+        Lookup table that represents geographical types and their population density
+        sorted by population_density_upper_bound ascending.
+
+        * 0: :obj:`int`
+            Population density in TODO
+        * 1: :obj:`str`
+            Geotype ('Urban', ..)
+
+    population_density: int
+        The population density in TODO that needs to be looked up in the clutter lookup table
+
+    Returns
+    -------
+    str
+        Geotype match for `population_density`
+
+    Example
+    -------
+        >>> clutter_lookup = [
+                (5, "Urban")
+            ]
+        >>> lookup_clutter_geotype(clutter_lookup, 0)
+            "Urban"
+
+    Notes
+    -----
+    Returns lowest boundary if population density is lower than the lowest boundary.
+    Returns upper boundary of a region if population density is within a region range.
+    Returns upper boundary if population density is higher than the highest boundary.
+
     """
     lowest_popd, lowest_geotype = clutter_lookup[0]
     if population_density < lowest_popd:
@@ -330,6 +499,50 @@ def lookup_clutter_geotype(clutter_lookup, population_density):
 def lookup_capacity(lookup_table, clutter_environment, frequency, bandwidth, site_density):
     """Use lookup table to find capacity by clutter environment geotype,
     frequency, bandwidth and site density
+
+    Parameters
+    ----------
+    lookup_table: dict
+        Capacity lookup table
+    clutter_environment: str
+        Area type ('urban', ..)
+    frequency: str
+        Frequency of the asset configuration (800, 2600, ..)
+    bandwidth: str
+        Bandwith of the asset configuration (2x10MHz, ..)
+    site_density: int
+        The population density in asset area
+
+    Returns
+    -------
+    int
+        The capacity for the asset in TODO
+
+    Example
+    -------
+    >>> lookup_table = {
+            ("Urban", "800", "2x10MHz"): [
+                (0, 1),
+                (1, 2),
+            ],
+            ("Urban", "2600", "2x10MHz"): [
+                (0, 3),
+                (3, 5),
+            ]
+        }
+    >>> lookup_capacity(lookup_table, "Urban", "2600", "2x10MHz", 3)
+        5
+
+    Notes
+    -----
+    Returns a capacity of 0 when the site density is below the specified range.
+    Interpolates between values between the lower and upper bounds.
+    Returns the maximum capacity when the site density is higher than the uppper bound.
+
+    Raises
+    ------
+    KeyError
+        If combination is not found in the lookup table.
     """
     if (clutter_environment, frequency, bandwidth) not in lookup_table:
         raise KeyError("Combination %s not found in lookup table",
@@ -355,6 +568,24 @@ def lookup_capacity(lookup_table, clutter_environment, frequency, bandwidth, sit
 
 def interpolate(x0, y0, x1, y1, x):
     """Linear interpolation between two values
+
+    Parameters
+    ----------
+    x0: int 
+        Lower x-value
+    y0: int
+        Lower y-value
+    x1: int
+        Upper x-value
+    y1: int
+        Upper y-value
+    x: int
+        Requested x-value
+
+    Returns
+    -------
+    int, float
+        Interpolated y-value
     """
     y = (y0 * (x1 - x) + y1 * (x - x0)) / (x1 - x0)
     return y
