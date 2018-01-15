@@ -1,13 +1,7 @@
 # The Cambridge Communications Assessment Model
-.. image:: https://img.shields.io/badge/docs-latest-brightgreen.svg
-    :target: http://ccam.readthedocs.io/en/latest/?badge=latest
-    :alt: Documentation Status
-
-.. image:: https://travis-ci.org/nismod/digital_comms.svg?branch=master 
-    :target: https://travis-ci.org/nismod/digital_comms
-
-.. image:: https://coveralls.io/repos/github/nismod/digital_comms/badge.svg?branch=master
-    :target: https://coveralls.io/github/nismod/digital_comms?branch=master
+[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg)](http://ccam.readthedocs.io/en/latest/?badge=latest)
+[![Build Status](https://travis-ci.org/nismod/digital_comms.svg?branch=master)](https://travis-ci.org/nismod/digital_comms)
+[![Coverage Status](https://coveralls.io/repos/github/nismod/digital_comms/badge.svg?branch=master)](https://coveralls.io/github/nismod/digital_comms?branch=master)
 
 *(click on the 'docs' button to get directed to the full model documentation)*
 
