@@ -36,27 +36,6 @@ class Exchange(object):
 
         return summed_occupants
 
-EXCHANGES = [
-    {
-        "id": 1,
-        "exchange_type": "Tier 1",
-        "cabinets_per_exchange": 50,
-        "lines_per_exchange": 128,
-        "cable_type": "fibre",
-        "cable_length": 5000,
-        "cable_count": 2,
-    },
-    {
-        "id": 2,
-        "exchange_type": "Tier 2",
-        "cabinets_per_exchange": 80,
-        "lines_per_exchange": 128,
-        "cable_type": "fibre",
-        "cable_length": 12000,
-        "cable_count": 2,
-    }
-]
-
 class Cabinet(object):
     """ Defines a generic street cabinet.
     Arguments
@@ -91,25 +70,6 @@ class Cabinet(object):
         )
 
         return summed_occupants
-
-CABINETS = [
-    {
-        "id": 1,
-        "cabinet_type": "VDSL",
-        "lines_per_cabinet": 128,
-        "cable_type": "fibre",
-        "cable_length": 800,
-        "cable_count": 1,
-    },
-    {
-        "id": 2,
-        "cabinet_type": "VDSL",
-        "lines_per_cabinet": 256,
-        "cable_type": "fibre",
-        "cable_length": 900,
-        "cable_count": 1,
-    }
-]
 
 class DistributionPoint(object):
     """Represents a Distribution Point to be modelled
@@ -154,36 +114,6 @@ class DistributionPoint(object):
         print(summed_occupants)
         return summed_occupants
 
-DISTRIBUTION_POINTS = [
-    {
-        "id": 1,
-        "cabinet": 1,
-        "dist_point_type": "legacy",
-        "dist_point_location": "aerial",
-        "cable_type": "legacy",
-        "cable_length": 40,
-        "cable_count": 1,
-    },
-    {
-        "id": 2,
-        "cabinet": 1,
-        "dist_point_type": "legacy",
-        "dist_point_location": "footway_box",
-        "cable_type": "legacy",
-        "cable_length": 80,
-        "cable_count": 1,
-    },
-    {
-        "id": 3,
-        "cabinet": 2,
-        "dist_point_type": "legacy",
-        "dist_point_location": "aerial",
-        "cable_type": "legacy",
-        "cable_length": 60,
-        "cable_count": 1,
-    }
-]
-
 class Building(object):
     """ Represents a Building to be modelled
     Arguments
@@ -204,78 +134,151 @@ class Building(object):
     def __repr__(self):
         return "<Premised id:{} oa_id:{} occupants:{}>".format(self.id, self.oa, self.occupants)
 
-BUILDINGS = [
-    {
-        "id": 1,
-        "oa": "E00090610",
-        "dist_point": 1,
-        "cable_type": 'legacy',
-        "cable_length": 12,
-        "cable_count": 1,
-        "residential address count": 1,
-        "non-residential address count": 0,
-        "occupants": 2,
-    },
-    {
-        "id": 2,
-        "oa": "E00090610",
-        "dist_point": 1,
-        "cable_type": 'legacy',
-        "cable_length": 11,
-        "cable_count": 1,
-        "residential address count": 1,
-        "non-residential address count": 1,
-        "occupants": 8,
-    },
-    {
-        "id": 3,
-        "oa": "E00090611",
-        "dist_point": 2,
-        "cable_type": 'legacy',
-        "cable_length": 16,
-        "cable_count": 1,
-        "residential address count": 2,
-        "non-residential address count": 0,
-        "occupants": 3,
-    },
-    {
-        "id": 4,
-        "oa": "E00090611",
-        "dist_point": 2,
-        "cable_type": 'legacy',
-        "cable_length": 9,
-        "cable_count": 1,
-        "residential address count": 1,
-        "non-residential address count": 0,
-        "occupants": 7,
-    },
-    {
-        "id": 5,
-        "oa": "E00090612",
-        "dist_point": 3,
-        "cable_type": 'legacy',
-        "cable_length": 19,
-        "cable_count": 1,
-        "residential address count": 3,
-        "non-residential address count": 0,
-        "occupants": 6,
-    },
-    {
-        "id": 6,
-        "oa": "E00090612",
-        "dist_point": 3,
-        "cable_type": 'legacy',
-        "cable_length": 21,
-        "cable_count": 1,
-        "residential address count": 1,
-        "non-residential address count": 1,
-        "occupants": 4,
-    },
-]
+# __name__ == '__main__' means that the module is bring run in standalone by the user
+if __name__ == '__main__':
 
-OurExchange = Exchange(EXCHANGES[0], CABINETS, DISTRIBUTION_POINTS, BUILDINGS)
+    EXCHANGES = [
+        {
+            "id": 1,
+            "exchange_type": "Tier 1",
+            "cabinets_per_exchange": 50,
+            "lines_per_exchange": 128,
+            "cable_type": "fibre",
+            "cable_length": 5000,
+            "cable_count": 2,
+        },
+        {
+            "id": 2,
+            "exchange_type": "Tier 2",
+            "cabinets_per_exchange": 80,
+            "lines_per_exchange": 128,
+            "cable_type": "fibre",
+            "cable_length": 12000,
+            "cable_count": 2,
+        }
+    ]
 
-for building in OurExchange.cabinets.values():
-    pprint(building)
+    CABINETS = [
+        {
+            "id": 1,
+            "cabinet_type": "VDSL",
+            "lines_per_cabinet": 128,
+            "cable_type": "fibre",
+            "cable_length": 800,
+            "cable_count": 1,
+        },
+        {
+            "id": 2,
+            "cabinet_type": "VDSL",
+            "lines_per_cabinet": 256,
+            "cable_type": "fibre",
+            "cable_length": 900,
+            "cable_count": 1,
+        }
+    ]
 
-print(OurExchange.population())
+    DISTRIBUTION_POINTS = [
+        {
+            "id": 1,
+            "cabinet": 1,
+            "dist_point_type": "legacy",
+            "dist_point_location": "aerial",
+            "cable_type": "legacy",
+            "cable_length": 40,
+            "cable_count": 1,
+        },
+        {
+            "id": 2,
+            "cabinet": 1,
+            "dist_point_type": "legacy",
+            "dist_point_location": "footway_box",
+            "cable_type": "legacy",
+            "cable_length": 80,
+            "cable_count": 1,
+        },
+        {
+            "id": 3,
+            "cabinet": 2,
+            "dist_point_type": "legacy",
+            "dist_point_location": "aerial",
+            "cable_type": "legacy",
+            "cable_length": 60,
+            "cable_count": 1,
+        }
+    ]
+
+    BUILDINGS = [
+        {
+            "id": 1,
+            "oa": "E00090610",
+            "dist_point": 1,
+            "cable_type": 'legacy',
+            "cable_length": 12,
+            "cable_count": 1,
+            "residential address count": 1,
+            "non-residential address count": 0,
+            "occupants": 2,
+        },
+        {
+            "id": 2,
+            "oa": "E00090610",
+            "dist_point": 1,
+            "cable_type": 'legacy',
+            "cable_length": 11,
+            "cable_count": 1,
+            "residential address count": 1,
+            "non-residential address count": 1,
+            "occupants": 8,
+        },
+        {
+            "id": 3,
+            "oa": "E00090611",
+            "dist_point": 2,
+            "cable_type": 'legacy',
+            "cable_length": 16,
+            "cable_count": 1,
+            "residential address count": 2,
+            "non-residential address count": 0,
+            "occupants": 3,
+        },
+        {
+            "id": 4,
+            "oa": "E00090611",
+            "dist_point": 2,
+            "cable_type": 'legacy',
+            "cable_length": 9,
+            "cable_count": 1,
+            "residential address count": 1,
+            "non-residential address count": 0,
+            "occupants": 7,
+        },
+        {
+            "id": 5,
+            "oa": "E00090612",
+            "dist_point": 3,
+            "cable_type": 'legacy',
+            "cable_length": 19,
+            "cable_count": 1,
+            "residential address count": 3,
+            "non-residential address count": 0,
+            "occupants": 6,
+        },
+        {
+            "id": 6,
+            "oa": "E00090612",
+            "dist_point": 3,
+            "cable_type": 'legacy',
+            "cable_length": 21,
+            "cable_count": 1,
+            "residential address count": 1,
+            "non-residential address count": 1,
+            "occupants": 4,
+        },
+    ]
+
+    OurExchange = Exchange(EXCHANGES[0], CABINETS, DISTRIBUTION_POINTS, BUILDINGS)
+
+    for building in OurExchange.cabinets.values():
+        pprint(building)
+
+    print(OurExchange.population())
