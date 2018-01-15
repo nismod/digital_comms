@@ -18,6 +18,7 @@ __pycache__/*
 .pydevproject
 .settings
 .idea
+workspace.code-workspace
 
 # Package files
 *.egg
@@ -50,4 +51,5 @@ MANIFEST
 
 # Data
 Data
+data
 scripts/script_config.ini
