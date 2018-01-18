@@ -43,7 +43,7 @@ class ICTManager(object):
         * pcd_sector: :obj:`str`
             Code of the postcode sector
         * site_ngr: :obj:`int`
-            TODO
+            Unique site reference number
         * technology: :obj:`str`
             Abbreviation of the asset technology (LTE, 3G, 4G, ..)
         * frequency: :obj:`str`
@@ -149,7 +149,7 @@ class LAD(object):
 
     @property
     def population_density(self):
-        """obj: The average population density in the local area district
+        """obj: The population density in the local area district
         """
         total_area = sum([
             pcd_sector.area
@@ -171,7 +171,7 @@ class LAD(object):
         self._pcd_sectors[pcd_sector.id] = pcd_sector
 
     def add_asset(self, asset):
-        """Add an asset to postcode sector to the local area district
+        """Add an asset to postcode sector
 
         Arguments
         ---------
@@ -182,7 +182,8 @@ class LAD(object):
         self._pcd_sectors[pcd_sector_id].add_asset(asset)
 
     def system(self):
-        """TODO
+        """Populates a dict with all existing assets
+        Which in total represents the system.
 
         Returns
         -------
@@ -201,7 +202,7 @@ class LAD(object):
         return system
 
     def capacity(self):
-        """Calculate capacity as the mean capacity from all nested postcode sectors
+        """Calculate mean capacity from all nested postcode sectors
 
         Returns
         -------
@@ -221,7 +222,7 @@ class LAD(object):
         return summed_capacity / len(self._pcd_sectors)
 
     def demand(self):
-        """Calculate demand as the mean capacity demand from all nested postcode sectors
+        """Calculate demand per square kilometer (Mbps km^2) from all nested postcode sectors
 
         Returns
         -------
@@ -246,7 +247,7 @@ class LAD(object):
         return summed_demand / summed_area
 
     def coverage(self):
-        """Calculate coverage as the proportion of population with capacity coverage over a threshold
+        """Calculate coverage as the proportion of the population able to obtain the specified capacity threshold
 
         Returns
         -------
@@ -271,7 +272,7 @@ class LAD(object):
 
 
 class PostcodeSector(object):
-    """""Represents a Postcode sector to be modelled
+    """Represents a Postcode sector to be modelled
     """
     def __init__(self, data, assets, capacity_lookup_table, clutter_lookup):
         self.id = data["id"]
@@ -349,6 +350,7 @@ class PostcodeSector(object):
     @property
     def demand(self):
         """obj: The demand in capacity per km^2
+        TODO Double check
 
         Notes
         -----
@@ -365,7 +367,7 @@ class PostcodeSector(object):
 
     @property
     def population_density(self):
-        """obj: The population density in people per TODO
+        """obj: The population density in persons per square kilometer (km^2)
         """
         return self.population / self.area
 
@@ -415,7 +417,7 @@ class PostcodeSector(object):
 
     @property
     def capacity_margin(self):
-        """obj: The capacity margin in this postcode sector TODO
+        """obj: Capacity margin per postcode sector in Mbps
         """
         capacity_margin = self.capacity - self.demand
         return capacity_margin
@@ -454,12 +456,13 @@ def lookup_clutter_geotype(clutter_lookup, population_density):
         sorted by population_density_upper_bound ascending.
 
         * 0: :obj:`int`
-            Population density in TODO
+            Population density in persons per square kilometer (p/km^2)
         * 1: :obj:`str`
             Geotype ('Urban', ..)
 
     population_density: int
-        The population density in TODO that needs to be looked up in the clutter lookup table
+        The population density in persons per square kilometer, that needs to be 
+        looked up in the clutter lookup table
 
     Returns
     -------

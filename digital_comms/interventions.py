@@ -154,7 +154,7 @@ def decide_interventions(strategy, budget, service_obligation_capacity,
             Each containing the keys
 
                 site_ngr: str
-                    TODO
+                    Unique site reference number
                 frequency: str
                     Asset frequency ("700", ..)
                 technology: str
