@@ -42,24 +42,26 @@ initial_system = []
 
 YEARS = ['2016', '2017']
 
+#####################
+# read in files for 2016 and 2017
+#####################
+
 for year in YEARS:
     for fixed_pcd_file in os.listdir(SYSTEM_INPUT_FILENAME):
         if fixed_pcd_file.startswith(year):
             with open(os.path.join(SYSTEM_INPUT_FILENAME, fixed_pcd_file), 'r') as system_file:
                 reader = csv.reader(system_file)
                 next(reader)  # skip header
-                for line in reader: # does  postcode, _2, _3, SFBB, UFBB
-                    # If asset is in a known postcode, go ahead
-                    #if pcd_sector in pcd_sector_ids and network in NETWORKS_TO_INCLUDE:
+                for line in reader:
                     initial_system.append({
                         'postcode': line[0],
                         'SFBB': line[3],
                         'UFBB': line[4]
                     })
 
-            with open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'file-' + str(year) + '.csv'), 'w', newline='') as output_file:
+# write files for 2016 and 2017
+            with open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'fixed_postcode_' + str(year) + '.csv'), 'w', newline='') as output_file:
                 output_writer = csv.writer(output_file)
-                # output and report results for this timestep
 
                 # Write header
                 output_writer.writerow(("postcode", "SFBB", "UFBB"))
@@ -76,3 +78,69 @@ for year in YEARS:
                         (postcode, SFBB, UFBB))
 
             output_file.close()
+
+#####################
+# read files for 2015
+#####################
+
+with open(os.path.join(SYSTEM_INPUT_FILENAME, 'Fixed_Postcode_2015_updated_01022016.csv'), 'r') as system_file:
+                reader = csv.reader(system_file)
+                next(reader)  # skip header
+                for line in reader:
+                    initial_system.append({
+                        'postcode': line[0],
+                        'SFBB': line[2],
+                        'UFBB': line[3],
+                    })
+
+with open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'fixed_postcode_2015.csv'), 'w', newline='') as output_file:
+    output_writer = csv.writer(output_file)
+
+    # Write header
+    output_writer.writerow(("postcode", "SFBB", "UFBB"))
+
+    # Write data
+    for pcd in initial_system:
+        # so by using a for loop, we're accessing each element in the list.
+        # each postcode is then a dict, so we need to index into each dict item
+        postcode = pcd['postcode']
+        SFBB = pcd['SFBB']
+        UFBB = pcd['UFBB']              # <- there is no UFBB column for 2014 so calibrate as zero
+
+        output_writer.writerow(
+            (postcode, SFBB, UFBB))
+
+output_file.close()
+
+#####################
+# read files for 2014
+#####################
+
+with open(os.path.join(SYSTEM_INPUT_FILENAME, 'fixed_postcode_2014_CB.csv'), 'r') as system_file:
+                reader = csv.reader(system_file)
+                next(reader)  # skip header
+                for line in reader:
+                    initial_system.append({
+                        'postcode': line[0],
+                        'SFBB': line[2],
+                    })
+
+with open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'fixed_postcode_2014.csv'), 'w', newline='') as output_file:
+    output_writer = csv.writer(output_file)
+
+    # Write header
+    output_writer.writerow(("postcode", "SFBB", "UFBB"))
+
+    # Write data
+    for pcd in initial_system:
+        # so by using a for loop, we're accessing each element in the list.
+        # each postcode is then a dict, so we need to index into each dict item
+        postcode = pcd['postcode']
+        SFBB = pcd['SFBB']
+        UFBB = 0              # <- there is no UFBB column for 2014 so calibrate as zero
+
+        output_writer.writerow(
+            (postcode, SFBB, UFBB))
+
+output_file.close()
+
