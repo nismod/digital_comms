@@ -3,44 +3,89 @@ from pprint import pprint
 import configparser
 import csv
 
-### csv import postcode data
-    # 2016 and 2017 are individual csv files for each two digit postcode
-    # 2014 and 2015 are single csv files containing all pcds
-
-### select desired variables
-    # 2017
-        # 'postcode'
-        # 'SFBB availability (% premises)'
-        # 'UFBB availability (% premises)'
-    # 2016
-        # 'postcode'
-        # 'SFBB availability (% premises)'
-        # 'UFBB availability (% premises)'
-    # 2015
-        # 'postcode'
-        # 'SFBB availability by PC (% premises)'
-        # 'UFBB availability by PC (% premises)'
-    # 2014
-        # 'postcode'
-        # 'SFBB (>30 Mbit/s) availability by PC (% premises)'
-
-### divide % premises variable by 100 to obtain factor
-
-### import codepoint postcode data
-
-### multiply for each postcode by codepoint premises numbers?
+WRITE_INTERMEDIATE_FILES = True
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
+
+#####################
+# setup file locations
+#####################
+
 SYSTEM_INPUT_FILENAME = os.path.join(BASE_PATH, 'Digital Comms - Fixed broadband model', 'Data', 'initial_system')
 
 SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'Digital Comms - Fixed broadband model', 'initial_system')
 
-initial_system = []
+initial_system = {}
 
 YEARS = ['2016', '2017']
+
+#####################
+# read in codepoint
+#####################
+
+SYSTEM_CODEPOINT_LOCATION = os.path.join(BASE_PATH, 'Digital Comms - Fixed broadband model', 'Data', 'codepoint')
+
+codepoint = []
+
+directory = os.path.join(SYSTEM_CODEPOINT_LOCATION)
+for root, directories, files in os.walk(directory):
+    for file in files:
+        if file.endswith(".csv") and file.startswith("cb"):
+            with open(os.path.join(root, file), 'r') as system_file:
+                reader = csv.reader(system_file)
+                for line in reader:
+                    codepoint.append({
+                        'postcode': line[0].replace(" ", ""), #remove whitespace in string
+                        'PO_Box': line[2],
+                        'total_delivery_points': line[3],
+                        'domestic_delivery_points': line[5],
+                        'non_domestic_delivery_points': line[6],
+                        'PO_Box_delivery_points': line[6],
+                        'eastings': line[10],
+                        'northings': line[11],
+                        'country': line[12],
+                        'district': line[16],
+                        'ward': line[17],
+                        'pcd_type': line[18],
+                    })
+
+if WRITE_INTERMEDIATE_FILES:
+    with open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'codepoint.csv'), 'w', newline='') as output_file:
+        output_writer = csv.writer(output_file)
+
+        # Write header
+        output_writer.writerow(("postcode", "PO_Box", "total_delivery_points", "domestic_delivery_points",
+                                "non_domestic_delivery_points", "PO_Box_delivery_points", "eastings",
+                                "northings", "country", "district", "ward", "pcd_type"))
+
+        # Write data
+        for line in codepoint:
+            # so by using a for loop, we're accessing each element in the list.
+            # each postcode is then a dict, so we need to index into each dict item
+            postcode = line['postcode']
+            PO_Box = line['PO_Box']
+            total_delivery_points = line['total_delivery_points']
+            domestic_delivery_points = line['domestic_delivery_points']
+            non_domestic_delivery_points = line['non_domestic_delivery_points']
+            PO_Box_delivery_points = line['PO_Box_delivery_points']
+            eastings = line['eastings']
+            northings = line['northings']
+            country = line['country']
+            district = line['district']
+            ward = line['ward']
+            pcd_type = line['pcd_type']
+
+            output_writer.writerow(
+                (postcode, PO_Box, total_delivery_points, domestic_delivery_points,
+                non_domestic_delivery_points, PO_Box_delivery_points, eastings,
+                northings, country, district, ward, pcd_type))
+
+    output_file.close()
+
+
 
 #####################
 # read in files for 2016 and 2017
@@ -53,31 +98,72 @@ for year in YEARS:
                 reader = csv.reader(system_file)
                 next(reader)  # skip header
                 for line in reader:
-                    initial_system.append({
+                    initial_system[line[0]] = {
                         'postcode': line[0],
-                        'SFBB': line[3],
-                        'UFBB': line[4]
+                        'SFBB': (int(line[3])/100),
+                        'UFBB': (int(line[4])/100)
+                    }
+
+            merged_codepoint = []
+            non_matching_codepoint = []
+
+            #print("Start merge 1")
+            for point in codepoint:
+                try:
+                    merged_codepoint.append({
+                        'postcode': point['postcode'],
+                        'PO_Box': point['PO_Box'],
+                        'total_delivery_points': point['total_delivery_points'],
+                        'domestic_delivery_points': point['domestic_delivery_points'],
+                        'non_domestic_delivery_points': point['non_domestic_delivery_points'],
+                        'PO_Box_delivery_points': point['PO_Box_delivery_points'],
+                        'eastings': point['eastings'],
+                        'northings': point['northings'],
+                        'country': point['country'],
+                        'district': point['district'],
+                        'ward': point['ward'],
+                        'pcd_type': point['pcd_type'],
+                        'SFBB': initial_system[point['postcode']]['SFBB'],
+                        'UFBB': initial_system[point['postcode']]['UFBB']
                     })
+                except KeyError as e:
+                    pass
+            #print("Finish merge 1")
 
-# write files for 2016 and 2017
-            with open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'fixed_postcode_' + str(year) + '.csv'), 'w', newline='') as output_file:
-                output_writer = csv.writer(output_file)
+            if WRITE_INTERMEDIATE_FILES:
+            # write files for 2016 and 2017
+                with open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'fixed_postcode_' + str(year) + '.csv'), 'w', newline='') as output_file:
+                    output_writer = csv.writer(output_file)
 
-                # Write header
-                output_writer.writerow(("postcode", "SFBB", "UFBB"))
+                    # Write header
+                    output_writer.writerow(("postcode", "PO_Box", "total_delivery_points", "domestic_delivery_points",
+                                "non_domestic_delivery_points", "PO_Box_delivery_points", "eastings",
+                                "northings", "country", "district", "ward", "pcd_type", "SFBB", "UFBB"))
+                    # Write data
+                    for pcd in initial_system:
+                        # so by using a for loop, we're accessing each element in the list.
+                        # each postcode is then a dict, so we need to index into each dict item
+                        postcode = pcd['postcode']
+                        PO_Box: pcd['PO_Box']
+                        total_delivery_points: pcd['total_delivery_points']
+                        domestic_delivery_points: pcd['domestic_delivery_points']
+                        non_domestic_delivery_points: pcd['non_domestic_delivery_points']
+                        PO_Box_delivery_points: pcd['PO_Box_delivery_points']
+                        eastings: pcd['eastings']
+                        northings: pcd['northings']
+                        country: pcd['country']
+                        district: pcd['district']
+                        ward: pcd['ward']
+                        pcd_type: pcd['pcd_type']
+                        SFBB: pcd['SFBB']
+                        UFBB: pcd['UFBB']
 
-                # Write data
-                for pcd in initial_system:
-                    # so by using a for loop, we're accessing each element in the list.
-                    # each postcode is then a dict, so we need to index into each dict item
-                    postcode = pcd['postcode']
-                    SFBB = pcd['SFBB']
-                    UFBB = pcd['UFBB']
+                        output_writer.writerow(
+                            (postcode, PO_Box, total_delivery_points, domestic_delivery_points,
+                            non_domestic_delivery_points, PO_Box_delivery_points, eastings,
+                            northings, country, district, ward, pcd_type, SFBB, UFBB))
 
-                    output_writer.writerow(
-                        (postcode, SFBB, UFBB))
-
-            output_file.close()
+                output_file.close()
 
 #####################
 # read files for 2015
@@ -89,28 +175,29 @@ with open(os.path.join(SYSTEM_INPUT_FILENAME, 'Fixed_Postcode_2015_updated_01022
                 for line in reader:
                     initial_system.append({
                         'postcode': line[0],
-                        'SFBB': line[2],
-                        'UFBB': line[3],
+                        'SFBB': (int(line[2])/100),
+                        'UFBB': (int(line[3])/100),
                     })
 
-with open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'fixed_postcode_2015.csv'), 'w', newline='') as output_file:
-    output_writer = csv.writer(output_file)
+if WRITE_INTERMEDIATE_FILES:
+    with open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'fixed_postcode_2015.csv'), 'w', newline='') as output_file:
+        output_writer = csv.writer(output_file)
 
-    # Write header
-    output_writer.writerow(("postcode", "SFBB", "UFBB"))
+        # Write header
+        output_writer.writerow(("postcode", "SFBB", "UFBB"))
 
-    # Write data
-    for pcd in initial_system:
-        # so by using a for loop, we're accessing each element in the list.
-        # each postcode is then a dict, so we need to index into each dict item
-        postcode = pcd['postcode']
-        SFBB = pcd['SFBB']
-        UFBB = pcd['UFBB']              # <- there is no UFBB column for 2014 so calibrate as zero
+        # Write data
+        for pcd in initial_system:
+            # so by using a for loop, we're accessing each element in the list.
+            # each postcode is then a dict, so we need to index into each dict item
+            postcode = pcd['postcode']
+            SFBB = pcd['SFBB']
+            UFBB = pcd['UFBB']              # <- there is no UFBB column for 2014 so calibrate as zero
 
-        output_writer.writerow(
-            (postcode, SFBB, UFBB))
+            output_writer.writerow(
+                (postcode, SFBB, UFBB))
 
-output_file.close()
+    output_file.close()
 
 #####################
 # read files for 2014
@@ -122,25 +209,32 @@ with open(os.path.join(SYSTEM_INPUT_FILENAME, 'fixed_postcode_2014_CB.csv'), 'r'
                 for line in reader:
                     initial_system.append({
                         'postcode': line[0],
-                        'SFBB': line[2],
+                        'SFBB': (int(line[2])/100),
                     })
 
-with open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'fixed_postcode_2014.csv'), 'w', newline='') as output_file:
-    output_writer = csv.writer(output_file)
+if WRITE_INTERMEDIATE_FILES:
+    with open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'fixed_postcode_2014.csv'), 'w', newline='') as output_file:
+        output_writer = csv.writer(output_file)
 
-    # Write header
-    output_writer.writerow(("postcode", "SFBB", "UFBB"))
+        # Write header
+        output_writer.writerow(("postcode", "SFBB", "UFBB"))
 
-    # Write data
-    for pcd in initial_system:
-        # so by using a for loop, we're accessing each element in the list.
-        # each postcode is then a dict, so we need to index into each dict item
-        postcode = pcd['postcode']
-        SFBB = pcd['SFBB']
-        UFBB = 0              # <- there is no UFBB column for 2014 so calibrate as zero
+        # Write data
+        for pcd in initial_system:
+            # so by using a for loop, we're accessing each element in the list.
+            # each postcode is then a dict, so we need to index into each dict item
+            postcode = pcd['postcode']
+            SFBB = pcd['SFBB']
+            UFBB = 0              # <- there is no UFBB column for 2014 so calibrate as zero
 
-        output_writer.writerow(
-            (postcode, SFBB, UFBB))
+            output_writer.writerow(
+                (postcode, SFBB, UFBB))
 
-output_file.close()
+    output_file.close()
+
+
+
+
+YEARS = ['2016', '2017']
+
 
