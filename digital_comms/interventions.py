@@ -134,8 +134,8 @@ def decide_interventions(strategy, budget, service_obligation_capacity,
                          system, timestep):
     """Given strategy parameters and a system return some next best intervention
 
-    Params
-    ======
+    Parameters
+    ----------
     strategy : str
         One of 'minimal', 'macrocell', 'small_cell' intervention strategies
     budget : int
@@ -144,6 +144,31 @@ def decide_interventions(strategy, budget, service_obligation_capacity,
         Threshold for universal mobile service, in Mbps/km^2
     system : ICTManager
         Gives areas (postcode sectors) with population density, demand
+
+    Returns
+    -------
+    tuple
+        0: `obj`:`list` of `obj`:`dict`  
+            Details of the assets that were built
+
+            Each containing the keys
+
+                site_ngr: str
+                    Unique site reference number
+                frequency: str
+                    Asset frequency ("700", ..)
+                technology: str
+                    Asset technology ("LTE", ..)
+                bandwidth: str
+                    Asset bandwith ("2x10MHz", ..)
+                build_date: int
+                    Timestep when the asset was built
+                pcd_sector: int
+                    Id of the postcode sector where asset is located
+        1: int
+            Remaining budget
+        2: int
+            Total costs of intervention build step
     """
     available_interventions = AVAILABLE_STRATEGY_INTERVENTIONS[strategy]
 
