@@ -85,11 +85,11 @@ if WRITE_INTERMEDIATE_FILES:
 
     output_file.close()
 
-
-
 #####################
 # read in files for 2016 and 2017
 #####################
+
+initial_system = {}
 
 for year in YEARS:
     for fixed_pcd_file in os.listdir(SYSTEM_INPUT_FILENAME):
@@ -169,33 +169,75 @@ for year in YEARS:
 # read files for 2015
 #####################
 
+initial_system = {}
+
 with open(os.path.join(SYSTEM_INPUT_FILENAME, 'Fixed_Postcode_2015_updated_01022016.csv'), 'r') as system_file:
-                reader = csv.reader(system_file)
-                next(reader)  # skip header
-                for line in reader:
-                    initial_system.append({
-                        'postcode': line[0],
-                        'SFBB': (int(line[2])/100),
-                        'UFBB': (int(line[3])/100),
-                    })
+    reader = csv.reader(system_file)
+    next(reader)  # skip header
+    for line in reader:
+        initial_system[line[0]] = {
+            'postcode': line[0],
+            'SFBB': (int(line[2])/100),
+            'UFBB': (int(line[3])/100),
+        }
+
+merged_codepoint = []
+non_matching_codepoint = []
+
+for point in codepoint:
+    try:
+        merged_codepoint.append({
+            'postcode': point['postcode'],
+            'PO_Box': point['PO_Box'],
+            'total_delivery_points': point['total_delivery_points'],
+            'domestic_delivery_points': point['domestic_delivery_points'],
+            'non_domestic_delivery_points': point['non_domestic_delivery_points'],
+            'PO_Box_delivery_points': point['PO_Box_delivery_points'],
+            'eastings': point['eastings'],
+            'northings': point['northings'],
+            'country': point['country'],
+            'district': point['district'],
+            'ward': point['ward'],
+            'pcd_type': point['pcd_type'],
+            'SFBB': initial_system[point['postcode']]['SFBB'],
+            'UFBB': initial_system[point['postcode']]['UFBB']
+        })
+    except KeyError as e:
+        pass
+#print("Finish merge 1")
 
 if WRITE_INTERMEDIATE_FILES:
     with open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'fixed_postcode_2015.csv'), 'w', newline='') as output_file:
         output_writer = csv.writer(output_file)
 
         # Write header
-        output_writer.writerow(("postcode", "SFBB", "UFBB"))
+        output_writer.writerow(("postcode", "PO_Box", "total_delivery_points", "domestic_delivery_points",
+                    "non_domestic_delivery_points", "PO_Box_delivery_points", "eastings",
+                    "northings", "country", "district", "ward", "pcd_type", "SFBB", "UFBB"))
 
         # Write data
-        for pcd in initial_system:
+        for merged_cp in merged_codepoint:
             # so by using a for loop, we're accessing each element in the list.
             # each postcode is then a dict, so we need to index into each dict item
-            postcode = pcd['postcode']
-            SFBB = pcd['SFBB']
-            UFBB = pcd['UFBB']              # <- there is no UFBB column for 2014 so calibrate as zero
+            postcode = merged_cp['postcode']
+            PO_Box = merged_cp['PO_Box']
+            total_delivery_points = merged_cp['total_delivery_points']
+            domestic_delivery_points = merged_cp['domestic_delivery_points']
+            non_domestic_delivery_points = merged_cp['non_domestic_delivery_points']
+            PO_Box_delivery_points = merged_cp['PO_Box_delivery_points']
+            eastings = merged_cp['eastings']
+            northings = merged_cp['northings']
+            country = merged_cp['country']
+            district = merged_cp['district']
+            ward = merged_cp['ward']
+            pcd_type = merged_cp['pcd_type']
+            SFBB = merged_cp['SFBB']
+            UFBB = merged_cp['UFBB']
 
             output_writer.writerow(
-                (postcode, SFBB, UFBB))
+                (postcode, PO_Box, total_delivery_points, domestic_delivery_points,
+                non_domestic_delivery_points, PO_Box_delivery_points, eastings,
+                northings, country, district, ward, pcd_type, SFBB, UFBB))
 
     output_file.close()
 
@@ -203,38 +245,71 @@ if WRITE_INTERMEDIATE_FILES:
 # read files for 2014
 #####################
 
-with open(os.path.join(SYSTEM_INPUT_FILENAME, 'fixed_postcode_2014_CB.csv'), 'r') as system_file:
-                reader = csv.reader(system_file)
-                next(reader)  # skip header
-                for line in reader:
-                    initial_system.append({
-                        'postcode': line[0],
-                        'SFBB': (int(line[2])/100),
-                    })
+if WRITE_INTERMEDIATE_FILES:
+    with open(os.path.join(SYSTEM_INPUT_FILENAME, 'fixed_postcode_2014_CB.csv'), 'r') as system_file:
+        reader = csv.reader(system_file)
+        next(reader)  # skip header
+        for line in reader:
+            initial_system[line[0]] = {
+                'postcode': line[0],
+                'SFBB': (int(line[2])/100),
+            }
+
+        merged_codepoint = []
+        non_matching_codepoint = []
+
+        for point in codepoint:
+            try:
+                merged_codepoint.append({
+                    'postcode': point['postcode'],
+                    'PO_Box': point['PO_Box'],
+                    'total_delivery_points': point['total_delivery_points'],
+                    'domestic_delivery_points': point['domestic_delivery_points'],
+                    'non_domestic_delivery_points': point['non_domestic_delivery_points'],
+                    'PO_Box_delivery_points': point['PO_Box_delivery_points'],
+                    'eastings': point['eastings'],
+                    'northings': point['northings'],
+                    'country': point['country'],
+                    'district': point['district'],
+                    'ward': point['ward'],
+                    'pcd_type': point['pcd_type'],
+                    'SFBB': initial_system[point['postcode']]['SFBB']
+                })
+            except KeyError as e:
+                pass
 
 if WRITE_INTERMEDIATE_FILES:
     with open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'fixed_postcode_2014.csv'), 'w', newline='') as output_file:
         output_writer = csv.writer(output_file)
 
         # Write header
-        output_writer.writerow(("postcode", "SFBB", "UFBB"))
+        output_writer.writerow(("postcode", "PO_Box", "total_delivery_points", "domestic_delivery_points",
+                    "non_domestic_delivery_points", "PO_Box_delivery_points", "eastings",
+                    "northings", "country", "district", "ward", "pcd_type", "SFBB", "UFBB"))
 
         # Write data
-        for pcd in initial_system:
+        for merged_cp in merged_codepoint:
             # so by using a for loop, we're accessing each element in the list.
             # each postcode is then a dict, so we need to index into each dict item
-            postcode = pcd['postcode']
-            SFBB = pcd['SFBB']
-            UFBB = 0              # <- there is no UFBB column for 2014 so calibrate as zero
+            postcode = merged_cp['postcode']
+            PO_Box = merged_cp['PO_Box']
+            total_delivery_points = merged_cp['total_delivery_points']
+            domestic_delivery_points = merged_cp['domestic_delivery_points']
+            non_domestic_delivery_points = merged_cp['non_domestic_delivery_points']
+            PO_Box_delivery_points = merged_cp['PO_Box_delivery_points']
+            eastings = merged_cp['eastings']
+            northings = merged_cp['northings']
+            country = merged_cp['country']
+            district = merged_cp['district']
+            ward = merged_cp['ward']
+            pcd_type = merged_cp['pcd_type']
+            SFBB = merged_cp['SFBB']
+            UFBB = 0
 
             output_writer.writerow(
-                (postcode, SFBB, UFBB))
+                (postcode, PO_Box, total_delivery_points, domestic_delivery_points,
+                non_domestic_delivery_points, PO_Box_delivery_points, eastings,
+                northings, country, district, ward, pcd_type, SFBB, UFBB))
 
     output_file.close()
-
-
-
-
-YEARS = ['2016', '2017']
-
 
