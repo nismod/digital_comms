@@ -140,23 +140,23 @@ for year in YEARS:
                                 "non_domestic_delivery_points", "PO_Box_delivery_points", "eastings",
                                 "northings", "country", "district", "ward", "pcd_type", "SFBB", "UFBB"))
                     # Write data
-                    for pcd in initial_system:
+                    for merged_cp in merged_codepoint:
                         # so by using a for loop, we're accessing each element in the list.
                         # each postcode is then a dict, so we need to index into each dict item
-                        postcode = pcd['postcode']
-                        PO_Box: pcd['PO_Box']
-                        total_delivery_points: pcd['total_delivery_points']
-                        domestic_delivery_points: pcd['domestic_delivery_points']
-                        non_domestic_delivery_points: pcd['non_domestic_delivery_points']
-                        PO_Box_delivery_points: pcd['PO_Box_delivery_points']
-                        eastings: pcd['eastings']
-                        northings: pcd['northings']
-                        country: pcd['country']
-                        district: pcd['district']
-                        ward: pcd['ward']
-                        pcd_type: pcd['pcd_type']
-                        SFBB: pcd['SFBB']
-                        UFBB: pcd['UFBB']
+                        postcode = merged_cp['postcode']
+                        PO_Box = merged_cp['PO_Box']
+                        total_delivery_points = merged_cp['total_delivery_points']
+                        domestic_delivery_points = merged_cp['domestic_delivery_points']
+                        non_domestic_delivery_points = merged_cp['non_domestic_delivery_points']
+                        PO_Box_delivery_points = merged_cp['PO_Box_delivery_points']
+                        eastings = merged_cp['eastings']
+                        northings = merged_cp['northings']
+                        country = merged_cp['country']
+                        district = merged_cp['district']
+                        ward = merged_cp['ward']
+                        pcd_type = merged_cp['pcd_type']
+                        SFBB = merged_cp['SFBB']
+                        UFBB = merged_cp['UFBB']
 
                         output_writer.writerow(
                             (postcode, PO_Box, total_delivery_points, domestic_delivery_points,
