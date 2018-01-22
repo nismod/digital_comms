@@ -2,13 +2,13 @@ import os
 from pprint import pprint
 import configparser
 import csv
+from math import ceil
 
 WRITE_INTERMEDIATE_FILES = True
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
-
 
 #####################
 # setup file locations
@@ -109,28 +109,32 @@ for year in YEARS:
 
             #print("Start merge 1")
             for point in codepoint:
-                try:
-                    merged_codepoint.append({
-                        'postcode': point['postcode'],
-                        'PO_Box': point['PO_Box'],
-                        'total_delivery_points': point['total_delivery_points'],
-                        'domestic_delivery_points': point['domestic_delivery_points'],
-                        'non_domestic_delivery_points': point['non_domestic_delivery_points'],
-                        'PO_Box_delivery_points': point['PO_Box_delivery_points'],
-                        'eastings': point['eastings'],
-                        'northings': point['northings'],
-                        'country': point['country'],
-                        'district': point['district'],
-                        'ward': point['ward'],
-                        'pcd_type': point['pcd_type'],
-                        'SFBB': initial_system[point['postcode']]['SFBB'],
-                        'UFBB': initial_system[point['postcode']]['UFBB'],
-                        'SFBB_premises_covered': 0,
-                        'UFBB_premises_covered': 0,
-                    })
-                except KeyError as e:
-                    pass
-            #print("Finish merge 1")
+                #specifically target the small delivery points, following Ofcom's methodology
+                if point['pcd_type'] == "S":
+                    try:
+                        merged_codepoint.append({
+                            'postcode': point['postcode'],
+                            'PO_Box': point['PO_Box'],
+                            'total_delivery_points': point['total_delivery_points'],
+                            'domestic_and_SME_delivery_points': 0,
+                            'domestic_delivery_points': point['domestic_delivery_points'],
+                            'non_domestic_delivery_points': point['non_domestic_delivery_points'],
+                            'PO_Box_delivery_points': point['PO_Box_delivery_points'],
+                            'eastings': point['eastings'],
+                            'northings': point['northings'],
+                            'country': point['country'],
+                            'district': point['district'],
+                            'ward': point['ward'],
+                            'pcd_type': point['pcd_type'],
+                            'SFBB': initial_system[point['postcode']]['SFBB'],
+                            'UFBB': initial_system[point['postcode']]['UFBB'],
+                        })
+                    except KeyError as e:
+                        pass
+
+            for item in merged_codepoint:
+                item['SFBB'] = ceil(int(item['total_delivery_points']) * float(item['SFBB']))
+                item['UFBB'] = ceil(int(item['total_delivery_points']) * float(item['UFBB']))
 
             if WRITE_INTERMEDIATE_FILES:
             # write files for 2016 and 2017
@@ -139,8 +143,8 @@ for year in YEARS:
 
                     # Write header
                     output_writer.writerow(("postcode", "PO_Box", "total_delivery_points", "domestic_delivery_points",
-                                "non_domestic_delivery_points", "PO_Box_delivery_points", "eastings",
-                                "northings", "country", "district", "ward", "pcd_type", "SFBB", "UFBB"))
+                                            "non_domestic_delivery_points", "PO_Box_delivery_points", "eastings",
+                                            "northings", "country", "district", "ward", "pcd_type", "SFBB", "UFBB"))
                     # Write data
                     for merged_cp in merged_codepoint:
                         # so by using a for loop, we're accessing each element in the list.
@@ -187,26 +191,31 @@ merged_codepoint = []
 non_matching_codepoint = []
 
 for point in codepoint:
-    try:
-        merged_codepoint.append({
-            'postcode': point['postcode'],
-            'PO_Box': point['PO_Box'],
-            'total_delivery_points': point['total_delivery_points'],
-            'domestic_delivery_points': point['domestic_delivery_points'],
-            'non_domestic_delivery_points': point['non_domestic_delivery_points'],
-            'PO_Box_delivery_points': point['PO_Box_delivery_points'],
-            'eastings': point['eastings'],
-            'northings': point['northings'],
-            'country': point['country'],
-            'district': point['district'],
-            'ward': point['ward'],
-            'pcd_type': point['pcd_type'],
-            'SFBB': initial_system[point['postcode']]['SFBB'],
-            'UFBB': initial_system[point['postcode']]['UFBB']
-        })
-    except KeyError as e:
-        pass
-#print("Finish merge 1")
+    #specifically target the small delivery points, following Ofcom's methodology
+    if point['pcd_type'] == "S":
+        try:
+            merged_codepoint.append({
+                'postcode': point['postcode'],
+                'PO_Box': point['PO_Box'],
+                'total_delivery_points': point['total_delivery_points'],
+                'domestic_delivery_points': point['domestic_delivery_points'],
+                'non_domestic_delivery_points': point['non_domestic_delivery_points'],
+                'PO_Box_delivery_points': point['PO_Box_delivery_points'],
+                'eastings': point['eastings'],
+                'northings': point['northings'],
+                'country': point['country'],
+                'district': point['district'],
+                'ward': point['ward'],
+                'pcd_type': point['pcd_type'],
+                'SFBB': initial_system[point['postcode']]['SFBB'],
+                'UFBB': initial_system[point['postcode']]['UFBB']
+            })
+        except KeyError as e:
+            pass
+
+for item in merged_codepoint:
+    item['SFBB'] = ceil(int(item['total_delivery_points']) * float(item['SFBB']))
+    item['UFBB'] = ceil(int(item['total_delivery_points']) * float(item['UFBB']))
 
 if WRITE_INTERMEDIATE_FILES:
     with open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'fixed_postcode_2015.csv'), 'w', newline='') as output_file:
@@ -261,24 +270,31 @@ if WRITE_INTERMEDIATE_FILES:
         non_matching_codepoint = []
 
         for point in codepoint:
-            try:
-                merged_codepoint.append({
-                    'postcode': point['postcode'],
-                    'PO_Box': point['PO_Box'],
-                    'total_delivery_points': point['total_delivery_points'],
-                    'domestic_delivery_points': point['domestic_delivery_points'],
-                    'non_domestic_delivery_points': point['non_domestic_delivery_points'],
-                    'PO_Box_delivery_points': point['PO_Box_delivery_points'],
-                    'eastings': point['eastings'],
-                    'northings': point['northings'],
-                    'country': point['country'],
-                    'district': point['district'],
-                    'ward': point['ward'],
-                    'pcd_type': point['pcd_type'],
-                    'SFBB': initial_system[point['postcode']]['SFBB']
-                })
-            except KeyError as e:
-                pass
+            #specifically target the small delivery points, following Ofcom's methodology
+            if point['pcd_type'] == "S":
+                try:
+                    merged_codepoint.append({
+                        'postcode': point['postcode'],
+                        'PO_Box': point['PO_Box'],
+                        'total_delivery_points': point['total_delivery_points'],
+                        'domestic_delivery_points': point['domestic_delivery_points'],
+                        'non_domestic_delivery_points': point['non_domestic_delivery_points'],
+                        'PO_Box_delivery_points': point['PO_Box_delivery_points'],
+                        'eastings': point['eastings'],
+                        'northings': point['northings'],
+                        'country': point['country'],
+                        'district': point['district'],
+                        'ward': point['ward'],
+                        'pcd_type': point['pcd_type'],
+                        'SFBB': initial_system[point['postcode']]['SFBB'],
+                        'UFBB': 0
+                    })
+                except KeyError as e:
+                    pass
+
+        for item in merged_codepoint:
+            item['SFBB'] = ceil(int(item['total_delivery_points']) * float(item['SFBB']))
+            item['UFBB'] = ceil(int(item['total_delivery_points']) * float(item['UFBB']))
 
 if WRITE_INTERMEDIATE_FILES:
     with open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'fixed_postcode_2014.csv'), 'w', newline='') as output_file:
@@ -306,7 +322,7 @@ if WRITE_INTERMEDIATE_FILES:
             ward = merged_cp['ward']
             pcd_type = merged_cp['pcd_type']
             SFBB = merged_cp['SFBB']
-            UFBB = 0
+            UFBB = merged_cp['UFBB']
 
             output_writer.writerow(
                 (postcode, PO_Box, total_delivery_points, domestic_delivery_points,
