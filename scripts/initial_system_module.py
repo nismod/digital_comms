@@ -124,7 +124,9 @@ for year in YEARS:
                         'ward': point['ward'],
                         'pcd_type': point['pcd_type'],
                         'SFBB': initial_system[point['postcode']]['SFBB'],
-                        'UFBB': initial_system[point['postcode']]['UFBB']
+                        'UFBB': initial_system[point['postcode']]['UFBB'],
+                        'SFBB_premises_covered': 0,
+                        'UFBB_premises_covered': 0,
                     })
                 except KeyError as e:
                     pass
