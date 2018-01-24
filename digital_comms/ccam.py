@@ -95,7 +95,7 @@ class ICTManager(object):
             # find ID out of lads list of dicts
             lad_id = lad_data["id"]
             # create LAD object using lad_data and put in self.lads dict
-            self.lads[lad_id] = LAD(lad_data)
+            self.lads[lad_id] = LAD(lad_data) # <- create lower level LAD object here
 
         assets_by_pcd = defaultdict(list)
         for asset in assets:
@@ -106,7 +106,7 @@ class ICTManager(object):
             pcd_sector_id = pcd_sector_data["id"]
             assets = assets_by_pcd[pcd_sector_id]
             pcd_sector = PostcodeSector(
-                pcd_sector_data, assets, capacity_lookup_table, clutter_lookup)
+                pcd_sector_data, assets, capacity_lookup_table, clutter_lookup) # <- create lower level PostcodeSector object here
 
             # add PostcodeSector to simple list
             self.postcode_sectors[pcd_sector_id] = pcd_sector
@@ -134,7 +134,8 @@ class LAD(object):
     def __init__(self, data):
         self.id = data["id"]
         self.name = data["name"]
-        self._pcd_sectors = {}
+        self._pcd_sectors = {} #single underscore indicates it's a private variable which cannot be accessed excepted from within the object
+        #this means that code can add pcd_sectors and get summary states (capacity, pop_density etc.), while not having direct access
 
     def __repr__(self):
         return "<LAD id:{} name:{}>".format(self.id, self.name)
