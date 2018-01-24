@@ -4,6 +4,9 @@ from __future__ import print_function, absolute_import, division
 
 import pytest
 from pytest import fixture
+from shapely.geometry import Point, LineString
+
+from digital_comms.fixed_model.network_structure import ICTManager
 
 @fixture(scope='function')
 def setup_lad():
@@ -86,3 +89,65 @@ def setup_clutter_lookup():
     return [
         (5, "Urban")
     ]
+
+
+
+
+@fixture(scope='function')
+def setup_fixed_model_dps():
+    return [
+
+    ]
+
+# @fixture(scope='function')
+# def setup_fixed_model_pcp_to_dps():
+#     return {
+#         'cab_1':(,'geometry'),
+#         'cab_2':(,'geometry'),
+#         'cab_3':(,'geometry'),
+#         'cab_4':(,'geometry'),
+#         'cab_5':(,'geometry'),
+#         'cab_6':(,'geometry'),
+#         'cab_7':(,'geometry')
+#     }
+
+@fixture(scope='function')
+def setup_fixed_model_pcp():
+    return [
+        ('cab_1', Point(52.02917, 0.13409)),
+        ('cab_2', Point(53.02917, 0.23409)),
+        ('cab_3', Point(54.02917, 0.33409)),
+        ('cab_4', Point(55.02917, 0.43409)),
+        ('cab_5', Point(56.02917, 0.53409)),
+        ('cab_6', Point(57.02917, 0.63409)),
+        ('cab_7', Point(58.02917, 0.73409))
+    ]
+
+@fixture(scope='function')
+def setup_fixed_model_exchanges():
+    return [
+        ('EAARR', Point(52.02917, 0.13409)),
+        ('EABTM', Point(52.12916, 0.14408))
+    ]
+
+@fixture(scope='function')
+def setup_fixed_model_links():
+    return [
+        ('MSAN_T3', 'EAARR', 'PCP', 'cab_1', 'LineString'),
+        ('MSAN_T3', 'EAARR', 'PCP', 'cab_2', 'geometry'),
+        ('MSAN_T3', 'EAARR', 'PCP', 'cab_3', 'geometry'),
+        ('MSAN_T3', 'EAARR', 'PCP', 'cab_4', 'geometry'),
+        ('MSAN_T3', 'EABTM', 'PCP', 'cab_5', 'geometry'),
+        ('MSAN_T3', 'EABTM', 'PCP', 'cab_6', 'geometry'),
+        ('MSAN_T3', 'EABTM', 'PCP', 'cab_7', 'geometry')
+    ]
+@fixture(scope='function')
+def setup_fixed_network(setup_fixed_model_pcp, setup_fixed_model_exchanges, setup_fixed_model_links):
+    empty_data = {}
+
+    return ICTManager(empty_data, empty_data, setup_fixed_model_pcp,
+                      setup_fixed_model_exchanges, empty_data,
+                      setup_fixed_model_links)
+
+
+

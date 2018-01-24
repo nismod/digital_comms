@@ -1,14 +1,14 @@
 """Cambridge Communications Assessment Model Test
 """
 
-from digital_comms.ccam import ICTManager, LAD, PostcodeSector
+from digital_comms.mobile_model.ccam import ICTManager, LAD, PostcodeSector
 
 class TestICTManager():
 
-    def test_create(self, setup_lad, setup_pcd_sector, setup_assets, 
+    def test_create(self, setup_lad, setup_pcd_sector, setup_assets,
                     setup_capacity_lookup, setup_clutter_lookup):
 
-        Manager = ICTManager(setup_lad, setup_pcd_sector, setup_assets, 
+        Manager = ICTManager(setup_lad, setup_pcd_sector, setup_assets,
                              setup_capacity_lookup, setup_clutter_lookup)
 
 class TestLAD():
@@ -19,7 +19,7 @@ class TestLAD():
 
         assert testLAD.id == setup_lad[0]['id']
         assert testLAD.name == setup_lad[0]['name']
-    
+
     def test_property_population(self, setup_lad, setup_pcd_sector, setup_assets, setup_capacity_lookup, setup_clutter_lookup):
 
         testLAD = LAD(setup_lad[0])
