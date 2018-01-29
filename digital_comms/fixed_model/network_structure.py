@@ -1,3 +1,8 @@
+import networkx as nx
+import fiona
+import os
+
+from collections import OrderedDict
 
 class ICTManager():
 
@@ -35,27 +40,51 @@ class ICTManager():
     inner_core
     """
 
-    def __init__(self, premises, dps, pcp,
-                exchanges, cores, links):
+    def __init__(self, shapefiles):
 
-        self._nodes = {}
-        self._links = {}
+        self._network = nx.Graph()
 
-        # Create nodes
-        for exchanges_node in exchanges:
-            self._nodes[exchanges_node[0]] = Exchange(exchanges_node)
-
-        for pcp_node in pcp:
-            self._nodes[pcp_node[0]] = Pcp(pcp_node)
-
-        # Create links
-        for link in links:
-            self._links[link[0]] = Link(link[4], self._nodes[link[1]], self._nodes[link[3]])
-            self._nodes[link[1]].connect(self._links[link[0]])
-            self._nodes[link[4]].connect(self._links[link[0]])
+        for filename in os.listdir(shapefiles):
+            print(filename)
+            if filename.endswith(".shp"): 
+                with fiona.open(os.path.join(shapefiles, filename), 'r') as source:
+                    for c in source:
+                        if (c['geometry']['type'] == 'Point'):
+                            self._network.add_node(c['properties']['Name'], geometry=c['geometry'], properties=c['properties'])
+                        elif (c['geometry']['type'] == 'LineString'):
+                            self._network.add_edge(c['properties']['From'], c['properties']['To'], geometry=c['geometry'], properties=c['properties'])
 
     def calc_pcps_served(self, NodeId):
         return self._nodes[NodeId].calc_pcps_served()
+
+    def save(self, directory):
+
+        sink_driver = 'ESRI Shapefile'
+        sink_crs = {'no_defs': True, 'ellps': 'WGS84', 'datum': 'WGS84', 'proj': 'longlat'}
+        sink_schema_point = {
+            'geometry': 'Point',
+            'properties': OrderedDict([('OLO', 'str:254'), ('Name', 'str:254'), ('Postcode', 'str:254'), ('Region', 'str:254'), ('County', 'str:254'), ('E', 'int:10'), ('N', 'int:10')])
+        }
+        sink_schema_linestring = {
+            'geometry': 'LineString',
+            'properties': OrderedDict([('OLO', 'str:254'), ('Name', 'str:254'), ('Postcode', 'str:254'), ('Region', 'str:254'), ('County', 'str:254'), ('E', 'int:10'), ('N', 'int:10')])
+        }
+
+        # Write nodes
+        with fiona.open(os.path.join(directory, 'nodes.shp'), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema_point) as sink:
+            for node in (list(self._network.nodes)):
+                sink.write({
+                    'geometry': self._network.nodes[node]['geometry'],
+                    'properties': self._network.nodes[node]['properties']
+                })
+
+        # Write edges
+        with fiona.open(os.path.join(directory, 'edges2.shp'), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema_edge) as sink:
+            for edge in (list(self._network.edges)):
+                sink.write({
+                    'geometry': self._network.edges[edge]['geometry'],
+                    'properties': self._network.edges[edge]['properties']
+                })
 
 class Node():
 

@@ -133,13 +133,13 @@ def setup_fixed_model_exchanges():
 @fixture(scope='function')
 def setup_fixed_model_links():
     return [
-        ('MSAN_T3', 'EAARR', 'PCP', 'cab_1', 'LineString'),
-        ('MSAN_T3', 'EAARR', 'PCP', 'cab_2', 'geometry'),
-        ('MSAN_T3', 'EAARR', 'PCP', 'cab_3', 'geometry'),
-        ('MSAN_T3', 'EAARR', 'PCP', 'cab_4', 'geometry'),
-        ('MSAN_T3', 'EABTM', 'PCP', 'cab_5', 'geometry'),
-        ('MSAN_T3', 'EABTM', 'PCP', 'cab_6', 'geometry'),
-        ('MSAN_T3', 'EABTM', 'PCP', 'cab_7', 'geometry')
+        ('EAARR', 'cab_1', 'MSAN_T3', 'LineString'),
+        ('EAARR', 'cab_2', 'MSAN_T3', 'geometry'),
+        ('EAARR', 'cab_3', 'MSAN_T3', 'geometry'),
+        ('EAARR', 'cab_4', 'MSAN_T3', 'geometry'),
+        ('EABTM', 'cab_5', 'MSAN_T3', 'geometry'),
+        ('EABTM', 'cab_6', 'MSAN_T3', 'geometry'),
+        ('EABTM', 'cab_7', 'MSAN_T3', 'geometry')
     ]
 @fixture(scope='function')
 def setup_fixed_network(setup_fixed_model_pcp, setup_fixed_model_exchanges, setup_fixed_model_links):
@@ -148,6 +148,3 @@ def setup_fixed_network(setup_fixed_model_pcp, setup_fixed_model_exchanges, setu
     return ICTManager(empty_data, empty_data, setup_fixed_model_pcp,
                       setup_fixed_model_exchanges, empty_data,
                       setup_fixed_model_links)
-
-
-
