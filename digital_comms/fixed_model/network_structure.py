@@ -4,7 +4,6 @@ import os
 import itertools
 
 from shapely.geometry import LineString, Point, mapping
-
 from collections import OrderedDict
 
 class ICTManager():

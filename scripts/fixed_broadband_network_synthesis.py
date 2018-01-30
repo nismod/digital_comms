@@ -1,16 +1,10 @@
 from digital_comms.fixed_model.network_structure import ICTManager
-import fiona
 import os
+
+from networkx import nx, drawing
 
 from shapely.geometry import Point, LineString, mapping
 import matplotlib.pyplot as plt
-
-from networkx import drawing
-from networkx import nx
-
-from collections import OrderedDict
-
-# from mpl_toolkits.basemap import Basemap as Basemap
 
 # Config
 input_shapefiles_dir = 'input_shapefiles'
