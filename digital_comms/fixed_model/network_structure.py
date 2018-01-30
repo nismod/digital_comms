@@ -9,8 +9,22 @@ from collections import OrderedDict
 
 class ICTManager():
 
-    def __init__(self, shapefiles):
+    """
+    Attributes
+    ----------
+    length : num
+        Total length of links in the network
+    """
 
+    def __init__(self, shapefiles):
+        """Build the initial network using shapefiles as input
+
+        Parameters
+        ----------
+        shapefiles: str
+            Path to directory containing shapefiles
+        """
+  
         self._network = nx.Graph()
 
         for filename in os.listdir(shapefiles):
@@ -27,6 +41,20 @@ class ICTManager():
         return total_length
 
     def build_infrastructure(self, geom, props):
+        """Build infrastructure in the network
+
+        Parameters
+        ----------
+        geom: tuple, array of tuple
+            The geometric representation of the infrastructure
+        props: dict
+            The properties that belong to this infrastructure type
+
+        Raises
+        ------
+        NotImplementedError
+            When the infrastructure types does not exist
+        """
         if props['Type'] == 'premise':
             self._network.add_node(props['Name'], object=PremiseNode(geom, props))
         elif props['Type'] == 'dps':
@@ -40,13 +68,16 @@ class ICTManager():
         elif props['Type'] == 'link':
             self._network.add_edge(props['Origin'], props['Dest'], object=Link(geom, props))
         else:
-            raise Exception('Node or Link Type ' + c['properties']['Type'] + ' is not defined'))
-
-    def calc_pcps_served(self, NodeId):
-        return self._nodes[NodeId].calc_pcps_served()
+            raise NotImplementedError('Node or Link Type ' + c['properties']['Type'] + ' does not exist')
 
     def save(self, directory):
+        """Save the current state of the network in a set of shapefile
 
+        Parameters
+        ----------
+        directory: str 
+            Path to directory where shapefiles are saved
+        """
         sink_driver = 'ESRI Shapefile'
         sink_crs = {'no_defs': True, 'ellps': 'WGS84', 'datum': 'WGS84', 'proj': 'longlat'}
 
