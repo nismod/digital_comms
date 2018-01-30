@@ -17,20 +17,7 @@ class ICTManager():
             if filename.endswith(".shp"): 
                 with fiona.open(os.path.join(shapefiles, filename), 'r') as source:
                     for c in source:
-                        if   (c['properties']['Type'] == 'premise'):
-                            self.add_premise(c['geometry']['coordinates'], dict(c['properties']))
-                        elif (c['properties']['Type'] == 'dps'):
-                            self.add_dps(c['geometry']['coordinates'], dict(c['properties']))
-                        elif (c['properties']['Type'] == 'pcp'):
-                            self.add_pcp(c['geometry']['coordinates'], dict(c['properties']))
-                        elif (c['properties']['Type'] == 'exchange'):
-                            self.add_exchange(c['geometry']['coordinates'], dict(c['properties']))
-                        elif (c['properties']['Type'] == 'core'):
-                            self.add_corenode(c['geometry']['coordinates'], dict(c['properties']))
-                        elif (c['properties']['Type'] == 'link'):
-                            self.add_link(c['geometry']['coordinates'], dict(c['properties']))
-                        else:
-                            raise Exception('Node or Link Type ' + c['properties']['Type'] + ' is not defined')
+                        self.build_infrastructure(c['geometry']['coordinates'], dict(c['properties']))                            
 
     @property
     def length(self):
@@ -39,23 +26,21 @@ class ICTManager():
             total_length += edge.length
         return total_length
 
-    def add_premise(self, geom, props):
-        self._network.add_node(props['Name'], object=PremiseNode(geom, props))
-
-    def add_dps(self, geom, props):
-        self._network.add_node(props['Name'], object=DpsNode(geom, props))
-
-    def add_pcp(self, geom, props):
-        self._network.add_node(props['Name'], object=PcpNode(geom, props))
-
-    def add_exchange(self, geom, props):
-        self._network.add_node(props['Name'], object=ExchangeNode(geom, props))
-
-    def add_corenode(self, geom, props):
-        self._network.add_node(props['Name'], object=CoreNode(geom, props))
-
-    def add_link(self, geom, props):
-        self._network.add_edge(props['Origin'], props['Dest'], object=Link(geom, props))
+    def build_infrastructure(self, geom, props):
+        if props['Type'] == 'premise':
+            self._network.add_node(props['Name'], object=PremiseNode(geom, props))
+        elif props['Type'] == 'dps':
+            self._network.add_node(props['Name'], object=DpsNode(geom, props))
+        elif props['Type'] == 'pcp':
+            self._network.add_node(props['Name'], object=PcpNode(geom, props))
+        elif props['Type'] == 'exchange':
+            self._network.add_node(props['Name'], object=ExchangeNode(geom, props))
+        elif props['Type'] == 'core':
+            self._network.add_node(props['Name'], object=CoreNode(geom, props))
+        elif props['Type'] == 'link':
+            self._network.add_edge(props['Origin'], props['Dest'], object=Link(geom, props))
+        else:
+            raise Exception('Node or Link Type ' + c['properties']['Type'] + ' is not defined'))
 
     def calc_pcps_served(self, NodeId):
         return self._nodes[NodeId].calc_pcps_served()
