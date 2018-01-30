@@ -1,58 +1,61 @@
 import networkx as nx
 import fiona
 import os
+import itertools
+
+from shapely.geometry import LineString, Point, mapping
 
 from collections import OrderedDict
 
 class ICTManager():
-
-    """
-    premises: dict of ?
-        * name:
-        * geom: Point
-        * reference to finaldrop ... ?
-
-    finaldrop: dict of  ?
-        Link
-
-        * name?:
-        * geom: LineString
-
-    dps (distribution point): dict of
-        Distribution Point
-
-    pcp_to_dps:
-        Link
-
-    pcp (primary connection point):
-        Primary Connection Point)
-
-    pcp_to_msans_t3:
-        Link
-
-    msans_t3 (exchange_t3)
-
-
-    msans_t2
-    msans_t1
-    metro
-    outer_core
-    inner_core
-    """
 
     def __init__(self, shapefiles):
 
         self._network = nx.Graph()
 
         for filename in os.listdir(shapefiles):
-            print(filename)
             if filename.endswith(".shp"): 
                 with fiona.open(os.path.join(shapefiles, filename), 'r') as source:
                     for c in source:
-                        if (c['geometry']['type'] == 'Point'):
-                            self._network.add_node(c['properties']['Name'], geometry=c['geometry'], properties=c['properties'])
-                        elif (c['geometry']['type'] == 'LineString'):
-                            self._network.add_edge(c['properties']['From'], c['properties']['To'], geometry=c['geometry'], properties=c['properties'])
+                        if   (c['properties']['Type'] == 'premise'):
+                            self.add_premise(c['geometry']['coordinates'], dict(c['properties']))
+                        elif (c['properties']['Type'] == 'dps'):
+                            self.add_dps(c['geometry']['coordinates'], dict(c['properties']))
+                        elif (c['properties']['Type'] == 'pcp'):
+                            self.add_pcp(c['geometry']['coordinates'], dict(c['properties']))
+                        elif (c['properties']['Type'] == 'exchange'):
+                            self.add_exchange(c['geometry']['coordinates'], dict(c['properties']))
+                        elif (c['properties']['Type'] == 'core'):
+                            self.add_corenode(c['geometry']['coordinates'], dict(c['properties']))
+                        elif (c['properties']['Type'] == 'link'):
+                            self.add_link(c['geometry']['coordinates'], dict(c['properties']))
+                        else:
+                            raise Exception('Node or Link Type ' + c['properties']['Type'] + ' is not defined')
+
+    @property
+    def length(self):
+        total_length = 0
+        for (origin, dest, edge) in list(self._network.edges.data('object')):
+            total_length += edge.length
+        return total_length
+
+    def add_premise(self, geom, props):
+        self._network.add_node(props['Name'], object=PremiseNode(geom, props))
+
+    def add_dps(self, geom, props):
+        self._network.add_node(props['Name'], object=DpsNode(geom, props))
+
+    def add_pcp(self, geom, props):
+        self._network.add_node(props['Name'], object=PcpNode(geom, props))
+
+    def add_exchange(self, geom, props):
+        self._network.add_node(props['Name'], object=ExchangeNode(geom, props))
+
+    def add_corenode(self, geom, props):
+        self._network.add_node(props['Name'], object=CoreNode(geom, props))
+
+    def add_link(self, geom, props):
+        self._network.add_edge(props['Origin'], props['Dest'], object=Link(geom, props))
 
     def calc_pcps_served(self, NodeId):
         return self._nodes[NodeId].calc_pcps_served()
@@ -61,41 +64,45 @@ class ICTManager():
 
         sink_driver = 'ESRI Shapefile'
         sink_crs = {'no_defs': True, 'ellps': 'WGS84', 'datum': 'WGS84', 'proj': 'longlat'}
-        sink_schema_point = {
-            'geometry': 'Point',
-            'properties': OrderedDict([('OLO', 'str:254'), ('Name', 'str:254'), ('Postcode', 'str:254'), ('Region', 'str:254'), ('County', 'str:254'), ('E', 'int:10'), ('N', 'int:10')])
-        }
-        sink_schema_linestring = {
-            'geometry': 'LineString',
-            'properties': OrderedDict([('OLO', 'str:254'), ('Name', 'str:254'), ('Postcode', 'str:254'), ('Region', 'str:254'), ('County', 'str:254'), ('E', 'int:10'), ('N', 'int:10')])
-        }
 
-        # Write nodes
-        with fiona.open(os.path.join(directory, 'nodes.shp'), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema_point) as sink:
-            for node in (list(self._network.nodes)):
-                sink.write({
-                    'geometry': self._network.nodes[node]['geometry'],
-                    'properties': self._network.nodes[node]['properties']
-                })
+        # Create lists of geometry elemtents by node type
+        geom_list = {}
 
-        # Write edges
-        with fiona.open(os.path.join(directory, 'edges2.shp'), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema_edge) as sink:
-            for edge in (list(self._network.edges)):
-                sink.write({
-                    'geometry': self._network.edges[edge]['geometry'],
-                    'properties': self._network.edges[edge]['properties']
-                })
+        for node_id, node in list(self._network.nodes('object')):
+            geom_list.setdefault(str(type(node)),[]).append(node)
+
+        for origin, dest in list(self._network.edges()):
+            link_obj = self._network[origin][dest]['object']
+            geom_list.setdefault(str(type(link_obj)),[]).append(link_obj)
+
+        # Write nodes to output
+        for key in geom_list.keys():
+
+            # Translate props to Fiona sink schema
+            prop_schema = []
+            for name, value in geom_list[key][0].props.items():
+                fiona_prop_type = next((fiona_type for fiona_type, python_type in fiona.FIELD_TYPES_MAP.items() if python_type == type(value)), None)
+                prop_schema.append((name, fiona_prop_type))
+
+            sink_schema = {
+                'geometry': geom_list[key][0].geom.type,
+                'properties': OrderedDict(prop_schema)
+            }
+
+            # Write all elements to output file
+            with fiona.open(os.path.join(directory, key[8:-2] + '.shp'), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
+                for node in geom_list[key]:
+                    sink.write({
+                        'geometry': mapping(node.geom),
+                        'properties': OrderedDict(node.props)
+                    })
 
 class Node():
 
-    def __init__(self, id, name, geom):
-        self.id = id
-        self.name = name
-        self.geom = geom
-        self._links = []
-
-    def connect(self, link_id):
-        self._links.append(link_id)
+    def __init__(self, geom, props):
+        self.name = props['Name']
+        self.geom = Point(geom)
+        self.props = props
 
     def calc_pcps_served(self):
         #print('hello')
@@ -103,309 +110,43 @@ class Node():
         for link in self._links:
             print(type(link))
 
-class Exchange(Node):
+class PremiseNode(Node):
 
-    def __init__(self, data):
-        super().__init__(0, data[0], data[1])
-        # print('initialised MSANS_T3 Node ' + str(data))
+    @property
+    def node_type():
+        return 'premise'
 
-class Pcp(Node):
+class DpsNode(Node):
 
-    def __init__(self, data):
-        super().__init__(0, data[0], data[1])
-        # print('initialised PCP Node ' + str(data))
+    @property
+    def node_type():
+        return 'dps'
+
+class PcpNode(Node):
+
+    @property
+    def node_type():
+        return 'pcp'
+
+class ExchangeNode(Node):
+
+    @property
+    def node_type():
+        return 'exchange'
+
+class CoreNode(Node):
+    
+    @property
+    def node_type():
+        return 'core'
 
 class Link():
 
-    def __init__(self, geom, node_a, node_b):
-        self.id = 0
-        self.geom = geom
-        self._node_a = node_a
-        self._node_b = node_b
+    def __init__(self, geom, props):
+        self.id = id
+        self.geom = LineString(geom)
+        self.props = props
 
-        self._type = 'Backhaul'
-
-# from pprint import pprint
-
-# class Exchange(object):
-#     """ Defines a generic exchange.
-#     Arguments
-#     ---------
-#     data: dict
-#     """
-#     def __init__(self, data, cabinets, dist_points, buildings):
-#         self.id = data["id"]
-#         self.exchange_type = data["exchange_type"]
-#         self.cabinets_per_exchange = data["cabinets_per_exchange"]
-#         self.lines_per_exchange = data["lines_per_exchange"]
-#         self.cable_type = data["cable_type"]
-#         self.cable_length = data["cable_length"]
-#         self.cable_count = data["cable_count"]
-
-#         self.cabinets = {}
-
-#         for cabinet in cabinets:
-#             cabinet_id = cabinet["id"]
-#             self.cabinets[cabinet["id"]] = Cabinet(cabinet, dist_points, buildings)
-
-#     def __repr__(self):
-#         return "<cabinets:{}>".format(self.cabinets)
-
-#     def population(self):
-
-#         if not self.cabinets:
-#             return 0
-
-#         summed_occupants = sum(
-#             self.cabinets[cabinet].population()
-#             for cabinet in self.cabinets
-#         )
-
-#         return summed_occupants
-
-# class Cabinet(object):
-#     """ Defines a generic street cabinet.
-#     Arguments
-#     ---------
-#     data: dict
-#     """
-#     def __init__ (self, data, dist_points, buildings):
-#         self.id = data["id"]
-#         self.cabinet_type = data["cabinet_type"]
-#         self.lines_per_cabinet = data["lines_per_cabinet"]
-#         self.cable_type = data["cable_type"]
-#         self.cable_length = data["cable_length"]
-#         self.cable_count = data["cable_count"]
-
-#         self.dist_points = {}
-
-#         for dist_point in dist_points:
-#             dist_point_id = dist_point["id"]
-#             self.dist_points[dist_point["id"]] = DistributionPoint(dist_point, buildings) # don't understand singular vs plural here
-
-#     def __repr__(self):
-#         return "<dist_points:{}>".format(self.dist_points)
-
-#     def population(self):
-
-#         if not self.dist_points:
-#             return 0
-
-#         summed_occupants = sum(
-#             self.dist_points[dist_point].population()
-#             for dist_point in self.dist_points
-#         )
-
-#         return summed_occupants
-
-# class DistributionPoint(object):
-#     """Represents a Distribution Point to be modelled
-#     Arguments
-#     ---------
-#     data: dict
-#     """
-#     def __init__(self, data, buildings):
-#         self.id = data["id"]
-#         self.cabinet = data["cabinet"]
-#         self.dist_point_type = data["dist_point_type"]
-#         self.dist_point_location = data["dist_point_location"]
-#         self.cable_type = data["cable_type"]
-#         self.cable_length = data["cable_length"]
-#         self.cable_count = data["cable_count"]
-
-#         self.buildings = {}
-
-#         for building in buildings:
-#             if building["dist_point"] == self.id:
-#                 building_id = building["id"]
-#                 self.buildings[building["id"]] = Building(building)
-
-#     def population(self):
-#         """Calculate population as the sum of occupantsfrom all buildings
-#         Returns
-#         -------
-#         obj
-#             population of the buildings served by the distribution point
-#         Notes
-#         -----
-#         Function returns `0` when no buildings are served.
-#         """
-#         if not self.buildings:
-#             return 0
-
-#         summed_occupants = sum(
-#             self.buildings[building].occupants
-#             for building in self.buildings
-#         )
-
-#         print(summed_occupants)
-#         return summed_occupants
-
-# class Building(object):
-#     """ Represents a Building to be modelled
-#     Arguments
-#     ---------
-#     data: dict
-#     """
-#     def __init__(self, data):
-#         self.id = data["id"]
-#         self.oa = data["oa"]
-#         self.dist_point = data["dist_point"]
-#         self.cable_type = data["cable_type"]
-#         self.cable_length = data["cable_length"]
-#         self.cable_count = data["cable_count"]
-#         self.residential_buildings = data["residential address count"]
-#         self.non_residential_buildings = data["non-residential address count"]
-#         self.occupants = data["occupants"]
-
-#     def __repr__(self):
-#         return "<Premised id:{} oa_id:{} occupants:{}>".format(self.id, self.oa, self.occupants)
-
-# # __name__ == '__main__' means that the module is bring run in standalone by the user
-# if __name__ == '__main__':
-
-#     EXCHANGES = [
-#         {
-#             "id": 1,
-#             "exchange_type": "Tier 1",
-#             "cabinets_per_exchange": 50,
-#             "lines_per_exchange": 128,
-#             "cable_type": "fibre",
-#             "cable_length": 5000,
-#             "cable_count": 2,
-#         },
-#         {
-#             "id": 2,
-#             "exchange_type": "Tier 2",
-#             "cabinets_per_exchange": 80,
-#             "lines_per_exchange": 128,
-#             "cable_type": "fibre",
-#             "cable_length": 12000,
-#             "cable_count": 2,
-#         }
-#     ]
-
-#     CABINETS = [
-#         {
-#             "id": 1,
-#             "cabinet_type": "VDSL",
-#             "lines_per_cabinet": 128,
-#             "cable_type": "fibre",
-#             "cable_length": 800,
-#             "cable_count": 1,
-#         },
-#         {
-#             "id": 2,
-#             "cabinet_type": "VDSL",
-#             "lines_per_cabinet": 256,
-#             "cable_type": "fibre",
-#             "cable_length": 900,
-#             "cable_count": 1,
-#         }
-#     ]
-
-#     DISTRIBUTION_POINTS = [
-#         {
-#             "id": 1,
-#             "cabinet": 1,
-#             "dist_point_type": "legacy",
-#             "dist_point_location": "aerial",
-#             "cable_type": "legacy",
-#             "cable_length": 40,
-#             "cable_count": 1,
-#         },
-#         {
-#             "id": 2,
-#             "cabinet": 1,
-#             "dist_point_type": "legacy",
-#             "dist_point_location": "footway_box",
-#             "cable_type": "legacy",
-#             "cable_length": 80,
-#             "cable_count": 1,
-#         },
-#         {
-#             "id": 3,
-#             "cabinet": 2,
-#             "dist_point_type": "legacy",
-#             "dist_point_location": "aerial",
-#             "cable_type": "legacy",
-#             "cable_length": 60,
-#             "cable_count": 1,
-#         }
-#     ]
-
-#     BUILDINGS = [
-#         {
-#             "id": 1,
-#             "oa": "E00090610",
-#             "dist_point": 1,
-#             "cable_type": 'legacy',
-#             "cable_length": 12,
-#             "cable_count": 1,
-#             "residential address count": 1,
-#             "non-residential address count": 0,
-#             "occupants": 2,
-#         },
-#         {
-#             "id": 2,
-#             "oa": "E00090610",
-#             "dist_point": 1,
-#             "cable_type": 'legacy',
-#             "cable_length": 11,
-#             "cable_count": 1,
-#             "residential address count": 1,
-#             "non-residential address count": 1,
-#             "occupants": 8,
-#         },
-#         {
-#             "id": 3,
-#             "oa": "E00090611",
-#             "dist_point": 2,
-#             "cable_type": 'legacy',
-#             "cable_length": 16,
-#             "cable_count": 1,
-#             "residential address count": 2,
-#             "non-residential address count": 0,
-#             "occupants": 3,
-#         },
-#         {
-#             "id": 4,
-#             "oa": "E00090611",
-#             "dist_point": 2,
-#             "cable_type": 'legacy',
-#             "cable_length": 9,
-#             "cable_count": 1,
-#             "residential address count": 1,
-#             "non-residential address count": 0,
-#             "occupants": 7,
-#         },
-#         {
-#             "id": 5,
-#             "oa": "E00090612",
-#             "dist_point": 3,
-#             "cable_type": 'legacy',
-#             "cable_length": 19,
-#             "cable_count": 1,
-#             "residential address count": 3,
-#             "non-residential address count": 0,
-#             "occupants": 6,
-#         },
-#         {
-#             "id": 6,
-#             "oa": "E00090612",
-#             "dist_point": 3,
-#             "cable_type": 'legacy',
-#             "cable_length": 21,
-#             "cable_count": 1,
-#             "residential address count": 1,
-#             "non-residential address count": 1,
-#             "occupants": 4,
-#         },
-#     ]
-
-#     OurExchange = Exchange(EXCHANGES[0], CABINETS, DISTRIBUTION_POINTS, BUILDINGS)
-
-#     for building in OurExchange.cabinets.values():
-#         pprint(building)
-
-#     print(OurExchange.population())
+    @property
+    def length(self):
+        return LineString(self.geom).length
