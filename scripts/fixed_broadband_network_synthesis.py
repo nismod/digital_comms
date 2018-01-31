@@ -1,6 +1,5 @@
-import os
-print(os.getcwd())
 from digital_comms.fixed_model.network_structure import ICTManager
+import os
 
 from networkx import nx, drawing
 
