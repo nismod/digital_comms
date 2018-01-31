@@ -14,23 +14,39 @@ class ICTManager():
     length : num
         Total length of links in the network
     """
-
-    def __init__(self, shapefiles):
+    def __init__(self, shapefiles=None):
         """Build the initial network using shapefiles as input
 
         Parameters
         ----------
-        shapefiles: str
+        shapefiles: str (optional)
             Path to directory containing shapefiles
         """
-  
         self._network = nx.Graph()
 
-        for filename in os.listdir(shapefiles):
+        if shapefiles != None:
+            self.load_shapefiles(shapefiles)
+
+    def load_shapefiles(self, shapefiles_dir):
+        """Build infrastructure defined in shapefiles
+
+        Parameters
+        ----------
+        shapefiles_dir: 
+            Path to directory containing shapefiles
+        """
+        for filename in os.listdir(shapefiles_dir):
             if filename.endswith(".shp"): 
-                with fiona.open(os.path.join(shapefiles, filename), 'r') as source:
+                with fiona.open(os.path.join(shapefiles_dir, filename), 'r') as source:
                     for c in source:
-                        self.build_infrastructure(c['geometry']['coordinates'], dict(c['properties']))                            
+                        self.build_infrastructure(c['geometry']['coordinates'], dict(c['properties']))    
+    @property
+    def number_of_nodes(self):
+        return nx.number_of_nodes(self._network)
+
+    @property
+    def number_of_edges(self):
+        return nx.number_of_edges(self._network)
 
     @property
     def length(self):
@@ -84,12 +100,13 @@ class ICTManager():
         geom_list = {}
 
         for node_id, node in list(self._network.nodes('object')):
-            geom_list.setdefault(str(type(node)),[]).append(node)
+            if node != None:
+                geom_list.setdefault(str(type(node)),[]).append(node)
 
         for origin, dest in list(self._network.edges()):
             link_obj = self._network[origin][dest]['object']
             geom_list.setdefault(str(type(link_obj)),[]).append(link_obj)
-
+        
         # Write nodes to output
         for key in geom_list.keys():
 
