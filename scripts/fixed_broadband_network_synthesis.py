@@ -1,5 +1,6 @@
-from digital_comms.fixed_model.network_structure import ICTManager
 import os
+print(os.getcwd())
+from digital_comms.fixed_model.network_structure import ICTManager
 
 from networkx import nx, drawing
 
@@ -7,8 +8,8 @@ from shapely.geometry import Point, LineString, mapping
 import matplotlib.pyplot as plt
 
 # Config
-input_shapefiles_dir = 'input_shapefiles'
-output_shapefiles_dir = 'output_shapefiles'
+input_shapefiles_dir = os.path.join('../', 'input_shapefiles')
+output_shapefiles_dir = os.path.join('../', 'output_shapefiles')
 
 # Synthesize network
 Manager = ICTManager(input_shapefiles_dir)
