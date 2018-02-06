@@ -16,17 +16,17 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 # setup file locations
 #####################
 
-SYSTEM_INPUT_FILENAME = os.path.join(BASE_PATH, 'Digital Comms - Fixed broadband model', 'Data')
-
+SYSTEM_INPUT_FIXED = os.path.join(BASE_PATH, 'Digital Comms - Fixed broadband model', 'Data')
+SYSTEM_INPUT_CAMBRIDGE = os.path.join(BASE_PATH, 'cambridge_shape_file_analysis', 'Data')
 SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'Digital Comms - Fixed broadband model', 'initial_system')
-
-premises_data = []
 
 #####################
 # read in OS AddressBase data
 #####################
 
-with open(os.path.join(SYSTEM_INPUT_FILENAME, 'OS Address Point Data from NCL', 'cambridge_points.csv'), 'r') as system_file:
+premises_data = []
+
+with open(os.path.join(SYSTEM_INPUT_FIXED, 'OS Address Point Data from NCL', 'cambridge_points.csv'), 'r') as system_file:
     reader = csv.reader(system_file)
     next(reader)
     for line in reader:
@@ -75,20 +75,52 @@ with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'premises_points_data.shp')
                                         ('postgis_geom', premise['postgis_geom'])])
         })
 
-#BGS coordinate systems
-#27700
-#7405
 
+#####################
+# read in cabinet data
+#####################
 
-# Convert x, y from isn2004 to UTM27N
+cabinets_data = []
 
-exchanges_data = []
+with open(os.path.join(SYSTEM_INPUT_CAMBRIDGE, 'pcd_2_cab_2_exchange_data_cambridge.csv'), 'r') as system_file:
+    reader = csv.reader(system_file)
+    next(reader)
+    for line in reader:
+        cabinets_data.append({
+            'OLO': line[0],
+            'pcd': line[1],
+            'SAU_NODE_ID': line[2],
+            'easting': line[3],
+            'northing': line[4],
+        })
+
+# write to shapefile
+sink_driver = 'ESRI Shapefile'
+sink_crs = {'no_defs': True, 'ellps': 'WGS84', 'datum': 'WGS84', 'proj': 'longlat'}
+
+setup_point_schema = {
+    'geometry': 'Point',
+    'properties': OrderedDict([('SAU_NODE_ID', 'str'), ('OLO', 'str'), ('pcd', 'str')])
+}
+
+with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'cabinets_points_data.shp'), 'w', driver=sink_driver, crs=sink_crs, schema=setup_point_schema) as sink:
+    for cabinet in cabinets_data:
+        xx, yy = transform(osgb36, wgs84, float(cabinet['easting']), float(cabinet['northing']))
+        sink.write({
+            #'geometry': {'type': "Point", 'coordinates': [float(cabinet['eastings']), float(cabinet['northings'])]},
+            'geometry': {'type': "Point", 'coordinates': [xx, yy]},
+            'properties': OrderedDict([('SAU_NODE_ID', cabinet['SAU_NODE_ID']), ('OLO', cabinet['OLO']),
+                                        ('pcd', cabinet['pcd'])])
+        })
+
 
 #####################
 # read in exchange data
 #####################
 
-with open(os.path.join(SYSTEM_INPUT_FILENAME, 'exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
+exchanges_data = []
+
+with open(os.path.join(SYSTEM_INPUT_FIXED, 'exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
     reader = csv.reader(system_file)
     next(reader)
     for line in reader:
@@ -122,7 +154,6 @@ with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'exchanges_points_data.shp'
                                         ('name', exchange['name']), ('region', exchange['region']),
                                         ('county', exchange['county'])])
         })
-
 
 
 
