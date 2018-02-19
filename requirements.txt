@@ -3,3 +3,4 @@ fiona>=1.7
 networkx>=2.1
 shapely>=1.6
 matplotlib
+pyproj

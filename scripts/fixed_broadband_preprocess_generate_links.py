@@ -8,6 +8,8 @@ from pyproj import Proj, transform
 import numpy as np
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from rtree import index
+import matplotlib.mlab as mlab
+import matplotlib.pyplot as plt
 
 from collections import OrderedDict
 
@@ -21,116 +23,142 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 
 SYSTEM_INPUT_FIXED = os.path.join(BASE_PATH, 'Digital Comms - Fixed broadband model', 'Data')
 SYSTEM_INPUT_CAMBRIDGE = os.path.join(BASE_PATH, 'cambridge_shape_file_analysis', 'Data')
-SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'Digital Comms - Fixed broadband model', 'initial_system')
+SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, '../input_shapefiles')
 
-#####################
-# Premise to Cabinet links
-#####################
+def open_premises_shapefile():
+    return fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'premises_points_data.shp'), 'r')
 
-with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'cabinets_points_data.shp'), 'r') as source:
+def open_cabinets_shapefile():
+    return fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'cabinets_points_data.shp'), 'r')
 
-    cabinets = np.empty([len(list(source)), 2])
-    cabinet_lut = {}
+def open_pcps_shapefile():
+    return fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'pcps_points_data.shp'), 'r')
 
-    for idx, cabinet in enumerate(source):
-        
-        # Prepare voronoi lookup
-        cabinets[idx] = cabinet['geometry']['coordinates']
-        cabinet_lut[idx] = cabinet
+def calculate_links(premise_source, cabinet_source):
 
-with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'premises_points_data.shp'), 'r') as source:
-
+    # Prepare premises lookup
     idx_premises = index.Index()
     premise_lut = {}
-    for idx, premise in enumerate(source):
-
-        # Prepare rtree lookup
+    for idx, premise in enumerate(premise_source):
         idx_premises.insert(idx, premise['geometry']['coordinates'])  
         premise_lut[idx] = premise
 
-vor = Voronoi(cabinets)
+    # Prepare voronoi cabinet lookup 
+    cabinets = np.empty([len(list(cabinet_source)), 2])
+    cabinet_lut = {}
+    for idx, cabinet in enumerate(cabinet_source):
+        cabinets[idx] = cabinet['geometry']['coordinates']
+        cabinet_lut[idx] = cabinet
 
-# # Write voronoi polygons
-# schema = {
-#     'geometry': 'Polygon',
-#     'properties': OrderedDict([('Name', 'str:254')])
-# }
+    # Generate voronoi
+    vor = Voronoi(cabinets)
 
-# sink_driver = 'ESRI Shapefile'
-# sink_crs = {'no_defs': True, 'ellps': 'WGS84', 'datum': 'WGS84', 'proj': 'longlat'}
+    # Write voronoi polygons
+    schema = {
+        'geometry': 'Polygon',
+        'properties': OrderedDict([('Name', 'str:254')])
+    }
 
-# with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'cabinets_points_voronoi.shp'), 'w', driver=sink_driver, crs=sink_crs, schema=schema) as sink:
-#     for region in vor.regions:
+    sink_driver = 'ESRI Shapefile'
+    sink_crs = {'no_defs': True, 'ellps': 'WGS84', 'datum': 'WGS84', 'proj': 'longlat'}
 
-#         polygon = [vor.vertices[i] for i in region]
+    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'cabinets_points_voronoi.shp'), 'w', driver=sink_driver, crs=sink_crs, schema=schema) as sink:
+        for region in vor.regions:
 
-#         if len(polygon) > 0:
-#             polygon.append(polygon[0])
+            polygon = [vor.vertices[i] for i in region]
 
-#             geom = Polygon(polygon)
+            if len(polygon) > 0:
+                polygon.append(polygon[0])
 
-#             sink.write({
-#                 'geometry': mapping(geom),
-#                 'properties': OrderedDict([('Name', 'cab_1')])
-# })
+                geom = Polygon(polygon)
 
-# Find links
+                sink.write({
+                    'geometry': mapping(geom),
+                    'properties': OrderedDict([('Name', 'cab_1')])
+    })
 
-links = []
+    # Find links
+    links = []
 
-for idx, cab in enumerate(vor.point_region):
+    for idx, cab in enumerate(vor.point_region):
 
-    polygon = [vor.vertices[i] for i in vor.regions[cab]]
-    if len(polygon) > 0:
-        geom = Polygon(polygon)
-        bounds = geom.bounds
-        premises_candidates = list(idx_premises.intersection(bounds))
-        
-        if len(premises_candidates) < 1000: #Avoid processing weird polygons'
+        polygon = [vor.vertices[i] for i in vor.regions[cab]]
+        if len(polygon) > 0:
+            geom = Polygon(polygon)
+            bounds = geom.bounds
+            premises_candidates = list(idx_premises.intersection(bounds))
             
-            for premise in premises_candidates:
-        
-                if Point(premise_lut[premise]['geometry']['coordinates']).within(geom):
+            if len(premises_candidates) < 1000: #Avoid processing weird polygons'
+                
+                for premise in premises_candidates:
+            
+                    if Point(premise_lut[premise]['geometry']['coordinates']).within(geom):
 
-                    if cabinet_lut[idx]['properties']['SAU_NODE_I'] == '{EMCHATT}{P3}':
-                        print('here je os')
-
-                    links.append(
-                        (
-                            LineString(
-                                [
-                                    cabinet_lut[idx]['geometry']['coordinates'], 
-                                    premise_lut[premise]['geometry']['coordinates']
-                                ]
-                            ), 
-                            OrderedDict(
-                                [
-                                    ('Origin', cabinet_lut[idx]['properties']['SAU_NODE_I']), 
-                                    ('Dest', premise_lut[premise]['properties']['id'])
-                                ]
+                        links.append(
+                            (
+                                LineString(
+                                    [
+                                        cabinet_lut[idx]['geometry']['coordinates'], 
+                                        premise_lut[premise]['geometry']['coordinates']
+                                    ]
+                                ), 
+                                OrderedDict(
+                                    [
+                                        ('Origin', cabinet_lut[idx]['properties']['Name']), 
+                                        ('Dest', premise_lut[premise]['properties']['Name'])
+                                    ]
+                                )
                             )
                         )
-                    )
+    return links
 
-# Write voronoi polygons
-schema = {
-    'geometry': 'LineString',
-    'properties': OrderedDict([('Origin', 'str:254'), ('Dest', 'str:254')])
-}
+def analyse_number_of_links_per_node(links):
 
-sink_driver = 'ESRI Shapefile'
-sink_crs = {'no_defs': True, 'ellps': 'WGS84', 'datum': 'WGS84', 'proj': 'longlat'}
+    origins = np.array([link[1]['Origin'] for link in links])
+    unique, counts = np.unique(origins, return_counts=True)
+    nodes = dict(zip(unique, counts))
 
-with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'cabinets_premises_links.shp'), 'w', driver=sink_driver, crs=sink_crs, schema=schema) as sink:
-    for link in links:
+    plt.hist(counts, bins=list(range(0, 20, 1)))
+    plt.axis([0, 20, 0, 100])
+    plt.ylabel('Number of links per node')
 
-        sink.write({
-            'geometry': mapping(link[0]),
-            'properties': link[1]
-})
+    # # the histogram of the data
+    # plt.hist(origins, bins=20)
+
+    plt.show()
 
 
+def write_links(links, filename):
 
-        
+    schema = {
+        'geometry': 'LineString',
+        'properties': OrderedDict([('Origin', 'str:254'), ('Dest', 'str:254')])
+    }
+
+    sink_driver = 'ESRI Shapefile'
+    sink_crs = {'no_defs': True, 'ellps': 'WGS84', 'datum': 'WGS84', 'proj': 'longlat'}
+
+    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, filename), 'w', driver=sink_driver, crs=sink_crs, schema=schema) as sink:
+        for link in links:
+
+            sink.write({
+                'geometry': mapping(link[0]),
+                'properties': link[1]
+    })
+
+
+if __name__ == "__main__":
+    
+    prems = open_premises_shapefile()
+    cabs = open_cabinets_shapefile()
+    pcps = open_pcps_shapefile()
+    
+    # prem_to_cab_links = calculate_links(prems, cabs)
+    cab_to_pcp_links = calculate_links(cabs, pcps)
+
+    analyse_number_of_links_per_node(cab_to_pcp_links)
+
+    # write_links(prem_to_cab_links, 'premises_cabinets_links.shp')
+    write_links(cab_to_pcp_links, 'cabinets_pcps_links.shp')
 
         

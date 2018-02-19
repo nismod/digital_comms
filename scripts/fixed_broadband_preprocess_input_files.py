@@ -3,8 +3,10 @@ from pprint import pprint
 import configparser
 import csv
 import fiona
+import numpy as np
 from shapely.geometry import Point, mapping
 from pyproj import Proj, transform
+from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
 
 from collections import OrderedDict
 
@@ -54,7 +56,7 @@ def write_premises(premises_data):
 
     setup_point_schema = {
         'geometry': 'Point',
-        'properties': OrderedDict([('id', 'int'), ('oa', 'str'), ('residential_address_count', 'int'),
+        'properties': OrderedDict([('Name', 'int'), ('oa', 'str'), ('residential_address_count', 'int'),
                                     ('non_residential_address_count', 'int'), ('postgis_geom', 'str')])
     }
 
@@ -68,7 +70,7 @@ def write_premises(premises_data):
             sink.write({
             #    'geometry': {'type': "Point", 'coordinates': [float(premise['eastings']), float(premise['northings'])]},
                 'geometry': {'type': "Point", 'coordinates': [xx, yy]},
-                'properties': OrderedDict([('id', premise['id']), ('oa', premise['oa']),
+                'properties': OrderedDict([('Name', premise['id']), ('oa', premise['oa']),
                                             ('residential_address_count', premise['residential_address_count']),
                                             ('non_residential_address_count', premise['non_residential_address_count']),
                                             ('postgis_geom', premise['postgis_geom'])])
@@ -81,15 +83,17 @@ def read_cabinets():
     with open(os.path.join(SYSTEM_INPUT_CAMBRIDGE, 'pcd_2_cab_2_exchange_data_cambridge.csv'), 'r') as system_file:
         reader = csv.reader(system_file)
         next(reader)
+
         for line in reader:
-            cabinets_data.append({
-                'OLO': line[0],
-                'pcd': line[1],
-                'SAU_NODE_ID': line[2],
-                'easting': line[3],
-                'northing': line[4],
-            })
-    
+            if line[0] in ['EACAM', 'EACRH', 'EAHIS', 'EAMD']:
+                cabinets_data.append({
+                    'OLO': line[0],
+                    'pcd': line[1],
+                    'SAU_NODE_ID': line[2],
+                    'easting': line[3],
+                    'northing': line[4],
+                })
+        
     return cabinets_data
 
 
@@ -100,7 +104,7 @@ def write_cabinets(cabinets_data):
 
     setup_point_schema = {
         'geometry': 'Point',
-        'properties': OrderedDict([('SAU_NODE_ID', 'str'), ('OLO', 'str'), ('pcd', 'str')])
+        'properties': OrderedDict([('Name', 'str'), ('OLO', 'str'), ('pcd', 'str')])
     }
 
     #Define a projection with Proj4 notation, in this case an Icelandic grid
@@ -113,8 +117,67 @@ def write_cabinets(cabinets_data):
             sink.write({
                 #'geometry': {'type': "Point", 'coordinates': [float(cabinet['eastings']), float(cabinet['northings'])]},
                 'geometry': {'type': "Point", 'coordinates': [xx, yy]},
-                'properties': OrderedDict([('SAU_NODE_ID', cabinet['SAU_NODE_ID']), ('OLO', cabinet['OLO']),
+                'properties': OrderedDict([('Name', cabinet['SAU_NODE_ID']), ('OLO', cabinet['OLO']),
                                             ('pcd', cabinet['pcd'])])
+            })
+
+
+def estimate_pcps(cabinets):
+    """Estimate pcp locations based on the number of cabinets that are served.
+
+    Parameters
+    ----------
+    cabinets: list of dict
+        List of cabinets, each providing a dict with properties and location of the cabinet
+
+    Returns
+    -------
+    pcp: list of dict
+        List of pcps
+    """
+    print('start pcp estimation')
+
+    points = np.vstack([[float(cabinet['northing']), float(cabinet['easting'])] for cabinet in cabinets])
+    number_of_clusters = int(points.shape[0] / 8)
+
+    # kmeans = KMeans(n_clusters=number_of_clusters, random_state=0).fit(points)
+
+    # print('end pcp estimation')
+
+    # pcps = []
+    # for idx, pcp_location in enumerate(kmeans.cluster_centers_):
+    #     pcps.append({
+    #         'id': idx,
+    #         'northings': pcp_location[0],
+    #         'eastings': pcp_location[1]
+    #     })
+
+    cluster = AgglomerativeClustering(n_clusters=number_of_clusters).fit(points)
+
+    return pcps
+
+
+def write_pcps(pcps_data):
+    # write to shapefile
+    sink_driver = 'ESRI Shapefile'
+    sink_crs = {'no_defs': True, 'ellps': 'WGS84', 'datum': 'WGS84', 'proj': 'longlat'}
+
+    setup_point_schema = {
+        'geometry': 'Point',
+        'properties': OrderedDict([('Name', 'str')])
+    }
+
+    #Define a projection with Proj4 notation, in this case an Icelandic grid
+    osgb36=Proj("+init=EPSG:27700") # UK Ordnance Survey, 1936 datum
+    wgs84=Proj("+init=EPSG:4326") # LatLon with WGS84
+
+    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'pcps_points_data.shp'), 'w', driver=sink_driver, crs=sink_crs, schema=setup_point_schema) as sink:
+        for pcp in pcps_data:
+            xx, yy = transform(osgb36, wgs84, float(pcp['eastings']), float(pcp['northings']))
+            sink.write({
+                #'geometry': {'type': "Point", 'coordinates': [float(pcp['eastings']), float(pcp['northings'])]},
+                'geometry': {'type': "Point", 'coordinates': [xx, yy]},
+                'properties': OrderedDict([('Name', pcp['id'])])
             })
 
 
@@ -145,7 +208,7 @@ def write_exchanges(exchanges_data):
 
     setup_point_schema = {
         'geometry': 'Point',
-        'properties': OrderedDict([('exchange_pcd', 'str'), ('OLO', 'str'), ('name', 'str'),
+        'properties': OrderedDict([('Name', 'str'), ('OLO', 'str'), ('name', 'str'),
                                     ('region', 'str'), ('county', 'str')])
     }
 
@@ -159,7 +222,7 @@ def write_exchanges(exchanges_data):
             sink.write({
                 #'geometry': {'type': "Point", 'coordinates': [float(exchange['eastings']), float(exchange['northings'])]},
                 'geometry': {'type': "Point", 'coordinates': [xx, yy]},
-                'properties': OrderedDict([('exchange_pcd', exchange['exchange_pcd']), ('OLO', exchange['OLO']),
+                'properties': OrderedDict([('Name', exchange['exchange_pcd']), ('OLO', exchange['OLO']),
                                             ('name', exchange['name']), ('region', exchange['region']),
                                             ('county', exchange['county'])])
             })
@@ -167,13 +230,28 @@ def write_exchanges(exchanges_data):
 
 if __name__ == "__main__":
     
+    print('read premises')
     premises = read_premises()
+
+    print('read cabinets')
     cabinets = read_cabinets()
+    
+    print('estimate pcps')
+    pcps = estimate_pcps(cabinets)
+
+    print('read exchanges')
     exchanges = read_exchanges()
 
-
+    print('write premises')
     write_premises(premises)
+
+    print('write cabinets')
     write_cabinets(cabinets)
+
+    print('write pcps')
+    write_pcps(pcps)
+
+    print('write exchanges')
     write_exchanges(exchanges)
 
 
