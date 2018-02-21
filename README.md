@@ -12,8 +12,8 @@ and resilience. The fixed, wireless and satellite sectors are currently under de
 
 ## Citation:
 ```
-Oughton, E. J. and Frias, Z. (2017) ‘The cost, coverage and rollout implications of 5G infrastructure in Britain’.
-Telecommunications Policy. doi: 10.1016/j.telpol.2017.07.009.
+Oughton, E. J. and Frias, Z. (2017) ‘The cost, coverage and rollout implications of 5G infrastructure 
+in Britain’. Telecommunications Policy. doi: 10.1016/j.telpol.2017.07.009.
 
 ```
 
