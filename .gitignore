@@ -50,6 +50,6 @@ MANIFEST
 .ipynb_checkpoints
 
 # Data
-Data
-data
+data/*
+results/*
 scripts/script_config.ini
