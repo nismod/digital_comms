@@ -1,11 +1,17 @@
 import fiona
 import os
+import configparser
 
 from shapely.geometry import Point, LineString, mapping
 from collections import OrderedDict
 
+
+CONFIG = configparser.ConfigParser()
+CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
+BASE_PATH = CONFIG['file_locations']['base_path']
+
 # Config
-input_shapefiles_dir = 'input_shapefiles'
+input_shapefiles_dir = 'processed'
 
 # Helper functions
 def write_points_to_shp(filename, data, schema):
@@ -93,9 +99,9 @@ setup_fixed_model_links = [
     (LineString([( 0.3,      51.825323), (0, 51), ( 0.537344, 51.745323)]), OrderedDict([('Origin', 'CoreNode'), ('Dest', 'EABTM'), ('Type', 'link'), ('Physical', 'copper')    ]))
 ]
 
-write_points_to_shp(os.path.join(input_shapefiles_dir, 'fixed_model_pcp.shp'), setup_fixed_model_pcp, setup_fixed_model_pcp_schema)
-write_points_to_shp(os.path.join(input_shapefiles_dir, 'fixed_model_exchanges.shp'), setup_fixed_model_exchanges, setup_fixed_model_exchanges_schema)
-write_points_to_shp(os.path.join(input_shapefiles_dir, 'fixed_model_corenodes.shp'), setup_fixed_model_corenodes, setup_fixed_model_corenodes_schema)
-write_points_to_shp(os.path.join(input_shapefiles_dir, 'fixed_model_links.shp'), setup_fixed_model_links, setup_fixed_model_links_schema)
+write_points_to_shp(os.path.join(BASE_PATH, input_shapefiles_dir, 'fixed_model_pcp.shp'), setup_fixed_model_pcp, setup_fixed_model_pcp_schema)
+write_points_to_shp(os.path.join(BASE_PATH, input_shapefiles_dir, 'fixed_model_exchanges.shp'), setup_fixed_model_exchanges, setup_fixed_model_exchanges_schema)
+write_points_to_shp(os.path.join(BASE_PATH, input_shapefiles_dir, 'fixed_model_corenodes.shp'), setup_fixed_model_corenodes, setup_fixed_model_corenodes_schema)
+write_points_to_shp(os.path.join(BASE_PATH, input_shapefiles_dir, 'fixed_model_links.shp'), setup_fixed_model_links, setup_fixed_model_links_schema)
 
 print('Done... Files are generated')
