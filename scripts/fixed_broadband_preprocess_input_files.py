@@ -20,7 +20,7 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 
 SYSTEM_INPUT_FIXED = os.path.join(BASE_PATH, 'Digital Comms - Fixed broadband model', 'Data')
 SYSTEM_INPUT_CAMBRIDGE = os.path.join(BASE_PATH, 'cambridge_shape_file_analysis', 'Data')
-SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, '../input_shapefiles')
+SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'Digital Comms - Fixed broadband model', 'Data', 'input_shapefiles')
 
 def read_premises():
     premises_data = []
@@ -93,7 +93,7 @@ def read_cabinets():
                     'easting': line[3],
                     'northing': line[4],
                 })
-        
+
     return cabinets_data
 
 
@@ -140,20 +140,17 @@ def estimate_pcps(cabinets):
     points = np.vstack([[float(cabinet['northing']), float(cabinet['easting'])] for cabinet in cabinets])
     number_of_clusters = int(points.shape[0] / 8)
 
-    # kmeans = KMeans(n_clusters=number_of_clusters, random_state=0).fit(points)
+    kmeans = KMeans(n_clusters=number_of_clusters, random_state=0).fit(points)
 
-    # print('end pcp estimation')
+    print('end pcp estimation')
 
-    # pcps = []
-    # for idx, pcp_location in enumerate(kmeans.cluster_centers_):
-    #     pcps.append({
-    #         'id': idx,
-    #         'northings': pcp_location[0],
-    #         'eastings': pcp_location[1]
-    #     })
-
-    cluster = AgglomerativeClustering(n_clusters=number_of_clusters).fit(points)
-
+    pcps = []
+    for idx, pcp_location in enumerate(kmeans.cluster_centers_):
+        pcps.append({
+            'id': idx,
+            'northings': pcp_location[0],
+            'eastings': pcp_location[1]
+        })
     return pcps
 
 
@@ -229,13 +226,13 @@ def write_exchanges(exchanges_data):
 
 
 if __name__ == "__main__":
-    
+
     print('read premises')
     premises = read_premises()
 
     print('read cabinets')
     cabinets = read_cabinets()
-    
+
     print('estimate pcps')
     pcps = estimate_pcps(cabinets)
 
