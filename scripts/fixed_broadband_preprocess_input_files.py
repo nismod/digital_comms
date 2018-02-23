@@ -138,9 +138,9 @@ def estimate_dist_points(premises):
     print('start dist point estimation')
 
     points = np.vstack([[float(premise['northings']), float(premise['eastings'])] for premise in premises])
-    number_of_clusters = int(points.shape[0] / (len(premises)/25))
+    number_of_clusters = int(points.shape[0] / 8)
 
-    kmeans = KMeans(n_clusters=number_of_clusters, random_state=0).fit(points)
+    kmeans = KMeans(n_clusters=number_of_clusters, random_state=0, max_iter=1).fit(points)
 
     print('end dist point estimation')
 
