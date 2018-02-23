@@ -4,5 +4,5 @@ networkx>=2.1
 shapely>=1.6
 matplotlib
 pyproj
-Rtree (0.8.3)
-scikit-learn (0.19.1)
+Rtree>=0.8.3
+scikit-learn>=0.19.1
