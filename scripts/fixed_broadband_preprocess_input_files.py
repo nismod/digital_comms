@@ -25,7 +25,7 @@ SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'Digital Comms - Fixed broadban
 def read_premises():
     premises_data = []
 
-    with open(os.path.join(SYSTEM_INPUT_FIXED, 'OS Address Point Data from NCL', 'cambridge_points.csv'), 'r') as system_file:
+    with open(os.path.join(SYSTEM_INPUT_FIXED, 'Layer 5 Premises (OS Address Point Data from NCL)', 'cambridge_points.csv'), 'r') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
@@ -122,8 +122,8 @@ def write_cabinets(cabinets_data):
             })
 
 
-def estimate_pcps(cabinets):
-    """Estimate pcp locations based on the number of cabinets that are served.
+def estimate_dist_points(premises):
+    """Estimate distribution point locations.
 
     Parameters
     ----------
@@ -132,29 +132,29 @@ def estimate_pcps(cabinets):
 
     Returns
     -------
-    pcp: list of dict
-        List of pcps
+    dist_point: list of dict
+                List of dist_points
     """
-    print('start pcp estimation')
+    print('start dist point estimation')
 
-    points = np.vstack([[float(cabinet['northing']), float(cabinet['easting'])] for cabinet in cabinets])
-    number_of_clusters = int(points.shape[0] / 8)
+    points = np.vstack([[float(premise['northings']), float(premise['eastings'])] for premise in premises])
+    number_of_clusters = int(points.shape[0] / (len(premises)/25))
 
     kmeans = KMeans(n_clusters=number_of_clusters, random_state=0).fit(points)
 
-    print('end pcp estimation')
+    print('end dist point estimation')
 
-    pcps = []
-    for idx, pcp_location in enumerate(kmeans.cluster_centers_):
-        pcps.append({
+    dist_points = []
+    for idx, dist_point_location in enumerate(kmeans.cluster_centers_):
+        dist_points.append({
             'id': idx,
-            'northings': pcp_location[0],
-            'eastings': pcp_location[1]
+            'northings': dist_point_location[0],
+            'eastings': dist_point_location[1]
         })
-    return pcps
+    return dist_points
 
 
-def write_pcps(pcps_data):
+def write_dist_points(dist_points):
     # write to shapefile
     sink_driver = 'ESRI Shapefile'
     sink_crs = {'no_defs': True, 'ellps': 'WGS84', 'datum': 'WGS84', 'proj': 'longlat'}
@@ -168,20 +168,20 @@ def write_pcps(pcps_data):
     osgb36=Proj("+init=EPSG:27700") # UK Ordnance Survey, 1936 datum
     wgs84=Proj("+init=EPSG:4326") # LatLon with WGS84
 
-    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'pcps_points_data.shp'), 'w', driver=sink_driver, crs=sink_crs, schema=setup_point_schema) as sink:
-        for pcp in pcps_data:
-            xx, yy = transform(osgb36, wgs84, float(pcp['eastings']), float(pcp['northings']))
+    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'dist_point_data.shp'), 'w', driver=sink_driver, crs=sink_crs, schema=setup_point_schema) as sink:
+        for dist_point in dist_points:
+            xx, yy = transform(osgb36, wgs84, float(dist_point['eastings']), float(dist_point['northings']))
             sink.write({
-                #'geometry': {'type': "Point", 'coordinates': [float(pcp['eastings']), float(pcp['northings'])]},
+                #'geometry': {'type': "Point", 'coordinates': [float(dist_point['eastings']), float(dist_point['northings'])]},
                 'geometry': {'type': "Point", 'coordinates': [xx, yy]},
-                'properties': OrderedDict([('Name', pcp['id'])])
+                'properties': OrderedDict([('Name', dist_point['id'])])
             })
 
 
 def read_exchanges():
     exchanges_data = []
 
-    with open(os.path.join(SYSTEM_INPUT_FIXED, 'exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
+    with open(os.path.join(SYSTEM_INPUT_FIXED, 'Layer 2 Exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
@@ -233,8 +233,8 @@ if __name__ == "__main__":
     print('read cabinets')
     cabinets = read_cabinets()
 
-    print('estimate pcps')
-    pcps = estimate_pcps(cabinets)
+    print('estimate dist_points')
+    dist_points = estimate_dist_points(premises)
 
     print('read exchanges')
     exchanges = read_exchanges()
@@ -245,8 +245,8 @@ if __name__ == "__main__":
     print('write cabinets')
     write_cabinets(cabinets)
 
-    print('write pcps')
-    write_pcps(pcps)
+    print('write dist_points')
+    write_dist_points(dist_points)
 
     print('write exchanges')
     write_exchanges(exchanges)
