@@ -18,14 +18,14 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 # setup file locations
 #####################
 
-SYSTEM_INPUT_FIXED = os.path.join(BASE_PATH, 'Digital Comms - Fixed broadband model', 'Data')
-SYSTEM_INPUT_CAMBRIDGE = os.path.join(BASE_PATH, 'cambridge_shape_file_analysis', 'Data')
-SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'Digital Comms - Fixed broadband model', 'Data', 'input_shapefiles')
+SYSTEM_INPUT_FIXED = os.path.join(BASE_PATH, 'raw')
+#SYSTEM_INPUT_CAMBRIDGE = os.path.join(BASE_PATH, 'cambridge_shape_file_analysis', 'Data')
+SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'processed')
 
 def read_premises():
     premises_data = []
 
-    with open(os.path.join(SYSTEM_INPUT_FIXED, 'Layer 5 Premises (OS Address Point Data from NCL)', 'cambridge_points.csv'), 'r') as system_file:
+    with open(os.path.join(SYSTEM_INPUT_FIXED, 'layer_5_premises', 'cambridge_points.csv'), 'r') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
@@ -80,7 +80,7 @@ def write_premises(premises_data):
 def read_cabinets():
     cabinets_data = []
 
-    with open(os.path.join(SYSTEM_INPUT_CAMBRIDGE, 'pcd_2_cab_2_exchange_data_cambridge.csv'), 'r') as system_file:
+    with open(os.path.join(SYSTEM_INPUT_FIXED,'cambridge_shape_file_analysis', 'pcd_2_cab_2_exchange_data_cambridge.csv'), 'r') as system_file:
         reader = csv.reader(system_file)
         next(reader)
 
@@ -181,7 +181,7 @@ def write_dist_points(dist_points):
 def read_exchanges():
     exchanges_data = []
 
-    with open(os.path.join(SYSTEM_INPUT_FIXED, 'Layer 2 Exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
+    with open(os.path.join(SYSTEM_INPUT_FIXED, 'layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
