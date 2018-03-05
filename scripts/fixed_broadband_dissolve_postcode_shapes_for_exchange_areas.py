@@ -1,9 +1,9 @@
 from collections import OrderedDict
 
 import fiona
-from shapely.geometry import MultiPolygon
+from shapely.geometry import MultiPolygon, Polygon
 from shapely.geometry import shape, mapping
-from shapely.ops import unary_union
+from shapely.ops import unary_union, cascaded_union
 
 import os
 import csv
@@ -71,24 +71,52 @@ start = time.time()
 
 #             sink.write(s)
 
-with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'exchange_boundary_polygons.shp'), 'r') as input:
+with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'exchange_boundary_polygons.shp'), 'r') as source:
     # preserve the schema of the original shapefile, including the crs
-    meta = input.meta
-    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'exchange_boundary_polygons_dissolved.shp'), 'w', **meta) as output:
-        # groupby clusters consecutive elements of an iterable which have the same key so you must first sort the features by the 'STATEFP' field
-        e = sorted(input, key=lambda k: k['properties']['EX_ID'])
-        # group by the 'STATEFP' field
-        for key, group in itertools.groupby(e, key=lambda x:x['properties']['EX_ID']):
-            if key == 'EABTM':
-                print('break')
-            properties, geom = zip(*[(feature['properties'],shape(feature['geometry'])) for feature in group])
-            # write the feature, computing the unary_union of the elements in the group with the properties of the first element in the group
-            try:
-                mm = unary_union(geom)
-            except ValueError:
-                mm = geom.union(geom)
+    
+    # Write exchange polygons
+    sink_schema = {}
+    sink_schema['geometry'] = 'Polygon'
+    sink_schema['properties'] = OrderedDict()
+    sink_schema['properties']['EX_ID'] = 'str:8' 
 
-            output.write({'geometry': mapping(unary_union(geom)), 'properties': properties[0]})
+    with fiona.open(
+        os.path.join(SYSTEM_OUTPUT_FILENAME, 'exchange_boundary_polygons_dissolved.shp'),
+        'w',
+        crs=source.crs,
+        driver=source.driver,
+        schema=sink_schema,
+        ) as sink:
+
+        for f in source:
+
+            # Avoid intersections
+            geom = shape(f['geometry']).buffer(0)
+            cascaded_geom = unary_union(geom)
+
+            # Remove islands
+            if (isinstance(cascaded_geom, MultiPolygon)):
+                for idx, p in enumerate(cascaded_geom):
+                    if idx == 0:
+                        geom = p
+                    elif p.area > geom.area:
+                        geom = p
+            else:
+                geom = cascaded_geom
+
+            # Write exterior to file as polygon
+            exterior = Polygon(list(geom.exterior.coords))
+
+            # # Generate convey hull
+            # exterior = exterior.convex_hull
+
+            # Write to output
+            s = {}
+            s['geometry'] = mapping(exterior)
+            s['properties'] = OrderedDict()
+            s['properties']['EX_ID'] = f['properties']['EX_ID']
+
+            sink.write(s)
 
 end = time.time()
 print('Script completed in: ' + str(round((end - start), 2)) + ' seconds.')
