@@ -19,10 +19,31 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 #####################
 
 SYSTEM_INPUT_FIXED = os.path.join(BASE_PATH, 'raw')
-#SYSTEM_INPUT_CAMBRIDGE = os.path.join(BASE_PATH, 'cambridge_shape_file_analysis', 'Data')
 SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'processed')
 
 def read_premises():
+
+    """
+    Reads in premises points from the OS AddressBase data (.csv)
+
+    Data Schema
+    ----------
+    * id: :obj:`int`
+        Unique Premises ID
+    * oa: :obj:`str`
+        ONS output area code
+    * residential address count: obj:'str'
+        Number of residential addresses
+    * non-res address count: obj:'str'
+        Number of non-residential addresses
+    * postgis geom: obj:'str'
+        Postgis reference
+    * E: obj:'float'
+        Easting coordinate
+    * N: obj:'float'
+        Northing coordinate
+    """
+
     premises_data = []
 
     with open(os.path.join(SYSTEM_INPUT_FIXED, 'layer_5_premises', 'cambridge_points.csv'), 'r') as system_file:
@@ -50,6 +71,23 @@ def read_premises():
 
 
 def write_premises(premises_data):
+    """
+    Writes premises points from premises_data to premises_points_data.shp
+
+    Data Schema
+    ----------
+    * Name: obj:`int`
+        Unique Premises ID
+    * oa: :obj:`str`
+        ONS output area code
+    * residential address count: obj:'int'
+        Number of residential addresses
+    * non-res address count: obj:'int'
+        Number of non-residential addresses
+    * postgis geom: obj:'str'
+        Postgis reference
+    """
+
     # write to shapefile
     sink_driver = 'ESRI Shapefile'
     sink_crs = {'no_defs': True, 'ellps': 'WGS84', 'datum': 'WGS84', 'proj': 'longlat'}
@@ -78,6 +116,7 @@ def write_premises(premises_data):
 
 
 def read_cabinets():
+
     cabinets_data = []
 
     with open(os.path.join(SYSTEM_INPUT_FIXED,'cambridge_shape_file_analysis', 'pcd_2_cab_2_exchange_data_cambridge.csv'), 'r') as system_file:
