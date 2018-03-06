@@ -119,15 +119,24 @@ with fiona.open(os.path.join(BASE_PATH, 'processed', 'pcd_shapes_no_verticals.sh
             f['properties']['EX_SRC'] = 'ESTIMATED NEAREST'
 
         # Match the exchange ID with remaining exchange info
-        f['properties']['EX_NAME'] = lut_exchanges[f['properties']['EX_ID']]['Name']
-        f['properties']['EX_PCD'] = lut_exchanges[f['properties']['EX_ID']]['pcd']
-        f['properties']['EX_REGION'] = lut_exchanges[f['properties']['EX_ID']]['Region']
-        f['properties']['EX_COUNTY'] = lut_exchanges[f['properties']['EX_ID']]['County']
-        f['properties']['EX_EASTING'] = lut_exchanges[f['properties']['EX_ID']]['E']
-        f['properties']['EX_NORTHING'] = lut_exchanges[f['properties']['EX_ID']]['N']
-
+        if f['properties']['EX_ID'] in lut_exchanges:
+            f['properties']['EX_NAME'] = lut_exchanges[f['properties']['EX_ID']]['Name']
+            f['properties']['EX_PCD'] = lut_exchanges[f['properties']['EX_ID']]['pcd']
+            f['properties']['EX_REGION'] = lut_exchanges[f['properties']['EX_ID']]['Region']
+            f['properties']['EX_COUNTY'] = lut_exchanges[f['properties']['EX_ID']]['County']
+            f['properties']['EX_EASTING'] = lut_exchanges[f['properties']['EX_ID']]['E']
+            f['properties']['EX_NORTHING'] = lut_exchanges[f['properties']['EX_ID']]['N']
+        else:
+            f['properties']['EX_NAME'] = ""
+            f['properties']['EX_PCD'] = ""
+            f['properties']['EX_REGION'] = ""
+            f['properties']['EX_COUNTY'] = ""
+            f['properties']['EX_EASTING'] = ""
+            f['properties']['EX_NORTHING'] = ""
         # Write to file
         sink.write(f)
+
+
 
 end = time.time()
 print('Script completed in: ' + str(round((end - start), 2)) + ' seconds.')
