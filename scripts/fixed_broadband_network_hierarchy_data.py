@@ -22,9 +22,9 @@ def read_all_data():
 
     pcd_to_exchange_data contains any postcode-to-exchange information.
 
-    pcd_to_exchange_data_unique contains unique postcode-to-cabinet-to-exchange combinations
+    pcd_to_exchange_data_unique contains unique postcode-to-cabinet-to-exchange combinations.
 
-    pcp_data and pcd_to_exchange_data_unique are then written out to .csv
+    pcp_data and pcd_to_exchange_data_unique are then written out to .csv.
 
     """
 
