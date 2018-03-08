@@ -4,9 +4,12 @@ import configparser
 import csv
 import fiona
 import numpy as np
-from shapely.geometry import Point, mapping
+
+from shapely.geometry import shape, Point, mapping
+from shapely.ops import unary_union
 from pyproj import Proj, transform
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
+from rtree import index
 
 from collections import OrderedDict
 
@@ -42,6 +45,10 @@ def read_premises():
         Easting coordinate
     * N: obj:'float'
         Northing coordinate
+
+    Returns
+    -------
+    array: with GeoJSON dicts containing shapes and attributes
     """
 
     premises_data = []
@@ -51,21 +58,26 @@ def read_premises():
         next(reader)
         for line in reader:
             premises_data.append({
-                'id': line[0],
-                'oa': line[1],
-                'residential_address_count': line[2],
-                'non_residential_address_count': line[3],
-                'postgis_geom': line[4],
-                'eastings': line[5],
-                'northings': line[6]
+                'type': "Feature",
+                'geometry': {
+                    "type": "Point",
+                    "coordinates": [float(line[5]), float(line[6])]
+                },
+                'properties': {
+                    'id': line[0],
+                    'oa': line[1],
+                    'residential_address_count': line[2],
+                    'non_residential_address_count': line[3],
+                    'postgis_geom': line[4]
+                }
             })
 
     # remove 'None' and replace with '0'
     for idx, premise in enumerate(premises_data):
-        if premise['residential_address_count'] == 'None':
-            premises_data[idx]['residential_address_count'] = '0'
-        if premise['non_residential_address_count'] == 'None':
-            premises_data[idx]['non_residential_address_count'] = '0'
+        if premise['properties']['residential_address_count'] == 'None':
+            premises_data[idx]['properties']['residential_address_count'] = '0'
+        if premise['properties']['non_residential_address_count'] == 'None':
+            premises_data[idx]['properties']['non_residential_address_count'] = '0'
 
     return premises_data
 
@@ -73,19 +85,6 @@ def read_premises():
 def write_premises(premises_data):
     """
     Writes premises points from premises_data to premises_points_data.shp
-
-    Data Schema
-    ----------
-    * Name: obj:`int`
-        Unique Premises ID
-    * oa: :obj:`str`
-        ONS output area code
-    * residential address count: obj:'int'
-        Number of residential addresses
-    * non-res address count: obj:'int'
-        Number of non-residential addresses
-    * postgis geom: obj:'str'
-        Postgis reference
     """
 
     # write to shapefile
@@ -94,25 +93,69 @@ def write_premises(premises_data):
 
     setup_point_schema = {
         'geometry': 'Point',
-        'properties': OrderedDict([('Name', 'int'), ('oa', 'str'), ('residential_address_count', 'int'),
+        'properties': OrderedDict([('postcode', 'str'), ('id', 'int'), ('oa', 'str'), ('residential_address_count', 'int'),
                                     ('non_residential_address_count', 'int'), ('postgis_geom', 'str')])
     }
 
-    #Define a projection with Proj4 notation, in this case an Icelandic grid
-    osgb36=Proj("+init=EPSG:27700") # UK Ordnance Survey, 1936 datum
-    wgs84=Proj("+init=EPSG:4326") # LatLon with WGS84
-
     with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'premises_points_data.shp'), 'w', driver=sink_driver, crs=sink_crs, schema=setup_point_schema) as sink:
         for premise in premises_data:
-            xx, yy = transform(osgb36, wgs84, float(premise['eastings']), float(premise['northings']))
-            sink.write({
-            #    'geometry': {'type': "Point", 'coordinates': [float(premise['eastings']), float(premise['northings'])]},
-                'geometry': {'type': "Point", 'coordinates': [xx, yy]},
-                'properties': OrderedDict([('Name', premise['id']), ('oa', premise['oa']),
-                                            ('residential_address_count', premise['residential_address_count']),
-                                            ('non_residential_address_count', premise['non_residential_address_count']),
-                                            ('postgis_geom', premise['postgis_geom'])])
-            })
+            sink.write(premise)
+
+def read_postcode_areas():
+
+    postcode_areas = []
+
+    # Initialze Rtree
+    idx = index.Index()
+
+    with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'postcode_shapes', 'cb.shp'), 'r') as source:
+
+        # Store shapes in Rtree
+        for src_shape in source:
+            idx.insert(int(src_shape['id']), shape(src_shape['geometry']).bounds, src_shape)
+
+        # Split list in regular and vertical postcodes
+        postcodes = {}
+        vertical_postcodes = {}
+
+        for x in source:
+
+            if x['properties']['POSTCODE'].startswith('V'):
+                vertical_postcodes[x['id']] = x
+            else:
+                postcodes[x['id']] = x
+
+        for key, f in vertical_postcodes.items():
+
+            vpost_geom = shape(f['geometry'])
+            best_neighbour = {'id': 0, 'intersection': 0}
+
+            # Find best neighbour
+            for n in idx.intersection((vpost_geom.bounds), objects=True):
+                if shape(n.object['geometry']).intersection(vpost_geom).length > best_neighbour['intersection'] and n.object['id'] != f['id']:
+                    best_neighbour['id'] = n.object['id']
+                    best_neighbour['intersection'] = shape(n.object['geometry']).intersection(vpost_geom).length
+
+            # Merge with best neighbour
+            neighbour = postcodes[best_neighbour['id']]
+            merged_geom = unary_union([shape(neighbour['geometry']), vpost_geom])
+
+            merged_postcode = {
+                'id': neighbour['id'],
+                'properties': neighbour['properties'],
+                'geometry': mapping(merged_geom)
+            }
+
+            try:
+                postcodes[merged_postcode['id']] = merged_postcode
+            except:
+                raise Exception
+
+        for key, p in postcodes.items():
+            p.pop('id')
+            postcode_areas.append(p)
+
+    return postcode_areas
 
 
 def read_cabinets():
@@ -159,6 +202,28 @@ def write_cabinets(cabinets_data):
                 'properties': OrderedDict([('Name', cabinet['SAU_NODE_ID']), ('OLO', cabinet['OLO']),
                                             ('pcd', cabinet['pcd'])])
             })
+
+def join_premises_with_postcode_areas(premises, postcode_areas):
+
+    joined_premises = []
+
+    # Initialze Rtree
+    idx = index.Index()
+
+    for rtree_idx, premise in enumerate(premises):
+        idx.insert(rtree_idx, shape(premise['geometry']).bounds, premise)
+
+    # Join the two
+    for postcode_area in postcode_areas:
+        for n in idx.intersection((shape(postcode_area['geometry']).bounds), objects=True):
+            postcode_area_shape = shape(postcode_area['geometry'])
+            premise_shape = shape(n.object['geometry'])
+            if postcode_area_shape.contains(premise_shape):
+                n.object['properties']['postcode'] = postcode_area['properties']['POSTCODE']
+                joined_premises.append(n.object)
+
+    return joined_premises
+
 
 
 def estimate_dist_points(premises):
@@ -269,26 +334,32 @@ if __name__ == "__main__":
     print('read premises')
     premises = read_premises()
 
-    print('read cabinets')
-    cabinets = read_cabinets()
+    print('read postcode_areas')
+    postcode_areas = read_postcode_areas()
 
-    print('estimate dist_points')
-    dist_points = estimate_dist_points(premises)
+    # print('read cabinets')
+    # cabinets = read_cabinets()
 
-    print('read exchanges')
-    exchanges = read_exchanges()
+    print('join premises with postcode areas')
+    premises = join_premises_with_postcode_areas(premises, postcode_areas)
+
+    # print('estimate dist_points')
+    # dist_points = estimate_dist_points(premises)
+
+    # print('read exchanges')
+    # exchanges = read_exchanges()
 
     print('write premises')
     write_premises(premises)
 
-    print('write cabinets')
-    write_cabinets(cabinets)
+    # print('write cabinets')
+    # write_cabinets(cabinets)
 
-    print('write dist_points')
-    write_dist_points(dist_points)
+    # print('write dist_points')
+    # write_dist_points(dist_points)
 
-    print('write exchanges')
-    write_exchanges(exchanges)
+    # print('write exchanges')
+    # write_exchanges(exchanges)
 
 
 
