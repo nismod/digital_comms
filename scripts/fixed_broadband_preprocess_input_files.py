@@ -89,7 +89,7 @@ def write_premises(premises_data):
 
     # write to shapefile
     sink_driver = 'ESRI Shapefile'
-    sink_crs = {'no_defs': True, 'ellps': 'WGS84', 'datum': 'WGS84', 'proj': 'longlat'}
+    sink_crs = {'init': 'epsg:27700'}
 
     setup_point_schema = {
         'geometry': 'Point',
