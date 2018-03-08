@@ -1,0 +1,56 @@
+@startuml
+ICTManager : dict of Node
+ICTManager : dict of Link
+ICTManager : +calc_lines_served(Node): num
+ICTManager : +calc_willingness_to_pay(Node): num
+ICTManager : +calc_data_demand(Node): num
+
+Node : +id: num
+Node : +name: str
+Node : +geom: Point
+Node : +connect(Link)
+Node : +disconnect(Link)
+Node : +calc_lines_served(): num
+Node : +calc_willingness_to_pay(): num
+Node : +calc_data_demand(): num
+Node : -links: dict of Link
+
+Link : +id: num
+Link : +name: str
+Link : +geom: LineString
+Link : -node_a: Node
+Link : -node_b: Node
+Link : +connect(Node)
+Link : +disconnect(Node)
+Link : +calc_lines_served(): num
+Link : +cable_length : num
+Link : +cable_count : num
+Link : +cable_type : str
+
+Premise : +output_area: num
+Premise : +residential_address_count: num
+Premise : +non_residential_address_count: num
+Premise : +occupants: num
+
+Dps : +dps_type: str
+Dps : +dps_location: str
+
+Pcp : +pcp_type: str
+
+Exchange : +exchange_tier: str
+Exchange : +pcps_per_exchange: num
+
+CoreNode : +core_node_type: str
+
+Node "1" o-- "*" Link
+Link "1" o-- "2" Node
+
+ICTManager "1" *-- "*" Node
+ICTManager "1" *-- "*" Link
+
+Node <-- CoreNode
+Node <-- Exchange
+Node <-- Pcp
+Node <-- Dps
+Node <-- Premise
+@enduml

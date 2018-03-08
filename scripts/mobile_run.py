@@ -11,8 +11,8 @@ import pprint
 
 from collections import defaultdict
 
-from digital_comms.ccam import ICTManager
-from digital_comms.interventions import decide_interventions
+from digital_comms.mobile_model.ccam import ICTManager
+from digital_comms.mobile_model.interventions import decide_interventions
 
 ################################################################
 # SETUP MODEL RUN CONFIGURATION

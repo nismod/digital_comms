@@ -4,6 +4,9 @@ from __future__ import print_function, absolute_import, division
 
 import pytest
 from pytest import fixture
+from shapely.geometry import Point, LineString
+
+from digital_comms.fixed_model.network_structure import ICTManager
 
 @fixture(scope='function')
 def setup_lad():
@@ -86,3 +89,50 @@ def setup_clutter_lookup():
     return [
         (5, "Urban")
     ]
+
+@fixture(scope='function')
+def setup_fixed_model_pcp():
+    return [
+        ((-1.944580, 52.792175), {'Name': 'cab_1', 'Type': 'pcp'}),
+        ((-0.395508, 52.485498), {'Name': 'cab_2', 'Type': 'pcp'}),
+        ((-2.713623, 52.652437), {'Name': 'cab_3', 'Type': 'pcp'}),
+        (( 0.417480, 51.147694), {'Name': 'cab_4', 'Type': 'pcp'}),
+        (( 1.219482, 52.431944), {'Name': 'cab_5', 'Type': 'pcp'}),
+        ((-1.900635, 51.223443), {'Name': 'cab_6', 'Type': 'pcp'}),
+        (( 0.802002, 51.154586), {'Name': 'cab_7', 'Type': 'pcp'})
+    ]
+
+@fixture(scope='function')
+def setup_fixed_model_exchanges():
+    return [
+        ((-0.572275, 51.704581), {'Name': 'EAARR', 'Type': 'exchange'}),
+        (( 0.537344, 51.745323), {'Name': 'EABTM', 'Type': 'exchange'})
+    ]
+
+@fixture(scope='function')
+def setup_fixed_model_corenodes():
+    return [
+        ((0.3, 51.825323), {'Name': 'CoreNode', 'Type': 'core'})
+    ]
+
+@fixture(scope='function')
+def setup_fixed_model_links():
+    return [
+        ([(-0.572275, 51.704581), (0, 52), (-1.944580, 52.792175)], {'Origin': 'EAARR',    'Dest': 'cab_1', 'Type': 'link', 'Physical': 'fiberglass'}),
+        ([(-0.572275, 51.704581), (0, 52), (-0.395508, 52.485498)], {'Origin': 'EAARR',    'Dest': 'cab_2', 'Type': 'link', 'Physical': 'fiberglass'}),
+        ([(-0.572275, 51.704581), (0, 52), (-2.713623, 52.652437)], {'Origin': 'EAARR',    'Dest': 'cab_3', 'Type': 'link', 'Physical': 'fiberglass'}),
+        ([(-0.572275, 51.704581), (0, 52), ( 0.417480, 51.147694)], {'Origin': 'EAARR',    'Dest': 'cab_4', 'Type': 'link', 'Physical': 'fiberglass'}),
+        ([( 0.537344, 51.745323), (0, 52), ( 1.219482, 52.431944)], {'Origin': 'EABTM',    'Dest': 'cab_5', 'Type': 'link', 'Physical': 'copper'    }),
+        ([( 0.537344, 51.745323), (0, 52), (-1.900635, 51.223443)], {'Origin': 'EABTM',    'Dest': 'cab_6', 'Type': 'link', 'Physical': 'copper'    }),
+        ([( 0.537344, 51.745323), (0, 52), ( 0.802002, 51.154586)], {'Origin': 'EABTM',    'Dest': 'cab_7', 'Type': 'link', 'Physical': 'copper'    }),
+        ([( 0.3,      51.825323), (0, 51), (-0.572275, 51.704581)], {'Origin': 'CoreNode', 'Dest': 'EAARR', 'Type': 'link', 'Physical': 'copper'    }),
+        ([( 0.3,      51.825323), (0, 51), ( 0.537344, 51.745323)], {'Origin': 'CoreNode', 'Dest': 'EABTM', 'Type': 'link', 'Physical': 'copper'    })
+    ]
+
+@fixture(scope='function')
+def setup_fixed_network(setup_fixed_model_pcp, setup_fixed_model_exchanges, setup_fixed_model_links):
+    empty_data = {}
+
+    return ICTManager(empty_data, empty_data, setup_fixed_model_pcp,
+                      setup_fixed_model_exchanges, empty_data,
+                      setup_fixed_model_links)
