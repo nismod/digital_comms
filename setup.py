@@ -74,7 +74,7 @@ def get_raw_data():
                 reply = str(input('Choose a file by number, or press enter to download latest: ')).lower().strip()
 
                 if (reply == ''):
-                    reply = len(datafile) - 1
+                    reply = len(datafile)
 
                 print('Downloading ' + datafiles[int(reply)][0] + ' ...')
                 sftp.get(datafiles[int(reply)][0], localpath=os.path.join(folder, 'raw.zip'))
