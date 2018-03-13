@@ -77,6 +77,7 @@ with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'final_premises_with_all_attrib
         # Write to file
         sink.write(f)
 
+    sink.close()
 
 end = time.time()
 print('Script completed in: ' + str(round((end - start), 2)) + ' seconds.')
