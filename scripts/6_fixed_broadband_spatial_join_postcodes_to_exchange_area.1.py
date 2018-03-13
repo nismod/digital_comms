@@ -24,24 +24,24 @@ start = time.time()
 # find representative points from postcode polygons
 #####################
 
-with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'cb.shp'), 'r') as source:
-    # preserve the schema of the original shapefile, including the crs
-    meta = source.meta
-    meta['schema']['geometry'] = 'Point'
-    # Write exchange polygons
-    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'postcode_polygon_centroids.shp'), 'w', **meta) as sink:
+# with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'cb.shp'), 'r') as source:
+#     # preserve the schema of the original shapefile, including the crs
+#     meta = source.meta
+#     meta['schema']['geometry'] = 'Point'
+#     # Write exchange polygons
+#     with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'postcode_polygon_centroids.shp'), 'w', **meta) as sink:
 
-        for f in source:
+#         for f in source:
 
-            centroid = shape(f['geometry']).representative_point()
+#             centroid = shape(f['geometry']).representative_point()
 
-            f['geometry'] = mapping(centroid)
+#             f['geometry'] = mapping(centroid)
 
-            sink.write(f)
+#             sink.write(f)
 
-#####################
-# spatial join of polygon attributes to all points within that polygon
-#####################
+#####################################################################
+# spatial join of exchange polygon attributes to all postcode polygons
+#####################################################################
 
 with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, "exchange_boundary_polygons_dissolved.shp"), "r") as n:
 

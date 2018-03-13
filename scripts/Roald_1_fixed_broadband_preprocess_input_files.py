@@ -17,9 +17,9 @@ CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
-#####################
-# setup file locations
-#####################
+#####################################
+# setup file locations and data files
+#####################################
 
 SYSTEM_INPUT_FIXED = os.path.join(BASE_PATH, 'raw')
 SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'processed')
@@ -141,7 +141,7 @@ def read_postcode_areas():
             merged_geom = unary_union([shape(neighbour['geometry']), vpost_geom])
 
             merged_postcode = {
-                'id': neighbour['id'],
+                'id': neighbour['id'].replace(" ", ""),
                 'properties': neighbour['properties'],
                 'geometry': mapping(merged_geom)
             }
@@ -313,7 +313,7 @@ def write_exchanges(exchanges_data):
                                     ('region', 'str'), ('county', 'str')])
     }
 
-    #Define a projection with Proj4 notation, in this case an Icelandic grid
+    #Define a projection with Proj4 notation
     osgb36=Proj("+init=EPSG:27700") # UK Ordnance Survey, 1936 datum
     wgs84=Proj("+init=EPSG:4326") # LatLon with WGS84
 

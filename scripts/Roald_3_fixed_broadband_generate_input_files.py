@@ -5,6 +5,9 @@ import configparser
 from shapely.geometry import Point, LineString, mapping
 from collections import OrderedDict
 
+#####################
+# generate dummy data
+#####################
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
@@ -17,7 +20,7 @@ input_shapefiles_dir = 'processed'
 def write_points_to_shp(filename, data, schema):
     sink_driver = 'ESRI Shapefile'
     sink_crs = {'no_defs': True, 'ellps': 'WGS84', 'datum': 'WGS84', 'proj': 'longlat'}
-    
+
     with fiona.open(filename, 'w', driver=sink_driver, crs=sink_crs, schema=schema) as sink:
         for geom in data:
             if schema['geometry'] == 'Point':
