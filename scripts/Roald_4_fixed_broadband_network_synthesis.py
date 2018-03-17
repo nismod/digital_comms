@@ -6,6 +6,10 @@ from networkx import nx, drawing
 from shapely.geometry import Point, LineString, mapping
 import matplotlib.pyplot as plt
 
+############################################################################################
+# example of how to read input files, synthesize and analyse a network using the ICTManager
+############################################################################################
+
 # Config
 input_shapefiles_dir = os.path.join('../', 'input_shapefiles')
 output_shapefiles_dir = os.path.join('../', 'output_shapefiles')
