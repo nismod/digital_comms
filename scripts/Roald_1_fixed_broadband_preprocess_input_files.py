@@ -5,7 +5,7 @@ import csv
 import fiona
 import numpy as np
 
-from shapely.geometry import shape, Point, mapping
+from shapely.geometry import shape, Point, Polygon, MultiPolygon, mapping
 from shapely.ops import unary_union
 from pyproj import Proj, transform
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
@@ -176,13 +176,13 @@ def read_exchanges():
 
     return exchanges
 
-def read_exchange_pcd_lut(SYSTEM_INPUT):
+def read_exchange_pcd_lut():
     '''
     contains any postcode-to-exchange information.
 
     Source: 1_fixed_broadband_network_hierachy_data.py
     '''
-    SYSTEM_INPUT_NETWORK = os.path.join(SYSTEM_INPUT, 'network_hierarchy_data')
+    SYSTEM_INPUT_NETWORK = os.path.join(SYSTEM_INPUT_FIXED, 'network_hierarchy_data')
 
     pcd_to_exchange_data = []
 
@@ -308,7 +308,7 @@ def read_cabinets():
 
     return cabinets_data
 
-def join_premises_with_postcode_areas(premises, postcode_areas):
+def add_postcode_to_premises(premises, postcode_areas):
 
     joined_premises = []
 
@@ -328,6 +328,97 @@ def join_premises_with_postcode_areas(premises, postcode_areas):
                 joined_premises.append(n.object)
 
     return joined_premises
+
+def generate_exchange_area(exchanges, merge=True):
+
+    exchanges_by_group = {}
+
+    # Loop through all exchanges
+    for f in exchanges:
+
+        # Convert Multipolygons to list of polygons
+        if (isinstance(shape(f['geometry']), MultiPolygon)):
+            polygons = [p.buffer(0) for p in shape(f['geometry'])]
+        else:
+            polygons = [shape(f['geometry'])]
+
+        # Extend list of geometries, create key (exchange_id) if non existing
+        try:
+            exchanges_by_group[f['properties']['EX_ID']].extend(polygons)
+        except:
+            exchanges_by_group[f['properties']['EX_ID']] = []
+            exchanges_by_group[f['properties']['EX_ID']].extend(polygons)
+
+    # Write Multipolygons per exchange
+    exchange_areas = []
+    for exchange, area in exchanges_by_group.items():
+
+        exchange_multipolygon = MultiPolygon(area)
+        exchange_areas.append({
+            'type': "Feature",
+            'geometry': mapping(exchange_multipolygon),
+            'properties': {
+                'OLO': exchange
+            }
+        })
+
+    if merge:
+        # Merge MultiPolygons into single Polygon
+        removed_islands = []
+        for area in exchange_areas:
+            
+            if area['properties']['OLO'] == 'EAHEN':
+                print('break')
+
+            # Avoid intersections
+            geom = shape(area['geometry']).buffer(0)
+            cascaded_geom = unary_union(geom)
+
+            # Remove islands
+            # Add removed islands to a list so that they
+            # can be merged in later
+            if (isinstance(cascaded_geom, MultiPolygon)):
+                for idx, p in enumerate(cascaded_geom):
+                    if idx == 0:
+                        geom = p
+                    elif p.area > geom.area:
+                        removed_islands.append(geom)
+                        geom = p
+                    else:
+                        removed_islands.append(p)
+            else:
+                geom = cascaded_geom
+
+            # Write exterior to file as polygon
+            exterior = Polygon(list(geom.exterior.coords))
+
+            # Write to output
+            area['geometry'] = mapping(exterior)
+        
+        # Add islands that were removed because they were not 
+        # connected to the main polygon and were not recovered
+        # because they were on the edge of the map or inbetween
+        # exchanges :-). Merge to largest intersecting exchange area.
+        idx_exchange_areas = index.Index()
+        for idx, exchange_area in enumerate(exchange_areas):
+            idx_exchange_areas.insert(idx, shape(exchange_area['geometry']).bounds, exchange_area)
+        for island in removed_islands:
+            intersections = [n for n in idx_exchange_areas.intersection((island.bounds), objects=True)]
+
+            for idx, intersection in enumerate(intersections):
+                if idx == 0:
+                    merge_with = intersection
+                elif shape(intersection.object['geometry']).intersection(island).length > shape(merge_with.object['geometry']).intersection(island).length:
+                    merge_with = intersection
+            
+            merged_geom = merge_with.object
+            merged_geom['geometry'] = mapping(shape(merged_geom['geometry']).union(island))
+            idx_exchange_areas.delete(merge_with.id, shape(merge_with.object['geometry']).bounds)
+            idx_exchange_areas.insert(merge_with.id, shape(merged_geom['geometry']).bounds, merged_geom)
+
+        exchange_areas = [n.object for n in idx_exchange_areas.intersection(idx_exchange_areas.bounds, objects=True)]
+
+    return exchange_areas
 
 def add_exchange_id_to_postcodes(exchanges, postcode_areas, exchange_to_postcode):
 
@@ -442,17 +533,22 @@ if __name__ == "__main__":
 
     # Hierachy
     print('read_pcd_to_exchange_lut')
-    lut_exchange_to_pcd = read_exchange_pcd_lut(SYSTEM_INPUT)
+    lut_exchange_to_pcd = read_exchange_pcd_lut()
 
-    # print('read_pcp_to_exchange_lut')
-    # lut_exchange_pcd_cabinet = read_exchange_pcd_cabinet_lut(SYSTEM_INPUT)
+    print('read_pcp_to_exchange_lut')
+    lut_exchange_pcd_cabinet = read_exchange_pcd_cabinet_lut()
 
-    # # Shapes
+    # Shapes
     print('read premises')
     geojson_premises = read_premises()
 
     print('read postcode_areas')
     geojson_postcode_areas = read_postcode_areas()
+
+    '''
+    # print('read cabinets')
+    # cabinets = read_cabinets()
+    '''
 
     print('read exchanges')
     geojson_exchanges = read_exchanges()
@@ -460,11 +556,11 @@ if __name__ == "__main__":
     print('add exchange id to postcode areas')
     geojson_postcode_areas = add_exchange_id_to_postcodes(geojson_exchanges, geojson_postcode_areas, lut_exchange_to_pcd)
 
-    # print('read cabinets')
-    # cabinets = read_cabinets()
+    print('add postcode to premises')
+    geojson_premises = add_postcode_to_premises(geojson_premises, geojson_postcode_areas)
 
-    # print('join premises with postcode areas')
-    # premises = join_premises_with_postcode_areas(geojson_premises, geojson_postcode_areas)
+    print('generate exchange areas')
+    geojson_exchange_areas = generate_exchange_area(geojson_postcode_areas)
 
     print('write premises')
     write_shapefile(geojson_premises, 'premises_data.shp')
@@ -474,6 +570,9 @@ if __name__ == "__main__":
 
     print('write exchanges')
     write_shapefile(geojson_exchanges, 'exchanges.shp')
+
+    print('write exchange_areas')
+    write_shapefile(geojson_exchange_areas, 'exchange_areas.shp')
 
 
 
