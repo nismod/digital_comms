@@ -81,27 +81,11 @@ def read_premises():
 
     return premises_data
 
-
-def write_premises(premises_data):
-    """
-    Writes premises points from premises_data to premises_points_data.shp
-    """
-
-    # write to shapefile
-    sink_driver = 'ESRI Shapefile'
-    sink_crs = {'init': 'epsg:27700'}
-
-    setup_point_schema = {
-        'geometry': 'Point',
-        'properties': OrderedDict([('postcode', 'str'), ('id', 'int'), ('oa', 'str'), ('residential_address_count', 'int'),
-                                    ('non_residential_address_count', 'int'), ('postgis_geom', 'str')])
-    }
-
-    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'premises_points_data.shp'), 'w', driver=sink_driver, crs=sink_crs, schema=setup_point_schema) as sink:
-        for premise in premises_data:
-            sink.write(premise)
-
 def read_postcode_areas():
+    '''
+    Read postcodes shapes, 
+    * Processing: Eliminate vertical postcodes, merge with best neighbour
+    '''
 
     postcode_areas = []
 
@@ -157,6 +141,152 @@ def read_postcode_areas():
 
     return postcode_areas
 
+def read_pcp():
+    '''
+    contains any postcode-to-cabinet-to-exchange information.
+
+    Source: 1_fixed_broadband_network_hierachy_data.py
+    '''
+    return
+
+def read_exchanges():
+    '''
+    '''
+    exchanges = []
+
+    with open(os.path.join(SYSTEM_INPUT_FIXED, 'layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
+        reader = csv.reader(system_file)
+        next(reader)
+    
+        for line in reader:
+            exchanges.append({
+                'type': "Feature",
+                'geometry': {
+                    "type": "Point",
+                    "coordinates": [float(line[5]), float(line[6])]
+                },
+                'properties': {
+                    'OLO': line[1],
+                    'Name': line[2],
+                    'pcd': line[0],
+                    'Region': line[3],
+                    'County': line[4]
+                }
+            })
+
+    return exchanges
+
+def read_exchange_pcd_lut(SYSTEM_INPUT):
+    '''
+    contains any postcode-to-exchange information.
+
+    Source: 1_fixed_broadband_network_hierachy_data.py
+    '''
+    SYSTEM_INPUT_NETWORK = os.path.join(SYSTEM_INPUT, 'network_hierarchy_data')
+
+    pcd_to_exchange_data = []
+
+    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+        reader = csv.reader(system_file)
+        for skip in range(11):
+            next(reader)
+        for line in reader:
+            pcd_to_exchange_data.append({
+                'exchange_id': line[0],
+                'postcode': line[1].replace(" ", "")
+            })
+
+    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part Two.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
+        reader = csv.reader(system_file)
+        for skip in range(11):
+            next(reader)
+        for line in reader:
+            pcd_to_exchange_data.append({
+                'exchange_id': line[0],
+                'postcode': line[1].replace(" ", "")
+            })
+
+    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'pcp.to.pcd.dec.11.two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+        reader = csv.reader(system_file)
+        next(reader)
+        for line in reader:
+            pcd_to_exchange_data.append({
+                'exchange_id': line[0],
+                'postcode': line[1].replace(" ", "")
+            })
+
+    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'from_tomasso_valletti.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+        reader = csv.reader(system_file)
+        next(reader)
+        for line in reader:
+            pcd_to_exchange_data.append({
+                'exchange_id': line[0],
+                'postcode': line[1].replace(" ", "")
+            })
+
+    ### find unique values in list of dicts
+    return list({pcd['postcode']:pcd for pcd in pcd_to_exchange_data}.values())
+
+def read_exchange_pcd_cabinet_lut():
+    '''
+    contains unique postcode-to-cabinet-to-exchange combinations.
+
+    Source: 1_fixed_broadband_network_hierachy_data.py
+    '''
+    pcp_data = []
+
+    with open(os.path.join(SYSTEM_INPUT_FIXED, 'January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+        reader = csv.reader(system_file)
+        for skip in range(11):
+            next(reader)
+        for line in reader:
+            pcp_data.append({
+                'exchange_id': line[0],
+                'name': line[1],
+                'postcode': line[2].replace(" ", ""),
+                'cabinet_id': line[3],
+                'exchange_only_flag': line[4]
+            })
+
+    with open(os.path.join(SYSTEM_INPUT_FIXED, 'January 2013 PCP to Postcode File Part Two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+        reader = csv.reader(system_file)
+        for skip in range(11):
+            next(reader)
+        for line in reader:
+            pcp_data.append({
+                'exchange_id': line[0],
+                'name': line[1],
+                'postcode': line[2].replace(" ", ""),
+                'cabinet_id': line[3],
+                'exchange_only_flag': line[4]
+                ###skip other unwanted variables
+            })
+
+    with open(os.path.join(SYSTEM_INPUT_FIXED, 'pcp.to.pcd.dec.11.one.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+        reader = csv.reader(system_file)
+        next(reader)
+        for line in reader:
+            pcp_data.append({
+                'exchange_id': line[0],
+                'name': line[1],
+                'postcode': line[2].replace(" ", ""),
+                'cabinet_id': line[3],
+                'exchange_only_flag': line[4]
+                ###skip other unwanted variables
+            })
+
+    with open(os.path.join(SYSTEM_INPUT_FIXED, 'pcp.to.pcd.dec.11.two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+        reader = csv.reader(system_file)
+        next(reader)
+        for line in reader:
+            pcp_data.append({
+                'exchange_id': line[0],
+                'name': line[1],
+                'postcode': line[2].replace(" ", ""),
+                'cabinet_id': line[3],
+                'exchange_only_flag': line[4]
+                ###skip other unwanted variables
+            })
 
 def read_cabinets():
 
@@ -177,31 +307,6 @@ def read_cabinets():
                 })
 
     return cabinets_data
-
-
-def write_cabinets(cabinets_data):
-    # write to shapefile
-    sink_driver = 'ESRI Shapefile'
-    sink_crs = {'no_defs': True, 'ellps': 'WGS84', 'datum': 'WGS84', 'proj': 'longlat'}
-
-    setup_point_schema = {
-        'geometry': 'Point',
-        'properties': OrderedDict([('Name', 'str'), ('OLO', 'str'), ('pcd', 'str')])
-    }
-
-    #Define a projection with Proj4 notation, in this case an Icelandic grid
-    osgb36=Proj("+init=EPSG:27700") # UK Ordnance Survey, 1936 datum
-    wgs84=Proj("+init=EPSG:4326") # LatLon with WGS84
-
-    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'cabinets_points_data.shp'), 'w', driver=sink_driver, crs=sink_crs, schema=setup_point_schema) as sink:
-        for cabinet in cabinets_data:
-            xx, yy = transform(osgb36, wgs84, float(cabinet['easting']), float(cabinet['northing']))
-            sink.write({
-                #'geometry': {'type': "Point", 'coordinates': [float(cabinet['eastings']), float(cabinet['northings'])]},
-                'geometry': {'type': "Point", 'coordinates': [xx, yy]},
-                'properties': OrderedDict([('Name', cabinet['SAU_NODE_ID']), ('OLO', cabinet['OLO']),
-                                            ('pcd', cabinet['pcd'])])
-            })
 
 def join_premises_with_postcode_areas(premises, postcode_areas):
 
@@ -224,7 +329,60 @@ def join_premises_with_postcode_areas(premises, postcode_areas):
 
     return joined_premises
 
+def add_exchange_id_to_postcodes(exchanges, postcode_areas, exchange_to_postcode):
 
+    idx_exchanges = index.Index()
+    lut_exchanges = {}
+
+    # Read the exchange points
+    for idx, exchange in enumerate(exchanges):
+
+        # Add to Rtree and lookup table
+        idx_exchanges.insert(idx, tuple(map(int, exchange['geometry']['coordinates'])) + tuple(map(int, exchange['geometry']['coordinates'])), exchange['properties']['OLO'])
+        lut_exchanges[exchange['properties']['OLO']] = {
+            'Name': exchange['properties']['Name'],
+            'pcd': exchange['properties']['pcd'],
+            'Region': exchange['properties']['Region'],
+            'County': exchange['properties']['County'],
+        }
+
+    # Read the postcode-to-cabinet-to-exchange lookup file
+    lut_pcb2cab = {}
+
+    for idx, row in enumerate(exchange_to_postcode):
+        lut_pcb2cab[row['postcode']] = row['exchange_id']
+
+    # Connect each postcode area to an exchange
+    for postcode_area in postcode_areas:
+
+        postcode = postcode_area['properties']['POSTCODE'].replace(" ", "")
+
+        if postcode in lut_pcb2cab:
+
+            # Postcode-to-cabinet-to-exchange association
+            postcode_area['properties']['EX_ID'] = lut_pcb2cab[postcode]
+            postcode_area['properties']['EX_SRC'] = 'EXISTING POSTCODE DATA'
+
+        else:
+
+            # Find nearest exchange
+            nearest = [n.object for n in idx_exchanges.nearest((shape(postcode_area['geometry']).bounds), 1, objects=True)]
+            postcode_area['properties']['EX_ID'] = nearest[0]
+            postcode_area['properties']['EX_SRC'] = 'ESTIMATED NEAREST'
+
+        # Match the exchange ID with remaining exchange info
+        if postcode_area['properties']['EX_ID'] in lut_exchanges:
+            postcode_area['properties']['EX_NAME'] = lut_exchanges[postcode_area['properties']['EX_ID']]['Name']
+            postcode_area['properties']['EX_PCD'] = lut_exchanges[postcode_area['properties']['EX_ID']]['pcd']
+            postcode_area['properties']['EX_REGION'] = lut_exchanges[postcode_area['properties']['EX_ID']]['Region']
+            postcode_area['properties']['EX_COUNTY'] = lut_exchanges[postcode_area['properties']['EX_ID']]['County']
+        else:
+            postcode_area['properties']['EX_NAME'] = ""
+            postcode_area['properties']['EX_PCD'] = ""
+            postcode_area['properties']['EX_REGION'] = ""
+            postcode_area['properties']['EX_COUNTY'] = ""
+
+    return postcode_areas
 
 def estimate_dist_points(premises):
     """Estimate distribution point locations.
@@ -257,109 +415,65 @@ def estimate_dist_points(premises):
         })
     return dist_points
 
+def write_shapefile(data, path):
 
-def write_dist_points(dist_points):
-    # write to shapefile
+    # Translate props to Fiona sink schema
+    prop_schema = []
+    for name, value in data[0]['properties'].items():
+        fiona_prop_type = next((fiona_type for fiona_type, python_type in fiona.FIELD_TYPES_MAP.items() if python_type == type(value)), None)
+        prop_schema.append((name, fiona_prop_type))
+
     sink_driver = 'ESRI Shapefile'
-    sink_crs = {'no_defs': True, 'ellps': 'WGS84', 'datum': 'WGS84', 'proj': 'longlat'}
-
-    setup_point_schema = {
-        'geometry': 'Point',
-        'properties': OrderedDict([('Name', 'str')])
+    sink_crs = {'init': 'epsg:27700'}
+    sink_schema = {
+        'geometry': data[0]['geometry']['type'],
+        'properties': OrderedDict(prop_schema)
     }
 
-    #Define a projection with Proj4 notation, in this case an Icelandic grid
-    osgb36=Proj("+init=EPSG:27700") # UK Ordnance Survey, 1936 datum
-    wgs84=Proj("+init=EPSG:4326") # LatLon with WGS84
-
-    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'dist_point_data.shp'), 'w', driver=sink_driver, crs=sink_crs, schema=setup_point_schema) as sink:
-        for dist_point in dist_points:
-            xx, yy = transform(osgb36, wgs84, float(dist_point['eastings']), float(dist_point['northings']))
-            sink.write({
-                #'geometry': {'type': "Point", 'coordinates': [float(dist_point['eastings']), float(dist_point['northings'])]},
-                'geometry': {'type': "Point", 'coordinates': [xx, yy]},
-                'properties': OrderedDict([('Name', dist_point['id'])])
-            })
-
-
-def read_exchanges():
-    exchanges_data = []
-
-    with open(os.path.join(SYSTEM_INPUT_FIXED, 'layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
-        reader = csv.reader(system_file)
-        next(reader)
-        for line in reader:
-            exchanges_data.append({
-                'exchange_pcd': line[0],
-                'OLO': line[1],
-                'name': line[2],
-                'region': line[3],
-                'county': line[4],
-                'eastings': line[5],
-                'northings': line[6]
-            })
-
-    return exchanges_data
-
-
-def write_exchanges(exchanges_data):
-    # write to shapefile
-    sink_driver = 'ESRI Shapefile'
-    sink_crs = {'no_defs': True, 'ellps': 'WGS84', 'datum': 'WGS84', 'proj': 'longlat'}
-
-    setup_point_schema = {
-        'geometry': 'Point',
-        'properties': OrderedDict([('Name', 'str'), ('OLO', 'str'), ('name', 'str'),
-                                    ('region', 'str'), ('county', 'str')])
-    }
-
-    #Define a projection with Proj4 notation
-    osgb36=Proj("+init=EPSG:27700") # UK Ordnance Survey, 1936 datum
-    wgs84=Proj("+init=EPSG:4326") # LatLon with WGS84
-
-    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'exchanges_points_data.shp'), 'w', driver=sink_driver, crs=sink_crs, schema=setup_point_schema) as sink:
-        for exchange in exchanges_data:
-            xx, yy = transform(osgb36, wgs84, float(exchange['eastings']), float(exchange['northings']))
-            sink.write({
-                #'geometry': {'type': "Point", 'coordinates': [float(exchange['eastings']), float(exchange['northings'])]},
-                'geometry': {'type': "Point", 'coordinates': [xx, yy]},
-                'properties': OrderedDict([('Name', exchange['exchange_pcd']), ('OLO', exchange['OLO']),
-                                            ('name', exchange['name']), ('region', exchange['region']),
-                                            ('county', exchange['county'])])
-            })
+    # Write all elements to output file
+    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, path), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
+        for feature in data:
+            sink.write(feature)
 
 
 if __name__ == "__main__":
 
+    SYSTEM_INPUT = os.path.join('data', 'raw')
+
+    # Hierachy
+    print('read_pcd_to_exchange_lut')
+    lut_exchange_to_pcd = read_exchange_pcd_lut(SYSTEM_INPUT)
+
+    # print('read_pcp_to_exchange_lut')
+    # lut_exchange_pcd_cabinet = read_exchange_pcd_cabinet_lut(SYSTEM_INPUT)
+
+    # # Shapes
     print('read premises')
-    premises = read_premises()
+    geojson_premises = read_premises()
 
     print('read postcode_areas')
-    postcode_areas = read_postcode_areas()
+    geojson_postcode_areas = read_postcode_areas()
+
+    print('read exchanges')
+    geojson_exchanges = read_exchanges()
+
+    print('add exchange id to postcode areas')
+    geojson_postcode_areas = add_exchange_id_to_postcodes(geojson_exchanges, geojson_postcode_areas, lut_exchange_to_pcd)
 
     # print('read cabinets')
     # cabinets = read_cabinets()
 
-    print('join premises with postcode areas')
-    premises = join_premises_with_postcode_areas(premises, postcode_areas)
-
-    # print('estimate dist_points')
-    # dist_points = estimate_dist_points(premises)
-
-    # print('read exchanges')
-    # exchanges = read_exchanges()
+    # print('join premises with postcode areas')
+    # premises = join_premises_with_postcode_areas(geojson_premises, geojson_postcode_areas)
 
     print('write premises')
-    write_premises(premises)
+    write_shapefile(geojson_premises, 'premises_data.shp')
 
-    # print('write cabinets')
-    # write_cabinets(cabinets)
+    print('write postcode_areas')
+    write_shapefile(geojson_postcode_areas, 'postcode_areas_data.shp')
 
-    # print('write dist_points')
-    # write_dist_points(dist_points)
-
-    # print('write exchanges')
-    # write_exchanges(exchanges)
+    print('write exchanges')
+    write_shapefile(geojson_exchanges, 'exchanges.shp')
 
 
 
