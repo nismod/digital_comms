@@ -145,7 +145,7 @@ def read_premises():
                     "coordinates": [float(line[5]), float(line[6])]
                 },
                 'properties': {
-                    'id': line[0],
+                    'id': 'premise_' + line[0],
                     'oa': line[1],
                     'residential_address_count': line[2],
                     'non_residential_address_count': line[3],
@@ -248,7 +248,7 @@ def read_exchanges():
                     "coordinates": [float(line[5]), float(line[6])]
                 },
                 'properties': {
-                    'OLO': line[1],
+                    'id': 'exchange_' + line[1],
                     'Name': line[2],
                     'pcd': line[0],
                     'Region': line[3],
@@ -416,7 +416,7 @@ def calculate_cabinet_locations(postcode_areas):
                 'type': "Feature",
                 'geometry': mapping(cabinet_postcodes_geom.centroid),
                 'properties': {
-                    'id': cabinet_id
+                    'id': 'cabinet_' + cabinet_id
                 }
             })
 
@@ -452,7 +452,7 @@ def generate_exchange_area(exchanges, merge=True):
             'type': "Feature",
             'geometry': mapping(exchange_multipolygon),
             'properties': {
-                'OLO': exchange
+                'id': exchange
             }
         })
 
@@ -544,7 +544,7 @@ def generate_distribution_areas(distribution_points):
         distribution_areas.append({
             'geometry': mapping(geom),
             'properties': {
-                'Name': distribution_point.object['properties']['Name']
+                'id': distribution_point.object['properties']['id']
             }
         })
 
@@ -559,8 +559,8 @@ def add_exchange_id_to_postcode_areas(exchanges, postcode_areas, exchange_to_pos
     for idx, exchange in enumerate(exchanges):
 
         # Add to Rtree and lookup table
-        idx_exchanges.insert(idx, tuple(map(int, exchange['geometry']['coordinates'])) + tuple(map(int, exchange['geometry']['coordinates'])), exchange['properties']['OLO'])
-        lut_exchanges[exchange['properties']['OLO']] = {
+        idx_exchanges.insert(idx, tuple(map(int, exchange['geometry']['coordinates'])) + tuple(map(int, exchange['geometry']['coordinates'])), exchange['properties']['id'])
+        lut_exchanges[exchange['properties']['id']] = {
             'Name': exchange['properties']['Name'],
             'pcd': exchange['properties']['pcd'].replace(" ", ""),
             'Region': exchange['properties']['Region'],
@@ -643,7 +643,7 @@ def estimate_dist_points(premises):
                     "coordinates": [dist_point_location[0], dist_point_location[1]]
                 },
                 'properties': {
-                    "Name": "dist_point_" + str(idx)
+                    "id": "distribution_" + str(idx)
                 }
             })
     return dist_points
@@ -688,10 +688,7 @@ if __name__ == "__main__":
     geojson_layer5_premises = read_premises()
 
     print('estimate location of distribution points')
-    geojson_layer4_distribution_points = estimate_dist_points(geojson_layer5_premises)
-
-    print('estimate location of cabinets')
-    geojson_layer3_cabinets = estimate_dist_points(geojson_layer4_distribution_points)
+    geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises)
 
     print('read exchanges')
     geojson_layer2_exchanges = read_exchanges()
@@ -704,7 +701,7 @@ if __name__ == "__main__":
     geojson_postcode_areas = add_cabinet_id_to_postcode_areas(geojson_postcode_areas, lut_pcd_to_cabinet)
 
     print('generate distribution areas')
-    geojson_distribution_areas = generate_distribution_areas(geojson_layer4_distribution_points)
+    geojson_distribution_areas = generate_distribution_areas(geojson_layer4_distributions)
 
     print('generate exchange areas')
     geojson_exchange_areas = generate_exchange_area(geojson_postcode_areas)
@@ -721,7 +718,7 @@ if __name__ == "__main__":
     write_shapefile(geojson_layer5_premises, 'layer5_premises.shp')
 
     print('write distribution points')
-    write_shapefile(geojson_layer4_distribution_points, 'layer4_distribution_points.shp')
+    write_shapefile(geojson_layer4_distributions, 'layer4_distributions.shp')
 
     print('write cabinets')
     write_shapefile(geojson_layer3_cabinets, 'layer3_cabinets.shp')
