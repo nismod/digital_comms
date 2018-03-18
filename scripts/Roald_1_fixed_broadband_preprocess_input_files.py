@@ -233,9 +233,10 @@ def read_exchange_pcd_cabinet_lut():
 
     Source: 1_fixed_broadband_network_hierachy_data.py
     '''
+    SYSTEM_INPUT_NETWORK = os.path.join(SYSTEM_INPUT_FIXED, 'network_hierarchy_data')
     pcp_data = []
 
-    with open(os.path.join(SYSTEM_INPUT_FIXED, 'January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
@@ -248,7 +249,7 @@ def read_exchange_pcd_cabinet_lut():
                 'exchange_only_flag': line[4]
             })
 
-    with open(os.path.join(SYSTEM_INPUT_FIXED, 'January 2013 PCP to Postcode File Part Two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part Two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
@@ -262,7 +263,7 @@ def read_exchange_pcd_cabinet_lut():
                 ###skip other unwanted variables
             })
 
-    with open(os.path.join(SYSTEM_INPUT_FIXED, 'pcp.to.pcd.dec.11.one.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'pcp.to.pcd.dec.11.one.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
@@ -275,7 +276,7 @@ def read_exchange_pcd_cabinet_lut():
                 ###skip other unwanted variables
             })
 
-    with open(os.path.join(SYSTEM_INPUT_FIXED, 'pcp.to.pcd.dec.11.two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'pcp.to.pcd.dec.11.two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
@@ -287,6 +288,8 @@ def read_exchange_pcd_cabinet_lut():
                 'exchange_only_flag': line[4]
                 ###skip other unwanted variables
             })
+
+    return pcp_data
 
 def read_cabinets():
 
@@ -366,9 +369,6 @@ def generate_exchange_area(exchanges, merge=True):
         # Merge MultiPolygons into single Polygon
         removed_islands = []
         for area in exchange_areas:
-            
-            if area['properties']['OLO'] == 'EAHEN':
-                print('break')
 
             # Avoid intersections
             geom = shape(area['geometry']).buffer(0)
@@ -405,19 +405,20 @@ def generate_exchange_area(exchanges, merge=True):
         for island in removed_islands:
             intersections = [n for n in idx_exchange_areas.intersection((island.bounds), objects=True)]
 
-            for idx, intersection in enumerate(intersections):
-                if idx == 0:
-                    merge_with = intersection
-                elif shape(intersection.object['geometry']).intersection(island).length > shape(merge_with.object['geometry']).intersection(island).length:
-                    merge_with = intersection
-            
-            merged_geom = merge_with.object
-            merged_geom['geometry'] = mapping(shape(merged_geom['geometry']).union(island))
-            idx_exchange_areas.delete(merge_with.id, shape(merge_with.object['geometry']).bounds)
-            idx_exchange_areas.insert(merge_with.id, shape(merged_geom['geometry']).bounds, merged_geom)
+            if len(intersections) > 0:
+                for idx, intersection in enumerate(intersections):
+                    if idx == 0:
+                        merge_with = intersection
+                    elif shape(intersection.object['geometry']).intersection(island).length > shape(merge_with.object['geometry']).intersection(island).length:
+                        merge_with = intersection
+
+                merged_geom = merge_with.object
+                merged_geom['geometry'] = mapping(shape(merged_geom['geometry']).union(island))
+                idx_exchange_areas.delete(merge_with.id, shape(merge_with.object['geometry']).bounds)
+                idx_exchange_areas.insert(merge_with.id, shape(merged_geom['geometry']).bounds, merged_geom)
 
         exchange_areas = [n.object for n in idx_exchange_areas.intersection(idx_exchange_areas.bounds, objects=True)]
-
+        
     return exchange_areas
 
 def add_exchange_id_to_postcodes(exchanges, postcode_areas, exchange_to_postcode):
@@ -535,12 +536,12 @@ if __name__ == "__main__":
     print('read_pcd_to_exchange_lut')
     lut_exchange_to_pcd = read_exchange_pcd_lut()
 
-    print('read_pcp_to_exchange_lut')
-    lut_exchange_pcd_cabinet = read_exchange_pcd_cabinet_lut()
+    # print('read_pcp_to_exchange_lut')
+    # lut_exchange_pcd_cabinet = read_exchange_pcd_cabinet_lut()
 
     # Shapes
-    print('read premises')
-    geojson_premises = read_premises()
+    # print('read premises')
+    # geojson_premises = read_premises()
 
     print('read postcode_areas')
     geojson_postcode_areas = read_postcode_areas()
@@ -556,14 +557,14 @@ if __name__ == "__main__":
     print('add exchange id to postcode areas')
     geojson_postcode_areas = add_exchange_id_to_postcodes(geojson_exchanges, geojson_postcode_areas, lut_exchange_to_pcd)
 
-    print('add postcode to premises')
-    geojson_premises = add_postcode_to_premises(geojson_premises, geojson_postcode_areas)
+    # print('add postcode to premises')
+    # geojson_premises = add_postcode_to_premises(geojson_premises, geojson_postcode_areas)
 
     print('generate exchange areas')
     geojson_exchange_areas = generate_exchange_area(geojson_postcode_areas)
 
-    print('write premises')
-    write_shapefile(geojson_premises, 'premises_data.shp')
+    # print('write premises')
+    # write_shapefile(geojson_premises, 'premises_data.shp')
 
     print('write postcode_areas')
     write_shapefile(geojson_postcode_areas, 'postcode_areas_data.shp')
