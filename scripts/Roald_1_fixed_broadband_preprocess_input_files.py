@@ -648,6 +648,58 @@ def estimate_dist_points(premises):
             })
     return dist_points
 
+def generate_link_with_area_id(origin_points, dest_points, matching_areas):
+
+    idx_areas = index.Index()
+    for idx, area in enumerate(matching_areas):
+        idx_areas.insert(idx, shape(area['geometry']).bounds, area)
+
+    lut_dest_points = {}
+    for dest_point in dest_points:
+        lut_dest_points[dest_point['properties']['id']] = dest_point['geometry']['coordinates']
+
+    links = []
+    for origin_point in origin_points:
+        nearest = list(idx_areas.nearest(shape(origin_point['geometry']).bounds, objects=True))
+
+        for candidate in nearest:
+            if shape(candidate.object['geometry']).contains(shape(origin_point['geometry'])):
+                links.append({
+                    'type': "Feature",
+                    'geometry': {
+                        "type": "LineString",
+                        "coordinates": [origin_point['geometry']['coordinates'], lut_dest_points[candidate.object['properties']['id']]]
+                    },
+                    'properties': {
+                        "Origin": origin_point['properties']['id'],
+                        "Dest": candidate.object['properties']['id']
+                    }
+                })
+    return links
+
+def generate_link_with_nearest(origin_points, dest_points):
+
+    idx_dest_points = index.Index()
+    for idx, dest_point in enumerate(dest_points):
+        idx_dest_points.insert(idx, shape(dest_point['geometry']).bounds, dest_point)
+
+    links = []
+    for origin_point in origin_points:
+        nearest = list(idx_dest_points.nearest(shape(origin_point['geometry']).bounds, objects=True))[0]
+
+        links.append({
+            'type': "Feature",
+            'geometry': {
+                "type": "LineString",
+                "coordinates": [origin_point['geometry']['coordinates'], nearest.object['geometry']['coordinates']]
+            },
+            'properties': {
+                "Origin": origin_point['properties']['id'],
+                "Dest": nearest.object['properties']['id']
+            }
+        })
+    return links
+
 def write_shapefile(data, path):
 
     # Translate props to Fiona sink schema
@@ -713,18 +765,38 @@ if __name__ == "__main__":
     print('calculate cabinet locations')
     geojson_layer3_cabinets = calculate_cabinet_locations(geojson_postcode_areas)
 
+    # Generate links
+    print('generate links layer 5')
+    geojson_layer5_premises_links = generate_link_with_area_id(geojson_layer5_premises, geojson_layer4_distributions, geojson_distribution_areas)
+
+    print('generate links layer 4')
+    geojson_layer4_distributions_links = generate_link_with_nearest(geojson_layer4_distributions, geojson_layer3_cabinets)
+
+    print('generate links layer 3')
+    geojson_layer3_cabinets_links = generate_link_with_nearest(geojson_layer3_cabinets, geojson_layer2_exchanges)
+
     # Write assets
     print('write premises')
-    write_shapefile(geojson_layer5_premises, 'layer5_premises.shp')
+    write_shapefile(geojson_layer5_premises, 'assets_layer5_premises.shp')
 
     print('write distribution points')
-    write_shapefile(geojson_layer4_distributions, 'layer4_distributions.shp')
+    write_shapefile(geojson_layer4_distributions, 'assets_layer4_distributions.shp')
 
     print('write cabinets')
-    write_shapefile(geojson_layer3_cabinets, 'layer3_cabinets.shp')
+    write_shapefile(geojson_layer3_cabinets, 'assets_layer3_cabinets.shp')
 
     print('write exchanges')
-    write_shapefile(geojson_layer2_exchanges, 'layer2_exchanges.shp')
+    write_shapefile(geojson_layer2_exchanges, 'assets_layer2_exchanges.shp')
+
+    # Write links
+    print('write links layer5')
+    write_shapefile(geojson_layer5_premises_links, 'links_layer5_premises.shp')
+
+    print('write links layer4')
+    write_shapefile(geojson_layer4_distributions_links, 'links_layer4_distributions.shp')
+
+    print('write links layer3')
+    write_shapefile(geojson_layer3_cabinets_links, 'links_layer3_cabinets.shp')
 
     # Write lookups (for debug purposes)
     print('write postcode_areas')
@@ -735,18 +807,3 @@ if __name__ == "__main__":
 
     print('write exchange_areas')
     write_shapefile(geojson_exchange_areas, '_exchange_areas.shp')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
