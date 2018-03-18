@@ -9,6 +9,7 @@ from shapely.geometry import shape, Point, Polygon, MultiPolygon, mapping
 from shapely.ops import unary_union
 from pyproj import Proj, transform
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
+from scipy.spatial import Voronoi, voronoi_plot_2d
 from rtree import index
 
 from collections import OrderedDict
@@ -23,6 +24,86 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 
 SYSTEM_INPUT_FIXED = os.path.join(BASE_PATH, 'raw')
 SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'processed')
+
+def voronoi_finite_polygons_2d(vor, radius=None):
+    """
+    Reconstruct infinite voronoi regions in a 2D diagram to finite
+    regions.
+    Parameters
+    ----------
+    vor : Voronoi
+        Input diagram
+    radius : float, optional
+        Distance to 'points at infinity'.
+    Returns
+    -------
+    regions : list of tuples
+        Indices of vertices in each revised Voronoi regions.
+    vertices : list of tuples
+        Coordinates for revised Voronoi vertices. Same as coordinates
+        of input vertices, with 'points at infinity' appended to the
+        end.
+    """
+
+    if vor.points.shape[1] != 2:
+        raise ValueError("Requires 2D input")
+
+    new_regions = []
+    new_vertices = vor.vertices.tolist()
+
+    center = vor.points.mean(axis=0)
+    if radius is None:
+        radius = vor.points.ptp().max()
+
+    # Construct a map containing all ridges for a given point
+    all_ridges = {}
+    for (p1, p2), (v1, v2) in zip(vor.ridge_points, vor.ridge_vertices):
+        all_ridges.setdefault(p1, []).append((p2, v1, v2))
+        all_ridges.setdefault(p2, []).append((p1, v1, v2))
+
+    # Reconstruct infinite regions
+    for p1, region in enumerate(vor.point_region):
+        vertices = vor.regions[region]
+
+        if all(v >= 0 for v in vertices):
+            # finite region
+            new_regions.append(vertices)
+            continue
+
+        # reconstruct a non-finite region
+        ridges = all_ridges[p1]
+        new_region = [v for v in vertices if v >= 0]
+
+        for p2, v1, v2 in ridges:
+            if v2 < 0:
+                v1, v2 = v2, v1
+            if v1 >= 0:
+                # finite ridge: already in the region
+                continue
+
+            # Compute the missing endpoint of an infinite ridge
+
+            t = vor.points[p2] - vor.points[p1] # tangent
+            t /= np.linalg.norm(t)
+            n = np.array([-t[1], t[0]])  # normal
+
+            midpoint = vor.points[[p1, p2]].mean(axis=0)
+            direction = np.sign(np.dot(midpoint - center, n)) * n
+            far_point = vor.vertices[v2] + direction * radius
+
+            new_region.append(len(new_vertices))
+            new_vertices.append(far_point.tolist())
+
+        # sort region counterclockwise
+        vs = np.asarray([new_vertices[v] for v in new_region])
+        c = vs.mean(axis=0)
+        angles = np.arctan2(vs[:,1] - c[1], vs[:,0] - c[0])
+        new_region = np.array(new_region)[np.argsort(angles)]
+
+        # finish
+        new_regions.append(new_region.tolist())
+
+    return new_regions, np.asarray(new_vertices)
 
 def read_premises():
 
@@ -291,26 +372,6 @@ def read_exchange_pcd_cabinet_lut():
 
     return pcp_data
 
-def read_cabinets():
-
-    cabinets_data = []
-
-    with open(os.path.join(SYSTEM_INPUT_FIXED,'cambridge_shape_file_analysis', 'pcd_2_cab_2_exchange_data_cambridge.csv'), 'r') as system_file:
-        reader = csv.reader(system_file)
-        next(reader)
-
-        for line in reader:
-            if line[0] in ['EACAM', 'EACRH', 'EAHIS', 'EAMD']:
-                cabinets_data.append({
-                    'OLO': line[0],
-                    'pcd': line[1],
-                    'SAU_NODE_ID': line[2],
-                    'easting': line[3],
-                    'northing': line[4],
-                })
-
-    return cabinets_data
-
 def add_postcode_to_premises(premises, postcode_areas):
 
     joined_premises = []
@@ -331,6 +392,14 @@ def add_postcode_to_premises(premises, postcode_areas):
                 joined_premises.append(n.object)
 
     return joined_premises
+
+def add_distribution_point_to_premises(premises, dbps):
+
+    # Initialze Rtree
+    idx = index.Index()
+
+    for rtree_idx, premise in enumerate(premises):
+        idx.insert(rtree_idx, shape(premise['geometry']).bounds, premise)
 
 def generate_exchange_area(exchanges, merge=True):
 
@@ -418,8 +487,46 @@ def generate_exchange_area(exchanges, merge=True):
                 idx_exchange_areas.insert(merge_with.id, shape(merged_geom['geometry']).bounds, merged_geom)
 
         exchange_areas = [n.object for n in idx_exchange_areas.intersection(idx_exchange_areas.bounds, objects=True)]
-        
+
     return exchange_areas
+
+def generate_distribution_areas(distribution_points):
+
+    # Get Points
+    idx_distribution_areas = index.Index()
+    points = np.empty([len(list(distribution_points)), 2])
+    for idx, distribution_point in enumerate(distribution_points):
+        
+        # Prepare voronoi lookup
+        points[idx] = distribution_point['geometry']['coordinates']
+
+        # Prepare Rtree lookup
+        idx_distribution_areas.insert(idx, shape(distribution_point['geometry']).bounds, distribution_point)
+
+    # Compute Voronoi tesselation
+    vor = Voronoi(points)
+    regions, vertices = voronoi_finite_polygons_2d(vor)
+
+    # Write voronoi polygons
+    distribution_areas = []
+    for region in regions:
+
+        polygon = vertices[region]
+        geom = Polygon(polygon)
+
+        distribution_points = list(idx_distribution_areas.nearest(geom.bounds, 1, objects=True))
+        for point in distribution_points:
+            if geom.contains(shape(point.object['geometry'])):
+                distribution_point = point
+
+        distribution_areas.append({
+            'geometry': mapping(geom),
+            'properties': {
+                'Name': distribution_point.object['properties']['Name']
+            }
+        })
+
+    return distribution_areas
 
 def add_exchange_id_to_postcodes(exchanges, postcode_areas, exchange_to_postcode):
 
@@ -489,22 +596,23 @@ def estimate_dist_points(premises):
     dist_point: list of dict
                 List of dist_points
     """
-    print('start dist point estimation')
-
-    points = np.vstack([[float(premise['northings']), float(premise['eastings'])] for premise in premises])
+    points = np.vstack([[float(i) for i in premise['geometry']['coordinates']] for premise in premises])
     number_of_clusters = int(points.shape[0] / 8)
 
-    kmeans = KMeans(n_clusters=number_of_clusters, random_state=0, max_iter=1).fit(points)
-
-    print('end dist point estimation')
+    kmeans = KMeans(n_clusters=number_of_clusters, n_init=1, max_iter=1, n_jobs=-1, random_state=0, ).fit(points)
 
     dist_points = []
     for idx, dist_point_location in enumerate(kmeans.cluster_centers_):
         dist_points.append({
-            'id': idx,
-            'northings': dist_point_location[0],
-            'eastings': dist_point_location[1]
-        })
+                'type': "Feature",
+                'geometry': {
+                    "type": "Point",
+                    "coordinates": [dist_point_location[0], dist_point_location[1]]
+                },
+                'properties': {
+                    "Name": "dist_point_" + str(idx)
+                }
+            })
     return dist_points
 
 def write_shapefile(data, path):
@@ -532,48 +640,59 @@ if __name__ == "__main__":
 
     SYSTEM_INPUT = os.path.join('data', 'raw')
 
-    # Hierachy
+    # Read lookups
     print('read_pcd_to_exchange_lut')
     lut_exchange_to_pcd = read_exchange_pcd_lut()
 
     # print('read_pcp_to_exchange_lut')
     # lut_exchange_pcd_cabinet = read_exchange_pcd_cabinet_lut()
 
-    # Shapes
-    # print('read premises')
-    # geojson_premises = read_premises()
-
     print('read postcode_areas')
     geojson_postcode_areas = read_postcode_areas()
 
-    '''
-    # print('read cabinets')
-    # cabinets = read_cabinets()
-    '''
+    # Read assets
+    print('read premises')
+    geojson_premises = read_premises()
+
+    print('estimate location of distribution points')
+    geojson_distribution_points = estimate_dist_points(geojson_premises)
 
     print('read exchanges')
     geojson_exchanges = read_exchanges()
 
+    # Process lookups
     print('add exchange id to postcode areas')
     geojson_postcode_areas = add_exchange_id_to_postcodes(geojson_exchanges, geojson_postcode_areas, lut_exchange_to_pcd)
 
-    # print('add postcode to premises')
-    # geojson_premises = add_postcode_to_premises(geojson_premises, geojson_postcode_areas)
+    print('generate distribution areas')
+    geojson_distribution_areas = generate_distribution_areas(geojson_distribution_points)
 
     print('generate exchange areas')
     geojson_exchange_areas = generate_exchange_area(geojson_postcode_areas)
 
-    # print('write premises')
-    # write_shapefile(geojson_premises, 'premises_data.shp')
+    # Process assets    
+    print('add postcode to premises')
+    geojson_premises = add_postcode_to_premises(geojson_premises, geojson_postcode_areas)
 
-    print('write postcode_areas')
-    write_shapefile(geojson_postcode_areas, 'postcode_areas_data.shp')
+    # Write assets
+    print('write premises')
+    write_shapefile(geojson_premises, 'premises.shp')
+
+    print('write distribution points')
+    write_shapefile(geojson_distribution_points, 'distribution_points.shp')
 
     print('write exchanges')
     write_shapefile(geojson_exchanges, 'exchanges.shp')
 
+    # Write lookups (for debug purposes)
+    print('write postcode_areas')
+    write_shapefile(geojson_postcode_areas, '_postcode_areas.shp')
+
+    print('write distribution_areas')
+    write_shapefile(geojson_distribution_areas, '_distribution_areas.shp')
+
     print('write exchange_areas')
-    write_shapefile(geojson_exchange_areas, 'exchange_areas.shp')
+    write_shapefile(geojson_exchange_areas, '_exchange_areas.shp')
 
 
 
