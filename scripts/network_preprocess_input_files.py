@@ -369,6 +369,30 @@ def read_pcd_to_cabinet_lut():
 
     return pcp_data
 
+def read_postcode_technology_lut():
+
+    SYSTEM_INPUT_NETWORK = os.path.join(SYSTEM_INPUT_FIXED, 'offcom_initial_system', 'fixed-postcode-2017')
+
+    postcode_technology_lut = []
+    for filename in os.listdir(SYSTEM_INPUT_NETWORK):
+        with open(os.path.join(SYSTEM_INPUT_NETWORK, filename), 'r', encoding='utf8', errors='replace') as system_file:
+            reader = csv.reader(system_file)
+            next(reader)    
+            for line in reader:
+                postcode_technology_lut.append({
+                    'postcode': line[0],
+                    'sfbb_availability': line[3],
+                    'ufbb_availability': line[4],
+                    'fttp_availability': line[36],
+                    'max_download_speed': line[12],
+                    'max_upload_speed': line[20],
+                    'average_data_dowload_adsl': line[33],
+                    'average_data_dowload_sfbb': line[34],
+                    'average_data_dowload_ufbb': line[35],                   
+                })
+
+    return postcode_technology_lut  
+
 def add_postcode_to_premises(premises, postcode_areas):
 
     joined_premises = []
@@ -389,6 +413,32 @@ def add_postcode_to_premises(premises, postcode_areas):
                 joined_premises.append(n.object)
 
     return joined_premises
+
+def add_technology_to_premises(premises, technologies_lut):
+
+    # Process lookup into dictionary
+    pcd_to_technology = {}
+    for technology in technologies_lut:
+        pcd_to_technology[technology['postcode']] = technology
+        del pcd_to_technology[technology['postcode']]['postcode']
+
+    # Add properties
+    for premise in premises:
+        if premise['properties']['postcode'] in pcd_to_technology:
+            premise['properties'].update(pcd_to_technology[premise['properties']['postcode']])
+        else:
+            premise['properties'].update({
+                'max_upload_speed': 0, 
+                'ufbb_availability': 0, 
+                'max_download_speed': 0, 
+                'average_data_dowload_ufbb': 0, 
+                'fttp_availability': 0, 
+                'average_data_dowload_adsl': 0, 
+                'average_data_dowload_sfbb': 0, 
+                'sfbb_availability': 0
+            })
+    
+    return premises
 
 def add_distribution_point_to_premises(premises, dbps):
 
@@ -735,6 +785,9 @@ if __name__ == "__main__":
     print('read postcode_areas')
     geojson_postcode_areas = read_postcode_areas()
 
+    print('read pcd_technology_lut')
+    lut_pcd_technology = read_postcode_technology_lut()
+
     # Read assets
     print('read premises')
     geojson_layer5_premises = read_premises()
@@ -761,6 +814,9 @@ if __name__ == "__main__":
     # Process assets    
     print('add postcode to premises')
     geojson_layer5_premises = add_postcode_to_premises(geojson_layer5_premises, geojson_postcode_areas)
+
+    print('add technology to premises')
+    geojson_layer5_premises = add_technology_to_premises(geojson_layer5_premises, lut_pcd_technology)
 
     print('calculate cabinet locations')
     geojson_layer3_cabinets = calculate_cabinet_locations(geojson_postcode_areas)
