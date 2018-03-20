@@ -681,20 +681,32 @@ def add_technology_to_premises(premises, postcode_areas):
         fttp_avail = int(postcode_area['properties']['fttp_avail'])
         ufbb_avail = int(postcode_area['properties']['ufbb_avail'])
         sfbb_avail = int(postcode_area['properties']['sfbb_avail'])
+        adsl_avail = 100 - fttp_avail - ufbb_avail - sfbb_avail
 
-        total_ratio = fttp_avail + ufbb_avail + sfbb_avail
-        if total_ratio == 0:
-            technologies = ['copper'] * number_of_premises
-        else:
-            number_of_fiber = round((fttp_avail / total_ratio) * number_of_premises)
-            number_of_coax = round((ufbb_avail / total_ratio) * number_of_premises)
-            number_of_copper = round((sfbb_avail / total_ratio) * number_of_premises)
-            technologies = ['fiber'] * number_of_fiber + ['coax'] * number_of_coax + ['copper'] * number_of_copper
-            random.shuffle(technologies)
+        number_of_fttp= round((fttp_avail / 100) * number_of_premises)
+        number_of_ufbb = round((ufbb_avail / 100) * number_of_premises)
+        number_of_fttc = round((sfbb_avail / 100) * (number_of_premises * 0.8)) # Todo calculate on national scale
+        number_of_docsis3 = round((sfbb_avail / 100) * (number_of_premises * 0.2))
+        number_of_adsl = round((adsl_avail / 100) * number_of_premises)
+
+        technologies =  ['FFTP'] * number_of_fttp 
+        technologies += ['G.fast'] * number_of_ufbb 
+        technologies += ['FTTC'] * number_of_fttc
+        technologies += ['DOCSIS3'] * number_of_docsis3
+        technologies += ['ADSL'] * number_of_adsl
+        random.shuffle(technologies)
 
         # Allocate broadband technology to premises
         for premise, technology in zip(premises_by_postcode[postcode_area['properties']['POSTCODE']], technologies):
-            premise['properties']['final_drop'] = technology
+            premise['properties']['connection'] = technology
+
+            if technology in ['FFTP']:
+                premise['properties']['final_drop'] = 'fiber'
+            elif technology in ['G.fast', 'FTTC', 'ADSL']:
+                premise['properties']['final_drop'] = 'copper'
+            elif technology in ['DOCSIS3']:
+                premise['properties']['final_drop'] = 'coax'
+
             joined_premises.append(premise)
 
     return joined_premises
