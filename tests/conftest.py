@@ -6,7 +6,7 @@ import pytest
 from pytest import fixture
 from shapely.geometry import Point, LineString
 
-from digital_comms.fixed_model.network_structure import ICTManager
+from digital_comms.network_model.network_structure import ICTManager
 
 @fixture(scope='function')
 def setup_lad():
