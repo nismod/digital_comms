@@ -105,159 +105,6 @@ def voronoi_finite_polygons_2d(vor, radius=None):
 
     return new_regions, np.asarray(new_vertices)
 
-def read_premises():
-
-    """
-    Reads in premises points from the OS AddressBase data (.csv)
-
-    Data Schema
-    ----------
-    * id: :obj:`int`
-        Unique Premises ID
-    * oa: :obj:`str`
-        ONS output area code
-    * residential address count: obj:'str'
-        Number of residential addresses
-    * non-res address count: obj:'str'
-        Number of non-residential addresses
-    * postgis geom: obj:'str'
-        Postgis reference
-    * E: obj:'float'
-        Easting coordinate
-    * N: obj:'float'
-        Northing coordinate
-
-    Returns
-    -------
-    array: with GeoJSON dicts containing shapes and attributes
-    """
-
-    premises_data = []
-
-    with open(os.path.join(SYSTEM_INPUT_FIXED, 'layer_5_premises', 'cambridge_points.csv'), 'r') as system_file:
-        reader = csv.reader(system_file)
-        next(reader)
-        for line in reader:
-            premises_data.append({
-                'type': "Feature",
-                'geometry': {
-                    "type": "Point",
-                    "coordinates": [float(line[5]), float(line[6])]
-                },
-                'properties': {
-                    'id': 'premise_' + line[0],
-                    'oa': line[1],
-                    'residential_address_count': line[2],
-                    'non_residential_address_count': line[3],
-                    'postgis_geom': line[4]
-                }
-            })
-
-    # remove 'None' and replace with '0'
-    for idx, premise in enumerate(premises_data):
-        if premise['properties']['residential_address_count'] == 'None':
-            premises_data[idx]['properties']['residential_address_count'] = '0'
-        if premise['properties']['non_residential_address_count'] == 'None':
-            premises_data[idx]['properties']['non_residential_address_count'] = '0'
-
-    return premises_data
-
-def read_postcode_areas():
-    '''
-    Read postcodes shapes, 
-    * Processing: Eliminate vertical postcodes, merge with best neighbour
-    '''
-
-    postcode_areas = []
-
-    # Initialze Rtree
-    idx = index.Index()
-
-    with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'postcode_shapes', 'cb.shp'), 'r') as source:
-
-        # Store shapes in Rtree
-        for src_shape in source:
-            idx.insert(int(src_shape['id']), shape(src_shape['geometry']).bounds, src_shape)
-
-        # Split list in regular and vertical postcodes
-        postcodes = {}
-        vertical_postcodes = {}
-
-        for x in source:
-
-            x['properties']['POSTCODE'] = x['properties']['POSTCODE'].replace(" ", "")
-            if x['properties']['POSTCODE'].startswith('V'):
-                vertical_postcodes[x['id']] = x
-            else:
-                postcodes[x['id']] = x
-
-        for key, f in vertical_postcodes.items():
-
-            vpost_geom = shape(f['geometry'])
-            best_neighbour = {'id': 0, 'intersection': 0}
-
-            # Find best neighbour
-            for n in idx.intersection((vpost_geom.bounds), objects=True):
-                if shape(n.object['geometry']).intersection(vpost_geom).length > best_neighbour['intersection'] and n.object['id'] != f['id']:
-                    best_neighbour['id'] = n.object['id']
-                    best_neighbour['intersection'] = shape(n.object['geometry']).intersection(vpost_geom).length
-
-            # Merge with best neighbour
-            neighbour = postcodes[best_neighbour['id']]
-            merged_geom = unary_union([shape(neighbour['geometry']), vpost_geom])
-
-            merged_postcode = {
-                'id': neighbour['id'].replace(" ", ""),
-                'properties': neighbour['properties'],
-                'geometry': mapping(merged_geom)
-            }
-
-            try:
-                postcodes[merged_postcode['id']] = merged_postcode
-            except:
-                raise Exception
-
-        for key, p in postcodes.items():
-            p.pop('id')
-            postcode_areas.append(p)
-
-    return postcode_areas
-
-def read_pcp():
-    '''
-    contains any postcode-to-cabinet-to-exchange information.
-
-    Source: 1_fixed_broadband_network_hierachy_data.py
-    '''
-    return
-
-def read_exchanges():
-    '''
-    '''
-    exchanges = []
-
-    with open(os.path.join(SYSTEM_INPUT_FIXED, 'layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
-        reader = csv.reader(system_file)
-        next(reader)
-    
-        for line in reader:
-            exchanges.append({
-                'type': "Feature",
-                'geometry': {
-                    "type": "Point",
-                    "coordinates": [float(line[5]), float(line[6])]
-                },
-                'properties': {
-                    'id': 'exchange_' + line[1],
-                    'Name': line[2],
-                    'pcd': line[0],
-                    'Region': line[3],
-                    'County': line[4]
-                }
-            })
-
-    return exchanges
-
 def read_pcd_to_exchange_lut():
     '''
     contains any postcode-to-exchange information.
@@ -369,6 +216,67 @@ def read_pcd_to_cabinet_lut():
 
     return pcp_data
 
+def read_postcode_areas():
+    '''
+    Read postcodes shapes, 
+    * Processing: Eliminate vertical postcodes, merge with best neighbour
+    '''
+
+    postcode_areas = []
+
+    # Initialze Rtree
+    idx = index.Index()
+
+    with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'postcode_shapes', 'cb.shp'), 'r') as source:
+
+        # Store shapes in Rtree
+        for src_shape in source:
+            idx.insert(int(src_shape['id']), shape(src_shape['geometry']).bounds, src_shape)
+
+        # Split list in regular and vertical postcodes
+        postcodes = {}
+        vertical_postcodes = {}
+
+        for x in source:
+
+            x['properties']['POSTCODE'] = x['properties']['POSTCODE'].replace(" ", "")
+            if x['properties']['POSTCODE'].startswith('V'):
+                vertical_postcodes[x['id']] = x
+            else:
+                postcodes[x['id']] = x
+
+        for key, f in vertical_postcodes.items():
+
+            vpost_geom = shape(f['geometry'])
+            best_neighbour = {'id': 0, 'intersection': 0}
+
+            # Find best neighbour
+            for n in idx.intersection((vpost_geom.bounds), objects=True):
+                if shape(n.object['geometry']).intersection(vpost_geom).length > best_neighbour['intersection'] and n.object['id'] != f['id']:
+                    best_neighbour['id'] = n.object['id']
+                    best_neighbour['intersection'] = shape(n.object['geometry']).intersection(vpost_geom).length
+
+            # Merge with best neighbour
+            neighbour = postcodes[best_neighbour['id']]
+            merged_geom = unary_union([shape(neighbour['geometry']), vpost_geom])
+
+            merged_postcode = {
+                'id': neighbour['id'].replace(" ", ""),
+                'properties': neighbour['properties'],
+                'geometry': mapping(merged_geom)
+            }
+
+            try:
+                postcodes[merged_postcode['id']] = merged_postcode
+            except:
+                raise Exception
+
+        for key, p in postcodes.items():
+            p.pop('id')
+            postcode_areas.append(p)
+
+    return postcode_areas
+
 def read_postcode_technology_lut():
 
     SYSTEM_INPUT_NETWORK = os.path.join(SYSTEM_INPUT_FIXED, 'offcom_initial_system', 'fixed-postcode-2017')
@@ -391,87 +299,226 @@ def read_postcode_technology_lut():
                     'average_data_dowload_ufbb': line[35],                   
                 })
 
-    return postcode_technology_lut  
+    return postcode_technology_lut
 
-def add_postcode_to_premises(premises, postcode_areas):
+def read_premises():
 
-    joined_premises = []
+    """
+    Reads in premises points from the OS AddressBase data (.csv)
 
-    # Initialze Rtree
-    idx = index.Index()
+    Data Schema
+    ----------
+    * id: :obj:`int`
+        Unique Premises ID
+    * oa: :obj:`str`
+        ONS output area code
+    * residential address count: obj:'str'
+        Number of residential addresses
+    * non-res address count: obj:'str'
+        Number of non-residential addresses
+    * postgis geom: obj:'str'
+        Postgis reference
+    * E: obj:'float'
+        Easting coordinate
+    * N: obj:'float'
+        Northing coordinate
 
-    for rtree_idx, premise in enumerate(premises):
-        idx.insert(rtree_idx, shape(premise['geometry']).bounds, premise)
+    Returns
+    -------
+    array: with GeoJSON dicts containing shapes and attributes
+    """
 
-    # Join the two
-    for postcode_area in postcode_areas:
-        for n in idx.intersection((shape(postcode_area['geometry']).bounds), objects=True):
-            postcode_area_shape = shape(postcode_area['geometry'])
-            premise_shape = shape(n.object['geometry'])
-            if postcode_area_shape.contains(premise_shape):
-                n.object['properties']['postcode'] = postcode_area['properties']['POSTCODE']
-                joined_premises.append(n.object)
+    premises_data = []
 
-    return joined_premises
-
-def add_technology_to_premises(premises, technologies_lut):
-
-    # Process lookup into dictionary
-    pcd_to_technology = {}
-    for technology in technologies_lut:
-        pcd_to_technology[technology['postcode']] = technology
-        del pcd_to_technology[technology['postcode']]['postcode']
-
-    # Add properties
-    for premise in premises:
-        if premise['properties']['postcode'] in pcd_to_technology:
-            premise['properties'].update(pcd_to_technology[premise['properties']['postcode']])
-        else:
-            premise['properties'].update({
-                'max_upload_speed': 0, 
-                'ufbb_availability': 0, 
-                'max_download_speed': 0, 
-                'average_data_dowload_ufbb': 0, 
-                'fttp_availability': 0, 
-                'average_data_dowload_adsl': 0, 
-                'average_data_dowload_sfbb': 0, 
-                'sfbb_availability': 0
-            })
-    
-    return premises
-
-def add_distribution_point_to_premises(premises, dbps):
-
-    # Initialze Rtree
-    idx = index.Index()
-
-    for rtree_idx, premise in enumerate(premises):
-        idx.insert(rtree_idx, shape(premise['geometry']).bounds, premise)
-
-def calculate_cabinet_locations(postcode_areas):
-    '''
-    Put a cabinet in the center of the set of postcode areas that is served
-    '''
-    cabinet_by_id_lut = defaultdict(list)
-
-    for area in postcode_areas:
-        cabinet_by_id_lut[area['properties']['CAB_ID']].append(shape(area['geometry']))
-    
-    cabinets = []
-    for cabinet_id in cabinet_by_id_lut:
-        if cabinet_id != "": 
-            cabinet_postcodes_geom = MultiPolygon(cabinet_by_id_lut[cabinet_id])
-
-            cabinets.append({
+    with open(os.path.join(SYSTEM_INPUT_FIXED, 'layer_5_premises', 'cambridge_points.csv'), 'r') as system_file:
+        reader = csv.reader(system_file)
+        next(reader)
+        for line in reader:
+            premises_data.append({
                 'type': "Feature",
-                'geometry': mapping(cabinet_postcodes_geom.centroid),
+                'geometry': {
+                    "type": "Point",
+                    "coordinates": [float(line[5]), float(line[6])]
+                },
                 'properties': {
-                    'id': 'cabinet_' + cabinet_id
+                    'id': 'premise_' + line[0],
+                    'oa': line[1],
+                    'residential_address_count': line[2],
+                    'non_residential_address_count': line[3],
+                    'postgis_geom': line[4]
                 }
             })
 
-    return cabinets
+    # remove 'None' and replace with '0'
+    for idx, premise in enumerate(premises_data):
+        if premise['properties']['residential_address_count'] == 'None':
+            premises_data[idx]['properties']['residential_address_count'] = '0'
+        if premise['properties']['non_residential_address_count'] == 'None':
+            premises_data[idx]['properties']['non_residential_address_count'] = '0'
+
+    return premises_data
+
+def estimate_dist_points(premises):
+    """Estimate distribution point locations.
+
+    Parameters
+    ----------
+    cabinets: list of dict
+        List of cabinets, each providing a dict with properties and location of the cabinet
+
+    Returns
+    -------
+    dist_point: list of dict
+                List of dist_points
+    """
+    points = np.vstack([[float(i) for i in premise['geometry']['coordinates']] for premise in premises])
+    number_of_clusters = int(points.shape[0] / 8)
+
+    kmeans = KMeans(n_clusters=number_of_clusters, n_init=1, max_iter=1, n_jobs=-1, random_state=0, ).fit(points)
+
+    dist_points = []
+    for idx, dist_point_location in enumerate(kmeans.cluster_centers_):
+        dist_points.append({
+                'type': "Feature",
+                'geometry': {
+                    "type": "Point",
+                    "coordinates": [dist_point_location[0], dist_point_location[1]]
+                },
+                'properties': {
+                    "id": "distribution_" + str(idx)
+                }
+            })
+    return dist_points
+
+def read_exchanges():
+    '''
+    '''
+    exchanges = []
+
+    with open(os.path.join(SYSTEM_INPUT_FIXED, 'layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
+        reader = csv.reader(system_file)
+        next(reader)
+    
+        for line in reader:
+            exchanges.append({
+                'type': "Feature",
+                'geometry': {
+                    "type": "Point",
+                    "coordinates": [float(line[5]), float(line[6])]
+                },
+                'properties': {
+                    'id': 'exchange_' + line[1],
+                    'Name': line[2],
+                    'pcd': line[0],
+                    'Region': line[3],
+                    'County': line[4]
+                }
+            })
+
+    return exchanges  
+
+def add_exchange_id_to_postcode_areas(exchanges, postcode_areas, exchange_to_postcode):
+
+    idx_exchanges = index.Index()
+    lut_exchanges = {}
+
+    # Read the exchange points
+    for idx, exchange in enumerate(exchanges):
+
+        # Add to Rtree and lookup table
+        idx_exchanges.insert(idx, tuple(map(int, exchange['geometry']['coordinates'])) + tuple(map(int, exchange['geometry']['coordinates'])), exchange['properties']['id'])
+        lut_exchanges[exchange['properties']['id']] = {
+            'Name': exchange['properties']['Name'],
+            'pcd': exchange['properties']['pcd'].replace(" ", ""),
+            'Region': exchange['properties']['Region'],
+            'County': exchange['properties']['County'],
+        }
+
+    # Read the postcode-to-cabinet-to-exchange lookup file
+    lut_pcb2cab = {}
+
+    for idx, row in enumerate(exchange_to_postcode):
+        lut_pcb2cab[row['postcode']] = row['exchange_id']
+
+    # Connect each postcode area to an exchange
+    for postcode_area in postcode_areas:
+
+        postcode = postcode_area['properties']['POSTCODE']
+
+        if postcode in lut_pcb2cab:
+
+            # Postcode-to-cabinet-to-exchange association
+            postcode_area['properties']['EX_ID'] = lut_pcb2cab[postcode]
+            postcode_area['properties']['EX_SRC'] = 'EXISTING POSTCODE DATA'
+
+        else:
+
+            # Find nearest exchange
+            nearest = [n.object for n in idx_exchanges.nearest((shape(postcode_area['geometry']).bounds), 1, objects=True)]
+            postcode_area['properties']['EX_ID'] = nearest[0]
+            postcode_area['properties']['EX_SRC'] = 'ESTIMATED NEAREST'
+
+        # Match the exchange ID with remaining exchange info
+        if postcode_area['properties']['EX_ID'] in lut_exchanges:
+            postcode_area['properties']['EX_NAME'] = lut_exchanges[postcode_area['properties']['EX_ID']]['Name']
+            postcode_area['properties']['EX_PCD'] = lut_exchanges[postcode_area['properties']['EX_ID']]['pcd']
+            postcode_area['properties']['EX_REGION'] = lut_exchanges[postcode_area['properties']['EX_ID']]['Region']
+            postcode_area['properties']['EX_COUNTY'] = lut_exchanges[postcode_area['properties']['EX_ID']]['County']
+        else:
+            postcode_area['properties']['EX_NAME'] = ""
+            postcode_area['properties']['EX_PCD'] = ""
+            postcode_area['properties']['EX_REGION'] = ""
+            postcode_area['properties']['EX_COUNTY'] = ""
+
+    return postcode_areas
+
+def add_cabinet_id_to_postcode_areas(postcode_areas, pcd_to_cabinet):
+    
+    for postcode_area in postcode_areas:
+        if postcode_area['properties']['POSTCODE'] in pcd_to_cabinet:
+            postcode_area['properties']['CAB_ID'] = pcd_to_cabinet[postcode_area['properties']['POSTCODE']]['cabinet_id']
+        else:
+            postcode_area['properties']['CAB_ID'] = ""
+    
+    return postcode_areas
+
+def generate_distribution_areas(distribution_points):
+
+    # Get Points
+    idx_distribution_areas = index.Index()
+    points = np.empty([len(list(distribution_points)), 2])
+    for idx, distribution_point in enumerate(distribution_points):
         
+        # Prepare voronoi lookup
+        points[idx] = distribution_point['geometry']['coordinates']
+
+        # Prepare Rtree lookup
+        idx_distribution_areas.insert(idx, shape(distribution_point['geometry']).bounds, distribution_point)
+
+    # Compute Voronoi tesselation
+    vor = Voronoi(points)
+    regions, vertices = voronoi_finite_polygons_2d(vor)
+
+    # Write voronoi polygons
+    distribution_areas = []
+    for region in regions:
+
+        polygon = vertices[region]
+        geom = Polygon(polygon)
+
+        distribution_points = list(idx_distribution_areas.nearest(geom.bounds, 1, objects=True))
+        for point in distribution_points:
+            if geom.contains(shape(point.object['geometry'])):
+                distribution_point = point
+
+        distribution_areas.append({
+            'geometry': mapping(geom),
+            'properties': {
+                'id': distribution_point.object['properties']['id']
+            }
+        })
+
+    return distribution_areas
 
 def generate_exchange_area(exchanges, merge=True):
 
@@ -562,141 +609,76 @@ def generate_exchange_area(exchanges, merge=True):
 
     return exchange_areas
 
-def generate_distribution_areas(distribution_points):
+def add_postcode_to_premises(premises, postcode_areas):
 
-    # Get Points
-    idx_distribution_areas = index.Index()
-    points = np.empty([len(list(distribution_points)), 2])
-    for idx, distribution_point in enumerate(distribution_points):
-        
-        # Prepare voronoi lookup
-        points[idx] = distribution_point['geometry']['coordinates']
+    joined_premises = []
 
-        # Prepare Rtree lookup
-        idx_distribution_areas.insert(idx, shape(distribution_point['geometry']).bounds, distribution_point)
+    # Initialze Rtree
+    idx = index.Index()
 
-    # Compute Voronoi tesselation
-    vor = Voronoi(points)
-    regions, vertices = voronoi_finite_polygons_2d(vor)
+    for rtree_idx, premise in enumerate(premises):
+        idx.insert(rtree_idx, shape(premise['geometry']).bounds, premise)
 
-    # Write voronoi polygons
-    distribution_areas = []
-    for region in regions:
-
-        polygon = vertices[region]
-        geom = Polygon(polygon)
-
-        distribution_points = list(idx_distribution_areas.nearest(geom.bounds, 1, objects=True))
-        for point in distribution_points:
-            if geom.contains(shape(point.object['geometry'])):
-                distribution_point = point
-
-        distribution_areas.append({
-            'geometry': mapping(geom),
-            'properties': {
-                'id': distribution_point.object['properties']['id']
-            }
-        })
-
-    return distribution_areas
-
-def add_exchange_id_to_postcode_areas(exchanges, postcode_areas, exchange_to_postcode):
-
-    idx_exchanges = index.Index()
-    lut_exchanges = {}
-
-    # Read the exchange points
-    for idx, exchange in enumerate(exchanges):
-
-        # Add to Rtree and lookup table
-        idx_exchanges.insert(idx, tuple(map(int, exchange['geometry']['coordinates'])) + tuple(map(int, exchange['geometry']['coordinates'])), exchange['properties']['id'])
-        lut_exchanges[exchange['properties']['id']] = {
-            'Name': exchange['properties']['Name'],
-            'pcd': exchange['properties']['pcd'].replace(" ", ""),
-            'Region': exchange['properties']['Region'],
-            'County': exchange['properties']['County'],
-        }
-
-    # Read the postcode-to-cabinet-to-exchange lookup file
-    lut_pcb2cab = {}
-
-    for idx, row in enumerate(exchange_to_postcode):
-        lut_pcb2cab[row['postcode']] = row['exchange_id']
-
-    # Connect each postcode area to an exchange
+    # Join the two
     for postcode_area in postcode_areas:
+        for n in idx.intersection((shape(postcode_area['geometry']).bounds), objects=True):
+            postcode_area_shape = shape(postcode_area['geometry'])
+            premise_shape = shape(n.object['geometry'])
+            if postcode_area_shape.contains(premise_shape):
+                n.object['properties']['postcode'] = postcode_area['properties']['POSTCODE']
+                joined_premises.append(n.object)
 
-        postcode = postcode_area['properties']['POSTCODE']
+    return joined_premises
 
-        if postcode in lut_pcb2cab:
+def add_technology_to_premises(premises, technologies_lut):
 
-            # Postcode-to-cabinet-to-exchange association
-            postcode_area['properties']['EX_ID'] = lut_pcb2cab[postcode]
-            postcode_area['properties']['EX_SRC'] = 'EXISTING POSTCODE DATA'
+    # Process lookup into dictionary
+    pcd_to_technology = {}
+    for technology in technologies_lut:
+        pcd_to_technology[technology['postcode']] = technology
+        del pcd_to_technology[technology['postcode']]['postcode']
 
+    # Add properties
+    for premise in premises:
+        if premise['properties']['postcode'] in pcd_to_technology:
+            premise['properties'].update(pcd_to_technology[premise['properties']['postcode']])
         else:
-
-            # Find nearest exchange
-            nearest = [n.object for n in idx_exchanges.nearest((shape(postcode_area['geometry']).bounds), 1, objects=True)]
-            postcode_area['properties']['EX_ID'] = nearest[0]
-            postcode_area['properties']['EX_SRC'] = 'ESTIMATED NEAREST'
-
-        # Match the exchange ID with remaining exchange info
-        if postcode_area['properties']['EX_ID'] in lut_exchanges:
-            postcode_area['properties']['EX_NAME'] = lut_exchanges[postcode_area['properties']['EX_ID']]['Name']
-            postcode_area['properties']['EX_PCD'] = lut_exchanges[postcode_area['properties']['EX_ID']]['pcd']
-            postcode_area['properties']['EX_REGION'] = lut_exchanges[postcode_area['properties']['EX_ID']]['Region']
-            postcode_area['properties']['EX_COUNTY'] = lut_exchanges[postcode_area['properties']['EX_ID']]['County']
-        else:
-            postcode_area['properties']['EX_NAME'] = ""
-            postcode_area['properties']['EX_PCD'] = ""
-            postcode_area['properties']['EX_REGION'] = ""
-            postcode_area['properties']['EX_COUNTY'] = ""
-
-    return postcode_areas
-
-def add_cabinet_id_to_postcode_areas(postcode_areas, pcd_to_cabinet):
+            premise['properties'].update({
+                'max_upload_speed': 0, 
+                'ufbb_availability': 0, 
+                'max_download_speed': 0, 
+                'average_data_dowload_ufbb': 0, 
+                'fttp_availability': 0, 
+                'average_data_dowload_adsl': 0, 
+                'average_data_dowload_sfbb': 0, 
+                'sfbb_availability': 0
+            })
     
-    for postcode_area in postcode_areas:
-        if postcode_area['properties']['POSTCODE'] in pcd_to_cabinet:
-            postcode_area['properties']['CAB_ID'] = pcd_to_cabinet[postcode_area['properties']['POSTCODE']]['cabinet_id']
-        else:
-            postcode_area['properties']['CAB_ID'] = ""
+    return premises
+
+def calculate_cabinet_locations(postcode_areas):
+    '''
+    Put a cabinet in the center of the set of postcode areas that is served
+    '''
+    cabinet_by_id_lut = defaultdict(list)
+
+    for area in postcode_areas:
+        cabinet_by_id_lut[area['properties']['CAB_ID']].append(shape(area['geometry']))
     
-    return postcode_areas
+    cabinets = []
+    for cabinet_id in cabinet_by_id_lut:
+        if cabinet_id != "": 
+            cabinet_postcodes_geom = MultiPolygon(cabinet_by_id_lut[cabinet_id])
 
-
-def estimate_dist_points(premises):
-    """Estimate distribution point locations.
-
-    Parameters
-    ----------
-    cabinets: list of dict
-        List of cabinets, each providing a dict with properties and location of the cabinet
-
-    Returns
-    -------
-    dist_point: list of dict
-                List of dist_points
-    """
-    points = np.vstack([[float(i) for i in premise['geometry']['coordinates']] for premise in premises])
-    number_of_clusters = int(points.shape[0] / 8)
-
-    kmeans = KMeans(n_clusters=number_of_clusters, n_init=1, max_iter=1, n_jobs=-1, random_state=0, ).fit(points)
-
-    dist_points = []
-    for idx, dist_point_location in enumerate(kmeans.cluster_centers_):
-        dist_points.append({
+            cabinets.append({
                 'type': "Feature",
-                'geometry': {
-                    "type": "Point",
-                    "coordinates": [dist_point_location[0], dist_point_location[1]]
-                },
+                'geometry': mapping(cabinet_postcodes_geom.centroid),
                 'properties': {
-                    "id": "distribution_" + str(idx)
+                    'id': 'cabinet_' + cabinet_id
                 }
             })
-    return dist_points
+
+    return cabinets    
 
 def generate_link_with_area_id(origin_points, dest_points, matching_areas):
 
@@ -770,6 +752,13 @@ def write_shapefile(data, path):
         for feature in data:
             sink.write(feature)
 
+def add_distribution_point_to_premises(premises, dbps):
+
+    # Initialze Rtree
+    idx = index.Index()
+
+    for rtree_idx, premise in enumerate(premises):
+        idx.insert(rtree_idx, shape(premise['geometry']).bounds, premise)
 
 if __name__ == "__main__":
 
