@@ -6,7 +6,7 @@ import fiona
 import numpy as np
 import random
 
-from shapely.geometry import shape, Point, Polygon, MultiPolygon, mapping
+from shapely.geometry import shape, Point, Polygon, MultiPolygon, LineString, mapping
 from shapely.ops import unary_union
 from pyproj import Proj, transform
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
@@ -14,6 +14,8 @@ from scipy.spatial import Voronoi, voronoi_plot_2d
 from rtree import index
 
 from collections import OrderedDict, defaultdict
+
+import osmnx as ox, networkx as nx
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
@@ -518,43 +520,63 @@ def add_technology_to_postcode_areas(postcode_areas, technologies_lut):
     
     return postcode_areas
 
-def generate_distribution_areas(distribution_points):
+def generate_voronoi_areas(asset_points):
 
     # Get Points
-    idx_distribution_areas = index.Index()
-    points = np.empty([len(list(distribution_points)), 2])
-    for idx, distribution_point in enumerate(distribution_points):
+    idx_asset_areas = index.Index()
+    points = np.empty([len(list(asset_points)), 2])
+    for idx, asset_point in enumerate(asset_points):
         
         # Prepare voronoi lookup
-        points[idx] = distribution_point['geometry']['coordinates']
+        points[idx] = asset_point['geometry']['coordinates']
 
         # Prepare Rtree lookup
-        idx_distribution_areas.insert(idx, shape(distribution_point['geometry']).bounds, distribution_point)
+        idx_asset_areas.insert(idx, shape(asset_point['geometry']).bounds, asset_point)
 
     # Compute Voronoi tesselation
     vor = Voronoi(points)
     regions, vertices = voronoi_finite_polygons_2d(vor)
 
     # Write voronoi polygons
-    distribution_areas = []
+    asset_areas = []
     for region in regions:
 
         polygon = vertices[region]
         geom = Polygon(polygon)
 
-        distribution_points = list(idx_distribution_areas.nearest(geom.bounds, 1, objects=True))
-        for point in distribution_points:
+        asset_points = list(idx_asset_areas.nearest(geom.bounds, 1, objects=True))
+        for point in asset_points:
             if geom.contains(shape(point.object['geometry'])):
-                distribution_point = point
+                asset_point = point
 
-        distribution_areas.append({
+        asset_areas.append({
             'geometry': mapping(geom),
             'properties': {
-                'id': distribution_point.object['properties']['id']
+                'id': asset_point.object['properties']['id']
             }
         })
 
-    return distribution_areas
+    return asset_areas
+
+def connect_points_to_area(points, areas):
+
+    idx_areas = index.Index()
+    for idx, area in enumerate(areas):
+        idx_areas.insert(idx, shape(area['geometry']).bounds, area)
+
+    lut_points = {}
+    for dest_point in points:
+        lut_points[dest_point['properties']['id']] = dest_point['geometry']['coordinates']
+
+    linked_points = []
+    for point in points:
+        nearest = list(idx_areas.nearest(shape(point['geometry']).bounds, objects=True))
+
+        for candidate in nearest:
+            if shape(candidate.object['geometry']).contains(shape(point['geometry'])):
+                point['properties']['connection'] = candidate.object['properties']['id']
+                linked_points.append(point)
+    return linked_points
 
 def generate_exchange_area(exchanges, merge=True):
 
@@ -676,7 +698,7 @@ def add_technology_to_premises(premises, postcode_areas):
     joined_premises = []
     for postcode_area in postcode_areas:
 
-        # Calculate number of fiber/coax/copper connections
+        # Calculate number of fiber/coax/copper connections in postcode area
         number_of_premises = len(premises_by_postcode[postcode_area['properties']['POSTCODE']])
         fttp_avail = int(postcode_area['properties']['fttp_avail'])
         ufbb_avail = int(postcode_area['properties']['ufbb_avail'])
@@ -696,7 +718,7 @@ def add_technology_to_premises(premises, postcode_areas):
         technologies += ['ADSL'] * number_of_adsl
         random.shuffle(technologies)
 
-        # Allocate broadband technology to premises
+        # Allocate broadband technology and final drop to premises
         for premise, technology in zip(premises_by_postcode[postcode_area['properties']['POSTCODE']], technologies):
             premise['properties']['connection'] = technology
 
@@ -787,6 +809,61 @@ def generate_link_with_nearest(origin_points, dest_points):
         })
     return links
 
+def generate_link_with_area_match(origin_points, dest_points, matching_area):
+
+    ox.config(log_file=True, log_console=True, use_cache=True)
+    G = ox.graph_from_place(['Cambridge, UK'], network_type='walk')
+
+    projUTM = Proj(init='epsg:27700')
+    projWGS84 = Proj(init='epsg:4326')
+
+    links = []
+
+    for area in matching_area:
+
+        print(area['properties'])
+        
+        destination = [point for point in dest_points if point['properties']['id'] == area['properties']['id']][0]
+        origins = [point for point in origin_points if point['properties']['connection'] == area['properties']['id']]
+
+        for origin in origins:
+            print(destination['geometry']['coordinates'])
+            print(origin['geometry']['coordinates'])
+
+            # Find shortest path between the two
+            point1_x, point1_y = transform(projUTM, projWGS84, origin['geometry']['coordinates'][0], origin['geometry']['coordinates'][1])
+            point2_x, point2_y = transform(projUTM, projWGS84, destination['geometry']['coordinates'][0], destination['geometry']['coordinates'][1])
+
+            point1 = (point1_y, point1_x)
+            point2 = (point2_y, point2_x)
+
+            origin_node = ox.get_nearest_node(G, point1)
+            destination_node = ox.get_nearest_node(G, point2)
+
+            if origin_node != destination_node:           
+                # Find the shortest path over the network between these nodes
+                route = nx.shortest_path(G, origin_node, destination_node)
+
+                # Retrieve route nodes and lookup geographical location
+                routeline = []
+                for node in route:
+                    routeline.append((G.nodes[node]['x'], G.nodes[node]['y']))
+                line = LineString(routeline)
+            else:
+                line = LineString([point1, point2])
+
+            # Map to line
+            links.append({
+                'type': "Feature",
+                'geometry': mapping(line),
+                'properties': {
+                    "Origin": origin['properties']['id'],
+                    "Dest": destination['properties']['id']
+                }
+            })
+    return links
+    
+
 def write_shapefile(data, path):
 
     # Translate props to Fiona sink schema
@@ -819,7 +896,7 @@ if __name__ == "__main__":
 
     SYSTEM_INPUT = os.path.join('data', 'raw')
 
-    # # Read lookups
+    # Read lookups
     print('read_pcd_to_exchange_lut')
     lut_pcd_to_exchange = read_pcd_to_exchange_lut()
 
@@ -853,7 +930,7 @@ if __name__ == "__main__":
     geojson_postcode_areas = add_technology_to_postcode_areas(geojson_postcode_areas, lut_pcd_technology)
 
     print('generate distribution areas')
-    geojson_distribution_areas = generate_distribution_areas(geojson_layer4_distributions)
+    geojson_distribution_areas = generate_voronoi_areas(geojson_layer4_distributions)
 
     print('generate exchange areas')
     geojson_exchange_areas = generate_exchange_area(geojson_postcode_areas)
@@ -868,12 +945,18 @@ if __name__ == "__main__":
     print('calculate cabinet locations')
     geojson_layer3_cabinets = calculate_cabinet_locations(geojson_postcode_areas)
 
+    print('generate cabinet areas')
+    geojson_cabinet_areas = generate_voronoi_areas(geojson_layer3_cabinets)
+
+    print('connect distributions')
+    geojson_layer4_distributions = connect_points_to_area(geojson_layer4_distributions, geojson_cabinet_areas)
+
     # Generate links
     print('generate links layer 5')
     geojson_layer5_premises_links = generate_link_with_area_id(geojson_layer5_premises, geojson_layer4_distributions, geojson_distribution_areas)
 
     print('generate links layer 4')
-    geojson_layer4_distributions_links = generate_link_with_nearest(geojson_layer4_distributions, geojson_layer3_cabinets)
+    geojson_layer4_distributions_links = generate_link_with_area_match(geojson_layer4_distributions, geojson_layer3_cabinets, geojson_cabinet_areas)
 
     print('generate links layer 3')
     geojson_layer3_cabinets_links = generate_link_with_nearest(geojson_layer3_cabinets, geojson_layer2_exchanges)
@@ -907,6 +990,9 @@ if __name__ == "__main__":
 
     print('write distribution_areas')
     write_shapefile(geojson_distribution_areas, '_distribution_areas.shp')
+
+    print('write cabinet areas')
+    write_shapefile(geojson_cabinet_areas, '_cabinet_areas.shp')
 
     print('write exchange_areas')
     write_shapefile(geojson_exchange_areas, '_exchange_areas.shp')
