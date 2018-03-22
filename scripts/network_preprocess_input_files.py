@@ -361,7 +361,7 @@ def read_premises():
 
     return premises_data
 
-def estimate_dist_points(premises):
+def estimate_dist_points(premises, cachefile=None):
     """Estimate distribution point locations.
 
     Parameters
@@ -374,12 +374,30 @@ def estimate_dist_points(premises):
     dist_point: list of dict
                 List of dist_points
     """
+    dist_points = []
+
+    # Use previous file if specified
+    if cachefile != None:
+        cachefile = os.path.join(SYSTEM_OUTPUT_FILENAME, cachefile)
+        if os.path.isfile(cachefile):
+            with fiona.open(cachefile, 'r') as source:
+                for f in source:
+                    # Make sure additional properties are not copied
+                    dist_points.append({
+                        'type': "Feature",
+                        'geometry': f['geometry'],
+                        'properties': {
+                            "id": f['properties']['id']
+                        }
+                    })       
+                return dist_points
+
+    # Generate points
     points = np.vstack([[float(i) for i in premise['geometry']['coordinates']] for premise in premises])
     number_of_clusters = int(points.shape[0] / 8)
 
     kmeans = KMeans(n_clusters=number_of_clusters, n_init=1, max_iter=1, n_jobs=-1, random_state=0, ).fit(points)
 
-    dist_points = []
     for idx, dist_point_location in enumerate(kmeans.cluster_centers_):
         dist_points.append({
                 'type': "Feature",
@@ -390,7 +408,8 @@ def estimate_dist_points(premises):
                 'properties': {
                     "id": "distribution_" + str(idx)
                 }
-            })
+            })        
+
     return dist_points
 
 def read_exchanges():
@@ -809,9 +828,9 @@ def generate_link_with_nearest(origin_points, dest_points):
         })
     return links
 
-def generate_link_with_area_match(origin_points, dest_points, matching_area):
+def generate_link_with_area_match(origin_points, dest_points, matching_area, cachefile=None):
 
-    ox.config(log_file=True, log_console=True, use_cache=True)
+    ox.config(log_file=False, log_console=False, use_cache=True)
     G = ox.graph_from_place(['Cambridge, UK'], network_type='walk')
 
     projUTM = Proj(init='epsg:27700')
@@ -819,48 +838,69 @@ def generate_link_with_area_match(origin_points, dest_points, matching_area):
 
     links = []
 
-    for area in matching_area:
+    lookup = {}
+    if cachefile != None:
+        cachefile = os.path.join(SYSTEM_OUTPUT_FILENAME, cachefile)
+        if os.path.isfile(cachefile):
+            with fiona.open(cachefile, 'r') as source:
+                for f in source:
+                    lookup[f['geometry']['coordinates'][0]] = f['geometry']['coordinates']
+                the_keys = list(lookup.keys())
+                print(the_keys[0])
 
-        print(area['properties'])
+    for area in matching_area:
         
         destination = [point for point in dest_points if point['properties']['id'] == area['properties']['id']][0]
         origins = [point for point in origin_points if point['properties']['connection'] == area['properties']['id']]
 
         for origin in origins:
-            print(destination['geometry']['coordinates'])
-            print(origin['geometry']['coordinates'])
 
-            # Find shortest path between the two
-            point1_x, point1_y = transform(projUTM, projWGS84, origin['geometry']['coordinates'][0], origin['geometry']['coordinates'][1])
-            point2_x, point2_y = transform(projUTM, projWGS84, destination['geometry']['coordinates'][0], destination['geometry']['coordinates'][1])
+            if tuple(origin['geometry']['coordinates']) not in lookup:
 
-            point1 = (point1_y, point1_x)
-            point2 = (point2_y, point2_x)
+                origin_x = origin['geometry']['coordinates'][0]
+                origin_y = origin['geometry']['coordinates'][1]
+                dest_x = destination['geometry']['coordinates'][0]
+                dest_y = destination['geometry']['coordinates'][1]
 
-            origin_node = ox.get_nearest_node(G, point1)
-            destination_node = ox.get_nearest_node(G, point2)
+                # Find shortest path between the two
+                point1_x, point1_y = transform(projUTM, projWGS84, origin_x, origin_y)
+                point2_x, point2_y = transform(projUTM, projWGS84, dest_x, dest_y)
 
-            if origin_node != destination_node:           
-                # Find the shortest path over the network between these nodes
-                route = nx.shortest_path(G, origin_node, destination_node)
+                point1 = (point1_y, point1_x)
+                point2 = (point2_y, point2_x)
 
-                # Retrieve route nodes and lookup geographical location
-                routeline = []
-                for node in route:
-                    routeline.append((G.nodes[node]['x'], G.nodes[node]['y']))
-                line = LineString(routeline)
+                origin_node = ox.get_nearest_node(G, point1)
+                destination_node = ox.get_nearest_node(G, point2)
+
+                if origin_node != destination_node:           
+                    # Find the shortest path over the network between these nodes
+                    route = nx.shortest_path(G, origin_node, destination_node)
+
+                    # Retrieve route nodes and lookup geographical location
+                    routeline = []
+                    routeline.append((origin_x, origin_y))
+                    for node in route:
+                        routeline.append((transform(projWGS84, projUTM, G.nodes[node]['x'], G.nodes[node]['y'])))
+                    routeline.append((dest_x, dest_y))
+                    line = routeline
+                else:
+                    line = [(origin_x, origin_y), (dest_x, dest_y)]
             else:
-                line = LineString([point1, point2])
+                line = lookup[tuple(origin['geometry']['coordinates'])]
 
             # Map to line
             links.append({
                 'type': "Feature",
-                'geometry': mapping(line),
+                'geometry': {
+                    "type": "LineString",
+                    "coordinates": line
+                },
                 'properties': {
                     "Origin": origin['properties']['id'],
                     "Dest": destination['properties']['id']
                 }
             })
+
     return links
     
 
@@ -914,7 +954,7 @@ if __name__ == "__main__":
     geojson_layer5_premises = read_premises()
 
     print('estimate location of distribution points')
-    geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises)
+    geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises, cachefile="assets_layer4_distributions.shp")
 
     print('read exchanges')
     geojson_layer2_exchanges = read_exchanges()
@@ -956,7 +996,7 @@ if __name__ == "__main__":
     geojson_layer5_premises_links = generate_link_with_area_id(geojson_layer5_premises, geojson_layer4_distributions, geojson_distribution_areas)
 
     print('generate links layer 4')
-    geojson_layer4_distributions_links = generate_link_with_area_match(geojson_layer4_distributions, geojson_layer3_cabinets, geojson_cabinet_areas)
+    geojson_layer4_distributions_links = generate_link_with_area_match(geojson_layer4_distributions, geojson_layer3_cabinets, geojson_cabinet_areas, 'links_layer4_distributions.shp')
 
     print('generate links layer 3')
     geojson_layer3_cabinets_links = generate_link_with_nearest(geojson_layer3_cabinets, geojson_layer2_exchanges)
