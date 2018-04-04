@@ -33,9 +33,9 @@ The recommended installation method is to use `conda<http://conda.pydata.org/min
 which handles packages and virtual environments, along with the conda-forge channel which has 
 a host of pre-built libraries and packages.
 
-Create a conda environment:
+Create a conda environment, using 'digital_comms' as a short reference for digital communications:
 
-    conda create --name smif_env python=3.6
+    conda create --name digital_comms python=3.6
 
 Activate it:
 
