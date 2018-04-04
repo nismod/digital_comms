@@ -1,6 +1,3 @@
-.. _readme:
-
-============================================
 The Cambridge Communications Assessment Model
 =============================================
 
@@ -20,9 +17,8 @@ resilience. The fixed, wireless and satellite sectors are currently under develo
 ```
 Oughton, E. J. and Frias, Z. (2017) The cost, coverage and rollout implications of 5G infrastructure 
 in Britain. Telecommunications Policy. doi: 10.1016/j.telpol.2017.07.009.
-
 ```
-=======================
+
 Setup and configuration
 =======================
 
@@ -33,10 +29,9 @@ See requirements.txt for a full list.
 Using conda
 -----------
 
-The recommended installation method is to use `conda
-<http://conda.pydata.org/miniconda.html>`_, which handles packages and virtual 
-environments, along with the conda-forge channel which has a host of pre-built 
-libraries and packages.
+The recommended installation method is to use `conda<http://conda.pydata.org/miniconda.html>`_, 
+which handles packages and virtual environments, along with the conda-forge channel which has 
+a host of pre-built libraries and packages.
 
 Create a conda environment:
 
@@ -50,23 +45,21 @@ For development purposes:
 
 Run this command once per machine:
 
-        python setup.py develop
+    python setup.py develop
 
 To install permanently:
 
-        python setup.py install
+    python setup.py install
 
 To build the documentation:
 
-        python setup.py docs
-
-The docs are available in html format in `/docs/_build/html/index.html`
+    python setup.py docs
 
 The run the tests:
 
-        python setup.py test
+    python setup.py test
 
-Acknowledgement of Funding
+Funding (EPSRC Grant EP/N017064/1)
 ==========================
 
 **The Cambridge Communications Assessment Model** was written and 
