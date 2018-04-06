@@ -5,14 +5,14 @@
 
 *(click on the 'docs' button to get directed to the full model documentation)*
 
-**The Cambridge Communications Assessment Model** currently focuses on 
-the mobile sector to provide analytics for 
-decision-makers on (i) capacity-demand and (ii) risk, vulnerability 
-and resilience. The fixed, wireless and satellite sectors are currently under development. 
+**The Cambridge Communications Assessment Model** currently focuses on
+the mobile sector to provide analytics for
+decision-makers on (i) capacity-demand and (ii) risk, vulnerability
+and resilience. The fixed, wireless and satellite sectors are currently under development.
 
 ## Citation:
 ```
-Oughton, E. J. and Frias, Z. (2017) ‘The cost, coverage and rollout implications of 5G infrastructure in Britain’.
+Oughton, E. J. and Frias, Z. (2017) 'The cost, coverage and rollout implications of 5G infrastructure in Britain'.
 Telecommunications Policy. doi: 10.1016/j.telpol.2017.07.009.
 
 ```
@@ -23,10 +23,10 @@ All code is written in Python (Python>=3.5), avoiding external dependencies.
 
 ## A word from our sponsors
 
-**The Cambridge Communications Assessment Model** was written and 
-developed at the [Judge Business School](http://www.jbs.cam.ac.uk/home/), 
-[University of Cambridge](http://www.cam.ac.uk/) and at the [Environmental Change Institute](http://www.eci.ox.ac.uk/), 
-[University of Oxford](https://www.ox.ac.uk/) within the EPSRC-sponsored MISTRAL programme, 
+**The Cambridge Communications Assessment Model** was written and
+developed at the [Judge Business School](http://www.jbs.cam.ac.uk/home/),
+[University of Cambridge](http://www.cam.ac.uk/) and at the [Environmental Change Institute](http://www.eci.ox.ac.uk/),
+[University of Oxford](https://www.ox.ac.uk/) within the EPSRC-sponsored MISTRAL programme,
 as part of the [Infrastructure Transition Research Consortium](http://www.itrc.org.uk/).
 
 ## Install
