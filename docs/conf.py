@@ -8,40 +8,60 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+import os
+import inspect
+import shutil
 import sys
 
-# Support markdown
 from recommonmark.parser import CommonMarkParser
 
-source_parsers = {
-    '.md': CommonMarkParser,
-}
+__location__ = os.path.join(os.getcwd(), os.path.dirname(
+inspect.getfile(inspect.currentframe())))
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-# sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.join(__location__, '../digital_comms'))
 
-# -- Hack for ReadTheDocs ------------------------------------------------------
+# Support markdown
+source_parsers = {
+    '.md': CommonMarkParser,
+}
+
+# -- Run sphinx-apidoc ------------------------------------------------------
 # This hack is necessary since RTD does not issue `sphinx-apidoc` before running
 # `sphinx-build -b html . _build/html`. See Issue:
 # https://github.com/rtfd/readthedocs.org/issues/1139
 # DON'T FORGET: Check the box "Install your project inside a virtualenv using
 # setup.py install" in the RTD Advanced Settings.
-import os
-on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-if on_rtd:
-    import inspect
+# Additionally it helps us to avoid running apidoc manually
+
+try:  # for Sphinx >= 1.7
+    from sphinx.ext import apidoc
+except ImportError:
     from sphinx import apidoc
 
-    __location__ = os.path.join(os.getcwd(), os.path.dirname(
-        inspect.getfile(inspect.currentframe())))
+output_dir = os.path.join(__location__, "api")
+module_dir = os.path.join(__location__, "../digital_comms")
+try:
+    shutil.rmtree(output_dir)
+except FileNotFoundError:
+    pass
 
-    output_dir = os.path.join(__location__, "../docs/api")
-    module_dir = os.path.join(__location__, "../digital_comms")
-    cmd_line_template = "sphinx-apidoc -f -o {outputdir} {moduledir}"
+try:
+    import sphinx
+    from distutils.version import LooseVersion
+
+    cmd_line_template = "sphinx-apidoc -f -M -o {outputdir} {moduledir}"
     cmd_line = cmd_line_template.format(outputdir=output_dir, moduledir=module_dir)
-    apidoc.main(cmd_line.split(" "))
+
+    args = cmd_line.split(" ")
+    if LooseVersion(sphinx.__version__) >= LooseVersion('1.7'):
+        args = args[1:]
+
+    apidoc.main(args)
+except Exception as e:
+    print("Running `sphinx-apidoc` failed!\n{}".format(e))
 
 # -- General configuration -----------------------------------------------------
 
