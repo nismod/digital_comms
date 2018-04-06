@@ -774,6 +774,16 @@ if __name__ == "__main__":
 
     print('generate links layer 3')
     geojson_layer3_cabinets_links = generate_link_with_nearest(geojson_layer3_cabinets, geojson_layer2_exchanges)
+    
+    # Write lookups (for debug purposes)
+    print('write postcode_areas')
+    write_shapefile(geojson_postcode_areas, '_postcode_areas.shp')
+
+    print('write distribution_areas')
+    write_shapefile(geojson_distribution_areas, '_distribution_areas.shp')
+
+    print('write exchange_areas')
+    write_shapefile(geojson_exchange_areas, '_exchange_areas.shp')
 
     # Write assets
     print('write premises')
@@ -798,12 +808,3 @@ if __name__ == "__main__":
     print('write links layer3')
     write_shapefile(geojson_layer3_cabinets_links, 'links_layer3_cabinets.shp')
 
-    # Write lookups (for debug purposes)
-    print('write postcode_areas')
-    write_shapefile(geojson_postcode_areas, '_postcode_areas.shp')
-
-    print('write distribution_areas')
-    write_shapefile(geojson_distribution_areas, '_distribution_areas.shp')
-
-    print('write exchange_areas')
-    write_shapefile(geojson_exchange_areas, '_exchange_areas.shp')
