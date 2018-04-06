@@ -204,6 +204,10 @@ html_sidebars = {
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'digital_comms-doc'
 
+# If True, todo and todolist produce output, else they produce nothing.
+# The default is False.
+todo_include_todos = True
+
 
 # -- Options for LaTeX output --------------------------------------------------
 
