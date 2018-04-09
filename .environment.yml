@@ -1,0 +1,21 @@
+# Conda environment specification
+# To import/create a copy of the environment:
+#    conda env create -f .environment.yml
+name: digital_comms
+channels:
+- conda-forge
+- defaults
+dependencies:
+- python=3.5
+- fiona
+- matplotlib
+- networkx
+- pyproj
+- pysftp
+- pytest  # test
+- pytest-cov  # test
+- rtree
+- recommonmark  # docs
+- scikit-learn
+- shapely
+- sphinx  # docs
