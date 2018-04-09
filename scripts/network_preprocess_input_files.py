@@ -31,19 +31,26 @@ SYSTEM_INPUT_NETWORK = os.path.join(SYSTEM_INPUT_FIXED, 'network_hierarchy_data'
 #####################################
 
 def read_pcd_to_exchange_lut():
-    '''
-    Produces all unique postcode-to-exchange combinations from available data.
+    """
+    Produces all unique postcode-to-exchange combinations from available data, including:
+
+    'January 2013 PCP to Postcode File Part One.csv'
+    'January 2013 PCP to Postcode File Part Two.csv'
+    'pcp.to.pcd.dec.11.one.csv'
+    'pcp.to.pcd.dec.11.two.csv'
+    'from_tomasso_valletti.csv'
 
     Data Schema
     ----------
-    exchange_id: string
-    postcode: string
+    * exchange_id: 'string'
+        Unique Exchange ID
+    * postcode: 'string'
+        Unique Postcode 
 
     Returns
     -------
     pcd_to_exchange_data: List of dicts
-
-    '''
+    """
     pcd_to_exchange_data = []
 
     with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
@@ -56,7 +63,17 @@ def read_pcd_to_exchange_lut():
                 'postcode': line[1].replace(" ", "")
             })
 
-    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part Two.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part One.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
+        reader = csv.reader(system_file)
+        for skip in range(11):
+            next(reader)
+        for line in reader:
+            pcd_to_exchange_data.append({
+                'exchange_id': line[0],
+                'postcode': line[1].replace(" ", "")
+            })
+
+    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'pcp.to.pcd.dec.11.one.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
@@ -88,22 +105,30 @@ def read_pcd_to_exchange_lut():
     return list({pcd['postcode']:pcd for pcd in pcd_to_exchange_data}.values())
 
 def read_pcd_to_cabinet_lut():
-    '''
-    Produces all postcode-to-cabinet-to-exchange combinations from available data.
+    """
+    Produces all postcode-to-cabinet-to-exchange combinations from available data, including:
+
+        - January 2013 PCP to Postcode File Part One.csv
+        - January 2013 PCP to Postcode File Part Two.csv
+        - pcp.to.pcd.dec.11.one.csv'
+        - pcp.to.pcd.dec.11.two.csv'
 
     Data Schema
-    ----------
-    exchange_id: string
-    name: string
-    cabinet_id: string
-    exchange_only_flag: int 
-
+    -----------
+    * exchange_id: 'string'
+        Unique Exchange ID
+    * name: 'string'
+        Unique Exchange Name    
+    * cabinet_id: 'string'
+        Unique Cabinet ID
+    * exchange_only_flag: 'int' 
+        Exchange only binary
+    
     Returns
     -------
     pcp_data: Dict of dicts
-    '''
+    """
 
-    SYSTEM_INPUT_NETWORK = os.path.join(SYSTEM_INPUT_FIXED, 'network_hierarchy_data')
     pcp_data = {}
 
     with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
@@ -158,17 +183,19 @@ def read_pcd_to_cabinet_lut():
     return pcp_data
 
 def read_postcode_areas():
-    '''
-    Reads all postcodes shapes removing vertical postcodes and merging with closest neighbour.
+    
+    """
+    Reads all postcodes shapes, removing vertical postcodes, and merging with closest neighbour.
 
     Data Schema
-    ----------
-    POSTCODE: string
+    -----------
+    * POSTCODE: 'string'
+        Unique Postcode
 
     Returns
     -------
     postcode_areas = list of dicts
-    '''
+    """
 
     postcode_areas = []
 
@@ -232,7 +259,7 @@ def read_postcode_areas():
 def read_premises():
 
     """
-    Reads in premises points from the OS AddressBase data (.csv)
+    Reads in premises points from the OS AddressBase data (.csv).
 
     Data Schema
     ----------
@@ -287,22 +314,28 @@ def read_premises():
     return premises_data
 
 def read_exchanges():
-    '''
-    Reads in exchanges. 
+
+    """
+    Reads in exchanges from 'final_exchange_pcds.csv'. 
 
     Data Schema
     ----------
-    id: string
-    Name: string
-    pcd: string
-    Region: string
-    County: string
-
+    * id: 'string'
+        Unique Exchange ID
+    * Name: 'string'
+        Unique Exchange Name
+    * pcd: 'string'
+        Unique Postcode
+    * Region: 'string'
+        Region ID
+    * County: 'string'
+        County IS
+    
     Returns
     -------
     exchanges: List of dicts
+    """
 
-    '''
     exchanges = []
 
     with open(os.path.join(SYSTEM_INPUT_FIXED, 'layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
@@ -333,6 +366,23 @@ def read_exchanges():
 
 def add_exchange_id_to_postcode_areas(exchanges, postcode_areas, exchange_to_postcode):
 
+    """
+    Either uses known data or estimates which exchange each postcode is likely attached to.
+
+    Arguments
+    ---------
+
+    * exchanges: 'list of dicts'
+        List of Exchanges from read_exchanges()
+    * postcode_areas: 'list of dicts'
+        List of Postcode Areas from read_postcode_areas()
+    * exchange_to_postcode: 'list of dicts'
+        List of Postcode to Exchange data procudes from read_pcd_to_exchange_lut()
+    
+    Returns
+    -------
+    postcode_areas: 'list of dicts'    
+    """
     idx_exchanges = index.Index()
     lut_exchanges = {}
 
@@ -430,14 +480,15 @@ def add_distribution_point_to_premises(premises, dbps):
 #####################################
 
 def voronoi_finite_polygons_2d(vor, radius=None):
+    
     """
-    Reconstruct infinite voronoi regions in a 2D diagram to finite
-    regions.
+    Reconstruct infinite voronoi regions in a 2D diagram to finite regions.
+
     Parameters
     ----------
-    vor : Voronoi
+    * vor : Voronoi
         Input diagram
-    radius : float, optional
+    * radius : float, optional
         Distance to 'points at infinity'.
     Returns
     -------
