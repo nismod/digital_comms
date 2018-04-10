@@ -4,6 +4,7 @@ import configparser
 import csv
 import fiona
 import numpy as np
+import random 
 
 from shapely.geometry import shape, Point, Polygon, MultiPolygon, mapping
 from shapely.ops import unary_union
@@ -252,6 +253,30 @@ def read_postcode_areas():
 
     return postcode_areas
 
+def read_postcode_technology_lut():
+
+    SYSTEM_INPUT_NETWORK = os.path.join(SYSTEM_INPUT_FIXED, 'offcom_initial_system', 'fixed-postcode-2017')
+
+    postcode_technology_lut = []
+    for filename in os.listdir(SYSTEM_INPUT_NETWORK):
+        with open(os.path.join(SYSTEM_INPUT_NETWORK, filename), 'r', encoding='utf8', errors='replace') as system_file:
+            reader = csv.reader(system_file)
+            next(reader)    
+            for line in reader:
+                postcode_technology_lut.append({
+                    'postcode': line[0],
+                    'sfbb_availability': line[3],
+                    'ufbb_availability': line[4],
+                    'fttp_availability': line[36],
+                    'max_download_speed': line[12],
+                    'max_upload_speed': line[20],
+                    'average_data_download_adsl': line[33],
+                    'average_data_download_sfbb': line[34],
+                    'average_data_download_ufbb': line[35],                   
+                })
+
+    return postcode_technology_lut
+
 #####################################
 # READ PREMISES/ASSETS
 #####################################
@@ -467,13 +492,97 @@ def add_postcode_to_premises(premises, postcode_areas):
 
     return joined_premises
 
-def add_distribution_point_to_premises(premises, dbps):
 
-    # Initialze Rtree
-    idx = index.Index()
+def add_technology_to_postcode_areas(postcode_areas, technologies_lut):
 
-    for rtree_idx, premise in enumerate(premises):
-        idx.insert(rtree_idx, shape(premise['geometry']).bounds, premise)
+    # Process lookup into dictionary
+    pcd_to_technology = {}
+    for technology in technologies_lut:
+        pcd_to_technology[technology['postcode']] = technology
+        del pcd_to_technology[technology['postcode']]['postcode']
+
+    # Add properties
+    for postcode_area in postcode_areas:
+        if postcode_area['properties']['POSTCODE'] in pcd_to_technology:
+            postcode_area['properties'].update({
+                'max_up_spd': pcd_to_technology[postcode_area['properties']['POSTCODE']]['max_upload_speed'],
+                'max_dl_spd': pcd_to_technology[postcode_area['properties']['POSTCODE']]['max_download_speed'],
+                'ufbb_avail': pcd_to_technology[postcode_area['properties']['POSTCODE']]['ufbb_availability'],
+                'fttp_avail': pcd_to_technology[postcode_area['properties']['POSTCODE']]['fttp_availability'],
+                'sfbb_avail': pcd_to_technology[postcode_area['properties']['POSTCODE']]['sfbb_availability'],
+                'av_dl_ufbb': pcd_to_technology[postcode_area['properties']['POSTCODE']]['average_data_download_ufbb'],
+                'av_dl_adsl': pcd_to_technology[postcode_area['properties']['POSTCODE']]['average_data_download_adsl'],
+                'av_dl_sfbb': pcd_to_technology[postcode_area['properties']['POSTCODE']]['average_data_download_sfbb']
+            })
+        else:
+            postcode_area['properties'].update({
+                'max_up_spd': 0, 
+                'max_dl_spd': 0,
+                'ufbb_avail': 0,
+                'fttp_avail': 0,
+                'sfbb_avail': 0,
+                'av_dl_ufbb': 0,
+                'av_dl_adsl': 0,
+                'av_dl_sfbb': 0
+            })
+    
+    return postcode_areas
+
+
+def add_technology_to_premises(premises, postcode_areas):
+
+    premises_by_postcode = defaultdict(list)
+    for premise in premises:
+        premises_by_postcode[premise['properties']['postcode']].append(premise)
+
+    # Join the two
+    joined_premises = []
+    for postcode_area in postcode_areas:
+
+        # Calculate number of fiber/coax/copper connections in postcode area
+        number_of_premises = len(premises_by_postcode[postcode_area['properties']['POSTCODE']])
+        fttp_avail = int(postcode_area['properties']['fttp_avail'])
+        ufbb_avail = int(postcode_area['properties']['ufbb_avail'])
+        sfbb_avail = int(postcode_area['properties']['sfbb_avail'])
+        adsl_avail = 100 - fttp_avail - ufbb_avail - sfbb_avail
+
+        number_of_fttp= round((fttp_avail / 100) * number_of_premises)
+        number_of_ufbb = round((ufbb_avail / 100) * number_of_premises)
+        number_of_fttc = round((sfbb_avail / 100) * (number_of_premises * 0.8)) # Todo calculate on national scale
+        number_of_docsis3 = round((sfbb_avail / 100) * (number_of_premises * 0.2))
+        number_of_adsl = round((adsl_avail / 100) * number_of_premises)
+
+        technologies =  ['FFTP'] * number_of_fttp 
+        technologies += ['G.fast'] * number_of_ufbb 
+        technologies += ['FTTC'] * number_of_fttc
+        technologies += ['DOCSIS3'] * number_of_docsis3
+        technologies += ['ADSL'] * number_of_adsl
+        random.shuffle(technologies)
+
+        # Allocate broadband technology and final drop to premises
+        for premise, technology in zip(premises_by_postcode[postcode_area['properties']['POSTCODE']], technologies):
+            premise['properties']['connection'] = technology
+
+            if technology in ['FFTP']:
+                premise['properties']['final_drop'] = 'fiber'
+            elif technology in ['G.fast', 'FTTC', 'ADSL']:
+                premise['properties']['final_drop'] = 'copper'
+            elif technology in ['DOCSIS3']:
+                premise['properties']['final_drop'] = 'coax'
+
+            joined_premises.append(premise)
+
+    return joined_premises
+
+
+
+# def add_distribution_point_to_premises(premises, dbps):
+
+#     # Initialze Rtree
+#     idx = index.Index()
+
+#     for rtree_idx, premise in enumerate(premises):
+#         idx.insert(rtree_idx, shape(premise['geometry']).bounds, premise)
 
 #####################################
 # PROCESS BOUNDARIES
@@ -836,7 +945,7 @@ if __name__ == "__main__":
 
     SYSTEM_INPUT = os.path.join('data', 'raw')
 
-    # Read lookups
+    # Read LUTs
     print('read_pcd_to_exchange_lut')
     lut_pcd_to_exchange = read_pcd_to_exchange_lut()
 
@@ -845,38 +954,48 @@ if __name__ == "__main__":
 
     print('read postcode_areas')
     geojson_postcode_areas = read_postcode_areas()
+    
+    print('read pcd_technology_lut')
+    lut_pcd_technology = read_postcode_technology_lut()
 
-    # Read assets
+    # Read Premises/Assets
     print('read premises')
     geojson_layer5_premises = read_premises()
-
-    print('estimate location of distribution points')
-    geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises)
 
     print('read exchanges')
     geojson_layer2_exchanges = read_exchanges()
 
-    # Process lookups
+    # Process/Estimate network hierarchy
     print('add exchange id to postcode areas')
     geojson_postcode_areas = add_exchange_id_to_postcode_areas(geojson_layer2_exchanges, geojson_postcode_areas, lut_pcd_to_exchange)
 
     print('add cabinet id to postcode areas')
     geojson_postcode_areas = add_cabinet_id_to_postcode_areas(geojson_postcode_areas, lut_pcd_to_cabinet)
 
+    print('add postcode to premises')
+    geojson_layer5_premises = add_postcode_to_premises(geojson_layer5_premises, geojson_postcode_areas)
+
+    print('add technology to postcode areas')
+    geojson_postcode_areas = add_technology_to_postcode_areas(geojson_postcode_areas, lut_pcd_technology)
+
+    print('add technology to premises')
+    geojson_layer5_premises = add_technology_to_premises(geojson_layer5_premises, geojson_postcode_areas)
+
+    # Process/Estimate assets    
+    print('estimate location of distribution points')
+    geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises)
+
+    print('calculate cabinet locations')
+    geojson_layer3_cabinets = estimate_cabinet_locations(geojson_postcode_areas)
+
+    # Process/Estimate boundaries
     print('generate distribution areas')
     geojson_distribution_areas = generate_distribution_areas(geojson_layer4_distributions)
 
     print('generate exchange areas')
     geojson_exchange_areas = generate_exchange_area(geojson_postcode_areas)
 
-    # Process assets    
-    print('add postcode to premises')
-    geojson_layer5_premises = add_postcode_to_premises(geojson_layer5_premises, geojson_postcode_areas)
-
-    print('calculate cabinet locations')
-    geojson_layer3_cabinets = estimate_cabinet_locations(geojson_postcode_areas)
-
-    # Generate links
+    # Process/Estimate links
     print('generate links layer 5')
     geojson_layer5_premises_links = generate_link_with_area_id(geojson_layer5_premises, geojson_layer4_distributions, geojson_distribution_areas)
 
@@ -919,3 +1038,11 @@ if __name__ == "__main__":
     print('write links layer3')
     write_shapefile(geojson_layer3_cabinets_links, 'links_layer3_cabinets.shp')
 
+
+
+
+
+
+#    print('add distribution point to premises')
+#    geojson_layer5_premises = add_distribution_point_to_premises(geojson_layer5_premises, geojson_distribution_areas)
+    
