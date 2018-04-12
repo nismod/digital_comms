@@ -15,6 +15,8 @@ from rtree import index
 
 from collections import OrderedDict, defaultdict
 
+import osmnx as ox, networkx as nx
+
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
@@ -575,14 +577,25 @@ def add_technology_to_premises(premises, postcode_areas):
     return joined_premises
 
 
+def connect_points_to_area(points, areas):
 
-# def add_distribution_point_to_premises(premises, dbps):
+    idx_areas = index.Index()
+    for idx, area in enumerate(areas):
+        idx_areas.insert(idx, shape(area['geometry']).bounds, area)
 
-#     # Initialze Rtree
-#     idx = index.Index()
+    lut_points = {}
+    for dest_point in points:
+        lut_points[dest_point['properties']['id']] = dest_point['geometry']['coordinates']
 
-#     for rtree_idx, premise in enumerate(premises):
-#         idx.insert(rtree_idx, shape(premise['geometry']).bounds, premise)
+    linked_points = []
+    for point in points:
+        nearest = list(idx_areas.nearest(shape(point['geometry']).bounds, objects=True))
+
+        for candidate in nearest:
+            if shape(candidate.object['geometry']).contains(shape(point['geometry'])):
+                point['properties']['connection'] = candidate.object['properties']['id']
+                linked_points.append(point)
+    return linked_points
 
 #####################################
 # PROCESS BOUNDARIES
@@ -670,43 +683,43 @@ def voronoi_finite_polygons_2d(vor, radius=None):
     return new_regions, np.asarray(new_vertices)
 
 
-def generate_distribution_areas(distribution_points):
+def generate_voronoi_areas(asset_points):
 
     # Get Points
-    idx_distribution_areas = index.Index()
-    points = np.empty([len(list(distribution_points)), 2])
-    for idx, distribution_point in enumerate(distribution_points):
+    idx_asset_areas = index.Index()
+    points = np.empty([len(list(asset_points)), 2])
+    for idx, asset_point in enumerate(asset_points):
         
         # Prepare voronoi lookup
-        points[idx] = distribution_point['geometry']['coordinates']
+        points[idx] = asset_point['geometry']['coordinates']
 
         # Prepare Rtree lookup
-        idx_distribution_areas.insert(idx, shape(distribution_point['geometry']).bounds, distribution_point)
+        idx_asset_areas.insert(idx, shape(asset_point['geometry']).bounds, asset_point)
 
     # Compute Voronoi tesselation
     vor = Voronoi(points)
     regions, vertices = voronoi_finite_polygons_2d(vor)
 
     # Write voronoi polygons
-    distribution_areas = []
+    asset_areas = []
     for region in regions:
 
         polygon = vertices[region]
         geom = Polygon(polygon)
 
-        distribution_points = list(idx_distribution_areas.nearest(geom.bounds, 1, objects=True))
-        for point in distribution_points:
+        asset_points = list(idx_asset_areas.nearest(geom.bounds, 1, objects=True))
+        for point in asset_points:
             if geom.contains(shape(point.object['geometry'])):
-                distribution_point = point
+                asset_point = point
 
-        distribution_areas.append({
+        asset_areas.append({
             'geometry': mapping(geom),
             'properties': {
-                'id': distribution_point.object['properties']['id']
+                'id': asset_point.object['properties']['id']
             }
         })
 
-    return distribution_areas
+    return asset_areas
 
 def generate_exchange_area(exchanges, merge=True):
 
@@ -737,7 +750,7 @@ def generate_exchange_area(exchanges, merge=True):
             'type': "Feature",
             'geometry': mapping(exchange_multipolygon),
             'properties': {
-                'id': exchange
+                'id': 'exchange_' + exchange
             }
         })
 
@@ -801,7 +814,7 @@ def generate_exchange_area(exchanges, merge=True):
 # PROCESS ASSETS
 #####################################
 
-def estimate_dist_points(premises):
+def estimate_dist_points(premises, cachefile=None):
     """Estimate distribution point locations.
 
     Parameters
@@ -814,12 +827,30 @@ def estimate_dist_points(premises):
     dist_point: list of dict
                 List of dist_points
     """
+    dist_points = []
+
+    # Use previous file if specified
+    if cachefile != None:
+        cachefile = os.path.join(SYSTEM_OUTPUT_FILENAME, cachefile)
+        if os.path.isfile(cachefile):
+            with fiona.open(cachefile, 'r') as source:
+                for f in source:
+                    # Make sure additional properties are not copied
+                    dist_points.append({
+                        'type': "Feature",
+                        'geometry': f['geometry'],
+                        'properties': {
+                            "id": f['properties']['id']
+                        }
+                    })       
+                return dist_points
+
+    # Generate points
     points = np.vstack([[float(i) for i in premise['geometry']['coordinates']] for premise in premises])
     number_of_clusters = int(points.shape[0] / 8)
 
     kmeans = KMeans(n_clusters=number_of_clusters, n_init=1, max_iter=1, n_jobs=-1, random_state=0, ).fit(points)
 
-    dist_points = []
     for idx, dist_point_location in enumerate(kmeans.cluster_centers_):
         dist_points.append({
                 'type': "Feature",
@@ -830,7 +861,8 @@ def estimate_dist_points(premises):
                 'properties': {
                     "id": "distribution_" + str(idx)
                 }
-            })
+            })        
+
     return dist_points
 
 def estimate_cabinet_locations(postcode_areas):
@@ -888,6 +920,85 @@ def generate_link_with_area_id(origin_points, dest_points, matching_areas):
                         "Dest": candidate.object['properties']['id']
                     }
                 })
+    return links
+
+def generate_link_with_area_match(origin_points, dest_points, matching_area, cachefile=None):
+
+    ox.config(log_file=False, log_console=False, use_cache=True)
+    G = ox.graph_from_place(['Cambridge, UK'], network_type='walk')
+
+    projUTM = Proj(init='epsg:27700')
+    projWGS84 = Proj(init='epsg:4326')
+
+    links = []
+
+    lookup = {}
+    if cachefile != None:
+        cachefile = os.path.join(SYSTEM_OUTPUT_FILENAME, cachefile)
+        if os.path.isfile(cachefile):
+            with fiona.open(cachefile, 'r') as source:
+                for f in source:
+                    lookup[f['geometry']['coordinates'][0]] = f['geometry']['coordinates']
+                the_keys = list(lookup.keys())
+                print(the_keys[0])
+
+    for area in matching_area:
+        
+        destinations = [point for point in dest_points if point['properties']['id'] == area['properties']['id']]
+
+        if len(destinations) > 0:
+            destination = destinations[0]
+
+            origins = [point for point in origin_points if point['properties']['connection'] == area['properties']['id']]
+
+            for origin in origins:
+
+                if tuple(origin['geometry']['coordinates']) not in lookup:
+
+                    origin_x = origin['geometry']['coordinates'][0]
+                    origin_y = origin['geometry']['coordinates'][1]
+                    dest_x = destination['geometry']['coordinates'][0]
+                    dest_y = destination['geometry']['coordinates'][1]
+
+                    # Find shortest path between the two
+                    point1_x, point1_y = transform(projUTM, projWGS84, origin_x, origin_y)
+                    point2_x, point2_y = transform(projUTM, projWGS84, dest_x, dest_y)
+
+                    point1 = (point1_y, point1_x)
+                    point2 = (point2_y, point2_x)
+
+                    origin_node = ox.get_nearest_node(G, point1)
+                    destination_node = ox.get_nearest_node(G, point2)
+
+                    if origin_node != destination_node:           
+                        # Find the shortest path over the network between these nodes
+                        route = nx.shortest_path(G, origin_node, destination_node)
+
+                        # Retrieve route nodes and lookup geographical location
+                        routeline = []
+                        routeline.append((origin_x, origin_y))
+                        for node in route:
+                            routeline.append((transform(projWGS84, projUTM, G.nodes[node]['x'], G.nodes[node]['y'])))
+                        routeline.append((dest_x, dest_y))
+                        line = routeline
+                    else:
+                        line = [(origin_x, origin_y), (dest_x, dest_y)]
+                else:
+                    line = lookup[tuple(origin['geometry']['coordinates'])]
+
+                # Map to line
+                links.append({
+                    'type': "Feature",
+                    'geometry': {
+                        "type": "LineString",
+                        "coordinates": line
+                    },
+                    'properties': {
+                        "Origin": origin['properties']['id'],
+                        "Dest": destination['properties']['id']
+                    }
+                })
+
     return links
 
 def generate_link_with_nearest(origin_points, dest_points):
@@ -983,27 +1094,37 @@ if __name__ == "__main__":
 
     # Process/Estimate assets    
     print('estimate location of distribution points')
-    geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises)
+    geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises, cachefile="assets_layer4_distributions.shp")
 
-    print('calculate cabinet locations')
+    print('estimate cabinet locations')
     geojson_layer3_cabinets = estimate_cabinet_locations(geojson_postcode_areas)
 
     # Process/Estimate boundaries
+    print('generate cabinet areas')
+    geojson_cabinet_areas = generate_voronoi_areas(geojson_layer3_cabinets)
+
     print('generate distribution areas')
-    geojson_distribution_areas = generate_distribution_areas(geojson_layer4_distributions)
+    geojson_distribution_areas = generate_voronoi_areas(geojson_layer4_distributions)
 
     print('generate exchange areas')
     geojson_exchange_areas = generate_exchange_area(geojson_postcode_areas)
+
+    # Connect assets
+    print('connect distributions to cabinets')
+    geojson_layer4_distributions = connect_points_to_area(geojson_layer4_distributions, geojson_cabinet_areas)
+
+    print('connect cabinets to exchanges')
+    geojson_layer3_cabinets = connect_points_to_area(geojson_layer3_cabinets, geojson_exchange_areas)
 
     # Process/Estimate links
     print('generate links layer 5')
     geojson_layer5_premises_links = generate_link_with_area_id(geojson_layer5_premises, geojson_layer4_distributions, geojson_distribution_areas)
 
     print('generate links layer 4')
-    geojson_layer4_distributions_links = generate_link_with_nearest(geojson_layer4_distributions, geojson_layer3_cabinets)
+    geojson_layer4_distributions_links = generate_link_with_area_match(geojson_layer4_distributions, geojson_layer3_cabinets, geojson_cabinet_areas, 'links_layer4_distributions.shp')
 
     print('generate links layer 3')
-    geojson_layer3_cabinets_links = generate_link_with_nearest(geojson_layer3_cabinets, geojson_layer2_exchanges)
+    geojson_layer3_cabinets_links = generate_link_with_area_match(geojson_layer3_cabinets, geojson_layer2_exchanges, geojson_exchange_areas)
     
     # Write lookups (for debug purposes)
     print('write postcode_areas')
@@ -1037,12 +1158,3 @@ if __name__ == "__main__":
 
     print('write links layer3')
     write_shapefile(geojson_layer3_cabinets_links, 'links_layer3_cabinets.shp')
-
-
-
-
-
-
-#    print('add distribution point to premises')
-#    geojson_layer5_premises = add_distribution_point_to_premises(geojson_layer5_premises, geojson_distribution_areas)
-    
