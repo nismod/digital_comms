@@ -54,3 +54,4 @@ MANIFEST
 data/*
 results/*
 scripts/script_config.ini
+cache
