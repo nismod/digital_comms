@@ -563,14 +563,14 @@ def add_technology_to_premises(premises, postcode_areas):
 
         # Allocate broadband technology and final drop to premises
         for premise, technology in zip(premises_by_postcode[postcode_area['properties']['POSTCODE']], technologies):
-            premise['properties']['connection'] = technology
+            premise['properties']['technology'] = technology
 
-            if technology in ['FFTP']:
-                premise['properties']['final_drop'] = 'fiber'
-            elif technology in ['G.fast', 'FTTC', 'ADSL']:
-                premise['properties']['final_drop'] = 'copper'
-            elif technology in ['DOCSIS3']:
-                premise['properties']['final_drop'] = 'coax'
+            # if technology in ['FFTP']:
+            #     premise['properties']['final_drop'] = 'fiber'
+            # elif technology in ['G.fast', 'FTTC', 'ADSL']:
+            #     premise['properties']['final_drop'] = 'copper'
+            # elif technology in ['DOCSIS3']:
+            #     premise['properties']['final_drop'] = 'coax'
 
             joined_premises.append(premise)
 
@@ -904,11 +904,7 @@ def estimate_cabinet_locations(postcode_areas):
 # PROCESS LINKS
 #####################################
 
-def generate_link_with_area_id(origin_points, dest_points, matching_areas):
-
-    idx_areas = index.Index()
-    for idx, area in enumerate(matching_areas):
-        idx_areas.insert(idx, shape(area['geometry']).bounds, area)
+def generate_link_straight_line(origin_points, dest_points):
 
     lut_dest_points = {}
     for dest_point in dest_points:
@@ -916,24 +912,21 @@ def generate_link_with_area_id(origin_points, dest_points, matching_areas):
 
     links = []
     for origin_point in origin_points:
-        nearest = list(idx_areas.nearest(shape(origin_point['geometry']).bounds, objects=True))
 
-        for candidate in nearest:
-            if shape(candidate.object['geometry']).contains(shape(origin_point['geometry'])):
-                links.append({
-                    'type': "Feature",
-                    'geometry': {
-                        "type": "LineString",
-                        "coordinates": [origin_point['geometry']['coordinates'], lut_dest_points[candidate.object['properties']['id']]]
-                    },
-                    'properties': {
-                        "Origin": origin_point['properties']['id'],
-                        "Dest": candidate.object['properties']['id']
-                    }
-                })
+        links.append({
+            'type': "Feature",
+            'geometry': {
+                "type": "LineString",
+                "coordinates": [origin_point['geometry']['coordinates'], lut_dest_points[origin_point['properties']['connection']]]
+            },
+            'properties': {
+                "Origin": origin_point['properties']['id'],
+                "Dest": origin_point['properties']['connection']
+            }
+        })
     return links
 
-def generate_link_with_area_match(origin_points, dest_points, matching_area, cachefile=None):
+def generate_link_shortest_path(origin_points, dest_points, matching_area, cachefile=None):
 
     ox.config(log_file=False, log_console=True, use_cache=True)
 
@@ -1108,12 +1101,6 @@ if __name__ == "__main__":
     print('add postcode to premises')
     geojson_layer5_premises = add_postcode_to_premises(geojson_layer5_premises, geojson_postcode_areas)
 
-    print('add technology to postcode areas')
-    geojson_postcode_areas = add_technology_to_postcode_areas(geojson_postcode_areas, lut_pcd_technology)
-
-    print('add technology to premises')
-    geojson_layer5_premises = add_technology_to_premises(geojson_layer5_premises, geojson_postcode_areas)
-
     # Process/Estimate assets    
     print('estimate location of distribution points')
     geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises, cachefile="assets_layer4_distributions.shp")
@@ -1132,6 +1119,9 @@ if __name__ == "__main__":
     geojson_exchange_areas = generate_exchange_area(geojson_postcode_areas)
 
     # Connect assets
+    print('connect premises to distributions')
+    geojson_layer5_premises = connect_points_to_area(geojson_layer5_premises, geojson_distribution_areas)
+
     print('connect distributions to cabinets')
     geojson_layer4_distributions = connect_points_to_area(geojson_layer4_distributions, geojson_cabinet_areas)
 
@@ -1140,13 +1130,20 @@ if __name__ == "__main__":
 
     # Process/Estimate links
     print('generate links layer 5')
-    geojson_layer5_premises_links = generate_link_with_area_id(geojson_layer5_premises, geojson_layer4_distributions, geojson_distribution_areas)
+    geojson_layer5_premises_links = generate_link_straight_line(geojson_layer5_premises, geojson_layer4_distributions)
 
     print('generate links layer 4')
-    geojson_layer4_distributions_links = generate_link_with_area_match(geojson_layer4_distributions, geojson_layer3_cabinets, geojson_cabinet_areas, 'links_layer4_distributions.shp')
+    geojson_layer4_distributions_links = generate_link_shortest_path(geojson_layer4_distributions, geojson_layer3_cabinets, geojson_cabinet_areas, 'links_layer4_distributions.shp')
 
     print('generate links layer 3')
-    geojson_layer3_cabinets_links = generate_link_with_area_match(geojson_layer3_cabinets, geojson_layer2_exchanges, geojson_exchange_areas)
+    geojson_layer3_cabinets_links = generate_link_shortest_path(geojson_layer3_cabinets, geojson_layer2_exchanges, geojson_exchange_areas, 'links_layer3_cabinets.shp')
+
+    # Add technology to network and process this into the network hierachy
+    print('add technology to postcode areas')
+    geojson_postcode_areas = add_technology_to_postcode_areas(geojson_postcode_areas, lut_pcd_technology)
+
+    print('add technology to premises')
+    geojson_layer5_premises = add_technology_to_premises(geojson_layer5_premises, geojson_postcode_areas)
     
     # Write lookups (for debug purposes)
     print('write postcode_areas')
