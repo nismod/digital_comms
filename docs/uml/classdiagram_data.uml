@@ -1,0 +1,64 @@
+@startuml
+object Premises
+object Distributions
+object Cabinets
+object Exchanges
+
+object Link_FinalDrop
+object Link_CabToDist
+object Link_ExToCab
+
+Premises : id = [premise_id]
+Premises : oa =
+Premises : residentia =
+Premises : non_reside = 
+Premises : postgit_ge = 
+Premises : postcode = 
+Premises : connection = [distribution_id]
+Premises : technology = ['FTTP', 'G.Fast', 'FTTC', 'DOCSIS3', 'ADSL']
+
+Distributions : id = [distribution_id]
+Distributions : connection = [cabinet_id]
+Distributions : FTTP_splitter = [0, 1]
+Distributions : GFast = [0, 1]
+Distributions : Legacy = [0, 1]
+
+Cabinets : id = [cabinet_id]
+Cabinets : connection = [exchange_id]
+Cabinets : cabinet_splitter = [0, 1]
+Cabinets : VDSL2 = [0, 1]
+Cabinets : DOCSIS = [0, 1]
+Cabinets : Legacy = [0, 1]
+
+Exchanges : id = [exchange_id]
+Exchanges : optical_line_terminal = [0, 1]
+Exchanges : VSDL2 = [0, 1]
+Exchanges : ADSL2+ = [0, 1]
+
+Link_FinalDrop : id = [link_id]
+Link_FinalDrop : origin = [premise_id]
+Link_FinalDrop : dest = [distribution_id]
+Link_FinalDrop : technology = ['fiber', 'coax', 'copper']
+
+Link_CabToDist : id = [link_id]
+Link_CabToDist : origin = [premise_id]
+Link_CabToDist : dest = [distribution_id]
+Link_CabToDist : technology = ['fiber', 'coax', 'copper']
+
+Link_ExToCab : id = [link_id]
+Link_ExToCab : origin = [premise_id]
+Link_ExToCab : dest = [distribution_id]
+Link_ExToCab : technology = ['fiber', 'coax', 'copper']
+
+Distributions --o "1" Premises
+Cabinets --o "1" Distributions
+Exchanges --o "1" Cabinets
+
+Link_FinalDrop o-- "1" Premises
+Link_FinalDrop o-- "1" Distributions
+Link_CabToDist o-- "1" Distributions
+Link_CabToDist o-- "1" Cabinets
+Link_ExToCab o-- "1" Cabinets
+Link_ExToCab o-- "1" Exchanges
+
+@enduml
