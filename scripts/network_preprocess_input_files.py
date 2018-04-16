@@ -554,8 +554,8 @@ def add_technology_to_premises(premises, postcode_areas):
         number_of_docsis3 = round((sfbb_avail / 100) * (number_of_premises * 0.2))
         number_of_adsl = round((adsl_avail / 100) * number_of_premises)
 
-        technologies =  ['FFTP'] * number_of_fttp 
-        technologies += ['G.fast'] * number_of_ufbb 
+        technologies =  ['FTTP'] * number_of_fttp 
+        technologies += ['GFast'] * number_of_ufbb 
         technologies += ['FTTC'] * number_of_fttc
         technologies += ['DOCSIS3'] * number_of_docsis3
         technologies += ['ADSL'] * number_of_adsl
@@ -579,9 +579,9 @@ def add_technology_to_premises_link(premises, premise_links):
     
         technology = premises_technology_by_id[premise_link['properties']['Origin']]
 
-        if technology in ['FFTP']:
+        if technology in ['FTTP']:
             premise_link['properties']['technology'] = 'fiber'
-        elif technology in ['G.fast', 'FTTC', 'ADSL']:
+        elif technology in ['GFast', 'FTTC', 'ADSL']:
             premise_link['properties']['technology'] = 'copper'
         elif technology in ['DOCSIS3']:
             premise_link['properties']['technology'] = 'coax'
@@ -590,18 +590,42 @@ def add_technology_to_premises_link(premises, premise_links):
 
 def add_technology_to_distributions(distributions, premises):
 
-    premises_technology_by_distribution_id = defaultdict(list)
+    premises_technology_by_distribution_id = defaultdict(set)
     for premise in premises:
-        premises_technology_by_distribution_id[premise['properties']['connection']].append(premise['properties']['technology'])
+        premises_technology_by_distribution_id[premise['properties']['connection']].add(premise['properties']['technology'])
 
     for distribution in distributions:
         technologies_serving = premises_technology_by_distribution_id[distribution['properties']['id']]
 
-        distribution['properties']['FTTP_splitter'] = 1 if 'FFTP' in technologies_serving else 0
-        distribution['properties']['GFast'] = 1 if 'G.Fast' in technologies_serving else 0
+        distribution['properties']['FTTP_splitter'] = 1 if 'FTTP' in technologies_serving else 0
+        distribution['properties']['GFast'] = 1 if 'GFast' in technologies_serving else 0
         distribution['properties']['Legacy'] = 1 if 'FTTC' or 'ADSL' in technologies_serving else 0
 
     return distributions
+
+def add_technology_to_distribution_link(distributions, distribution_links):
+
+    distributions_technology_by_id = defaultdict(set)
+    for distribution in distributions:
+        if distribution['properties']['FTTP_splitter'] == 1:
+            distributions_technology_by_id[distribution['properties']['id']].add('FTTP_splitter')
+        if distribution['properties']['GFast'] == 1:
+            distributions_technology_by_id[distribution['properties']['id']].add('GFast')
+        if distribution['properties']['Legacy'] == 1:
+            distributions_technology_by_id[distribution['properties']['id']].add('Legacy')
+
+    for distribution_link in distribution_links:
+    
+        technology = distributions_technology_by_id[distribution_link['properties']['Origin']]
+
+        if 'FTTP_splitter' in technology:
+            distribution_link['properties']['technology'] = 'fiber'
+        elif 'GFast' in technology:
+            distribution_link['properties']['technology'] = 'copper'
+        elif 'Legacy' in technology:
+            distribution_link['properties']['technology'] = 'copper'
+    
+    return distribution_links
 
 def connect_points_to_area(points, areas):
 
@@ -1085,7 +1109,6 @@ def write_shapefile(data, path):
     }
 
     # Write all elements to output file
-    print(sink_schema)
     with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, path), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         for feature in data:
             sink.write(feature)
@@ -1172,11 +1195,14 @@ if __name__ == "__main__":
     print('add technology to premises')
     geojson_layer5_premises = add_technology_to_premises(geojson_layer5_premises, geojson_postcode_areas)
 
-    print('add technology to premises links')
+    print('add technology to premises links (finaldrop)')
     geojson_layer5_premises_links = add_technology_to_premises_link(geojson_layer5_premises, geojson_layer5_premises_links)
 
     print('add technology to distributions')
     geojson_layer4_distributions = add_technology_to_distributions(geojson_layer4_distributions, geojson_layer5_premises)
+
+    print('add technology to distribution to cabinet link')
+    geojson_layer4_distributions_links = add_technology_to_distribution_link(geojson_layer4_distributions, geojson_layer4_distributions_links)
     
     # Write lookups (for debug purposes)
     print('write postcode_areas')
