@@ -6,7 +6,7 @@ import fiona
 import numpy as np
 import random 
 
-from shapely.geometry import shape, Point, Polygon, MultiPolygon, mapping
+from shapely.geometry import shape, Point, LineString, Polygon, MultiPolygon, mapping
 from shapely.ops import unary_union, cascaded_union
 from pyproj import Proj, transform
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
@@ -581,7 +581,7 @@ def add_technology_to_premises_link(premises, premise_links):
 
     for premise_link in premise_links:
     
-        technology = premises_technology_by_id[premise_link['properties']['Origin']]
+        technology = premises_technology_by_id[premise_link['properties']['origin']]
 
         if technology in ['FTTP']:
             premise_link['properties']['technology'] = 'fiber'
@@ -626,7 +626,7 @@ def add_technology_to_link(assets, asset_links):
 
     for asset_link in asset_links:
     
-        technology = assets_technology_by_id[asset_link['properties']['Origin']]
+        technology = assets_technology_by_id[asset_link['properties']['origin']]
 
         if 'FTTP' in technology:
             asset_link['properties']['technology'] = 'fiber'
@@ -999,15 +999,16 @@ def generate_link_straight_line(origin_points, dest_points):
     links = []
     for origin_point in origin_points:
 
+        # Get length
+        geom = LineString([origin_point['geometry']['coordinates'], lut_dest_points[origin_point['properties']['connection']]])
+
         links.append({
             'type': "Feature",
-            'geometry': {
-                "type": "LineString",
-                "coordinates": [origin_point['geometry']['coordinates'], lut_dest_points[origin_point['properties']['connection']]]
-            },
+            'geometry': mapping(geom),
             'properties': {
-                "Origin": origin_point['properties']['id'],
-                "Dest": origin_point['properties']['connection']
+                "origin": origin_point['properties']['id'],
+                "dest": origin_point['properties']['connection'],
+                "length": geom.length
             }
         })
     return links
@@ -1092,8 +1093,9 @@ def generate_link_shortest_path(origin_points, dest_points, matching_area, cache
                             "coordinates": line
                         },
                         'properties': {
-                            "Origin": origin['properties']['id'],
-                            "Dest": destination['properties']['id']
+                            "origin": origin['properties']['id'],
+                            "dest": destination['properties']['id'],
+                            "length": LineString(line).length
                         }
                     })
             except:
@@ -1119,8 +1121,9 @@ def generate_link_with_nearest(origin_points, dest_points):
                 "coordinates": [origin_point['geometry']['coordinates'], nearest.object['geometry']['coordinates']]
             },
             'properties': {
-                "Origin": origin_point['properties']['id'],
-                "Dest": nearest.object['properties']['id']
+                "origin": origin_point['properties']['id'],
+                "dest": nearest.object['properties']['id'],
+                "length": LineString([origin_point['geometry']['coordinates'], nearest.object['geometry']['coordinates']]).length
             }
         })
     return links
