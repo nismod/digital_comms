@@ -6,7 +6,7 @@ import fiona
 import numpy as np
 import random 
 
-from shapely.geometry import shape, Point, Polygon, MultiPolygon, mapping
+from shapely.geometry import shape, Point, LineString, Polygon, MultiPolygon, mapping
 from shapely.ops import unary_union, cascaded_union
 from pyproj import Proj, transform
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
@@ -542,7 +542,7 @@ def add_technology_to_premises(premises, postcode_areas):
     for postcode_area in postcode_areas:
 
         # Calculate number of fiber/coax/copper connections in postcode area
-        number_of_premises = len(premises_by_postcode[postcode_area['properties']['POSTCODE']])
+        number_of_premises = len(premises_by_postcode[postcode_area['properties']['POSTCODE']]) + 1
         fttp_avail = int(postcode_area['properties']['fttp_avail'])
         ufbb_avail = int(postcode_area['properties']['ufbb_avail'])
         sfbb_avail = int(postcode_area['properties']['sfbb_avail'])
@@ -554,8 +554,8 @@ def add_technology_to_premises(premises, postcode_areas):
         number_of_docsis3 = round((sfbb_avail / 100) * (number_of_premises * 0.2))
         number_of_adsl = round((adsl_avail / 100) * number_of_premises)
 
-        technologies =  ['FFTP'] * number_of_fttp 
-        technologies += ['G.fast'] * number_of_ufbb 
+        technologies =  ['FTTP'] * number_of_fttp 
+        technologies += ['GFast'] * number_of_ufbb 
         technologies += ['FTTC'] * number_of_fttc
         technologies += ['DOCSIS3'] * number_of_docsis3
         technologies += ['ADSL'] * number_of_adsl
@@ -563,19 +563,105 @@ def add_technology_to_premises(premises, postcode_areas):
 
         # Allocate broadband technology and final drop to premises
         for premise, technology in zip(premises_by_postcode[postcode_area['properties']['POSTCODE']], technologies):
-            premise['properties']['connection'] = technology
-
-            if technology in ['FFTP']:
-                premise['properties']['final_drop'] = 'fiber'
-            elif technology in ['G.fast', 'FTTC', 'ADSL']:
-                premise['properties']['final_drop'] = 'copper'
-            elif technology in ['DOCSIS3']:
-                premise['properties']['final_drop'] = 'coax'
+            premise['properties']['FTTP'] = 1 if technology == 'FTTP' else 0
+            premise['properties']['GFast'] = 1 if technology == 'GFast' else 0
+            premise['properties']['FTTC'] = 1 if technology == 'FTTC' else 0
+            premise['properties']['DOCSIS3'] = 1 if technology == 'DOCSIS3' else 0
+            premise['properties']['ADSL'] = 1 if technology == 'ADSL' else 0
 
             joined_premises.append(premise)
 
     return joined_premises
 
+def add_technology_to_premises_link(premises, premise_links):
+
+    premises_technology_by_id = {}
+    for premise in premises:
+        premises_technology_by_id[premise['properties']['id']] = premise['properties']['technology']
+
+    for premise_link in premise_links:
+    
+        technology = premises_technology_by_id[premise_link['properties']['origin']]
+
+        if technology in ['FTTP']:
+            premise_link['properties']['technology'] = 'fiber'
+        elif technology in ['GFast', 'FTTC', 'ADSL']:
+            premise_link['properties']['technology'] = 'copper'
+        elif technology in ['DOCSIS3']:
+            premise_link['properties']['technology'] = 'coax'
+    
+    return premise_links
+
+def add_technology_to_distributions(distributions, premises):
+
+    premises_technology_by_distribution_id = defaultdict(set)
+    for premise in premises:
+        premises_technology_by_distribution_id[premise['properties']['connection']].add(premise['properties']['technology'])
+
+    for distribution in distributions:
+        technologies_serving = premises_technology_by_distribution_id[distribution['properties']['id']]
+
+        distribution['properties']['FTTP'] = 1 if 'FTTP' in technologies_serving else 0
+        distribution['properties']['GFast'] = 1 if 'GFast' in technologies_serving else 0
+        distribution['properties']['FTTC'] = 1 if 'FTTC' in technologies_serving else 0
+        distribution['properties']['DOCSIS3'] = 1 if 'DOCSIS3' in technologies_serving else 0
+        distribution['properties']['ADSL'] = 1 if 'ADSL' in technologies_serving else 0
+
+    return distributions
+
+def add_technology_to_link(assets, asset_links):
+
+    assets_technology_by_id = defaultdict(set)
+    for asset in assets:
+        if asset['properties']['FTTP'] == 1:
+            assets_technology_by_id[asset['properties']['id']].add('FTTP')
+        if asset['properties']['GFast'] == 1:
+            assets_technology_by_id[asset['properties']['id']].add('GFast')
+        if asset['properties']['FTTC'] == 1:
+            assets_technology_by_id[asset['properties']['id']].add('FTTC')
+        if asset['properties']['DOCSIS3'] == 1:
+            assets_technology_by_id[asset['properties']['id']].add('DOCSIS3')
+        if asset['properties']['ADSL'] == 1:
+            assets_technology_by_id[asset['properties']['id']].add('ADSL')
+
+    for asset_link in asset_links:
+    
+        technology = assets_technology_by_id[asset_link['properties']['origin']]
+
+        if 'FTTP' in technology:
+            asset_link['properties']['technology'] = 'fiber'
+        elif 'GFast' or 'FTTC' or 'ADSL' in technology:
+            asset_link['properties']['technology'] = 'copper'
+        elif 'DOCSIS3' in technology:
+            asset_link['properties']['technology'] = 'coax'
+    
+    return asset_links
+
+def add_technology_to_assets(assets, clients):
+
+    clients_technology_by_asset_id = defaultdict(set)
+    for client in clients:
+        if client['properties']['FTTP'] == 1:
+            clients_technology_by_asset_id[client['properties']['connection']].add('FTTP')
+        if client['properties']['GFast'] == 1:
+            clients_technology_by_asset_id[client['properties']['connection']].add('GFast')
+        if client['properties']['FTTC'] == 1:
+            clients_technology_by_asset_id[client['properties']['connection']].add('FTTC')
+        if client['properties']['DOCSIS3'] == 1:
+            clients_technology_by_asset_id[client['properties']['connection']].add('DOCSIS3')
+        if client['properties']['ADSL'] == 1:
+            clients_technology_by_asset_id[client['properties']['connection']].add('ADSL')
+
+    for asset in assets:
+        technologies_serving = clients_technology_by_asset_id[asset['properties']['id']]
+
+        asset['properties']['FTTP'] = 1 if 'FTTP' in technologies_serving else 0
+        asset['properties']['GFast'] = 1 if 'GFast' in technologies_serving else 0
+        asset['properties']['FTTC'] = 1 if 'FTTC' in technologies_serving else 0
+        asset['properties']['DOCSIS3'] = 1 if 'DOCSIS3' in technologies_serving else 0
+        asset['properties']['ADSL'] = 1 if 'ADSL' in technologies_serving else 0
+
+    return assets
 
 def connect_points_to_area(points, areas):
 
@@ -904,11 +990,7 @@ def estimate_cabinet_locations(postcode_areas):
 # PROCESS LINKS
 #####################################
 
-def generate_link_with_area_id(origin_points, dest_points, matching_areas):
-
-    idx_areas = index.Index()
-    for idx, area in enumerate(matching_areas):
-        idx_areas.insert(idx, shape(area['geometry']).bounds, area)
+def generate_link_straight_line(origin_points, dest_points):
 
     lut_dest_points = {}
     for dest_point in dest_points:
@@ -916,24 +998,22 @@ def generate_link_with_area_id(origin_points, dest_points, matching_areas):
 
     links = []
     for origin_point in origin_points:
-        nearest = list(idx_areas.nearest(shape(origin_point['geometry']).bounds, objects=True))
 
-        for candidate in nearest:
-            if shape(candidate.object['geometry']).contains(shape(origin_point['geometry'])):
-                links.append({
-                    'type': "Feature",
-                    'geometry': {
-                        "type": "LineString",
-                        "coordinates": [origin_point['geometry']['coordinates'], lut_dest_points[candidate.object['properties']['id']]]
-                    },
-                    'properties': {
-                        "Origin": origin_point['properties']['id'],
-                        "Dest": candidate.object['properties']['id']
-                    }
-                })
+        # Get length
+        geom = LineString([origin_point['geometry']['coordinates'], lut_dest_points[origin_point['properties']['connection']]])
+
+        links.append({
+            'type': "Feature",
+            'geometry': mapping(geom),
+            'properties': {
+                "origin": origin_point['properties']['id'],
+                "dest": origin_point['properties']['connection'],
+                "length": geom.length
+            }
+        })
     return links
 
-def generate_link_with_area_match(origin_points, dest_points, matching_area, cachefile=None):
+def generate_link_shortest_path(origin_points, dest_points, matching_area, cachefile=None):
 
     ox.config(log_file=False, log_console=True, use_cache=True)
 
@@ -1013,8 +1093,9 @@ def generate_link_with_area_match(origin_points, dest_points, matching_area, cac
                             "coordinates": line
                         },
                         'properties': {
-                            "Origin": origin['properties']['id'],
-                            "Dest": destination['properties']['id']
+                            "origin": origin['properties']['id'],
+                            "dest": destination['properties']['id'],
+                            "length": LineString(line).length
                         }
                     })
             except:
@@ -1040,8 +1121,9 @@ def generate_link_with_nearest(origin_points, dest_points):
                 "coordinates": [origin_point['geometry']['coordinates'], nearest.object['geometry']['coordinates']]
             },
             'properties': {
-                "Origin": origin_point['properties']['id'],
-                "Dest": nearest.object['properties']['id']
+                "origin": origin_point['properties']['id'],
+                "dest": nearest.object['properties']['id'],
+                "length": LineString([origin_point['geometry']['coordinates'], nearest.object['geometry']['coordinates']]).length
             }
         })
     return links
@@ -1108,12 +1190,6 @@ if __name__ == "__main__":
     print('add postcode to premises')
     geojson_layer5_premises = add_postcode_to_premises(geojson_layer5_premises, geojson_postcode_areas)
 
-    print('add technology to postcode areas')
-    geojson_postcode_areas = add_technology_to_postcode_areas(geojson_postcode_areas, lut_pcd_technology)
-
-    print('add technology to premises')
-    geojson_layer5_premises = add_technology_to_premises(geojson_layer5_premises, geojson_postcode_areas)
-
     # Process/Estimate assets    
     print('estimate location of distribution points')
     geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises, cachefile="assets_layer4_distributions.shp")
@@ -1132,6 +1208,9 @@ if __name__ == "__main__":
     geojson_exchange_areas = generate_exchange_area(geojson_postcode_areas)
 
     # Connect assets
+    print('connect premises to distributions')
+    geojson_layer5_premises = connect_points_to_area(geojson_layer5_premises, geojson_distribution_areas)
+
     print('connect distributions to cabinets')
     geojson_layer4_distributions = connect_points_to_area(geojson_layer4_distributions, geojson_cabinet_areas)
 
@@ -1140,14 +1219,39 @@ if __name__ == "__main__":
 
     # Process/Estimate links
     print('generate links layer 5')
-    geojson_layer5_premises_links = generate_link_with_area_id(geojson_layer5_premises, geojson_layer4_distributions, geojson_distribution_areas)
+    geojson_layer5_premises_links = generate_link_straight_line(geojson_layer5_premises, geojson_layer4_distributions)
 
     print('generate links layer 4')
-    geojson_layer4_distributions_links = generate_link_with_area_match(geojson_layer4_distributions, geojson_layer3_cabinets, geojson_cabinet_areas, 'links_layer4_distributions.shp')
+    geojson_layer4_distributions_links = generate_link_shortest_path(geojson_layer4_distributions, geojson_layer3_cabinets, geojson_cabinet_areas, 'links_layer4_distributions.shp')
 
     print('generate links layer 3')
-    geojson_layer3_cabinets_links = generate_link_with_area_match(geojson_layer3_cabinets, geojson_layer2_exchanges, geojson_exchange_areas)
+    geojson_layer3_cabinets_links = generate_link_shortest_path(geojson_layer3_cabinets, geojson_layer2_exchanges, geojson_exchange_areas, 'links_layer3_cabinets.shp')
+
+    # Add technology to network and process this into the network hierachy
+    print('add technology to postcode areas')
+    geojson_postcode_areas = add_technology_to_postcode_areas(geojson_postcode_areas, lut_pcd_technology)
+
+    print('add technology to premises')
+    geojson_layer5_premises = add_technology_to_premises(geojson_layer5_premises, geojson_postcode_areas)
+
+    print('add technology to premises links (finaldrop)')
+    geojson_layer5_premises_links = add_technology_to_link(geojson_layer5_premises, geojson_layer5_premises_links)
+
+    print('add technology to distributions')
+    geojson_layer4_distributions = add_technology_to_assets(geojson_layer4_distributions, geojson_layer5_premises)
+
+    print('add technology to distribution links')
+    geojson_layer4_distributions_links = add_technology_to_link(geojson_layer4_distributions, geojson_layer4_distributions_links)
+
+    print('add technology to cabinets')
+    geojson_layer3_cabinets = add_technology_to_assets(geojson_layer3_cabinets, geojson_layer4_distributions)
     
+    print('add technology to cabinet links')
+    geojson_layer3_cabinets_links = add_technology_to_link(geojson_layer3_cabinets, geojson_layer3_cabinets_links)
+
+    print('add technology to exchanges')
+    geojson_layer2_exchanges = add_technology_to_assets(geojson_layer2_exchanges, geojson_layer3_cabinets)
+
     # Write lookups (for debug purposes)
     print('write postcode_areas')
     write_shapefile(geojson_postcode_areas, '_postcode_areas.shp')
