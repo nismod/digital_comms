@@ -333,14 +333,6 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, thr
 
     return built_interventions, budget, spend
 
-def next_larger_value(x, vals):
-    for val in vals:
-        if val > x:
-            return val
-    else:
-        return vals[-1]
-
-
 def _suggest_target_postcodes(system, threshold=None):
     """Sort postcodes by population density (descending)
     - if considering threshold, filter out any with capacity above threshold

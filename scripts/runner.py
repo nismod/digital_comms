@@ -1,4 +1,4 @@
-from digital_comms.models import fixed_model
+from digital_comms.fixed_model import fixed_model
 import fiona
 from operator import attrgetter
 import os
@@ -7,7 +7,7 @@ def read_shapefile(file):
     with fiona.open(file, 'r') as source:
         return [f['properties'] for f in source]
 
-if __name__ == "__main__": # allow the module to be executed directly 
+if __name__ == "__main__":
 
     print('Read shapefiles')
     assets = {}
