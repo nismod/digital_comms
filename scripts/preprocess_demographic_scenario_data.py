@@ -5,6 +5,7 @@ import os
 import statistics
 from itertools import groupby
 from operator import itemgetter
+from copy import deepcopy
 import pprint
 
 CONFIG = configparser.ConfigParser()
@@ -241,12 +242,23 @@ def subset_residential_data(premise_data):
                 'E': line['E'],
                 'N':line['N'],
                 'my_residential_id': i, 
-                'year': '2017'               
+                #'year': '2017'               
                 })
 
             i += 1
     
     return residential_data
+
+#####################################
+# MERGE PREMISES AND HOUSEHOLD WTP
+#####################################
+
+def merge_prems_and_housholds(premises_data, household_data):
+    
+    for premise, household in zip(premises_data, household_data):
+        premise.update(household)
+    
+    return premises_data
 
 #####################################
 # WRITE DATA
@@ -295,75 +307,41 @@ i = 0
 print('Subset residential data')
 premises = subset_residential_data(premises)
 
-#pprint.pprint(household_wtp)
-#pprint.pprint(premises)
-#print(len(premises))
-#print(len(household_wtp))
+print('Adding household data to premises')
+premises = merge_prems_and_housholds(premises, household_wtp)
 
-wtp_2017 = [] 
-def subset_data(my_wtp_data):
-    for row in my_wtp_data:
-        if row['year'] == '2017':
-            wtp_2017.append({
+print('Combine premises and household data, and write out per year')
+for year in TIMESTEPS:
+
+    output_name_year_files = {
+        year: os.path.join(DEMOGRAPHICS_OUTPUT_FIXED, 'premises_{}.csv'.format(year))
+    }
+
+    annual_wtp_data = []
+
+    for row in household_wtp:
+        if row['year'] == str(year):
+            annual_wtp_data.append({
             'HID': row['HID'],
             'SES': row['SES'],
             'my_residential_id': row['my_residential_id'],
             'wtp': row['wtp'],
             'year': row['year'],
-                })
-        else:
-            continue
+            })
 
-    return wtp_2017   
+    premises_annually = deepcopy(premises)
 
-my_data = subset_data(household_wtp)
+    for premise, household in zip(premises_annually, annual_wtp_data):
+        premise.update(household)
 
+    output_data_fieldnames = ['id','my_residential_id','residential_address_count',
+                    'non_residential_address_count','postgis_geom','E','N',
+                    'oa', 'year', 'wtp', 'HID', 'SES']
 
+    for filename in output_name_year_files.values():
+        with open(filename, 'w') as csv_file:
+            writer = csv.DictWriter(csv_file, output_data_fieldnames, lineterminator = '\n')
+            writer.writeheader()   
+            writer.writerows(premises_annually)   
 
-import operator
-sorting_key = operator.itemgetter("my_residential_id")
-#my_data = sorted(my_data, key=sorting_key)
-#premises = sorted(premises, key=sorting_key)
-
-for my_data, premises in zip(sorted(my_data, key=sorting_key), sorted(premises, key=sorting_key)):
-    my_data.update(premises)
-
-
-#print('Adding MSOA data to OA data')
-#output_data = merge_two_lists_of_dicts(my_data, premises, 'my_residential_id', 'year')
-
-#pprint.pprint(output_data)
-
-#d1 = {(d['my_residential_id'], d['year']):d for d in my_data}
-#pprint.pprint(d1)
-#output_data = [dict(d, **d1.get((d['my_residential_id'], d['year']), {})) for d in premises]	
-
-#pprint.pprint(output_data)
-###now merge households into residential premises using the id variables created
-
-print('Write data to .csv')
-output_data_fieldnames = ['id','my_residential_id','residential_address_count',
-                          'non_residential_address_count','postgis_geom','E','N',
-                          'oa', 'year', 'wtp', 'HID', 'SES', 'age', 'MSOA', 
-                          'ethnicity', 'OA', 'PID', 'gender']
-csv_writer(final_data, 'annual_demographic_data.csv', output_data_fieldnames)
-
-with open(os.path.join(DEMOGRAPHICS_OUTPUT_FIXED, 'hh_wtp.csv'),'w') as csv_file:
-    writer = csv.DictWriter(csv_file, output_data_fieldnames, lineterminator = '\n')
-    writer.writeheader()   
-    writer.writerows(my_data)
-
-output_data_fieldnames = ['id','my_residential_id','residential_address_count',
-                          'non_residential_address_count','postgis_geom','E','N',
-                          'oa', 'year', 'wtp', 'HID', 'SES']
-with open(os.path.join(DEMOGRAPHICS_OUTPUT_FIXED, 'premises.csv'),'w') as csv_file:
-    writer = csv.DictWriter(csv_file, output_data_fieldnames, lineterminator = '\n')
-    writer.writeheader()   
-    writer.writerows(premises)
-
-
-
-# print('Write data to .csv')
-# demographic_fieldnames = ['HID','MSOA','OA','PID','SES','age','ethnicity','gender','wtp','year']
-# csv_writer(final_data, 'annual_demographic_data.csv', demographic_fieldnames)
-
+print('Script complete')
