@@ -141,13 +141,13 @@ def read_oa_data():
 # COMBINE MSOA AND OA DATA
 #####################################
 
-def merge_msoa_and_oa_dicts(msoa_list_of_dicts, oa_list_of_dicts):
+def merge_two_lists_of_dicts(msoa_list_of_dicts, oa_list_of_dicts, parameter1, parameter2):
     """
     Combine the msoa and oa dicts using the household indicator and year keys. 
     """
-    d1 = {(d['HID'], d['year']):d for d in oa_list_of_dicts}
+    d1 = {(d[parameter1], d[parameter2]):d for d in oa_list_of_dicts}
 
-    msoa_list_of_dicts = [dict(d, **d1.get((d['HID'], d['year']), {})) for d in msoa_list_of_dicts]	
+    msoa_list_of_dicts = [dict(d, **d1.get((d[parameter1], d[parameter2]), {})) for d in msoa_list_of_dicts]	
 
     return msoa_list_of_dicts
 
@@ -240,7 +240,8 @@ def subset_residential_data(premise_data):
                 'postgis_geom': line['postgis_geom'],
                 'E': line['E'],
                 'N':line['N'],
-                'my_residential_id': i,                
+                'my_residential_id': i, 
+                'year': '2017'               
                 })
 
             i += 1
@@ -278,7 +279,7 @@ print('Loading OA data')
 oa_data = read_oa_data()
 
 print('Adding MSOA data to OA data')
-final_data = merge_msoa_and_oa_dicts(MSOA_data, oa_data)
+final_data = merge_two_lists_of_dicts(MSOA_data, oa_data, 'HID', 'year')
 
 print('Aggregating WTP by household')
 household_wtp = aggregate_wtp_by_household(final_data)
@@ -299,28 +300,66 @@ premises = subset_residential_data(premises)
 #print(len(premises))
 #print(len(household_wtp))
 
+wtp_2017 = [] 
+def subset_data(my_wtp_data):
+    for row in my_wtp_data:
+        if row['year'] == '2017':
+            wtp_2017.append({
+            'HID': row['HID'],
+            'SES': row['SES'],
+            'my_residential_id': row['my_residential_id'],
+            'wtp': row['wtp'],
+            'year': row['year'],
+                })
+        else:
+            continue
 
-#d1 = {(d['my_residential_id']):d for d in premises}
+    return wtp_2017   
+
+my_data = subset_data(household_wtp)
+
+
+
+import operator
+sorting_key = operator.itemgetter("my_residential_id")
+#my_data = sorted(my_data, key=sorting_key)
+#premises = sorted(premises, key=sorting_key)
+
+for my_data, premises in zip(sorted(my_data, key=sorting_key), sorted(premises, key=sorting_key)):
+    my_data.update(premises)
+
+
+#print('Adding MSOA data to OA data')
+#output_data = merge_two_lists_of_dicts(my_data, premises, 'my_residential_id', 'year')
+
+#pprint.pprint(output_data)
+
+#d1 = {(d['my_residential_id'], d['year']):d for d in my_data}
 #pprint.pprint(d1)
-#output_data = [dict(d, **d1.get(d['my_residential_id'], {})) for d in household_wtp]	
+#output_data = [dict(d, **d1.get((d['my_residential_id'], d['year']), {})) for d in premises]	
 
 #pprint.pprint(output_data)
 ###now merge households into residential premises using the id variables created
 
-#print('Write data to .csv')
-#output_data_fieldnames = ['HID','SES','my_residential_id','wtp','year']
-#csv_writer(final_data, 'annual_demographic_data.csv', demographic_fieldnames)
+print('Write data to .csv')
+output_data_fieldnames = ['id','my_residential_id','residential_address_count',
+                          'non_residential_address_count','postgis_geom','E','N',
+                          'oa', 'year', 'wtp', 'HID', 'SES', 'age', 'MSOA', 
+                          'ethnicity', 'OA', 'PID', 'gender']
+csv_writer(final_data, 'annual_demographic_data.csv', output_data_fieldnames)
 
-# with open(os.path.join(DEMOGRAPHICS_OUTPUT_FIXED, 'hh_wtp.csv'),'w') as csv_file:
-#     writer = csv.DictWriter(csv_file, output_data_fieldnames, lineterminator = '\n')
-#     writer.writeheader()   
-#     writer.writerows(output_data)
+with open(os.path.join(DEMOGRAPHICS_OUTPUT_FIXED, 'hh_wtp.csv'),'w') as csv_file:
+    writer = csv.DictWriter(csv_file, output_data_fieldnames, lineterminator = '\n')
+    writer.writeheader()   
+    writer.writerows(my_data)
 
-# output_data_fieldnames = ['id','my_residential_id','residential_address_count','non_residential_address_count','postgis_geom','E','N','oa']
-# with open(os.path.join(DEMOGRAPHICS_OUTPUT_FIXED, 'premises.csv'),'w') as csv_file:
-#     writer = csv.DictWriter(csv_file, output_data_fieldnames, lineterminator = '\n')
-#     writer.writeheader()   
-#     writer.writerows(premises)
+output_data_fieldnames = ['id','my_residential_id','residential_address_count',
+                          'non_residential_address_count','postgis_geom','E','N',
+                          'oa', 'year', 'wtp', 'HID', 'SES']
+with open(os.path.join(DEMOGRAPHICS_OUTPUT_FIXED, 'premises.csv'),'w') as csv_file:
+    writer = csv.DictWriter(csv_file, output_data_fieldnames, lineterminator = '\n')
+    writer.writeheader()   
+    writer.writerows(premises)
 
 
 

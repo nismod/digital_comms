@@ -13,83 +13,78 @@ import math
 
 # Postcode-sector level individual interventions
 INTERVENTIONS = {
-    'upgrade_to_FTTdp': {
+    'upgrade_to_FTTdp_from_cabinet': {
         'name': 'Upgrade distribution point to FTTdp with G.Fast',
         'description': 'If a distribution point is being fed with copper from the cabinet',
         'result': 'fibre blown between the cabinet and distribution point, with a new G.Fast distribution point unit',
-        'cost': 142446,
+        'cost': 'sum of fibre length, plus assets, divided by premises',
         'assets_to_build': [
             {
                 # site_ngr to match upgraded
-                'site_ngr': None,
-                'frequency': '800',
-                'technology': 'LTE',
-                'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
+                'cabinet_to_dist_point_fibre': '£5 per meter',
+                'number_of_fibres': '1',
                 # set build date when deciding
                 'build_date': None,
             },
             {
                 # site_ngr to match upgraded
-                'site_ngr': None,
-                'frequency': '2600',
-                'technology': 'LTE',
-                'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
+                'gfast_distribution_point_unit': '£1500',
+                'users_ports': '4',
+                'fixed_energy_demand': 'XX kV',
                 # set build date when deciding
                 'build_date': None,
             },
         ]
     },
-    'carrier_700': {
-        'name': 'Build 700 MHz carrier',
-        'description': 'Available if a site has LTE',
-        'result': '700 band available',
-        'cost': 50917,
+    'upgrade_to_FTTP_from_cabinet': {
+        'name': 'Upgrade premises to FTTP with GPON',
+        'description': 'If a premises is being fed with copper from either the cabinet or distribution point',
+        'result': 'fibre blown between the cabinet and distribution point, and then finally deployed to the premises',
+        'cost': 'sum of fibre length, plus assets, divided by premises',
         'assets_to_build': [
             {
                 # site_ngr to match upgraded
-                'site_ngr': None,
-                'frequency': '700',
-                'technology': 'LTE',
-                'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
+                'cabinet_to_dist_point_fibre': '£5 per meter',
+                'number_of_fibres': '1',
                 # set build date when deciding
                 'build_date': None,
             },
-        ]
-    },
-    'carrier_3500': {
-        'name': 'Build 3500 MHz carrier',
-        'description': 'Available if a site has LTE',
-        'result': '3500 band available',
-        'cost': 50917,
-        'assets_to_build': [
             {
                 # site_ngr to match upgraded
-                'site_ngr': None,
-                'frequency': '3500',
-                'technology': 'LTE',
-                'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
+                'dist_point_to_premises_fibre': '£5 per meter',
+                'number_of_fibres': '1',
                 # set build date when deciding
                 'build_date': None,
             },
-        ]
-    },
-    'small_cell': {
-        'name': 'Build a small cell',
-        'description': 'Must be deployed at preset densities to be modelled',
-        'result': '2x25 MHz small cells available at given density',
-        'cost': 40220,
-        'assets_to_build': [
             {
-                # site_ngr not used
-                'site_ngr': 'small_cell_sites',
-                'frequency': '3700',
-                'technology': '5G',
-                'type': 'small_cell',
-                'bandwidth': '2x25MHz',
+                # site_ngr to match upgraded
+                'cabinet_optical_fibre_splitter': '£10',
+                'users_ports': '32',
+                'fixed_energy_demand': 'XX kV',
+                # set build date when deciding
+                'build_date': None,
+            },
+            {
+                # site_ngr to match upgraded
+                'dist_point_optical_fibre_splitter': '£10',
+                'users_ports': '32',
+                'fixed_energy_demand': 'XX kV',
+                # set build date when deciding
+                'build_date': None,
+            },
+            {
+                # site_ngr to match upgraded
+                'optical_network_terminator': '£10',
+                'users_ports': '1',
+                'fixed_energy_demand': 'XX kV',
+                # set build date when deciding
+                'build_date': None,
+            },
+            {
+                # site_ngr to match upgraded
+                'customer_premises_equipment': '£20',
+                'users_ports': '1',
+                'fixed_energy_demand': 'XX kV',
                 # set build date when deciding
                 'build_date': None,
             },
@@ -100,10 +95,9 @@ INTERVENTIONS = {
 AVAILABLE_STRATEGY_INTERVENTIONS = {
     # Intervention Strategy 1
     # Minimal Intervention 'Do Nothing Scenario'
-    # Build no more additional sites -> will lead to a capacity margin deficit
+    # Build no more additional fibre 
     # The cost will be the replacement of existing units annually based on the
     # (decommissioning rate of 10%) common asset lifetime of 10 years
-    # Capacity will be the sum of 800 and 2600 MHz
     'minimal': (),
 
     # Intervention Strategy 2
@@ -111,22 +105,22 @@ AVAILABLE_STRATEGY_INTERVENTIONS = {
     # The cost will be the addtion of another carrier on each basestation ~£15k
     # (providing thre is 4G already)
     # If 4G isn't present, the site will need major upgrades.
-    'macrocell': ('upgrade_to_lte', 'carrier_700',
-                  'carrier_3500'),
+    'upgrade_to_FTTdp_from_cabinet': (),
+
      # Intervention Strategy 2.
      # Integrate 700
-    'macrocell_700': ('upgrade_to_lte', 'carrier_700'),
+    'upgrade_to_FTTP_from_cabinet': (),
 
     # Intervention Strategy 3
     # Deploy a small cell layer at 3700 MHz
     # The cost will include the small cell unit and the civil works per cell
-    'small_cell': ('upgrade_to_lte', 'small_cell'),
+    #'small_cell': ('upgrade_to_lte', 'small_cell'),
 
     # Intervention Strategy 4
     # Deploy a small cell layer at 3700 MHz
     # The cost will include the small cell unit and the civil works per cell
-    'small_cell_and_spectrum': ('upgrade_to_lte', 'carrier_700',
-                   'carrier_3500', 'small_cell'),
+    #'small_cell_and_spectrum': ('upgrade_to_lte', 'carrier_700',
+    #               'carrier_3500', 'small_cell'),
 }
 
 
