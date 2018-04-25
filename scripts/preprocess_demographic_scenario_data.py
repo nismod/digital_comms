@@ -155,8 +155,6 @@ def merge_msoa_and_oa_dicts(msoa_list_of_dicts, oa_list_of_dicts):
 # AGGREGATE WTP DATA
 #####################################
 
-
-
 def aggregate_wtp_by_household(per_person_wtp_data):
     """
     """
@@ -167,7 +165,7 @@ def aggregate_wtp_by_household(per_person_wtp_data):
         temp_dict["wtp"] = sum(item["wtp"] for item in grp)
         wtp_by_household.append(temp_dict)
 
-    wtp_by_household = [{**i, **{'my_hh_id':i['HID']}} for i in wtp_by_household]
+    wtp_by_household = [{**i, **{'my_residential_id':i['HID']}} for i in wtp_by_household]
 
     return wtp_by_household
 
@@ -286,7 +284,7 @@ print('Aggregating WTP by household')
 household_wtp = aggregate_wtp_by_household(final_data)
 
 print('Write WTP by household to .csv')
-wtp_fieldnames = ['HID','SES','wtp','year','my_hh_id']
+wtp_fieldnames = ['HID','SES','wtp','year','my_residential_id']
 csv_writer(household_wtp, 'household_wtp.csv', wtp_fieldnames)
 
 print('Reading premises data')
@@ -294,17 +292,37 @@ premises = read_premises_data()
 
 i = 0
 print('Subset residential data')
-output_data = subset_residential_data(premises)
-
-###now merge households into residential premises using the id variables created
-
-
-
-
-
-pprint.pprint(output_data)
+premises = subset_residential_data(premises)
 
 #pprint.pprint(household_wtp)
+#pprint.pprint(premises)
+#print(len(premises))
+#print(len(household_wtp))
+
+
+#d1 = {(d['my_residential_id']):d for d in premises}
+#pprint.pprint(d1)
+#output_data = [dict(d, **d1.get(d['my_residential_id'], {})) for d in household_wtp]	
+
+#pprint.pprint(output_data)
+###now merge households into residential premises using the id variables created
+
+#print('Write data to .csv')
+#output_data_fieldnames = ['HID','SES','my_residential_id','wtp','year']
+#csv_writer(final_data, 'annual_demographic_data.csv', demographic_fieldnames)
+
+# with open(os.path.join(DEMOGRAPHICS_OUTPUT_FIXED, 'hh_wtp.csv'),'w') as csv_file:
+#     writer = csv.DictWriter(csv_file, output_data_fieldnames, lineterminator = '\n')
+#     writer.writeheader()   
+#     writer.writerows(output_data)
+
+# output_data_fieldnames = ['id','my_residential_id','residential_address_count','non_residential_address_count','postgis_geom','E','N','oa']
+# with open(os.path.join(DEMOGRAPHICS_OUTPUT_FIXED, 'premises.csv'),'w') as csv_file:
+#     writer = csv.DictWriter(csv_file, output_data_fieldnames, lineterminator = '\n')
+#     writer.writeheader()   
+#     writer.writerows(premises)
+
+
 
 # print('Write data to .csv')
 # demographic_fieldnames = ['HID','MSOA','OA','PID','SES','age','ethnicity','gender','wtp','year']
