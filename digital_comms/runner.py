@@ -1,28 +1,44 @@
-from digital_comms.models import fixed_model
+from digital_comms.fixed_model import fixed_model, fixed_interventions
 import fiona
 from operator import attrgetter
 import os
+
+BASE_YEAR = 2016
+END_YEAR = 2030
+TIMESTEP_INCREMENT = 1
+TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
+
+MARKET_SHARE = 0.3
+
+# Annual capital budget constraint for the whole industry, GBP * market share
+ANNUAL_BUDGET = (2 * 10 ** 9) * MARKET_SHARE
+
+# Target threshold for universal mobile service, in Mbps/user
+SERVICE_OBLIGATION_CAPACITY = 10
 
 def read_shapefile(file):
     with fiona.open(file, 'r') as source:
         return [f['properties'] for f in source]
 
-if __name__ == "__main__": # allow the module to be executed directly 
-
-    print('Read shapefiles')
+def read_assets():
     assets = {}
     assets['premises'] = read_shapefile(os.path.join('data', 'processed', 'assets_layer5_premises.shp'))
     assets['distributions'] = read_shapefile(os.path.join('data', 'processed', 'assets_layer4_distributions.shp'))
     assets['cabinets'] = read_shapefile(os.path.join('data', 'processed', 'assets_layer3_cabinets.shp'))
     assets['exchanges'] = read_shapefile(os.path.join('data', 'processed', 'assets_layer2_exchanges.shp'))
+
+    return assets
     
+def read_links():
     links = []
     links.extend(read_shapefile(os.path.join('data', 'processed', 'links_layer5_premises.shp')))
     links.extend(read_shapefile(os.path.join('data', 'processed', 'links_layer4_distributions.shp')))
     links.extend(read_shapefile(os.path.join('data', 'processed', 'links_layer3_cabinets.shp')))
 
-    # Initialise parameter
-    parameters = {
+    return links
+
+def read_parameters():
+    return {
         'costs': {
             'links': {
                 'fiber_per_meter': 20,
@@ -67,49 +83,31 @@ if __name__ == "__main__": # allow the module to be executed directly
         }
     }
 
-    print('Initialise model')
-    my_fixed_model = fixed_model.ICTManager(assets, links, parameters)
+if __name__ == "__main__": # allow the module to be executed directly 
 
-    print('--Statistics--')
-    print('<assets>')
-    print('Number of premises: ' + str(my_fixed_model.number_of_assets['premises']))
-    print('Number of distributions: ' + str(my_fixed_model.number_of_assets['distributions']))
-    print('Number of cabinets: ' + str(my_fixed_model.number_of_assets['cabinets']))
-    print('Number of exchanges: ' + str(my_fixed_model.number_of_assets['exchanges']))
+    for intervention_strategy in [
+            ('minimal'),
+            ('upgrade_to_FTTdp_from_cabinet'),
+            ('upgrade_to_FTTP_from_cabinet'),
+            ('upgrade_to_FTTP_from_cabinet'),
+        ]:
 
-    print('<links>')
-    print('Number of premises links: ' + str(my_fixed_model.number_of_links['premises']))
-    print('Number of distributions links: ' + str(my_fixed_model.number_of_links['distributions']))
-    print('Number of cabinets links: ' + str(my_fixed_model.number_of_links['cabinets']))
-    print('Number of exchanges links: ' + str(my_fixed_model.number_of_links['exchanges']))
+        print("Running:", intervention_strategy)
 
-    print('--Analysis example--')
-    print('<costs>')
-    max_exchange_rollout_costs_fttp = max(my_fixed_model.assets['exchanges'], key=lambda x:x.rollout_costs['fttp'])
-    print('Most expensive exchange for FTTP rollout: ' + max_exchange_rollout_costs_fttp.id)
-    max_cabinet_rollout_costs_fttp = max(my_fixed_model.assets['cabinets'], key=lambda x:x.rollout_costs['fttp'])
-    print('Most expensive cabinet for FTTP rollout: ' + max_cabinet_rollout_costs_fttp.id)
-    max_distribution_rollout_costs_fttp = max(my_fixed_model.assets['distributions'], key=lambda x:x.rollout_costs['fttp'])
-    print('Most expensive distribution for FTTP rollout: ' + max_distribution_rollout_costs_fttp.id)
-    max_premise_rollout_costs_fttp = max(my_fixed_model.assets['premises'], key=lambda x:x.rollout_costs['fttp'])
-    print('Most expensive premise for FTTP rollout: ' + max_premise_rollout_costs_fttp.id)
+        assets = read_assets()
+        links = read_links()
+        parameters = read_parameters()
 
-    print('<benefits>')
-    max_exchange_rollout_benefits_fttp = max(my_fixed_model.assets['exchanges'], key=lambda x:x.rollout_benefits['fttp'])
-    print('Most benefitial exchange for FTTP rollout: ' + max_exchange_rollout_benefits_fttp.id)
-    max_cabinet_rollout_benefits_fttp = max(my_fixed_model.assets['cabinets'], key=lambda x:x.rollout_benefits['fttp'])
-    print('Most benefitial cabinet for FTTP rollout: ' + max_cabinet_rollout_benefits_fttp.id)
-    max_distribution_rollout_benefits_fttp = max(my_fixed_model.assets['distributions'], key=lambda x:x.rollout_benefits['fttp'])
-    print('Most benefitial distribution for FTTP rollout: ' + max_distribution_rollout_benefits_fttp.id)
-    max_premise_rollout_benefits_fttp = max(my_fixed_model.assets['premises'], key=lambda x:x.rollout_benefits['fttp'])
-    print('Most benefitial premise for FTTP rollout: ' + max_premise_rollout_benefits_fttp.id)
+        for year in TIMESTEPS:
+            print("-", year)
 
-    print('<benefit-costs-ratio>')
-    max_exchange_rollout_bcr_fttp = max(my_fixed_model.assets['exchanges'], key=lambda x:x.rollout_bcr['fttp'])
-    print('Best benefit-costs-ratio exchange for FTTP rollout: ' + max_exchange_rollout_bcr_fttp.id)
-    max_cabinet_rollout_bcr_fttp = max(my_fixed_model.assets['cabinets'], key=lambda x:x.rollout_bcr['fttp'])
-    print('Best benefit-costs-ratio cabinet for FTTP rollout: ' + max_cabinet_rollout_bcr_fttp.id)
-    max_distribution_rollout_bcr_fttp = max(my_fixed_model.assets['distributions'], key=lambda x:x.rollout_bcr['fttp'])
-    print('Best benefit-costs-ratio distribution for FTTP rollout: ' + max_distribution_rollout_bcr_fttp.id)
-    max_premise_rollout_bcr_fttp = max(my_fixed_model.assets['premises'], key=lambda x:x.rollout_bcr['fttp'])
-    print('Best benefit-costs-ratio premise for FTTP rollout: ' + max_premise_rollout_bcr_fttp.id)
+            # Decide on new interventions
+            budget = ANNUAL_BUDGET
+            service_obligation_capacity = SERVICE_OBLIGATION_CAPACITY
+
+            # simulate first
+            if year == BASE_YEAR:
+                system = fixed_model.ICTManager(assets, links, parameters)
+
+            # decide
+            interventions_built, budget, spend = fixed_interventions.decide_interventions(intervention_strategy, budget, service_obligation_capacity, system, year)
