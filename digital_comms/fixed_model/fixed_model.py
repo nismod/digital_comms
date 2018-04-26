@@ -3,13 +3,13 @@
 from collections import defaultdict
 from itertools import tee
 from pprint import pprint
+from math import ceil
 
 class ICTManager(object):
     """Model controller class."""
 
     def __init__(self, assets, links, parameters):
-        
-        self._links = {link['Origin']:Link(link, parameters) for link in links}
+        self._links = {link['origin']:Link(link, parameters) for link in links}
 
         self._premises = [Premise(premise, self._links.get(premise['id'], None), parameters) for premise in assets['premises']]
         premises = defaultdict(list)
@@ -27,6 +27,21 @@ class ICTManager(object):
             cabinets[cabinet.connection].append(cabinet)
 
         self._exchanges = [Exchange(exchange, cabinets[exchange['id']], parameters) for exchange in assets['exchanges']]
+
+    def upgrade(self, interventions):
+
+        for asset_id, action, costs in interventions:
+
+            if asset_id.startswith('distribution'):
+                print(asset_id)
+                distribution = [distribution for distribution in self._distributions if distribution.id == asset_id][0]
+                distribution.upgrade(action)
+            
+            if asset_id.startswith('cabinet'):
+                print(asset_id)
+                cabinet = [cabinet for cabinet in self._cabinets if cabinet.id == asset_id][0]
+                cabinet.upgrade(action)
+
 
     @property # shortcut for creating a read-only property
     def assets(self):
@@ -88,6 +103,7 @@ class ICTManager(object):
             'cabinets':         self.total_link_length['cabinets'] / self.number_of_links['cabinets']
         }
 
+
 class Exchange(object):
     """Exchanges"""
 
@@ -98,14 +114,18 @@ class Exchange(object):
         self.fttc = data["FTTC"]
         self.adsl = data["ADSL"]
 
+        self.parameters = parameters
         self._clients = clients
 
+        self.compute()
+
+    def compute(self):
         # Upgrade costs
         self.upgrade_costs = {}
-        self.upgrade_costs['fttp'] = parameters['costs']['assets']['exchange']['fttp'] if self.fttp == 0 else 0
-        self.upgrade_costs['gfast'] = parameters['costs']['assets']['exchange']['gfast'] if self.gfast == 0 else 0
-        self.upgrade_costs['fttc'] = parameters['costs']['assets']['exchange']['fttc'] if self.fttc == 0 else 0
-        self.upgrade_costs['adsl'] = parameters['costs']['assets']['exchange']['adsl'] if self.adsl == 0 else 0
+        self.upgrade_costs['fttp'] = self.parameters['costs']['assets']['exchange']['fttp'] if self.fttp == 0 else 0
+        self.upgrade_costs['gfast'] = self.parameters['costs']['assets']['exchange']['gfast'] if self.gfast == 0 else 0
+        self.upgrade_costs['fttc'] = self.parameters['costs']['assets']['exchange']['fttc'] if self.fttc == 0 else 0
+        self.upgrade_costs['adsl'] = self.parameters['costs']['assets']['exchange']['adsl'] if self.adsl == 0 else 0
 
         # Rollout costs
         self.rollout_costs = {}
@@ -123,29 +143,19 @@ class Exchange(object):
 
         # Benefit-cost ratio
         self.rollout_bcr = {}
-        try:
-            self.rollout_bcr['fttp'] = self.rollout_benefits['fttp'] / self.rollout_costs['fttp']
-        except ZeroDivisionError:
-            self.rollout_bcr['fttp'] = 0
-        try:    
-            self.rollout_bcr['gfast'] = self.rollout_benefits['gfast'] / self.rollout_costs['gfast']
-        except ZeroDivisionError:
-            self.rollout_bcr['gfast'] = 0
-        try:
-            self.rollout_bcr['fttc'] = self.rollout_benefits['fttc'] / self.rollout_costs['fttc']
-        except ZeroDivisionError:
-            self.rollout_bcr['fttc'] = 0
-        try:
-            self.rollout_bcr['adsl'] = self.rollout_benefits['adsl'] / self.rollout_costs['adsl']
-        except ZeroDivisionError:
-            self.rollout_bcr['adsl'] = 0
-
+        self.rollout_bcr['fttp'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttp'], self.rollout_costs['fttp'])
+        self.rollout_bcr['gfast'] = _calculate_benefit_cost_ratio(self.rollout_benefits['gfast'], self.rollout_costs['gfast'])
+        self.rollout_bcr['fttc'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttc'], self.rollout_costs['fttc'])
+        self.rollout_bcr['adsl'] = _calculate_benefit_cost_ratio(self.rollout_benefits['adsl'], self.rollout_costs['adsl'])
 
     def __repr__(self):
         return "<Exchange id:{}>".format(self.id)
 
+
 class Cabinet(object):
     """Cabinets"""
+    def __repr__(self):
+        return "<Cabinet id:{}>".format(self.id)
 
     def __init__(self, data, clients, link, parameters):
 
@@ -156,30 +166,36 @@ class Cabinet(object):
         self.gfast = data["GFast"]
         self.fttc = data["FTTC"]
         self.adsl = data["ADSL"]
+        self.parameters = parameters
 
         # Link parameters
         self._clients = clients
         self.link = link
 
+        self.compute()
+
+    def compute(self):
+
         # Upgrade costs
         self.upgrade_costs = {}
         self.upgrade_costs['fttp'] = (
-            (parameters['costs']['assets']['cabinet']['fttp'] if self.fttp == 0 else 0)
+            (self.parameters['costs']['assets']['cabinet']['fttp']['32_ports'] * ceil(len(self._clients) / 32)
+             if self.fttp == 0 else 0)
             + 
             (self.link.upgrade_costs['fiber'] if self.link != None else 0)
         )
         self.upgrade_costs['gfast'] = (
-            (parameters['costs']['assets']['cabinet']['gfast'] if self.gfast == 0 else 0)
+            (self.parameters['costs']['assets']['cabinet']['gfast'] if self.gfast == 0 else 0)
             + 
             (self.link.upgrade_costs['fiber'] if self.link != None else 0)
         )
         self.upgrade_costs['fttc'] = (
-            (parameters['costs']['assets']['cabinet']['fttc'] if self.fttc == 0 else 0)
+            (self.parameters['costs']['assets']['cabinet']['fttc'] if self.fttc == 0 else 0)
             + 
             (self.link.upgrade_costs['fiber'] if self.link != None else 0)
         )
         self.upgrade_costs['adsl'] = (
-            (parameters['costs']['assets']['cabinet']['adsl'] if self.adsl == 0 else 0)
+            (self.parameters['costs']['assets']['cabinet']['adsl'] if self.adsl == 0 else 0)
             +
             (self.link.upgrade_costs['copper'] if self.link != None else 0)
         )
@@ -200,26 +216,22 @@ class Cabinet(object):
 
         # Benefit-cost ratio
         self.rollout_bcr = {}
-        try:
-            self.rollout_bcr['fttp'] = self.rollout_benefits['fttp'] / self.rollout_costs['fttp']
-        except ZeroDivisionError:
-            self.rollout_bcr['fttp'] = 0
-        try:    
-            self.rollout_bcr['gfast'] = self.rollout_benefits['gfast'] / self.rollout_costs['gfast']
-        except ZeroDivisionError:
-            self.rollout_bcr['gfast'] = 0
-        try:
-            self.rollout_bcr['fttc'] = self.rollout_benefits['fttc'] / self.rollout_costs['fttc']
-        except ZeroDivisionError:
-            self.rollout_bcr['fttc'] = 0
-        try:
-            self.rollout_bcr['adsl'] = self.rollout_benefits['adsl'] / self.rollout_costs['adsl']
-        except ZeroDivisionError:
-            self.rollout_bcr['adsl'] = 0
+        self.rollout_bcr['fttp'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttp'], self.rollout_costs['fttp'])
+        self.rollout_bcr['gfast'] = _calculate_benefit_cost_ratio(self.rollout_benefits['gfast'], self.rollout_costs['gfast'])
+        self.rollout_bcr['fttc'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttc'], self.rollout_costs['fttc'])
+        self.rollout_bcr['adsl'] = _calculate_benefit_cost_ratio(self.rollout_benefits['adsl'], self.rollout_costs['adsl'])
 
+    def upgrade(self, action):
 
-    def __repr__(self):
-        return "<Cabinet id:{}>".format(self.id)
+        if action == 'rollout_fttp':
+            self.fttp = 1
+            if self.link != None:
+                self.link.upgrade('fiber')
+            for client in self._clients:
+                client.upgrade(action)
+
+        self.compute()
+
 
 class Distribution(object):
     """Distribution"""
@@ -233,30 +245,37 @@ class Distribution(object):
         self.gfast = data["GFast"]
         self.fttc = data["FTTC"]
         self.adsl = data["ADSL"]
+        self.parameters = parameters
 
         # Link parameters
         self._clients = clients
         self.link = link
 
+        self.compute()
+
+    def compute(self):
+
         # Upgrade costs
         self.upgrade_costs = {}
         self.upgrade_costs['fttp'] = (
-            (parameters['costs']['assets']['distribution']['fttp'] if self.fttp == 0 else 0)
+            (self.parameters['costs']['assets']['distribution']['fttp']['32_ports'] * ceil(len(self._clients) / 32) 
+             if self.fttp == 0 else 0)
             + 
             (self.link.upgrade_costs['fiber'] if self.link != None else 0)
         )
         self.upgrade_costs['gfast'] = (
-            (parameters['costs']['assets']['distribution']['gfast'] if self.gfast == 0 else 0)
+            (self.parameters['costs']['assets']['distribution']['gfast']['4_ports'] * ceil(len(self._clients) / 4) 
+             if self.gfast == 0 else 0)
             +
             (self.link.upgrade_costs['fiber'] if self.link != None else 0)
         )
         self.upgrade_costs['fttc'] = (
-            (parameters['costs']['assets']['distribution']['fttc'] if self.fttc == 0 else 0)
+            (self.parameters['costs']['assets']['distribution']['fttc'] if self.fttc == 0 else 0)
             +
             (self.link.upgrade_costs['copper'] if self.link != None else 0)
         )
         self.upgrade_costs['adsl'] = (
-            (parameters['costs']['assets']['distribution']['adsl'] if self.adsl == 0 else 0)
+            (self.parameters['costs']['assets']['distribution']['adsl'] if self.adsl == 0 else 0)
             +
             (self.link.upgrade_costs['copper'] if self.link != None else 0)
         )
@@ -277,25 +296,25 @@ class Distribution(object):
 
         # Benefit-cost ratio
         self.rollout_bcr = {}
-        try:
-            self.rollout_bcr['fttp'] = self.rollout_benefits['fttp'] / self.rollout_costs['fttp']
-        except ZeroDivisionError:
-            self.rollout_bcr['fttp'] = 0
-        try:    
-            self.rollout_bcr['gfast'] = self.rollout_benefits['gfast'] / self.rollout_costs['gfast']
-        except ZeroDivisionError:
-            self.rollout_bcr['gfast'] = 0
-        try:
-            self.rollout_bcr['fttc'] = self.rollout_benefits['fttc'] / self.rollout_costs['fttc']
-        except ZeroDivisionError:
-            self.rollout_bcr['fttc'] = 0
-        try:
-            self.rollout_bcr['adsl'] = self.rollout_benefits['adsl'] / self.rollout_costs['adsl']
-        except ZeroDivisionError:
-            self.rollout_bcr['adsl'] = 0
+        self.rollout_bcr['fttp'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttp'], self.rollout_costs['fttp'])
+        self.rollout_bcr['gfast'] = _calculate_benefit_cost_ratio(self.rollout_benefits['gfast'], self.rollout_costs['gfast'])
+        self.rollout_bcr['fttc'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttc'], self.rollout_costs['fttc'])
+        self.rollout_bcr['adsl'] = _calculate_benefit_cost_ratio(self.rollout_benefits['adsl'], self.rollout_costs['adsl'])
 
     def __repr__(self):
         return "<Distribution id:{}>".format(self.id)
+
+    def upgrade(self, action):
+
+        if action == 'rollout_fttp':
+            self.fttp = 1
+            if self.link != None:
+                self.link.upgrade('fiber')
+            for client in self._clients:
+                client.upgrade(action)
+
+        self.compute()
+
 
 class Premise(object):
     """Premise"""
@@ -309,26 +328,31 @@ class Premise(object):
         self.gfast = data['GFast']
         self.fttc = data['FTTC']
         self.adsl = data['ADSL']
+        self.parameters = parameters
 
         # Link parameters
         self.link = link
+        self.compute()
+
+    def compute(self):
 
         # Upgrade costs
         self.upgrade_costs = {}
         self.upgrade_costs['fttp'] = (
-            (parameters['costs']['assets']['premise']['fttp'] if self.fttp == 0 else 0)
+              (self.parameters['costs']['assets']['premise']['fttp']['modem'] if self.fttp == 0 else 0)
+            + (self.parameters['costs']['assets']['premise']['fttp']['optical_network_terminator'] if self.fttp == 0 else 0)
             + self.link.upgrade_costs['fiber']
         )
         self.upgrade_costs['gfast'] = (
-            (parameters['costs']['assets']['premise']['gfast'] if self.gfast == 0 else 0)
+              (self.parameters['costs']['assets']['premise']['gfast']['modem'] if self.gfast == 0 else 0)
             + self.link.upgrade_costs['fiber']
         )
         self.upgrade_costs['fttc'] = (
-            (parameters['costs']['assets']['premise']['fttc'] if self.fttc == 0 else 0)
+              (self.parameters['costs']['assets']['premise']['fttc']['modem'] if self.fttc == 0 else 0)
             + self.link.upgrade_costs['copper']
         )
         self.upgrade_costs['adsl'] = (
-            (parameters['costs']['assets']['premise']['adsl'] if self.adsl == 0 else 0)
+              (self.parameters['costs']['assets']['premise']['adsl']['modem'] if self.adsl == 0 else 0)
             + self.link.upgrade_costs['copper']
         )
 
@@ -341,46 +365,61 @@ class Premise(object):
 
         # Rollout benefits
         self.rollout_benefits = {}
-        self.rollout_benefits['fttp'] = parameters['benefits']['assets']['premise']['fttp']
-        self.rollout_benefits['gfast'] = parameters['benefits']['assets']['premise']['gfast']
-        self.rollout_benefits['fttc'] = parameters['benefits']['assets']['premise']['fttc']
-        self.rollout_benefits['adsl'] = parameters['benefits']['assets']['premise']['adsl']
+        self.rollout_benefits['fttp'] = self.parameters['benefits']['assets']['premise']['fttp']
+        self.rollout_benefits['gfast'] = self.parameters['benefits']['assets']['premise']['gfast']
+        self.rollout_benefits['fttc'] = self.parameters['benefits']['assets']['premise']['fttc']
+        self.rollout_benefits['adsl'] = self.parameters['benefits']['assets']['premise']['adsl']
 
         # Benefit-cost ratio
         self.rollout_bcr = {}
-        try:
-            self.rollout_bcr['fttp'] = self.rollout_benefits['fttp'] / self.rollout_costs['fttp']
-        except ZeroDivisionError:
-            self.rollout_bcr['fttp'] = 0
-        try:    
-            self.rollout_bcr['gfast'] = self.rollout_benefits['gfast'] / self.rollout_costs['gfast']
-        except ZeroDivisionError:
-            self.rollout_bcr['gfast'] = 0
-        try:
-            self.rollout_bcr['fttc'] = self.rollout_benefits['fttc'] / self.rollout_costs['fttc']
-        except ZeroDivisionError:
-            self.rollout_bcr['fttc'] = 0
-        try:
-            self.rollout_bcr['adsl'] = self.rollout_benefits['adsl'] / self.rollout_costs['adsl']
-        except ZeroDivisionError:
-            self.rollout_bcr['adsl'] = 0
+        self.rollout_bcr['fttp'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttp'], self.rollout_costs['fttp'])
+        self.rollout_bcr['gfast'] = _calculate_benefit_cost_ratio(self.rollout_benefits['gfast'], self.rollout_costs['gfast'])
+        self.rollout_bcr['fttc'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttc'], self.rollout_costs['fttc'])
+        self.rollout_bcr['adsl'] = _calculate_benefit_cost_ratio(self.rollout_benefits['adsl'], self.rollout_costs['adsl'])
 
     def __repr__(self):
         return "<Premise id:{}>".format(self.id)
+
+    def upgrade(self, action):
+
+        if action == 'rollout_fttp':
+            self.fttp = 1
+            self.link.upgrade('fiber')
+
+        self.compute()
+
 
 class Link(object):
     """Links"""
 
     def __init__(self, data, parameters):
-        self.origin = data["Origin"]
-        self.dest = data["Dest"]
+        self.origin = data["origin"]
+        self.dest = data["dest"]
         self.technology = data["technology"]
-        self.length = 10
+        self.length = data["length"]
+
+        self.parameters = parameters
+        self.compute()
+
+    def compute(self):
 
         # Upgrade costs
         self.upgrade_costs = {}
-        self.upgrade_costs['fiber'] = parameters['costs']['links']['fiber_per_meter'] * self.length if self.technology != 'fiber' else 0
-        self.upgrade_costs['copper'] = parameters['costs']['links']['copper_per_meter'] * self.length if self.technology != 'copper' else 0
+        self.upgrade_costs['fiber'] = self.parameters['costs']['links']['fiber']['meter'] * self.length if self.technology != 'fiber' else 0
+        self.upgrade_costs['copper'] = self.parameters['costs']['links']['copper']['meter'] * self.length if self.technology != 'copper' else 0
 
     def __repr__(self):
         return "<Link origin:{} dest:{} length:{}>".format(self.origin, self.dest, self.length)
+
+    def upgrade(self, technology):
+        if technology == 'fiber':
+            self.technology = 'fiber'
+        
+        self.compute()
+
+
+def _calculate_benefit_cost_ratio(benefits, costs):
+    try:
+        return benefits / costs
+    except ZeroDivisionError:
+        return 0
