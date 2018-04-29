@@ -2,6 +2,23 @@ from digital_comms.fixed_model import fixed_model, fixed_interventions
 import fiona
 from operator import attrgetter
 import os
+import configparser
+import csv
+
+CONFIG = configparser.ConfigParser()
+CONFIG.read(os.path.join(os.path.dirname(__file__), '..', 'scripts', 'script_config.ini'))
+BASE_PATH = CONFIG['file_locations']['base_path']
+
+#####################################
+# SETUP FILE LOCATIONS 
+#####################################
+
+#DEMOGRAPHICS_INPUT_FIXED = os.path.join(BASE_PATH, 'raw', 'demographic_scenario_data')
+RESULTS_OUTPUT_FIXED = os.path.join(BASE_PATH, '..', 'results')
+
+#####################################
+# SETUP MODEL PARAMETERS
+#####################################
 
 BASE_YEAR = 2016
 END_YEAR = 2030
@@ -103,6 +120,40 @@ def read_parameters():
         }
     }
 
+def _get_suffix(intervention_strategy):
+    suffix = '{}_strategy'.format(
+        intervention_strategy)
+    # for length, use 'base' for baseline scenarios
+    suffix = suffix.replace('baseline', 'base')
+    return suffix
+
+def write_decisions(decisions, year, intervention_strategy):
+    suffix = _get_suffix(intervention_strategy)
+    decisions_filename = os.path.join(RESULTS_OUTPUT_FIXED,  'decisions_{}.csv'.format(suffix))
+
+    if year == BASE_YEAR:
+        decisions_file = open(decisions_filename, 'w', newline='')
+        decisions_writer = csv.writer(decisions_file)
+        decisions_writer.writerow(
+            ('year' 'asset_id', 'strategy', 'cost'))
+    else:
+        decisions_file = open(decisions_filename, 'a', newline='')
+        decisions_writer = csv.writer(decisions_file) 
+
+    # output and report results for this timestep
+    for intervention in decisions:
+        # Output decisions
+        asset_id = intervention[0]
+        strategy = intervention[1]
+        cost = intervention[2]
+        year = year
+
+        decisions_writer.writerow(
+            (asset_id, strategy, cost, year))
+
+    decisions_file.close()
+
+
 if __name__ == "__main__": # allow the module to be executed directly 
 
     for intervention_strategy in [
@@ -131,3 +182,10 @@ if __name__ == "__main__": # allow the module to be executed directly
 
             # Upgrade
             system.upgrade(interventions)
+
+            write_decisions(interventions, year, intervention_strategy)
+
+            #write_spend(intervention_strategy, interventions, spend, year)
+
+            #write_pcd_results(system, year, pop_scenario, throughput_scenario,intervention_strategy, cost_by_pcd)
+
