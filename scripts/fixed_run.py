@@ -47,7 +47,7 @@ INTERVENTION_STRATEGIES = [
     "FTTP",
 ]
 
-MARKET_SHARE = 1   # setting this to 1 for Openreach
+MARKET_SHARE = 1   # this may not matter if we focus on Openreach, but may matter for BT vs Virgin vs Vodafone effects, setting this to 1 for Openreach
 
 # Annual capital budget constraint for the whole industry, GBP * market share
 ANNUAL_BUDGET = (1.5 * 10 ** 9) * MARKET_SHARE    # Openreach capex was approximately £1.5bn in 2017
