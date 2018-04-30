@@ -34,7 +34,7 @@ POPULATION_SCENARIOS = [   # for the fixed fibre model, this relates to househol
     "baseline",
     "low",
 ]
-THROUGHPUT_SCENARIOS = [   # GB per month, per household, taken down to the bust hour per Mb/s
+WTP_SCENARIOS = [   # GB per month, per household, taken down to the bust hour per Mb/s
     "high",
     "baseline",
     "low",
@@ -47,10 +47,10 @@ INTERVENTION_STRATEGIES = [
     "FTTP",
 ]
 
-MARKET_SHARE = 1   # this may not matter if we focus on Openreach, but may matter for BT vs Virgin vs Vodafone effects
+MARKET_SHARE = 1   # this may not matter if we focus on Openreach, but may matter for BT vs Virgin vs Vodafone effects, setting this to 1 for Openreach
 
 # Annual capital budget constraint for the whole industry, GBP * market share
-ANNUAL_BUDGET = (2 * 10 ** 9) * MARKET_SHARE    # what is the annual investment buget for Openreach?
+ANNUAL_BUDGET = (1.5 * 10 ** 9) * MARKET_SHARE    # Openreach capex was approximately £1.5bn in 2017
 
 # Target threshold for universal mobile service, in Mbps/user
 SERVICE_OBLIGATION_CAPACITY = 10    # what is the USO for fixed? 10 Mb/s or something more ambitious? 
@@ -135,25 +135,25 @@ with open(PCD_SECTOR_FILENAME, 'r') as pcd_sector_file:
 # user_throughput_by_scenario_year = {
 #     scenario: {} for scenario in THROUGHPUT_SCENARIOS
 # }
-# THROUGHPUT_FILENAME = os.path.join(BASE_PATH, 'scenario_data', 'monthly_data_growth_scenarios.csv')
-# with open(THROUGHPUT_FILENAME, 'r') as throughput_file:
-#     reader = csv.reader(throughput_file)
-#     next(reader)  # skip header
-#     for year, low, base, high in reader:
-#         year = int(year)
-#         if "high" in THROUGHPUT_SCENARIOS:
-#             user_throughput_by_scenario_year["high"][year] = float(high)
-#         if "baseline" in THROUGHPUT_SCENARIOS:
-#             user_throughput_by_scenario_year["baseline"][year] = float(base)
-#         if "low" in THROUGHPUT_SCENARIOS:
-#             user_throughput_by_scenario_year["low"][year] = float(low)
-#         year = int(year)
-#         if "high" in THROUGHPUT_SCENARIOS:
-#             user_throughput_by_scenario_year["high"][year] = float(high)
-#         if "baseline" in THROUGHPUT_SCENARIOS:
-#             user_throughput_by_scenario_year["baseline"][year] = float(base)
-#         if "low" in THROUGHPUT_SCENARIOS:
-#             user_throughput_by_scenario_year["low"][year] = float(low)
+WTP_FILENAME = os.path.join(BASE_PATH, 'raw', 'willingness_to_pay_scenarios.csv')
+with open(WTP_FILENAME, 'r') as wtp_file:
+    reader = csv.reader(wtp_file)
+    next(reader)  # skip header
+    for year, low, base, high in reader:
+        year = int(year)
+        if "high" in WTP_SCENARIOS:
+            user_WTP_by_scenario_year["high"][year] = float(high)
+        if "baseline" in WTP_SCENARIOS:
+            user_WTP_by_scenario_year["baseline"][year] = float(base)
+        if "low" in WTP_SCENARIOS:
+            user_WTP_by_scenario_year["low"][year] = float(low)
+        year = int(year)
+        if "high" in WTP_SCENARIOS:
+            user_WTP_by_scenario_year["high"][year] = float(high)
+        if "baseline" in WTP_SCENARIOS:
+            user_WTP_by_scenario_year["baseline"][year] = float(base)
+        if "low" in WTP_SCENARIOS:
+            user_WTP_by_scenario_year["low"][year] = float(low)
 
 
 ################################################################
@@ -172,7 +172,8 @@ print('Loading initial system')
 #       'bandwidth': '2x10MHz',
 # 	}
 # ]
-exchanges []
+
+exchanges = []
 with fiona.open(os.path.join(BASE_PATH, 'processed', 'assets_layer2_exchanges.shp'), 'r') as source:
         for exchange in source:
             exchanges.append(exchange)
@@ -187,65 +188,64 @@ with fiona.open(os.path.join(BASE_PATH, 'processed', 'assets_layer2_distribution
         for distribution in source:
             distributions.append(distribution)
 
-premises []
+premises = []
 with fiona.open(os.path.join(BASE_PATH, 'processed', 'assets_layer1_premises.shp'), 'r') as source:
         for premise in source:
             premises.append(premise)
-
 
 ################################################################
 # IMPORT LOOKUP TABLES
 # - mobile capacity, by environment, frequency, bandwidth and site density
 # - clutter environment geotype, by population density
 ################################################################
-print('Loading lookup tables')
+# print('Loading lookup tables')
 
-CAPACITY_LOOKUP_FILENAME = os.path.join(BASE_PATH, 'lookup_tables', 'lookup_table_long.csv')
+# CAPACITY_LOOKUP_FILENAME = os.path.join(BASE_PATH, 'lookup_tables', 'lookup_table_long.csv')
 
-# create empty dictionary for capacity lookup
-capacity_lookup_table = {}
+# # create empty dictionary for capacity lookup
+# capacity_lookup_table = {}
 
-with open(CAPACITY_LOOKUP_FILENAME, 'r') as capacity_lookup_file:
-    # set DictReader with file name for 4G rollout data
-    reader = csv.DictReader(capacity_lookup_file)
+# with open(CAPACITY_LOOKUP_FILENAME, 'r') as capacity_lookup_file:
+#     # set DictReader with file name for 4G rollout data
+#     reader = csv.DictReader(capacity_lookup_file)
 
-        # populate dictionary - this gives a dict for each row, with each heading as a key
-    for row in reader:
-        environment = row["type"]
-        frequency = row["frequency"].replace(' MHz', '')
-        bandwidth = row["bandwidth"].replace(' ', '')
-        density = float(row["site_density"])
-        capacity = float(row["capacity"])
+#         # populate dictionary - this gives a dict for each row, with each heading as a key
+#     for row in reader:
+#         environment = row["type"]
+#         frequency = row["frequency"].replace(' MHz', '')
+#         bandwidth = row["bandwidth"].replace(' ', '')
+#         density = float(row["site_density"])
+#         capacity = float(row["capacity"])
 
-        if (environment, frequency, bandwidth) not in capacity_lookup_table:
-            capacity_lookup_table[(environment, frequency, bandwidth)] = []
+#         if (environment, frequency, bandwidth) not in capacity_lookup_table:
+#             capacity_lookup_table[(environment, frequency, bandwidth)] = []
 
-        capacity_lookup_table[(environment, frequency, bandwidth)].append((density, capacity, ))
+#         capacity_lookup_table[(environment, frequency, bandwidth)].append((density, capacity, ))
 
-    for key, value_list in capacity_lookup_table.items():
-        # sort each environment/frequency/bandwith list by site density
-        value_list.sort(key=lambda tup: tup[0])
+#     for key, value_list in capacity_lookup_table.items():
+#         # sort each environment/frequency/bandwith list by site density
+#         value_list.sort(key=lambda tup: tup[0])
 
 
-CLUTTER_GEOTYPE_FILENAME = os.path.join(BASE_PATH, 'lookup_tables', 'lookup_table_geotype.csv')
+# CLUTTER_GEOTYPE_FILENAME = os.path.join(BASE_PATH, 'lookup_tables', 'lookup_table_geotype.csv')
 
-# Create empty list for clutter geotype lookup
-clutter_lookup = []
+# # Create empty list for clutter geotype lookup
+# clutter_lookup = []
 
-with open(CLUTTER_GEOTYPE_FILENAME, 'r') as clutter_geotype_file:
-    # set DictReader with file name for 4G rollout data
-    reader = csv.DictReader(clutter_geotype_file)
-    for row in reader:
-        geotype = row['geotype']
-        population_density = float(row['population_density'])
-        clutter_lookup.append((population_density, geotype))
+# with open(CLUTTER_GEOTYPE_FILENAME, 'r') as clutter_geotype_file:
+#     # set DictReader with file name for 4G rollout data
+#     reader = csv.DictReader(clutter_geotype_file)
+#     for row in reader:
+#         geotype = row['geotype']
+#         population_density = float(row['population_density'])
+#         clutter_lookup.append((population_density, geotype))
 
-    # sort list by population density (first entry in each tuple)
-    clutter_lookup.sort(key=lambda tup: tup[0])
+#     # sort list by population density (first entry in each tuple)
+#     clutter_lookup.sort(key=lambda tup: tup[0])
 
-def write_lad_results(ict_manager, year, pop_scenario, throughput_scenario,
+def write_lad_results(ict_manager, year, pop_scenario, wtp_scenario,
                       intervention_strategy, cost_by_lad):
-    suffix = _get_suffix(pop_scenario, throughput_scenario, intervention_strategy)
+    suffix = _get_suffix(pop_scenario, wtp_scenario, intervention_strategy)
     metrics_filename = os.path.join(BASE_PATH, 'outputs', 'metrics_{}.csv'.format(suffix))
 
     if year == BASE_YEAR:
@@ -404,7 +404,7 @@ for pop_scenario, throughput_scenario, intervention_strategy in [
         for pcd_sector in pcd_sectors:
             pcd_sector_id = pcd_sector["id"]
             pcd_sector["population"] = population_by_scenario_year_pcd[pop_scenario][year][pcd_sector_id]
-            pcd_sector["user_throughput"] = user_throughput_by_scenario_year[throughput_scenario][year]
+            pcd_sector["user_throughput"] = user_WTP_by_scenario_year[throughput_scenario][year]
 
         # Decide on new interventions
         budget = ANNUAL_BUDGET
