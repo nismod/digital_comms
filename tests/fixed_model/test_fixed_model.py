@@ -4,7 +4,7 @@ from pprint import pprint
 
 import pytest
 
-from digital_comms.fixed_model.ccam import ICTManager
+from digital_comms.fixed_model.fixed_model import ICTManager
 
 
 class TestICTManager():
