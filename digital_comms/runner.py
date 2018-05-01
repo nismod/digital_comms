@@ -57,67 +57,29 @@ def read_links():
 
 def read_parameters():
     return {
-        'costs': {
-            'links': {
-                'fiber': {
-                    'meter': 5
-                },
-                'copper': {
-                    'meter': 3
-                }
-            },
-            'assets': {
-                'exchange': {
-                    'fttp': 50000,
-                    'gfast': 40000,
-                    'fttc': 30000,
-                    'adsl': 20000
-                },
-                'cabinet': {
-                    'fttp':{
-                        '32_ports': 10
-                    },
-                    'gfast': 4000,
-                    'fttc': 3000,
-                    'adsl': 2000
-                },
-                'distribution': {
-                    'fttp':  {
-                        '32_ports': 10
-                    },
-                    'gfast': {
-                        '4_ports': 1500
-                    },
-                    'fttc': 300,
-                    'adsl': 200
-                },
-                'premise': {
-                    'fttp': {
-                        'modem': 20,
-                        'optical_network_terminator': 10
-                    },
-                    'gfast': {
-                        'modem': 20,
-                    },
-                    'fttc': {
-                        'modem': 15,
-                    },
-                    'adsl': {
-                        'modem': 10
-                    }
-                }
-            }
-        },
-        'benefits': {
-            'assets': {
-                'premise': {
-                    'fttp': 50,
-                    'gfast': 40,
-                    'fttc': 30,
-                    'adsl': 20
-                }
-            }
-        }
+        'costs_links_fiber_meter': 5,
+        'costs_links_copper_meter': 3,
+        'costs_assets_exchange_fttp': 50000,
+        'costs_assets_exchange_gfast': 40000,
+        'costs_assets_exchange_fttc': 30000,
+        'costs_assets_exchange_adsl': 20000,
+        'costs_assets_cabinet_fttp_32_ports': 10,
+        'costs_assets_cabinet_gfast': 4000,
+        'costs_assets_cabinet_fttc': 3000,
+        'costs_assets_cabinet_adsl': 2000,
+        'costs_assets_distribution_fttp_32_ports': 10,
+        'costs_assets_distribution_gfast_4_ports': 1500,
+        'costs_assets_distribution_fttc': 300,
+        'costs_assets_distribution_adsl': 200,
+        'costs_assets_premise_fttp_modem': 20,
+        'costs_assets_premise_fttp_optical_network_terminator': 10,
+        'costs_assets_premise_gfast_modem': 20,
+        'costs_assets_premise_fttc_modem': 15,
+        'costs_assets_premise_adsl_modem': 10,
+        'benefits_assets_premise_fttp': 50,
+        'benefits_assets_premise_gfast': 40,
+        'benefits_assets_premise_fttc': 30,
+        'benefits_assets_premise_adsl': 20,
     }
 
 def _get_suffix(intervention_strategy):
