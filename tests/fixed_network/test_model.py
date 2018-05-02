@@ -1,7 +1,7 @@
 import pytest
 import os
 
-from digital_comms.fixed_model.fixed_model import ICTManager
+from digital_comms.fixed_network.model import ICTManager
 
 def test_init(setup_fixed_network, assets, links):
 
