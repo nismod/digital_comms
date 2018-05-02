@@ -4,7 +4,7 @@ from pytest import fixture
 import fiona
 import os
 
-from digital_comms.fixed_model.fixed_model import ICTManager
+from digital_comms.fixed_network.model import ICTManager
 
 def read_shapefile(file):
     with fiona.open(file, 'r') as source:
@@ -13,18 +13,18 @@ def read_shapefile(file):
 @pytest.fixture
 def assets(rootdir):
     return {
-        'premises': read_shapefile(os.path.join(rootdir, 'fixed_model', 'fixtures', 'assets_layer5_premises.shp')),
-        'distributions': read_shapefile(os.path.join(rootdir, 'fixed_model', 'fixtures', 'assets_layer4_distributions.shp')),
-        'cabinets': read_shapefile(os.path.join(rootdir, 'fixed_model', 'fixtures', 'assets_layer3_cabinets.shp')),
-        'exchanges': read_shapefile(os.path.join(rootdir, 'fixed_model', 'fixtures', 'assets_layer2_exchanges.shp'))
+        'premises': read_shapefile(os.path.join(rootdir, 'fixed_network', 'fixtures', 'assets_layer5_premises.shp')),
+        'distributions': read_shapefile(os.path.join(rootdir, 'fixed_network', 'fixtures', 'assets_layer4_distributions.shp')),
+        'cabinets': read_shapefile(os.path.join(rootdir, 'fixed_network', 'fixtures', 'assets_layer3_cabinets.shp')),
+        'exchanges': read_shapefile(os.path.join(rootdir, 'fixed_network', 'fixtures', 'assets_layer2_exchanges.shp'))
     }
 
 @pytest.fixture
 def links(rootdir):
     links = []
-    links.extend(read_shapefile(os.path.join(rootdir, 'fixed_model', 'fixtures', 'links_layer5_premises.shp')))
-    links.extend(read_shapefile(os.path.join(rootdir, 'fixed_model', 'fixtures', 'links_layer4_distributions.shp')))
-    links.extend(read_shapefile(os.path.join(rootdir, 'fixed_model', 'fixtures', 'links_layer3_cabinets.shp')))    
+    links.extend(read_shapefile(os.path.join(rootdir, 'fixed_network', 'fixtures', 'links_layer5_premises.shp')))
+    links.extend(read_shapefile(os.path.join(rootdir, 'fixed_network', 'fixtures', 'links_layer4_distributions.shp')))
+    links.extend(read_shapefile(os.path.join(rootdir, 'fixed_network', 'fixtures', 'links_layer3_cabinets.shp')))    
     return links
 
 @pytest.fixture

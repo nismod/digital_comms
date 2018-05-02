@@ -7,7 +7,7 @@ from pytest import fixture
 from shapely.geometry import Point, LineString
 import os
 
-from digital_comms.fixed_model.fixed_model import ICTManager
+from digital_comms.mobile_network.model import ICTManager
 
 @pytest.fixture
 def rootdir():

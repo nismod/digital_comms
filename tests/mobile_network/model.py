@@ -1,7 +1,7 @@
 """Cambridge Communications Assessment Model Test
 """
 
-from digital_comms.mobile_model.mobile_model import ICTManager, LAD, PostcodeSector
+from digital_comms.mobile_network.model import ICTManager, LAD, PostcodeSector
 
 class TestICTManager():
 
