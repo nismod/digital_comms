@@ -1128,6 +1128,12 @@ def generate_link_with_nearest(origin_points, dest_points):
         })
     return links
 
+def copy_id_to_name(data):
+
+    for entry in data:
+        entry['properties']['name'] = entry['properties']['id']
+    return data
+
 #####################################
 # WRITE LUTS/ASSETS/LINKS
 #####################################
@@ -1251,6 +1257,13 @@ if __name__ == "__main__":
 
     print('add technology to exchanges')
     geojson_layer2_exchanges = add_technology_to_assets(geojson_layer2_exchanges, geojson_layer3_cabinets)
+
+    # Copy id to name (required for smif outputs)
+    print('copy id to name (distributions)')
+    geojson_layer4_distributions = copy_id_to_name(geojson_layer4_distributions)
+
+    print('copy id to name (cabinets)')
+    geojson_layer3_cabinets = copy_id_to_name(geojson_layer3_cabinets)
 
     # Write lookups (for debug purposes)
     print('write postcode_areas')
