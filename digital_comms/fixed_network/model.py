@@ -33,12 +33,10 @@ class ICTManager(object):
         for asset_id, action, costs in interventions:
 
             if asset_id.startswith('distribution'):
-                print(asset_id)
                 distribution = [distribution for distribution in self._distributions if distribution.id == asset_id][0]
                 distribution.upgrade(action)
             
             if asset_id.startswith('cabinet'):
-                print(asset_id)
                 cabinet = [cabinet for cabinet in self._cabinets if cabinet.id == asset_id][0]
                 cabinet.upgrade(action)
 
@@ -407,7 +405,7 @@ class Link(object):
         self.upgrade_costs = {}
         self.upgrade_costs['fiber'] = self.parameters['costs_links_fiber_meter'] * self.length if self.technology != 'fiber' else 0
         self.upgrade_costs['copper'] = self.parameters['costs_links_copper_meter'] * self.length if self.technology != 'copper' else 0
-
+        
     def __repr__(self):
         return "<Link origin:{} dest:{} length:{}>".format(self.origin, self.dest, self.length)
 
