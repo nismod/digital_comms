@@ -1,4 +1,4 @@
-from digital_comms.fixed_model import fixed_model
+from digital_comms.fixed_network import model
 import fiona
 from operator import attrgetter
 import os
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     }
 
     print('Initialise model')
-    my_fixed_model = fixed_model.ICTManager(assets, links, parameters)
+    my_fixed_model = model.ICTManager(assets, links, parameters)
 
     print('--Statistics--')
     print('<assets>')
