@@ -1,4 +1,4 @@
-from digital_comms.fixed_model import fixed_model, fixed_interventions
+from digital_comms.fixed_network import model, interventions
 import fiona
 from operator import attrgetter
 import os
@@ -137,10 +137,11 @@ if __name__ == "__main__": # allow the module to be executed directly
 
             # Simulate first
             if year == BASE_YEAR:
-                system = fixed_model.ICTManager(assets, links, parameters)
+                system = model.ICTManager(assets, links, parameters)
+                system.coverage()
 
             # Decide interventions
-            interventions, budget, spend = fixed_interventions.decide_interventions(intervention_strategy, budget, service_obligation_capacity, system, year)
+            interventions, budget, spend = interventions.decide_interventions(intervention_strategy, budget, service_obligation_capacity, system, year)
 
             # Upgrade
             system.upgrade(interventions)
