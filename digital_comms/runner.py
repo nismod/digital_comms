@@ -97,7 +97,7 @@ def write_decisions(decisions, year, intervention_strategy):
         decisions_file = open(decisions_filename, 'w', newline='')
         decisions_writer = csv.writer(decisions_file)
         decisions_writer.writerow(
-            ('year' 'asset_id', 'strategy', 'cost'))
+            ('asset_id', 'year', 'strategy', 'cost'))
     else:
         decisions_file = open(decisions_filename, 'a', newline='')
         decisions_writer = csv.writer(decisions_file) 
@@ -111,7 +111,7 @@ def write_decisions(decisions, year, intervention_strategy):
         year = year
 
         decisions_writer.writerow(
-            (asset_id, strategy, cost, year))
+            (asset_id, year, strategy, cost))
 
     decisions_file.close()
 
@@ -138,15 +138,17 @@ if __name__ == "__main__": # allow the module to be executed directly
             # Simulate first
             if year == BASE_YEAR:
                 system = model.ICTManager(assets, links, parameters)
-                system.coverage()
+                #system.coverage()
 
             # Decide interventions
-            interventions, budget, spend = interventions.decide_interventions(intervention_strategy, budget, service_obligation_capacity, system, year)
+            intervention_decisions, budget, spend = interventions.decide_interventions(intervention_strategy, budget, service_obligation_capacity, system, year)
+
+            #print(intervention_decisions[0])
 
             # Upgrade
-            system.upgrade(interventions)
+            system.upgrade(intervention_decisions)
 
-            write_decisions(interventions, year, intervention_strategy)
+            write_decisions(intervention_decisions, year, intervention_strategy)
 
             #write_spend(intervention_strategy, interventions, spend, year)
 
