@@ -33,12 +33,10 @@ class ICTManager(object):
         for asset_id, action, costs in interventions:
 
             if asset_id.startswith('distribution'):
-                print(asset_id)
                 distribution = [distribution for distribution in self._distributions if distribution.id == asset_id][0]
                 distribution.upgrade(action)
             
             if asset_id.startswith('cabinet'):
-                print(asset_id)
                 cabinet = [cabinet for cabinet in self._cabinets if cabinet.id == asset_id][0]
                 cabinet.upgrade(action)
 
