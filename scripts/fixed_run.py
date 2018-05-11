@@ -141,7 +141,8 @@ if __name__ == "__main__": # allow the module to be executed directly
             # Simulate first
             if year == BASE_YEAR:
                 system = model.ICTManager(assets, links, parameters)
-                #system.coverage()
+                
+                system.coverage()
 
             # Decide interventions
             intervention_decisions, budget, spend = interventions.decide_interventions(intervention_strategy, budget, service_obligation_capacity, system, year)

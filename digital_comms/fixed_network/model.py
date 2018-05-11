@@ -40,6 +40,44 @@ class ICTManager(object):
                 cabinet = [cabinet for cabinet in self._cabinets if cabinet.id == asset_id][0]
                 cabinet.upgrade(action)
 
+    def coverage(self):
+        print('hello world')
+        # """
+        # define coverage
+        # """
+
+        # # group premises by lads
+        # premises_per_lad = defaultdict(list)
+
+        # for premise in self._premises:
+        #     premises_per_lad[premise.lad].append(premise)
+
+
+        # """
+        # 'Cambridge': [
+        #     premise1,
+        #     premise2
+        # ]
+        # """
+
+        # # run statistics on each lad
+        # for lad in premises_per_lad.items():
+
+        #     print(premises_per_lad[lad]) # contain  list of premises objects in the lad
+
+
+        # # return dict that looks like
+        # """
+        # 'Cambridge' : {
+        #     'premise_with_fttp': int, 
+        #     'premise_with_fttdp': int, 
+        #     'premise_with_fttc': int, 
+        #     'premise_with_adsl': int, 
+        #     'premise_with_cable': int,
+        # },
+        # 'Oxford' : ..
+
+        # """
 
     @property # shortcut for creating a read-only property
     def assets(self):
@@ -99,7 +137,7 @@ class ICTManager(object):
             'premises':         self.total_link_length['premises'] / self.number_of_links['premises'],
             'distributions':    self.total_link_length['distributions'] / self.number_of_links['distributions'],
             'cabinets':         self.total_link_length['cabinets'] / self.number_of_links['cabinets']
-        }
+        }        
 
 
 class Exchange(object):
