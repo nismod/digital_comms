@@ -326,6 +326,8 @@ class Premise(object):
         self.gfast = data['GFast']
         self.fttc = data['FTTC']
         self.adsl = data['ADSL']
+        self.lad = data['lad']
+        
         self.parameters = parameters
 
         # Link parameters
