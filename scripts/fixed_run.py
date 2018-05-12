@@ -4,6 +4,7 @@ from operator import attrgetter
 import os
 import configparser
 import csv
+import pprint
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), '..', 'scripts', 'script_config.ini'))
@@ -119,6 +120,62 @@ def write_decisions(decisions, year, intervention_strategy):
 
     decisions_file.close()
 
+
+def write_technologies(ict_manager, year, intervention_strategy):
+    suffix = _get_suffix(intervention_strategy)
+    technologies_filename = os.path.join(RESULTS_OUTPUT_FIXED,  'technologies_{}.csv'.format(suffix))
+
+    if year == BASE_YEAR:
+        technologies_file = open(technologies_filename, 'w', newline='')
+        technologies_writer = csv.writer(technologies_file)
+        technologies_writer.writerow(
+            ('year','strategy','lad_id','fttp','gfast','fttc','adsl'))
+    else:
+        technologies_file = open(technologies_filename, 'a', newline='')
+        technologies_writer = csv.writer(technologies_file) 
+    
+    my_data = ict_manager.coverage()
+
+    # output and report results for this timestep
+    for lad in my_data.items():
+        # Output decisions
+        lad_id = lad[0],
+        fttp = lad[1]['percentage_of_premises_with_fttp']
+        gfast = lad[1]['percentage_of_premises_with_gfast']
+        fttc = lad[1]['percentage_of_premises_with_fttc']
+        adsl = lad[1]['percentage_of_premises_with_adsl']
+
+        technologies_writer.writerow(
+            (year, intervention_strategy, lad_id, fttp, gfast, fttc, adsl))
+
+    technologies_file.close()
+
+def write_lad_results(ict_manager, year, intervention_strategy):
+    suffix = _get_suffix(intervention_strategy)
+    lad_results_filename = os.path.join(RESULTS_OUTPUT_FIXED,  'lad_{}.csv'.format(suffix))
+
+    if year == BASE_YEAR:
+        lad_results_file = open(lad_results_filename, 'w', newline='')
+        lad_results_writer = csv.writer(lad_results_file)
+        lad_results_writer.writerow(
+            ('year','strategy','lad_id','mean_capacity'))
+    else:
+        lad_results_file = open(lad_results_filename, 'a', newline='')
+        lad_results_writer = csv.writer(lad_results_file) 
+    
+    my_data = ict_manager.capacity()
+
+    # output and report results for this timestep
+    for lad in my_data.items():
+        # Output decisions
+        lad_id = lad[0],
+        mean_capacity = lad[1]['average_capacity']
+
+        lad_results_writer.writerow(
+            (year, intervention_strategy, lad_id, mean_capacity))
+
+    lad_results_file.close()
+
 if __name__ == "__main__": # allow the module to be executed directly 
 
     for intervention_strategy in [
@@ -141,100 +198,20 @@ if __name__ == "__main__": # allow the module to be executed directly
             # Simulate first
             if year == BASE_YEAR:
                 system = model.ICTManager(assets, links, parameters)
-                
-                system.coverage()
+                #pprint.pprint(system.capacity())
 
             # Decide interventions
             intervention_decisions, budget, spend = interventions.decide_interventions(intervention_strategy, budget, service_obligation_capacity, system, year)
 
-            #print(intervention_decisions[0])
-
             # Upgrade
             system.upgrade(intervention_decisions)
 
+            # for premises in system._premises: 
+            #     pprint.pprint(premises.gfast)
+
             write_decisions(intervention_decisions, year, intervention_strategy)
 
-            #write_spend(intervention_strategy, interventions, spend, year)
+            write_technologies(system, year, intervention_strategy)
 
-            #write_pcd_results(system, year, pop_scenario, throughput_scenario,intervention_strategy, cost_by_pcd)
-
-
-    # print('Initialise model')
-    # my_fixed_model = model.ICTManager(assets, links, parameters)
-
-    # print('--Statistics--')
-    # print('<assets>')
-    # print('Number of premises: ' + str(my_fixed_model.number_of_assets['premises']))
-    # print('Number of distributions: ' + str(my_fixed_model.number_of_assets['distributions']))
-    # print('Number of cabinets: ' + str(my_fixed_model.number_of_assets['cabinets']))
-    # print('Number of exchanges: ' + str(my_fixed_model.number_of_assets['exchanges']))
-
-    # print('<links>')
-    # print('Number of premises links: ' + str(my_fixed_model.number_of_links['premises']))
-    # print('Number of distributions links: ' + str(my_fixed_model.number_of_links['distributions']))
-    # print('Number of cabinets links: ' + str(my_fixed_model.number_of_links['cabinets']))
-    # print('Number of exchanges links: ' + str(my_fixed_model.number_of_links['exchanges']))
-
-    # print('--Analysis example--')
-    # print('<costs>')
-    # max_exchange_rollout_costs_fttp = max(my_fixed_model.assets['exchanges'], key=lambda x:x.rollout_costs['fttp'])
-
-    # max_exchange_rollout_costs_fttp = max(my_fixed_model.assets['exchanges'], key=lambda x:x.rollout_costs['fttp'])
-
-    # print('Most expensive exchange for FTTP rollout: ' + max_exchange_rollout_costs_fttp.id)
-    # max_cabinet_rollout_costs_fttp = max(my_fixed_model.assets['cabinets'], key=lambda x:x.rollout_costs['fttp'])
-    # print('Most expensive cabinet for FTTP rollout: ' + max_cabinet_rollout_costs_fttp.id)
-    # max_distribution_rollout_costs_fttp = max(my_fixed_model.assets['distributions'], key=lambda x:x.rollout_costs['fttp'])
-    # print('Most expensive distribution for FTTP rollout: ' + max_distribution_rollout_costs_fttp.id)
-    # max_premise_rollout_costs_fttp = max(my_fixed_model.assets['premises'], key=lambda x:x.rollout_costs['fttp'])
-    # print('Most expensive premise for FTTP rollout: ' + max_premise_rollout_costs_fttp.id)
-
-    # print('<benefits>')
-    # max_exchange_rollout_benefits_fttp = max(my_fixed_model.assets['exchanges'], key=lambda x:x.rollout_benefits['fttp'])
-    # print('Most benefitial exchange for FTTP rollout: ' + max_exchange_rollout_benefits_fttp.id)
-    # max_cabinet_rollout_benefits_fttp = max(my_fixed_model.assets['cabinets'], key=lambda x:x.rollout_benefits['fttp'])
-    # print('Most benefitial cabinet for FTTP rollout: ' + max_cabinet_rollout_benefits_fttp.id)
-    # max_distribution_rollout_benefits_fttp = max(my_fixed_model.assets['distributions'], key=lambda x:x.rollout_benefits['fttp'])
-    # print('Most benefitial distribution for FTTP rollout: ' + max_distribution_rollout_benefits_fttp.id)
-    # max_premise_rollout_benefits_fttp = max(my_fixed_model.assets['premises'], key=lambda x:x.rollout_benefits['fttp'])
-    # print('Most benefitial premise for FTTP rollout: ' + max_premise_rollout_benefits_fttp.id)
-
-    # print('<benefit-costs-ratio>')
-    # max_exchange_rollout_bcr_fttp = max(my_fixed_model.assets['exchanges'], key=lambda x:x.rollout_bcr['fttp'])
-    # print('Best benefit-costs-ratio exchange for FTTP rollout: ' + max_exchange_rollout_bcr_fttp.id)
-    # max_cabinet_rollout_bcr_fttp = max(my_fixed_model.assets['cabinets'], key=lambda x:x.rollout_bcr['fttp'])
-    # print('Best benefit-costs-ratio cabinet for FTTP rollout: ' + max_cabinet_rollout_bcr_fttp.id)
-    # max_distribution_rollout_bcr_fttp = max(my_fixed_model.assets['distributions'], key=lambda x:x.rollout_bcr['fttp'])
-    # print('Best benefit-costs-ratio distribution for FTTP rollout: ' + max_distribution_rollout_bcr_fttp.id)
-    # max_premise_rollout_bcr_fttp = max(my_fixed_model.assets['premises'], key=lambda x:x.rollout_bcr['fttp'])
-    # print('Best benefit-costs-ratio premise for FTTP rollout: ' + max_premise_rollout_bcr_fttp.id)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+            write_lad_results(system, year, intervention_strategy)
 

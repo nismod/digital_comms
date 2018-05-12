@@ -32,52 +32,101 @@ class ICTManager(object):
 
         for asset_id, action, costs in interventions:
 
+            print(action)
             if asset_id.startswith('distribution'):
                 distribution = [distribution for distribution in self._distributions if distribution.id == asset_id][0]
                 distribution.upgrade(action)
+                #pprint(vars(distribution))
             
             if asset_id.startswith('cabinet'):
                 cabinet = [cabinet for cabinet in self._cabinets if cabinet.id == asset_id][0]
                 cabinet.upgrade(action)
 
     def coverage(self):
-        print('hello world')
-        # """
-        # define coverage
-        # """
+        """
+        define coverage
+        """
 
-        # # group premises by lads
-        # premises_per_lad = defaultdict(list)
+        # group premises by lads
+        premises_per_lad = defaultdict(list)
 
-        # for premise in self._premises:
-        #     premises_per_lad[premise.lad].append(premise)
-
-
-        # """
-        # 'Cambridge': [
-        #     premise1,
-        #     premise2
-        # ]
-        # """
-
-        # # run statistics on each lad
-        # for lad in premises_per_lad.items():
-
-        #     print(premises_per_lad[lad]) # contain  list of premises objects in the lad
+        for premise in self._premises:
+            """
+            'Cambridge': [
+                premise1,
+                premise2
+            ]
+            """
+            premises_per_lad[premise.lad].append(premise)
 
 
-        # # return dict that looks like
-        # """
-        # 'Cambridge' : {
-        #     'premise_with_fttp': int, 
-        #     'premise_with_fttdp': int, 
-        #     'premise_with_fttc': int, 
-        #     'premise_with_adsl': int, 
-        #     'premise_with_cable': int,
-        # },
-        # 'Oxford' : ..
+        # run statistics on each lad
+        coverage_results = defaultdict(dict)
+        for lad in premises_per_lad.keys():
 
-        # """
+            # return dict that looks like
+            """
+            dict of dicts
+            'Cambridge' : {
+                'premise_with_fttp': int, 
+                'premise_with_fttdp': int, 
+                'premise_with_fttc': int, 
+                'premise_with_adsl': int, 
+                'premise_with_cable': int,
+            },
+            'Oxford' : ..
+            """
+
+            #print(lad)
+            sum_of_fttp = sum([premise.fttp for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
+            sum_of_gfast = sum([premise.gfast for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
+            sum_of_fttc = sum([premise.fttc for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
+            sum_of_adsl = sum([premise.adsl for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
+            
+            sum_of_premises = len(premises_per_lad[lad]) # contain  list of premises objects in the lad
+
+            coverage_results[lad] = {
+                'percentage_of_premises_with_fttp': round(sum_of_fttp / sum_of_premises, 2),
+                'percentage_of_premises_with_gfast': round(sum_of_gfast / sum_of_premises, 2),
+                'percentage_of_premises_with_fttc': round(sum_of_fttc / sum_of_premises, 2),
+                'percentage_of_premises_with_adsl': round(sum_of_adsl / sum_of_premises, 2)
+            }
+
+        return coverage_results
+
+    def capacity(self):
+        """
+        define capacity
+        """
+
+        # group premises by lads
+        premises_per_lad = defaultdict(list)
+
+        for premise in self._premises:
+            #print(premise)
+            #pprint(vars(premise))
+            """
+            'Cambridge': [
+                premise1,
+                premise2
+            ]
+            """          
+            premises_per_lad[premise.lad].append(premise)
+
+        capacity_results = defaultdict(dict)
+
+        for lad in premises_per_lad.keys():
+            #print(lad)
+            summed_capacity = sum([premise.connection_capacity for premise in premises_per_lad[lad]])
+            number_of_connections = len(premises_per_lad[lad]) # contain  list of premises objects in the lad
+
+            #return results
+            capacity_results[lad] = {
+                'average_capacity': round(summed_capacity / number_of_connections, 2),
+            }
+
+        return capacity_results
+
 
     @property # shortcut for creating a read-only property
     def assets(self):
@@ -365,12 +414,42 @@ class Premise(object):
         self.fttc = data['FTTC']
         self.adsl = data['ADSL']
         self.lad = data['lad']
-        
+
         self.parameters = parameters
 
         # Link parameters
         self.link = link
         self.compute()
+
+        def best_connection():
+
+            if self.fttp == 1:
+                best_connection = 'fttp' 
+            elif self.gfast == 1:
+                best_connection = 'gfast' 
+            elif self.fttc == 1:
+                best_connection = 'fttc' 
+            else:
+                best_connection = 'adsl'  
+
+            return best_connection
+
+        self.best_connection = best_connection()
+
+        def connection_capacity():
+
+            if self.best_connection == 'fttp' :
+                connection_capacity =  250
+            elif self.best_connection == 'gfast':
+                connection_capacity =  100
+            elif self.best_connection  == 'fttc':
+                connection_capacity =  50
+            else:
+                connection_capacity =  10  
+            
+            return connection_capacity
+
+        self.connection_capacity = connection_capacity()
 
     def compute(self):
 
@@ -423,9 +502,11 @@ class Premise(object):
         if action == 'rollout_fttp':
             self.fttp = 1
             self.link.upgrade('fiber')
-
+        
+        if action == 'rollout_fttp':            
+            self.gfast = 1
+            
         self.compute()
-
 
 class Link(object):
     """Links"""
