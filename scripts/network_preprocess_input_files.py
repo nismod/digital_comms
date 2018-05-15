@@ -255,10 +255,6 @@ def read_postcode_areas():
 
     return postcode_areas
 
-def read_lads():
-    with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'), 'r') as source:
-        return [lad for lad in source]
-
 def read_postcode_technology_lut():
 
     SYSTEM_INPUT_NETWORK = os.path.join(SYSTEM_INPUT_FIXED, 'offcom_initial_system', 'fixed-postcode-2017')
@@ -282,6 +278,24 @@ def read_postcode_technology_lut():
                 })
 
     return postcode_technology_lut
+
+def read_lads():
+    with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'), 'r') as source:
+        return [lad for lad in source]
+
+def read_city_exchange_geotype_lut():
+
+    exchange_geotypes = []
+    with open(os.path.join(SYSTEM_INPUT_FIXED, 'exchange_geotype_lut', 'exchange_geotype_lut.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+        reader = csv.reader(system_file)
+        next(reader)    
+        for line in reader:
+            exchange_geotypes.append({
+                'lad': line[0],
+                'geotype': line[1],                
+            })
+
+    return exchange_geotypes
 
 #####################################
 # READ PREMISES/ASSETS
@@ -515,10 +529,54 @@ def add_lad_to_matching_area(premises, lads):
             lad_shape = shape(lad['geometry'])
             premise_shape = shape(n.object['geometry'])
             if lad_shape.contains(premise_shape):
-                n.object['properties']['lad'] = lad['properties']['desc']
+                n.object['properties']['lad'] = lad['properties']['name']
                 joined_premises.append(n.object)
 
     return joined_premises
+
+def add_lad_to_exchanges(exchanges, lads):
+    
+    joined_exchanges = []
+
+    # Initialze Rtree
+    idx = index.Index()
+
+    for rtree_idx, exchange in enumerate(exchanges):
+        idx.insert(rtree_idx, shape(exchange['geometry']).bounds, exchange)
+
+    # Join the two
+    for lad in lads:
+        for n in idx.intersection((shape(lad['geometry']).bounds), objects=True):
+            lad_shape = shape(lad['geometry'])
+            premise_shape = shape(n.object['geometry'])
+            if lad_shape.contains(premise_shape):
+                n.object['properties']['lad'] = lad['properties']['name']
+                joined_exchanges.append(n.object)
+
+    return joined_exchanges
+
+def add_urban_geotype_to_exchanges(exchanges, exchange_geotype_lut):
+
+    # Process lookup into dictionary
+    exchange_geotypes = {}
+    for lad in exchange_geotype_lut:
+        exchange_geotypes[lad['lad']] = lad
+        del exchange_geotypes[lad['lad']]['lad']
+
+    # Add properties
+    for exchange in exchanges:
+        if exchange['properties']['lad'] in exchange_geotypes:
+            print(exchange)
+            exchange['properties'].update({
+                'geotype': exchange_geotypes[exchange['properties']['lad']]['geotype'],
+
+            })
+        else:
+            exchange['properties'].update({
+                'geotype': 'other', 
+            })
+    
+    return exchanges
 
 def add_technology_to_postcode_areas(postcode_areas, technologies_lut):
 
@@ -554,7 +612,6 @@ def add_technology_to_postcode_areas(postcode_areas, technologies_lut):
             })
     
     return postcode_areas
-
 
 def add_technology_to_premises(premises, postcode_areas):
 
@@ -1186,8 +1243,6 @@ if __name__ == "__main__":
     SYSTEM_INPUT = os.path.join('data', 'raw')
 
     # Read LUTs
-    print('read lads')
-    geojson_lad_areas = read_lads()
 
     print('read_pcd_to_exchange_lut')
     lut_pcd_to_exchange = read_pcd_to_exchange_lut()
@@ -1200,6 +1255,12 @@ if __name__ == "__main__":
     
     print('read pcd_technology_lut')
     lut_pcd_technology = read_postcode_technology_lut()
+
+    print('read lads')
+    geojson_lad_areas = read_lads()
+
+    print('read city exchange geotypes lut')
+    city_exchange_lad_lut = read_city_exchange_geotype_lut()
 
     # Read Premises/Assets
     print('read premises')
@@ -1220,6 +1281,12 @@ if __name__ == "__main__":
 
     print('add LAD to premises')
     geojson_layer5_premises = add_lad_to_matching_area(geojson_layer5_premises, geojson_lad_areas)
+
+    print('add LAD to exchanges')
+    geojson_layer2_exchanges = add_lad_to_exchanges(geojson_layer2_exchanges, geojson_lad_areas)
+
+    print('merge geotype info by LAD to exchanges')
+    geojson_layer2_exchanges = add_urban_geotype_to_exchanges(geojson_layer2_exchanges, city_exchange_lad_lut)
 
     # Process/Estimate assets    
     print('estimate location of distribution points')
@@ -1318,3 +1385,5 @@ if __name__ == "__main__":
 
     print('write links layer3')
     write_shapefile(geojson_layer3_cabinets_links, 'links_layer3_cabinets.shp')
+
+
