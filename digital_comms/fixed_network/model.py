@@ -421,36 +421,6 @@ class Premise(object):
         self.link = link
         self.compute()
 
-        def best_connection():
-
-            if self.fttp == 1:
-                best_connection = 'fttp' 
-            elif self.gfast == 1:
-                best_connection = 'gfast' 
-            elif self.fttc == 1:
-                best_connection = 'fttc' 
-            else:
-                best_connection = 'adsl'  
-
-            return best_connection
-
-        self.best_connection = best_connection()
-
-        def connection_capacity():
-
-            if self.best_connection == 'fttp' :
-                connection_capacity =  250
-            elif self.best_connection == 'gfast':
-                connection_capacity =  100
-            elif self.best_connection  == 'fttc':
-                connection_capacity =  50
-            else:
-                connection_capacity =  10  
-            
-            return connection_capacity
-
-        self.connection_capacity = connection_capacity()
-
     def compute(self):
 
         # Upgrade costs
@@ -494,6 +464,26 @@ class Premise(object):
         self.rollout_bcr['fttc'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttc'], self.rollout_costs['fttc'])
         self.rollout_bcr['adsl'] = _calculate_benefit_cost_ratio(self.rollout_benefits['adsl'], self.rollout_costs['adsl'])
 
+        #determine best_connection:
+        if self.fttp == 1:
+            self.best_connection = 'fttp' 
+        elif self.gfast == 1:
+            self.best_connection = 'gfast' 
+        elif self.fttc == 1:
+            self.best_connection = 'fttc' 
+        else:
+            self.best_connection = 'adsl'  
+
+        #determine connection_capacity
+        if self.best_connection == 'fttp' :
+            self.connection_capacity =  250
+        elif self.best_connection == 'gfast':
+            self.connection_capacity =  100
+        elif self.best_connection  == 'fttc':
+            self.connection_capacity =  50
+        else:
+            self.connection_capacity =  10  
+        
     def __repr__(self):
         return "<Premise id:{}>".format(self.id)
 
