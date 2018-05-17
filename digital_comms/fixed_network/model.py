@@ -40,6 +40,61 @@ class ICTManager(object):
                 cabinet = [cabinet for cabinet in self._cabinets if cabinet.id == asset_id][0]
                 cabinet.upgrade(action)
 
+    def coverage(self):
+        """
+        define coverage
+        """
+        premises_per_lad = defaultdict(list)
+
+        for premise in self._premises:
+
+            premises_per_lad[premise.lad].append(premise)
+
+
+        # run statistics on each lad
+        coverage_results = defaultdict(dict)
+        for lad in premises_per_lad.keys():
+
+            sum_of_fttp = sum([premise.fttp for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
+            sum_of_gfast = sum([premise.gfast for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
+            sum_of_fttc = sum([premise.fttc for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
+            sum_of_adsl = sum([premise.adsl for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
+            
+            sum_of_premises = len(premises_per_lad[lad]) # contain  list of premises objects in the lad
+
+            coverage_results[lad] = {
+                'percentage_of_premises_with_fttp': round(sum_of_fttp / sum_of_premises, 2),
+                'percentage_of_premises_with_gfast': round(sum_of_gfast / sum_of_premises, 2),
+                'percentage_of_premises_with_fttc': round(sum_of_fttc / sum_of_premises, 2),
+                'percentage_of_premises_with_adsl': round(sum_of_adsl / sum_of_premises, 2)
+            }
+
+        return coverage_results
+
+    def capacity(self):
+        """
+        define capacity
+        """
+
+        # group premises by lads
+        premises_per_lad = defaultdict(list)
+
+        for premise in self._premises:
+      
+            premises_per_lad[premise.lad].append(premise)
+
+        capacity_results = defaultdict(dict)
+
+        for lad in premises_per_lad.keys():
+            summed_capacity = sum([premise.connection_capacity for premise in premises_per_lad[lad]])
+            number_of_connections = len(premises_per_lad[lad]) 
+
+            capacity_results[lad] = {
+                'average_capacity': round(summed_capacity / number_of_connections, 2),
+            }
+
+        return capacity_results
+
 
     @property # shortcut for creating a read-only property
     def assets(self):
@@ -99,7 +154,7 @@ class ICTManager(object):
             'premises':         self.total_link_length['premises'] / self.number_of_links['premises'],
             'distributions':    self.total_link_length['distributions'] / self.number_of_links['distributions'],
             'cabinets':         self.total_link_length['cabinets'] / self.number_of_links['cabinets']
-        }
+        }        
 
 
 class Exchange(object):
@@ -327,7 +382,7 @@ class Premise(object):
         self.fttc = data['FTTC']
         self.adsl = data['ADSL']
         self.lad = data['lad']
-        
+
         self.parameters = parameters
 
         # Link parameters
@@ -377,6 +432,26 @@ class Premise(object):
         self.rollout_bcr['fttc'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttc'], self.rollout_costs['fttc'])
         self.rollout_bcr['adsl'] = _calculate_benefit_cost_ratio(self.rollout_benefits['adsl'], self.rollout_costs['adsl'])
 
+        #determine best_connection:
+        if self.fttp == 1:
+            self.best_connection = 'fttp' 
+        elif self.gfast == 1:
+            self.best_connection = 'gfast' 
+        elif self.fttc == 1:
+            self.best_connection = 'fttc' 
+        else:
+            self.best_connection = 'adsl'  
+
+        #determine connection_capacity
+        if self.best_connection == 'fttp' :
+            self.connection_capacity =  250
+        elif self.best_connection == 'gfast':
+            self.connection_capacity =  100
+        elif self.best_connection  == 'fttc':
+            self.connection_capacity =  50
+        else:
+            self.connection_capacity =  10  
+        
     def __repr__(self):
         return "<Premise id:{}>".format(self.id)
 
@@ -385,9 +460,10 @@ class Premise(object):
         if action == 'rollout_fttp':
             self.fttp = 1
             self.link.upgrade('fiber')
-
+        if action == 'rollout_fttp':            
+            self.gfast = 1
+            
         self.compute()
-
 
 class Link(object):
     """Links"""
