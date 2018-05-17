@@ -32,11 +32,9 @@ class ICTManager(object):
 
         for asset_id, action, costs in interventions:
 
-            print(action)
             if asset_id.startswith('distribution'):
                 distribution = [distribution for distribution in self._distributions if distribution.id == asset_id][0]
                 distribution.upgrade(action)
-                #pprint(vars(distribution))
             
             if asset_id.startswith('cabinet'):
                 cabinet = [cabinet for cabinet in self._cabinets if cabinet.id == asset_id][0]
@@ -46,17 +44,10 @@ class ICTManager(object):
         """
         define coverage
         """
-
-        # group premises by lads
         premises_per_lad = defaultdict(list)
 
         for premise in self._premises:
-            """
-            'Cambridge': [
-                premise1,
-                premise2
-            ]
-            """
+
             premises_per_lad[premise.lad].append(premise)
 
 
@@ -64,20 +55,6 @@ class ICTManager(object):
         coverage_results = defaultdict(dict)
         for lad in premises_per_lad.keys():
 
-            # return dict that looks like
-            """
-            dict of dicts
-            'Cambridge' : {
-                'premise_with_fttp': int, 
-                'premise_with_fttdp': int, 
-                'premise_with_fttc': int, 
-                'premise_with_adsl': int, 
-                'premise_with_cable': int,
-            },
-            'Oxford' : ..
-            """
-
-            #print(lad)
             sum_of_fttp = sum([premise.fttp for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
             sum_of_gfast = sum([premise.gfast for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
             sum_of_fttc = sum([premise.fttc for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
@@ -103,24 +80,15 @@ class ICTManager(object):
         premises_per_lad = defaultdict(list)
 
         for premise in self._premises:
-            #print(premise)
-            #pprint(vars(premise))
-            """
-            'Cambridge': [
-                premise1,
-                premise2
-            ]
-            """          
+      
             premises_per_lad[premise.lad].append(premise)
 
         capacity_results = defaultdict(dict)
 
         for lad in premises_per_lad.keys():
-            #print(lad)
             summed_capacity = sum([premise.connection_capacity for premise in premises_per_lad[lad]])
-            number_of_connections = len(premises_per_lad[lad]) # contain  list of premises objects in the lad
+            number_of_connections = len(premises_per_lad[lad]) 
 
-            #return results
             capacity_results[lad] = {
                 'average_capacity': round(summed_capacity / number_of_connections, 2),
             }
@@ -492,7 +460,6 @@ class Premise(object):
         if action == 'rollout_fttp':
             self.fttp = 1
             self.link.upgrade('fiber')
-        
         if action == 'rollout_fttp':            
             self.gfast = 1
             
