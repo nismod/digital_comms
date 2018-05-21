@@ -29,9 +29,8 @@ SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'processed')
 SYSTEM_INPUT_NETWORK = os.path.join(SYSTEM_INPUT_FIXED, 'network_hierarchy_data')
 
 #####################################
-# GENERATE EXCHANGE BOUNDARIES
+# PART 1 GENERATE EXCHANGE BOUNDARIES
 #####################################
-
 
 def read_pcd_to_exchange_lut():
     """
@@ -297,7 +296,7 @@ def read_exchanges():
                     "coordinates": [float(line[5]), float(line[6])]
                 },
                 'properties': {
-                    'id': 'exchange_' + line[1],
+                    'id': line[1],
                     'Name': line[2],
                     'pcd': line[0],
                     'Region': line[3],
@@ -355,7 +354,7 @@ def add_exchange_id_to_postcode_areas(exchanges, postcode_areas, exchange_to_pos
         if postcode in lut_pcb2cab:
 
             # Postcode-to-cabinet-to-exchange association
-            postcode_area['properties']['EX_ID'] = 'exchange_' + lut_pcb2cab[postcode]
+            postcode_area['properties']['EX_ID'] = lut_pcb2cab[postcode]
             postcode_area['properties']['EX_SRC'] = 'EXISTING POSTCODE DATA'
 
         else:
@@ -478,14 +477,30 @@ def generate_exchange_area(exchanges, merge=True):
 
     return exchange_areas
 
+############################################
+# PART 2 PROCESS TO SUM PREMISES BY EXCHANGE
+############################################
 
-#####################################
-# SPECIFY FUNCTIONS
-#####################################
+def read_exchange_boundaries():
+    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, 'exchange_boundaries.shp'), 'r') as source:
+        return [boundary for boundary in source]
 
-# def read_exchange_boundaries():
-#     with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, '_exchange_areas.shp'), 'r') as source:
-#         return [boundary for boundary in source]
+def get_postcode_centroids():
+
+    postcode_shapes = []
+    
+    for dirpath, subdirs, files in os.walk(os.path.join(SYSTEM_INPUT_FIXED, 'codepoint', 'codepoint-poly_2429451')):
+        for x in files:
+            #print(files)
+            if x.endswith(".shp"):
+                with fiona.open(os.path.join(dirpath, x), 'r') as source:
+                    postcode_shapes.extend([boundary for boundary in source])
+
+    for postcode in postcode_shapes:
+            centroid = shape(postcode['geometry']).centroid
+            postcode['geometry'] = mapping(centroid)
+
+    return postcode_shapes
 
 
 def read_codepoint_lut():
@@ -510,24 +525,7 @@ def read_codepoint_lut():
                     else:
                         pass
 
-    return codepoint_lut_data          
-
-def get_postcode_centroids():
-
-    postcode_shapes = []
-    
-    for dirpath, subdirs, files in os.walk(os.path.join(SYSTEM_INPUT_FIXED, 'codepoint', 'codepoint-poly_2429451')):
-        for x in files:
-            #print(files)
-            if x.endswith(".shp"):
-                with fiona.open(os.path.join(dirpath, x), 'r') as source:
-                    postcode_shapes.extend([boundary for boundary in source])
-
-    for postcode in postcode_shapes:
-            centroid = shape(postcode['geometry']).centroid
-            postcode['geometry'] = mapping(centroid)
-
-    return postcode_shapes
+    return codepoint_lut_data   
 
 def add_codepoint_lut_to_postcode_shapes(data, lut):
 
@@ -550,10 +548,6 @@ def add_codepoint_lut_to_postcode_shapes(data, lut):
     
     return data
 
-############################################
-# ADD INTERSECTING EXCHANGE IDs TO POSTCODES
-############################################
-
 def add_exchange_to_postcodes(postcodes, exchanges):
     
     joined_postcodes = []
@@ -574,10 +568,6 @@ def add_exchange_to_postcodes(postcodes, exchanges):
                 joined_postcodes.append(n.object)
 
     return joined_postcodes
-
-#####################################
-# SUM PREMISES BY EXCHANGE
-#####################################
 
 def sum_premises_by_exchange():
     
@@ -623,25 +613,148 @@ def sum_premises_by_exchange():
 
     return premises_results
 
-##########################################
-# CONVERT DATA INTO LIST OF DICT STRUCTURE 
-##########################################
+############################################
+# PART 3 ALLOCATE EXCHANGE GEOTYPES 
+############################################
 
-def covert_data_into_list_of_dicts():
+def read_lads():
+    with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'), 'r') as source:
+        return [lad for lad in source]
+
+def read_city_exchange_geotype_lut():
+
+    exchange_geotypes = []
+    with open(os.path.join(SYSTEM_INPUT_FIXED, 'exchange_geotype_lut', 'exchange_geotype_lut.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+        reader = csv.reader(system_file)
+        next(reader)    
+        for line in reader:
+            exchange_geotypes.append({
+                'lad': line[0],
+                'geotype': line[1],                
+            })
+
+    return exchange_geotypes
+
+def add_lad_to_exchange(postcodes, exchanges):
+    
+    joined_postcodes = []
+
+    # Initialze Rtree
+    idx = index.Index()
+
+    for rtree_idx, postcode in enumerate(postcodes):
+        idx.insert(rtree_idx, shape(postcode['geometry']).bounds, postcode)
+
+    # Join the two
+    for exchange in exchanges:
+        for n in idx.intersection((shape(exchange['geometry']).bounds), objects=True):
+            exchange_shape = shape(exchange['geometry'])
+            postcode_shape = shape(n.object['geometry'])
+            if exchange_shape.contains(postcode_shape):
+                n.object['properties']['id'] = exchange['properties']['id']
+                joined_postcodes.append(n.object)
+
+    return joined_postcodes
+
+def add_lad_to_exchanges(exchanges, lads):
+    
+    joined_exchanges = []
+
+    # Initialze Rtree
+    idx = index.Index()
+
+    for rtree_idx, exchange in enumerate(exchanges):
+        idx.insert(rtree_idx, shape(exchange['geometry']).bounds, exchange)
+
+    # Join the two
+    for lad in lads:
+        for n in idx.intersection((shape(lad['geometry']).bounds), objects=True):
+            lad_shape = shape(lad['geometry'])
+            premise_shape = shape(n.object['geometry'])
+            if lad_shape.contains(premise_shape):
+                n.object['properties']['lad'] = lad['properties']['name']
+                joined_exchanges.append(n.object)
+
+    return joined_exchanges
+
+def covert_data_into_list_of_dicts(data):
     my_data = []
 
     # output and report results for this timestep
-    for exchange in premises_by_exchange:
+    for exchange in data:
         my_data.append({
         'exchange_id': exchange,
-        'delivery_points': premises_by_exchange[exchange]['delivery_points'],
-        'geotype': premises_by_exchange[exchange]['geotype']
+        'delivery_points': data[exchange]['delivery_points'],
+        'geotype': data[exchange]['geotype']
         })
 
     return my_data
 
+def merge_exchanges_with_summed_prems(exchanges, summed_premises):
+
+    # Process lookup into dictionary
+    exchange_geotypes = {}
+    for each_exchange in summed_premises:
+        exchange_geotypes[each_exchange['exchange_id']] = each_exchange
+        del exchange_geotypes[each_exchange['exchange_id']]['exchange_id']
+
+    # Add properties
+    for exchange in exchanges:
+        if exchange['properties']['id'] in exchange_geotypes:
+            #print(exchange)
+            exchange['properties'].update({
+                'geotype': exchange_geotypes[exchange['properties']['id']]['geotype'],
+                'delivery_points': exchange_geotypes[exchange['properties']['id']]['delivery_points']
+            })
+        else:
+            exchange['properties'].update({
+                # 'geotype': 'other', 
+                'delivery_points': 0,
+            })
+    
+    return exchanges
+
+def add_urban_geotype_to_exchanges(exchanges, exchange_geotype_lut):
+
+    # Process lookup into dictionary
+    exchange_geotypes = {}
+    for lad in exchange_geotype_lut:
+        exchange_geotypes[lad['lad']] = lad
+        del exchange_geotypes[lad['lad']]['lad']
+
+    # Add properties
+    for exchange in exchanges:
+        
+        if 'geotype' not in exchange['properties']:
+            exchange['properties'].update({
+                'geotype': 'unknown',
+            })
+        
+        if exchange['properties']['lad'] in exchange_geotypes:
+            exchange['properties'].update({
+                'geotype': exchange_geotypes[exchange['properties']['lad']]['geotype'],
+
+            })
+        else:
+            pass
+
+    return exchanges
+
+def covert_geojson_exchanges_into_list_of_dicts(data):
+    my_data = []
+
+    for exchange in data:
+        my_data.append({
+        'exchange_id': exchange['properties']['id'],
+        'lad': exchange['properties']['lad'],
+        'delivery_points': exchange['properties']['delivery_points'],
+        'geotype': exchange['properties']['geotype']
+        })
+
+    return my_data
+    
 #####################################
-# WRITE DATA - SINGLE FILE FOR ALL
+# WRITE DATA 
 #####################################
 
 def csv_writer(data, output_fieldnames, filename):
@@ -652,10 +765,6 @@ def csv_writer(data, output_fieldnames, filename):
         writer = csv.DictWriter(csv_file, output_fieldnames, lineterminator = '\n')
         writer.writeheader()
         writer.writerows(data)
-
-#####################################
-# WRITE LUTS/ASSETS/LINKS
-#####################################
 
 def write_shapefile(data, path):
 
@@ -678,9 +787,10 @@ def write_shapefile(data, path):
             sink.write(feature)
 
 ################################################
-# run scripts
+# RUN SCRIPTS
 ################################################
 
+#### GENERATE EXCHANGE BOUNDARIES
 print('read_pcd_to_exchange_lut')
 lut_pcd_to_exchange = read_pcd_to_exchange_lut()
 
@@ -702,6 +812,13 @@ geojson_postcode_areas = add_cabinet_id_to_postcode_areas(geojson_postcode_areas
 print('generate exchange areas')
 exchange_boundaries = generate_exchange_area(geojson_postcode_areas)
 
+print('write exchange_boundaries')
+write_shapefile(exchange_boundaries, 'exchange_boundaries.shp')
+
+#### PART 2 PROCESS TO SUM PREMISES BY EXCHANGES
+print('reading exchange boundaries')
+exchange_boundaries = read_exchange_boundaries()
+
 print("reading postcode boundaries")
 postcode_centroids = get_postcode_centroids()
  
@@ -717,18 +834,34 @@ postcode_centroids = add_exchange_to_postcodes(postcode_centroids, exchange_boun
 print("summing delivery points by exchange area")
 premises_by_exchange = sum_premises_by_exchange()
 
-print("convert exchange areas to list of dicts")
-premises_by_exchange = covert_data_into_list_of_dicts()
+#### PART 3 ALLOCATE EXCHANGE GEOTYPES 
+print('read lads')
+geojson_lad_areas = read_lads()
 
-# # Write LUTs
+print('read city exchange geotypes lut')
+city_exchange_lad_lut = read_city_exchange_geotype_lut()
+
+print('add LAD to exchanges')
+geojson_layer2_exchanges = add_lad_to_exchanges(geojson_layer2_exchanges, geojson_lad_areas)
+
+print("convert exchange areas to list of dicts")
+premises_by_exchange = covert_data_into_list_of_dicts(premises_by_exchange)
+
+print("merge geojason exchanges with premises summed by exchange")
+geojson_layer2_exchanges = merge_exchanges_with_summed_prems(geojson_layer2_exchanges, premises_by_exchange)
+
+print('merge geotype info by LAD to exchanges')
+geojson_layer2_exchanges = add_urban_geotype_to_exchanges(geojson_layer2_exchanges, city_exchange_lad_lut)
+
+print("convert exchange areas to list of dicts")
+layer2_exchanges = covert_geojson_exchanges_into_list_of_dicts(geojson_layer2_exchanges)
+
+#### WRITE DATA 
 print('write geotype lut')
-geotype_lut_fieldnames = ['exchange_id', 'delivery_points', 'geotype']
-csv_writer(premises_by_exchange, geotype_lut_fieldnames, 'exchange_geotype_lut.csv')
+geotype_lut_fieldnames = ['exchange_id', 'lad', 'delivery_points', 'geotype']
+csv_writer(layer2_exchanges, geotype_lut_fieldnames, 'exchange_geotype_lut.csv')
 
 print('write postcode_centroids')
 write_shapefile(postcode_centroids, 'postcode_centroids.shp')
-
-print('write exchange_boundaries')
-write_shapefile(exchange_boundaries, 'exchange_boundaries.shp')
 
 print("script finished")
