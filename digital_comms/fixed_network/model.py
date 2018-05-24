@@ -483,7 +483,7 @@ class Link(object):
         self.upgrade_costs = {}
         self.upgrade_costs['fiber'] = self.parameters['costs_links_fiber_meter'] * self.length if self.technology != 'fiber' else 0
         self.upgrade_costs['copper'] = self.parameters['costs_links_copper_meter'] * self.length if self.technology != 'copper' else 0
-
+        
     def __repr__(self):
         return "<Link origin:{} dest:{} length:{}>".format(self.origin, self.dest, self.length)
 
