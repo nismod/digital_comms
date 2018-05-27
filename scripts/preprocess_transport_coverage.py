@@ -10,11 +10,6 @@ from shapely.geometry import shape, Point, LineString, Polygon, mapping
 from collections import OrderedDict, defaultdict
 from pyproj import Proj, transform
 
-#import pyproj
-# from functools import partial
-# import pyproj
-# from shapely.ops import transform
-
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
@@ -39,59 +34,38 @@ def read_in_received_signal_data(data, network):
         next(reader)
         for line in reader:
             #select O2, Voda, EE and 3
-            if line[90] == network: 
-                received_signal_data.append({
-                    'type': "Feature",
-                    'geometry': {
-                        "type": "Point",
-                        "coordinates": [float(line[23]), float(line[22])]
-                    },
-                    'properties': {
-                        'time': line[16],
-                        'altitude': line[19],
-                        'loc_bearing': line[20],
-                        'loc_speed': line[21],           
-                        'loc_provider': line[24],                 
-                        'loc_sat': line[25], 
-                        'lte_rsrp': line[36],                 
-                        'lte_rsrq': line[37],                 
-                        'lte_rssnr': line[38],
-                        'lte_ci': line[66],
-                        'lte_mcc': line[67],
-                        'lte_mnc': line[68],
-                        'lte_pci': line[69],
-                        'lte_tac': line[70],
-                        'network_type': line[84],
-                        'network_id': line[90],
-                        'network_id_sim': line[91],
-                        'network_name': line[92],
-                        'network_name_sim': line[93]
-                    }
-                    })
+            if line[69] != 'null': 
+                if line[90] == network:
+                    received_signal_data.append({
+                        'type': "Feature",
+                        'geometry': {
+                            "type": "Point",
+                            "coordinates": [float(line[23]), float(line[22])]
+                        },
+                        'properties': {
+                            'time': line[16],
+                            'altitude': line[19],
+                            'loc_bearing': line[20],
+                            'loc_speed': line[21],           
+                            'loc_provider': line[24],                 
+                            'loc_sat': line[25], 
+                            'lte_rsrp': line[36],                 
+                            'lte_rsrq': line[37],                 
+                            'lte_rssnr': line[38],
+                            'lte_ci': line[66],
+                            'lte_mcc': line[67],
+                            'lte_mnc': line[68],
+                            'lte_pci': line[69],
+                            'lte_tac': line[70],
+                            'network_type': line[84],
+                            'network_id': line[90],
+                            'network_id_sim': line[91],
+                            'network_name': line[92],
+                            'network_name_sim': line[93]
+                        }
+                        })
     
     return received_signal_data
-
-    # with open(os.path.join(SYSTEM_INPUT_FIXED, 'layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
-    #     reader = csv.reader(system_file)
-    #     next(reader)
-    
-    #     for line in reader:
-    #         exchanges.append({
-    #             'type': "Feature",
-    #             'geometry': {
-    #                 "type": "Point",
-    #                 "coordinates": [float(line[5]), float(line[6])]
-    #             },
-    #             'properties': {
-    #                 'id': 'exchange_' + line[1],
-    #                 'Name': line[2],
-    #                 'pcd': line[0],
-    #                 'Region': line[3],
-    #                 'County': line[4]
-    #             }
-    #         })
-
-    # return exchanges
 
 def read_in_os_open_roads():
 
@@ -136,6 +110,25 @@ def convert_projection(data):
         converted_data.append(feature)
         
     return converted_data
+
+def calculate_road_length(data):
+
+    roads = defaultdict(list)
+    length_of_roads = defaultdict(dict)
+
+    for road in data:
+          
+        roads[road['properties']['roadNumber']].append(road['properties']['length'])
+
+    for road in roads.keys():
+
+        summed_length_of_road = sum(roads[road])
+
+        length_of_roads[road] = {
+            'length_of_road': summed_length_of_road
+        }
+
+    return length_of_roads
 
 def add_buffer_to_road_network(data):
 
@@ -183,6 +176,64 @@ def add_road_id_to_points(recieved_signal_data, road_polygons):
 
     return joined_points
 
+def calculate_unique_sites_per_road(data):
+
+    sites_per_road = defaultdict(list)
+    unique_sites = defaultdict(dict)
+
+    for point in data:
+          
+        sites_per_road[point['properties']['roadNumber']].append(point['properties']['lte_pci'])
+    
+    for road in sites_per_road.keys():
+
+        number_of_unique_sites = len(set(sites_per_road[road])) 
+
+        if number_of_unique_sites > 0:
+        
+            unique_sites[road] = {
+                'unique_sites': number_of_unique_sites
+            }
+
+        else:
+            unique_sites[road] = {
+                'unique_sites': 0
+            }
+
+    return unique_sites
+
+def covert_data_into_list_of_dicts(data, variable1, variable2):
+    my_data = []
+
+    # output and report results for this timestep
+    for datum in data:
+        my_data.append({
+        variable1: datum,
+        variable2: data[datum][variable2]
+        })
+
+    return my_data
+
+def merge_two_list_of_dicts(data1, data2, shared_id):
+
+    d1 = {d[shared_id]:d for d in data1}
+
+    result = [dict(d, **d1.get(d[shared_id], {})) for d in data2]
+
+    return result
+
+def calculate_site_densities(data):
+
+    for road in data:
+        
+        try:
+            road['site_density'] =  round(road['length_of_road'] / road['unique_sites'], 1) 
+        
+        except:
+            print("did not match {}".format(road))
+
+    return data 
+
 #####################################
 # WRITE LOOK UP TABLE (LUT) DATA
 #####################################
@@ -227,6 +278,12 @@ road_network = read_in_os_open_roads()
 print('converting road network projection into wgs84')
 road_network = convert_projection(road_network)
 
+print("calculating length of roads in road network")
+road_lengths = calculate_road_length(road_network)
+
+print("converting road lengths to list of dicts structure")
+road_lengths = covert_data_into_list_of_dicts(road_lengths, 'roadName', 'length_of_road')
+
 print("adding buffer to road network")
 road_network = add_buffer_to_road_network(road_network)
 
@@ -235,9 +292,9 @@ write_shapefile(road_network, 'road_network.shp')
 
 for network, name in [
         ('23410', 'O2'),
-        ('23415', 'Voda'),
-        ('23430', 'EE'),
-        ('23420', '3')
+        #('23415', 'Voda'),
+        #('23430', 'EE'),
+        #('23420', '3')
     ]:
 
     print("Running:", name)
@@ -248,9 +305,23 @@ for network, name in [
     print("adding road ids to points along the strategic road network ")
     received_signal_points = add_road_id_to_points(received_signal_points, road_network)
 
+    print("calculating unique sites per road")
+    unique_sites = calculate_unique_sites_per_road(received_signal_points)
+
+    print('converting site densities to list of dicts structure')
+    unique_sites = covert_data_into_list_of_dicts(unique_sites, 'roadName', 'unique_sites')
+
+    print('merging site densities and road lengths')
+    road_site_density = merge_two_list_of_dicts(unique_sites, road_lengths, 'roadName')
+    
+    print('calculating site densities per km2')
+    road_site_density = calculate_site_densities(road_site_density)
+
     print('write data points')
-    write_shapefile(received_signal_points, '{}_received_signal_points.shp'.format(name))
+    fieldnames = ['roadName', 'length_of_road', 'unique_sites', 'site_density']
+    csv_writer(road_site_density, fieldnames, 'road_site_densities.csv')
 
 print("script finished")
 
 print("now check the column integer slices were correct for desired columns")
+
