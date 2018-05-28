@@ -86,6 +86,78 @@ def read_in_os_open_roads():
 
     return open_roads_network
 
+def read_in_traffic_counts():
+
+    traffic_data = []
+
+    TRAFFIC_COUNT_INPUTS = os.path.join(SYSTEM_INPUT_FIXED,'dft_road_traffic_counts', 'all_regions')
+
+    for x in os.listdir(TRAFFIC_COUNT_INPUTS):
+        with open(os.path.join(TRAFFIC_COUNT_INPUTS, x), 'r', encoding='utf8', errors='replace') as system_file:
+            reader = csv.reader(system_file)
+            next(reader)
+            for line in reader:
+                try:
+                    if line[0] == '2016': 
+                        traffic_data.append({
+                            'road': line[6],
+                            'count': line[26],
+                            'easting': line[8],
+                            'northing': line[9]
+                        })
+                except:
+                    print(x)
+                else:
+                    if line[0] == '2015': 
+                        traffic_data.append({
+                            'road': line[4],
+                            'count': line[24],
+                            'easting': line[6],
+                            'northing': line[7]
+                        })
+    
+    return traffic_data
+
+def apply_road_categories(data):
+
+    for point in data:
+
+        if int(point['count']) >= 170981:
+            point['geotype'] = 'very high traffic'
+
+        elif int(point['count']) >= 128236 and int(point['count']) < 170981  :
+            point['geotype'] = 'high traffic'
+
+        elif int(point['count']) >= 85490 and int(point['count']) < 128236  :
+            point['geotype'] = 'average traffic'
+
+        elif int(point['count']) >= 42745 and int(point['count']) < 85490  :
+            point['geotype'] = 'low traffic'
+
+        elif int(point['count']) < 42745  :
+            point['geotype'] = 'very low traffic'
+    
+    return data
+
+def length_of_road_by_type(data):
+
+    roads = defaultdict(list)
+    length_of_roads = defaultdict(dict)
+
+    for road in data:
+        roads[road['properties']['formOfWay']].append(road['properties']['length'])
+
+    for road in roads.keys():
+        #print(road)
+        summed_length_of_road = sum(roads[road])
+
+        length_of_roads[road] = {
+            'type_of_road': road,
+            'length_of_road': summed_length_of_road
+        }
+
+    return length_of_roads
+
 def convert_projection(data):
 
     converted_data = []
@@ -275,6 +347,15 @@ def write_shapefile(data, path):
 print('read in road network')
 road_network = read_in_os_open_roads()
 
+print("read in traffic flow data")
+flow_data = read_in_traffic_counts()
+
+print("categorise flow data")
+flow_data = apply_road_categories(flow_data)
+
+print("calculate distance by road type")
+road_length_by_type = length_of_road_by_type(road_network)
+
 print('converting road network projection into wgs84')
 road_network = convert_projection(road_network)
 
@@ -320,6 +401,9 @@ for network, name in [
     print('write data points')
     fieldnames = ['roadName', 'length_of_road', 'unique_sites', 'site_density']
     csv_writer(road_site_density, fieldnames, 'road_site_densities.csv')
+
+flow_counts_fieldnames = ['road', 'count', 'easting', 'northing']
+csv_writer(flow_data, flow_counts_fieldnames, 'dft_traffic_count_points.csv')
 
 print("script finished")
 
