@@ -556,6 +556,69 @@ def add_urban_geotype_to_exchanges(exchanges, exchange_geotype_lut):
     
     return exchanges
 
+def complement_postcode_cabinets(postcode_areas, premises, exchanges):
+
+    for exchange in exchanges:
+
+        # Count number of existing cabinets
+        cabinets_in_data = [postcode_area['properties']['CAB_ID'] for postcode_area in postcode_areas]
+        count_cabinets_in_data = len(set(cabinets_in_data))
+
+        # Calculate number of expected cabinets
+        if exchange['properties']['geotype'] == 'large city': #>500k
+            expected_cabinets = int(round(len(premises) / 500))
+        elif exchange['properties']['geotype'] == 'small city': #>200k
+            expected_cabinets = int(round(len(premises) / 500))
+        elif exchange['properties']['geotype'] == '>20k lines':
+            expected_cabinets = int(round(len(premises) / 475))
+        elif exchange['properties']['geotype'] == '>10k lines':
+            expected_cabinets = int(round(len(premises) / 400))
+        elif exchange['properties']['geotype'] == '>3k lines':
+            expected_cabinets = int(round(len(premises) / 205))
+        elif exchange['properties']['geotype'] == '>1k lines':
+            expected_cabinets = int(round(len(premises) / 185))
+        elif exchange['properties']['geotype'] == '<1k lines' or 'other':
+            expected_cabinets = int(round(len(premises) / 100)) # TODO: according to table these premises geotypes have no internet access
+        else:
+            print('Geotype ' + exchange['properties']['geotype'] + ' is unknown')
+            raise Exception()
+
+        # Cluster around premises
+        if expected_cabinets > count_cabinets_in_data:
+
+            # Remove premises that have cabinets defined
+            incomplete_postcode_areas = MultiPolygon([shape(postcode_area['geometry']) for postcode_area in postcode_areas if postcode_area['properties']['CAB_ID'] == ''])
+            cluster_premises = [premise for premise in premises if incomplete_postcode_areas.contains(shape(premise['geometry']))]
+
+            # Generate cabinets
+            generate_cabinets = expected_cabinets - count_cabinets_in_data
+
+            points = np.vstack([[float(i) for i in premise['geometry']['coordinates']] for premise in cluster_premises])
+            kmeans = KMeans(n_clusters=generate_cabinets, n_init=1, max_iter=1, n_jobs=-1, random_state=0, ).fit(points)
+
+            cabinets = []
+            for idx, cab_point_location in enumerate(kmeans.cluster_centers_):
+                cabinets.append({
+                        'type': "Feature",
+                        'geometry': {
+                            "type": "Point",
+                            "coordinates": [cab_point_location[0], cab_point_location[1]]
+                        },
+                        'properties': {
+                            "id": "cabinet_{" + exchange['properties']['id'] + "}{GEN" + str(idx) + '}'
+                        }
+                    })     
+
+            # Connect postcode to nearest cabinet
+            cabinets_idx = index.Index()
+            [cabinets_idx.insert(0, shape(cabinet['geometry']).bounds, obj=cabinet['properties']['id']) for cabinet in cabinets]
+
+            for postcode_area in postcode_areas:
+                if postcode_area['properties']['CAB_ID'] == '':
+                    postcode_area['properties']['CAB_ID'] = [n.object for n in cabinets_idx.nearest(shape(postcode_area['geometry']).bounds, objects=True)][0]
+
+    return postcode_areas
+
 def add_technology_to_postcode_areas(postcode_areas, technologies_lut):
 
     # Process lookup into dictionary
@@ -1288,6 +1351,9 @@ if __name__ == "__main__":
     geojson_layer2_exchanges = add_urban_geotype_to_exchanges(geojson_layer2_exchanges, city_exchange_lad_lut)
 
     # Process/Estimate assets    
+    print('complement cabinet locations as expected for this geotype')
+    geojson_postcode_areas = complement_postcode_cabinets(geojson_postcode_areas, geojson_layer5_premises, geojson_layer2_exchanges)
+
     print('estimate location of distribution points')
     geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises)
 
