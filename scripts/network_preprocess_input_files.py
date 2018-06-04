@@ -1,10 +1,12 @@
 import os
+import sys
 from pprint import pprint
 import configparser
 import csv
 import fiona
 import numpy as np
-import random 
+import random
+import glob
 
 from shapely.geometry import shape, Point, LineString, Polygon, MultiPolygon, mapping
 from shapely.ops import unary_union, cascaded_union
@@ -26,12 +28,16 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 #####################################
 
 SYSTEM_INPUT_FIXED = os.path.join(BASE_PATH, 'raw')
-SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'processed')
+SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'processed_cluster')
 SYSTEM_INPUT_NETWORK = os.path.join(SYSTEM_INPUT_FIXED, 'network_hierarchy_data')
 
 #####################################
 # READ LOOK UP TABLE (LUT) DATA
 #####################################
+
+def read_exchange_area(exchange_name):
+    with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'exchange_areas', '_exchange_areas.shp'), 'r') as source:
+        return [exchange for exchange in source if exchange['properties']['id'] == exchange_name][0]
 
 def read_pcd_to_exchange_lut():
     """
@@ -55,6 +61,7 @@ def read_pcd_to_exchange_lut():
     pcd_to_exchange_data: List of dicts
     """
     pcd_to_exchange_data = []
+    exchange_id =  exchange_name.replace('exchange_', '')
 
     with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
@@ -133,6 +140,7 @@ def read_pcd_to_cabinet_lut():
     """
 
     pcp_data = {}
+    exchange_id =  exchange_name.replace('exchange_', '')
 
     with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
@@ -185,7 +193,7 @@ def read_pcd_to_cabinet_lut():
 
     return pcp_data
 
-def read_postcode_areas():
+def read_postcode_areas(exchange_area):
     
     """
     Reads all postcodes shapes, removing vertical postcodes, and merging with closest neighbour.
@@ -200,60 +208,10 @@ def read_postcode_areas():
     postcode_areas = list of dicts
     """
 
-    postcode_areas = []
+    exchange_geom = shape(exchange_area['geometry'])
 
-    # Initialze Rtree
-    idx = index.Index()
-
-    with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'postcode_shapes', 'cb.shp'), 'r') as source:
-
-        # Store shapes in Rtree
-        for src_shape in source:
-            idx.insert(int(src_shape['id']), shape(src_shape['geometry']).bounds, src_shape)
-
-        # Split list in regular and vertical postcodes
-        postcodes = {}
-        vertical_postcodes = {}
-
-        for x in source:
-
-            x['properties']['POSTCODE'] = x['properties']['POSTCODE'].replace(" ", "")
-            if x['properties']['POSTCODE'].startswith('V'):
-                vertical_postcodes[x['id']] = x
-            else:
-                postcodes[x['id']] = x
-
-        for key, f in vertical_postcodes.items():
-
-            vpost_geom = shape(f['geometry'])
-            best_neighbour = {'id': 0, 'intersection': 0}
-
-            # Find best neighbour
-            for n in idx.intersection((vpost_geom.bounds), objects=True):
-                if shape(n.object['geometry']).intersection(vpost_geom).length > best_neighbour['intersection'] and n.object['id'] != f['id']:
-                    best_neighbour['id'] = n.object['id']
-                    best_neighbour['intersection'] = shape(n.object['geometry']).intersection(vpost_geom).length
-
-            # Merge with best neighbour
-            neighbour = postcodes[best_neighbour['id']]
-            merged_geom = unary_union([shape(neighbour['geometry']), vpost_geom])
-
-            merged_postcode = {
-                'id': neighbour['id'].replace(" ", ""),
-                'properties': neighbour['properties'],
-                'geometry': mapping(merged_geom)
-            }
-
-            try:
-                postcodes[merged_postcode['id']] = merged_postcode
-            except:
-                raise Exception
-
-        for key, p in postcodes.items():
-            p.pop('id')
-            postcode_areas.append(p)
-
-    return postcode_areas
+    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, '_postcode_areas.shp'), 'r') as source:
+        return [postcode_area for postcode_area in source if exchange_geom.contains(shape(postcode_area['geometry']))]
 
 def read_postcode_technology_lut():
 
@@ -279,9 +237,10 @@ def read_postcode_technology_lut():
 
     return postcode_technology_lut
 
-def read_lads():
+def read_lads(exchange_area):
     with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'), 'r') as source:
-        return [lad for lad in source]
+        exchange_geom = shape(exchange_area['geometry'])
+        return [lad for lad in source if exchange_geom.intersection(shape(lad['geometry']))]
 
 def read_city_exchange_geotype_lut():
 
@@ -301,7 +260,7 @@ def read_city_exchange_geotype_lut():
 # READ PREMISES/ASSETS
 #####################################
 
-def read_premises():
+def read_premises(exchange_area):
 
     """
     Reads in premises points from the OS AddressBase data (.csv).
@@ -329,25 +288,37 @@ def read_premises():
     """
 
     premises_data = []
+    idx = index.Index()
 
-    with open(os.path.join(SYSTEM_INPUT_FIXED, 'layer_5_premises', 'cambridge_points.csv'), 'r') as system_file:
-        reader = csv.reader(system_file)
-        next(reader)
-        for line in reader:
-            premises_data.append({
-                'type': "Feature",
-                'geometry': {
-                    "type": "Point",
-                    "coordinates": [float(line[5]), float(line[6])]
-                },
-                'properties': {
-                    'id': 'premise_' + line[0],
-                    'oa': line[1],
-                    'residential_address_count': line[2],
-                    'non_residential_address_count': line[3],
-                    'postgis_geom': line[4]
-                }
-            })
+    pathlist = glob.iglob(os.path.join(SYSTEM_INPUT_FIXED, 'layer_5_premises', 'blds_with_functions_EO_2018_03_29') + '/*.csv', recursive=True)
+
+    exchange_geom = shape(exchange_area['geometry'])
+    exchange_bounds = shape(exchange_area['geometry']).bounds
+
+    for path in pathlist:
+        with open(os.path.join(path), 'r') as system_file:
+            reader = csv.reader(system_file)
+            next(reader) #skip header
+            [premises_data.append(
+                {
+                    'type': "Feature",
+                    'geometry': {
+                        "type": "Point",
+                        "coordinates": [float(line[8]), float(line[7])]
+                    },
+                    'properties': {
+                        'id': 'premise_' + line[0],
+                        'oa': line[1],
+                        'residential_address_count': line[3],
+                        'non_residential_address_count': line[4],
+                        'postgis_geom': line[6]
+                    }
+                }) 
+                for line in reader
+                if (exchange_bounds[0] <= float(line[8]) and exchange_bounds[1] <= float(line[7]) and exchange_bounds[2] >= float(line[8]) and exchange_bounds[3] >= float(line[7]))
+            ]
+
+    premises_data = [premise for premise in premises_data if exchange_geom.contains(shape(premise['geometry']))]
 
     # remove 'None' and replace with '0'
     for idx, premise in enumerate(premises_data):
@@ -358,7 +329,7 @@ def read_premises():
 
     return premises_data
 
-def read_exchanges():
+def read_exchanges(exchange_area):
 
     """
     Reads in exchanges from 'final_exchange_pcds.csv'. 
@@ -381,14 +352,20 @@ def read_exchanges():
     exchanges: List of dicts
     """
 
-    exchanges = []
+    idx = index.Index()
 
     with open(os.path.join(SYSTEM_INPUT_FIXED, 'layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
         reader = csv.reader(system_file)
         next(reader)
     
-        for line in reader:
-            exchanges.append({
+        [idx.insert(0, 
+            (
+                float(line[5]), 
+                float(line[6]), 
+                float(line[5]), 
+                float(line[6]), 
+            ),
+            {
                 'type': "Feature",
                 'geometry': {
                     "type": "Point",
@@ -401,9 +378,12 @@ def read_exchanges():
                     'Region': line[3],
                     'County': line[4]
                 }
-            })
+            }) 
+            for line in reader
+        ]
 
-    return exchanges
+    exchange_geom = shape(exchange_area['geometry'])
+    return [n.object for n in idx.intersection(shape(exchange_area['geometry']).bounds, objects=True) if exchange_geom.intersection(shape(n.object['geometry']))]
 
 #####################################
 # PROCESS NETWORK HIERARCHY
@@ -497,9 +477,7 @@ def add_postcode_to_premises(premises, postcode_areas):
 
     # Initialze Rtree
     idx = index.Index()
-
-    for rtree_idx, premise in enumerate(premises):
-        idx.insert(rtree_idx, shape(premise['geometry']).bounds, premise)
+    [idx.insert(0, shape(premise['geometry']).bounds, premise) for premise in premises]
 
     # Join the two
     for postcode_area in postcode_areas:
@@ -757,12 +735,16 @@ def connect_points_to_area(points, areas):
 
     linked_points = []
     for point in points:
-        nearest = list(idx_areas.nearest(shape(point['geometry']).bounds, objects=True))
+        match = list(idx_areas.intersection(shape(point['geometry']).bounds, objects=True))
 
-        for candidate in nearest:
-            if shape(candidate.object['geometry']).contains(shape(point['geometry'])):
-                point['properties']['connection'] = candidate.object['properties']['id']
-                linked_points.append(point)
+        if len(match) > 0:
+            point['properties']['connection'] = match[0].object['properties']['id']
+            linked_points.append(point)
+        else:
+            print(point['properties'])
+            point['properties']['connection'] = linked_points[-1]['properties']['connection']
+            linked_points.append(point)
+
     return linked_points
 
 #####################################
@@ -1093,6 +1075,7 @@ def generate_link_straight_line(origin_points, dest_points):
                 "length": geom.length
             }
         })
+        
     return links
 
 def generate_link_shortest_path(origin_points, dest_points, matching_area, cachefile=None):
@@ -1220,7 +1203,7 @@ def copy_id_to_name(data):
 # WRITE LUTS/ASSETS/LINKS
 #####################################
 
-def write_shapefile(data, path):
+def write_shapefile(data, exchange_name, filename):
 
     # Translate props to Fiona sink schema
     prop_schema = []
@@ -1235,10 +1218,15 @@ def write_shapefile(data, path):
         'properties': OrderedDict(prop_schema)
     }
 
+    # Create path
+    directory = os.path.join(SYSTEM_OUTPUT_FILENAME, exchange_name)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
     # Write all elements to output file
-    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, path), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
-        for feature in data:
-            sink.write(feature)
+    with fiona.open(os.path.join(directory, filename), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
+        [sink.write(feature) for feature in data]
+            
 
 #####################################
 # APPLY METHODS
@@ -1249,7 +1237,12 @@ if __name__ == "__main__":
     SYSTEM_INPUT = os.path.join('data', 'raw')
 
     # Read LUTs
+    print('Process ' + sys.argv[1])
+    exchange_name = sys.argv[1]
 
+    print('read exchange area')
+    exchange_area = read_exchange_area(exchange_name)
+    
     print('read_pcd_to_exchange_lut')
     lut_pcd_to_exchange = read_pcd_to_exchange_lut()
 
@@ -1257,23 +1250,23 @@ if __name__ == "__main__":
     lut_pcd_to_cabinet = read_pcd_to_cabinet_lut()
 
     print('read postcode_areas')
-    geojson_postcode_areas = read_postcode_areas()
-    
+    geojson_postcode_areas = read_postcode_areas(exchange_area)
+
     print('read pcd_technology_lut')
     lut_pcd_technology = read_postcode_technology_lut()
 
     print('read lads')
-    geojson_lad_areas = read_lads()
+    geojson_lad_areas = read_lads(exchange_area)
 
     print('read city exchange geotypes lut')
     city_exchange_lad_lut = read_city_exchange_geotype_lut()
 
     # Read Premises/Assets
     print('read premises')
-    geojson_layer5_premises = read_premises()
+    geojson_layer5_premises = read_premises(exchange_area)
 
     print('read exchanges')
-    geojson_layer2_exchanges = read_exchanges()
+    geojson_layer2_exchanges = read_exchanges(exchange_area)
 
     # Process/Estimate network hierarchy
     print('add exchange id to postcode areas')
@@ -1296,7 +1289,7 @@ if __name__ == "__main__":
 
     # Process/Estimate assets    
     print('estimate location of distribution points')
-    geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises, cachefile="assets_layer4_distributions.shp")
+    geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises)
 
     print('estimate cabinet locations')
     geojson_layer3_cabinets = estimate_cabinet_locations(geojson_postcode_areas)
@@ -1326,10 +1319,10 @@ if __name__ == "__main__":
     geojson_layer5_premises_links = generate_link_straight_line(geojson_layer5_premises, geojson_layer4_distributions)
 
     print('generate links layer 4')
-    geojson_layer4_distributions_links = generate_link_shortest_path(geojson_layer4_distributions, geojson_layer3_cabinets, geojson_cabinet_areas, 'links_layer4_distributions.shp')
+    geojson_layer4_distributions_links = generate_link_shortest_path(geojson_layer4_distributions, geojson_layer3_cabinets, geojson_cabinet_areas)
 
     print('generate links layer 3')
-    geojson_layer3_cabinets_links = generate_link_shortest_path(geojson_layer3_cabinets, geojson_layer2_exchanges, geojson_exchange_areas, 'links_layer3_cabinets.shp')
+    geojson_layer3_cabinets_links = generate_link_shortest_path(geojson_layer3_cabinets, geojson_layer2_exchanges, geojson_exchange_areas)
 
     # Add technology to network and process this into the network hierachy
     print('add technology to postcode areas')
@@ -1365,38 +1358,38 @@ if __name__ == "__main__":
 
     # Write lookups (for debug purposes)
     print('write postcode_areas')
-    write_shapefile(geojson_postcode_areas, '_postcode_areas.shp')
+    write_shapefile(geojson_postcode_areas,  exchange_name, '_postcode_areas.shp')
 
     print('write distribution_areas')
-    write_shapefile(geojson_distribution_areas, '_distribution_areas.shp')
+    write_shapefile(geojson_distribution_areas,  exchange_name, '_distribution_areas.shp')
 
     print('write cabinet_areas')
-    write_shapefile(geojson_cabinet_areas, '_cabinet_areas.shp')
+    write_shapefile(geojson_cabinet_areas,  exchange_name, '_cabinet_areas.shp')
 
     print('write exchange_areas')
-    write_shapefile(geojson_exchange_areas, '_exchange_areas.shp')
+    write_shapefile(geojson_exchange_areas,  exchange_name, '_exchange_areas.shp')
 
     # Write assets
     print('write premises')
-    write_shapefile(geojson_layer5_premises, 'assets_layer5_premises.shp')
+    write_shapefile(geojson_layer5_premises,  exchange_name, 'assets_layer5_premises.shp')
 
     print('write distribution points')
-    write_shapefile(geojson_layer4_distributions, 'assets_layer4_distributions.shp')
+    write_shapefile(geojson_layer4_distributions,  exchange_name, 'assets_layer4_distributions.shp')
 
     print('write cabinets')
-    write_shapefile(geojson_layer3_cabinets, 'assets_layer3_cabinets.shp')
+    write_shapefile(geojson_layer3_cabinets,  exchange_name, 'assets_layer3_cabinets.shp')
 
     print('write exchanges')
-    write_shapefile(geojson_layer2_exchanges, 'assets_layer2_exchanges.shp')
+    write_shapefile(geojson_layer2_exchanges,  exchange_name, 'assets_layer2_exchanges.shp')
 
     # Write links
     print('write links layer5')
-    write_shapefile(geojson_layer5_premises_links, 'links_layer5_premises.shp')
+    write_shapefile(geojson_layer5_premises_links,  exchange_name, 'links_layer5_premises.shp')
 
     print('write links layer4')
-    write_shapefile(geojson_layer4_distributions_links, 'links_layer4_distributions.shp')
+    write_shapefile(geojson_layer4_distributions_links,  exchange_name, 'links_layer4_distributions.shp')
 
     print('write links layer3')
-    write_shapefile(geojson_layer3_cabinets_links, 'links_layer3_cabinets.shp')
+    write_shapefile(geojson_layer3_cabinets_links,  exchange_name, 'links_layer3_cabinets.shp')
 
 
