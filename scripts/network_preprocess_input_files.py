@@ -36,7 +36,7 @@ SYSTEM_INPUT_NETWORK = os.path.join(SYSTEM_INPUT_FIXED, 'network_hierarchy_data'
 #####################################
 
 def read_exchange_area(exchange_name):
-    with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'exchange_areas', '_exchange_areas.shp'), 'r') as source:
+    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, '_exchange_areas.shp'), 'r') as source:
         return [exchange for exchange in source if exchange['properties']['id'] == exchange_name][0]
 
 def read_pcd_to_exchange_lut():
