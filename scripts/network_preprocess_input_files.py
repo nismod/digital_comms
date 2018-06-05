@@ -587,13 +587,14 @@ def complement_postcode_cabinets(postcode_areas, premises, exchanges):
         if expected_cabinets > count_cabinets_in_data:
 
             # Remove premises that have cabinets defined
-            incomplete_postcode_areas = MultiPolygon([shape(postcode_area['geometry']) for postcode_area in postcode_areas if postcode_area['properties']['CAB_ID'] == ''])
-            cluster_premises = [premise for premise in premises if incomplete_postcode_areas.contains(shape(premise['geometry']))]
+            # incomplete_postcode_areas = MultiPolygon([shape(postcode_area['geometry']) for postcode_area in postcode_areas if postcode_area['properties']['CAB_ID'] == ''])
+            # cluster_premises = [premise for premise in premises if incomplete_postcode_areas.contains(shape(premise['geometry']))]
 
             # Generate cabinets
             generate_cabinets = expected_cabinets - count_cabinets_in_data
+            print(str(generate_cabinets) + ' missing cabinets')
 
-            points = np.vstack([[float(i) for i in premise['geometry']['coordinates']] for premise in cluster_premises])
+            points = np.vstack([[float(i) for i in premise['geometry']['coordinates']] for premise in premises])
             kmeans = KMeans(n_clusters=generate_cabinets, n_init=1, max_iter=1, n_jobs=-1, random_state=0, ).fit(points)
 
             cabinets = []
