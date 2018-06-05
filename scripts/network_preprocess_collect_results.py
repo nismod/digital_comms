@@ -1,4 +1,5 @@
 import os
+import sys
 import fiona
 import configparser
 from collections import OrderedDict, defaultdict
@@ -11,18 +12,19 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 SYSTEM_INPUT_FIXED = os.path.join(BASE_PATH, 'processed_cluster')
 SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'processed')
 
-def collect_results(name):
+def collect_results(selection, name):
 
     results = []
-    for root, dirs, files in os.walk(SYSTEM_INPUT_FIXED):
-        for file in files:
-            if file == name:
-                results.append(os.path.join(root, file))
-
+    for entry in selection:
+        results.append(os.path.join(SYSTEM_INPUT_FIXED, entry, name))
+    
     geojson_results = []
     for result_file in results:
-        with fiona.open(os.path.join(result_file), 'r') as source:
-            [geojson_results.append(entry) for entry in source]
+        try:
+            with fiona.open(os.path.join(result_file), 'r') as source:
+                [geojson_results.append(entry) for entry in source]
+        except:
+            print('Error: Cannot open results for ' + result_file)
 
     return geojson_results
 
@@ -52,23 +54,193 @@ def write_shapefile(data, filename):
 
 if __name__ == "__main__":
 
-    links_layer3_cabinets = collect_results('links_layer3_cabinets.shp')
+    selection = []
+
+    if sys.argv[1] == 'cambridge':
+        selection = [
+            'exchange_EAARR',
+            'exchange_EABTM',
+            'exchange_EABWL',
+            'exchange_EACAM',
+            'exchange_EACFH',
+            'exchange_EACOM',
+            'exchange_EACRH',
+            'exchange_EACTM',
+            'exchange_EAESW',
+            'exchange_EAFUL',
+            'exchange_EAGIR',
+            'exchange_EAHIS',
+            'exchange_EAHST',
+            'exchange_EALNT',
+            'exchange_EAMAD',
+            'exchange_EAMBN',
+            'exchange_EASCI',
+            'exchange_EASIX',
+            'exchange_EASST',
+            'exchange_EASWV',
+            'exchange_EATEV',
+            'exchange_EATRU',
+            'exchange_EAWLM',
+            'exchange_EAWTB'
+        ]
+
+    if sys.argv[1] == 'oxford':
+        selection = [
+            'exchange_SMSLK',
+            'exchange_SMSNF',
+            'exchange_SMFRD',
+            'exchange_SMEY',
+            'exchange_SMWC',
+            'exchange_SMTAK',
+            'exchange_SMCNR',
+            'exchange_SMKI',
+            'exchange_SMBZ',
+            'exchange_SMCO',
+            'exchange_SMOF',
+            'exchange_SMAI',
+            'exchange_SMWHY',
+            'exchange_SMLW',
+            'exchange_SMFH',
+            'exchange_SMMCM',
+            'exchange_SMSNC',
+            'exchange_SMHD',
+            'exchange_SMWLY',
+            'exchange_SMICK',
+            'exchange_SMSM',
+            'exchange_SMSTJ',
+            'exchange_SMBRL',
+            'exchange_SMCHO',
+            'exchange_SMBTN',
+            'exchange_SMMSY',
+            'exchange_SMBI',
+            'exchange_SMWRB',
+            'exchange_SMCTN',
+            'exchange_SMSDM',
+            'exchange_SMNHM',
+            'exchange_SMGMT',
+            'exchange_SMGN',
+        ]
+
+    if sys.argv[1] == 'leeds':
+        selection = [
+            'exchange_MYTAD',
+            'exchange_MYBOS',
+            'exchange_MYDHS',
+            'exchange_MYWEN',
+            'exchange_MYLS',
+            'exchange_MYLOF',
+            'exchange_MYPON',
+            'exchange_MYCHA',
+            'exchange_MYSEA',
+            'exchange_MYMOO',
+            'exchange_MYHRW',
+            'exchange_MYSPO',
+            'exchange_MYOAT',
+            'exchange_MYWEH',
+            'exchange_MYWEH',
+            'exchange_MYKKB',
+            'exchange_MYSLA',
+            'exchange_MYHON',
+            'exchange_MYBRE',
+            'exchange_MYFLO',
+            'exchange_MYMIL',
+            'exchange_MYHUD',
+            'exchange_MYMIR',
+            'exchange_MYELL',
+            'exchange_MYHEC',
+            'exchange_MYBRG',
+            'exchange_MYSOW',
+            'exchange_MYCLE',
+            'exchange_MYHOB',
+            'exchange_MYHAL',
+            'exchange_MYBAT',
+            'exchange_MYMOR',
+            'exchange_MYHIP',
+            'exchange_MYACO',
+            'exchange_MYLOW',
+            'exchange_MYILL',
+            'exchange_MYTOC',
+            'exchange_MYDUD',
+            'exchange_MYDLT',
+            'exchange_MYQUE',
+            'exchange_MYRUF',
+            'exchange_MYBD',
+            'exchange_MYARM',
+            'exchange_MYARM',
+            'exchange_MYHBK',
+            'exchange_MYTHT',
+            'exchange_MYDEW',
+            'exchange_SLADK',
+            'exchange_MYSEM',
+            'exchange_SLDR',
+            'exchange_SLRY',
+            'exchange_MYHMW',
+            'exchange_SLASK',
+            'exchange_MYWAK',
+            'exchange_MYPUD',
+            'exchange_MYSAN',
+            'exchange_MYLAI',
+            'exchange_MYMAN',
+            'exchange_MYCUL',
+            'exchange_MYNMN',
+            'exchange_MYWBG',
+            'exchange_MYCRF',
+            'exchange_MYUND',
+            'exchange_MYKNO',
+            'exchange_MYHEA',
+            'exchange_MYCAS',
+            'exchange_MYBIN',
+            'exchange_MYROT',
+            'exchange_MYHSF',
+            'exchange_MYSHI',
+            'exchange_MYGAT',
+            'exchange_MYIDL',
+            'exchange_MYHLT',
+            'exchange_MYRWD',
+            'exchange_MYHLT',
+            'exchange_MYADE',
+            'exchange_MYGRF',
+            'exchange_MYKEI',
+            'exchange_MYSML',
+            'exchange_MYGUI',
+            'exchange_MYHHL',
+            'exchange_MYART',
+            'exchange_MYCSG',
+            'exchange_MYART',
+            'exchange_MYSEL',
+            'exchange_MYBKA',
+            'exchange_MYCAW',
+            'exchange_MYSTE',
+            'exchange_MYBKE',
+            'exchange_MYBRW',
+            'exchange_MYOTL',
+            'exchange_MYTHR',
+            'exchange_MYILK',
+            'exchange_MYAPP',
+            'exchange_MYHUB',
+            'exchange_MYCOL',
+            'exchange_MYADD',
+        ]
+
+    links_layer3_cabinets = collect_results(selection, 'links_layer3_cabinets.shp')
     write_shapefile(links_layer3_cabinets, 'links_layer3_cabinets.shp')
 
-    links_layer4_distributions = collect_results('links_layer4_distributions.shp')
+    links_layer4_distributions = collect_results(selection, 'links_layer4_distributions.shp')
     write_shapefile(links_layer4_distributions, 'links_layer4_distributions.shp')
 
-    links_layer5_premises = collect_results('links_layer5_premises.shp')
+    links_layer5_premises = collect_results(selection, 'links_layer5_premises.shp')
     write_shapefile(links_layer5_premises, 'links_layer5_premises.shp')
 
-    assets_layer2_exchanges = collect_results('assets_layer2_exchanges.shp')
+    assets_layer2_exchanges = collect_results(selection, 'assets_layer2_exchanges.shp')
     write_shapefile(assets_layer2_exchanges, 'assets_layer2_exchanges.shp')
 
-    assets_layer3_cabinets = collect_results('assets_layer3_cabinets.shp')
+    assets_layer3_cabinets = collect_results(selection, 'assets_layer3_cabinets.shp')
     write_shapefile(assets_layer3_cabinets, 'assets_layer3_cabinets.shp')
 
-    assets_layer4_distributions = collect_results('assets_layer4_distributions.shp')
+    assets_layer4_distributions = collect_results(selection, 'assets_layer4_distributions.shp')
     write_shapefile(assets_layer4_distributions, 'assets_layer4_distributions.shp')
 
-    assets_layer5_premises = collect_results('assets_layer5_premises.shp')
+    assets_layer5_premises = collect_results(selection, 'assets_layer5_premises.shp')
     write_shapefile(assets_layer5_premises, 'assets_layer5_premises.shp')
+
+    
