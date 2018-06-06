@@ -5,6 +5,9 @@ import csv
 import fiona
 import numpy as np
 
+from itertools import groupby
+from operator import itemgetter
+
 from rtree import index
 from shapely.geometry import shape, Point, LineString, Polygon, mapping
 from collections import OrderedDict, defaultdict
@@ -22,69 +25,8 @@ SYSTEM_INPUT_FIXED = os.path.join(BASE_PATH, 'raw')
 SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'processed')
 
 #####################################
-# IMPORT DATA
+# IMPORT SUPPLY SIDE DATA
 #####################################
-
-def read_in_received_signal_data(data, network):
-
-    received_signal_data = []
-
-    with open(os.path.join(SYSTEM_INPUT_FIXED, 'received_signal_data', 'Cambridge', data), 'r', encoding='utf8', errors='replace') as system_file:
-        reader = csv.reader(system_file)
-        next(reader)
-        for line in reader:
-            #select O2, Voda, EE and 3
-            if line[69] != 'null': 
-                if line[90] == network:
-                    received_signal_data.append({
-                        'type': "Feature",
-                        'geometry': {
-                            "type": "Point",
-                            "coordinates": [float(line[23]), float(line[22])]
-                        },
-                        'properties': {
-                            'time': line[16],
-                            'altitude': line[19],
-                            'loc_bearing': line[20],
-                            'loc_speed': line[21],           
-                            'loc_provider': line[24],                 
-                            'loc_sat': line[25], 
-                            'lte_rsrp': line[36],                 
-                            'lte_rsrq': line[37],                 
-                            'lte_rssnr': line[38],
-                            'lte_ci': line[66],
-                            'lte_mcc': line[67],
-                            'lte_mnc': line[68],
-                            'lte_pci': line[69],
-                            'lte_tac': line[70],
-                            'network_type': line[84],
-                            'network_id': line[90],
-                            'network_id_sim': line[91],
-                            'network_name': line[92],
-                            'network_name_sim': line[93]
-                        }
-                        })
-    
-    return received_signal_data
-
-def read_in_os_open_roads():
-
-    open_roads_network = []
-
-    with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'os_open_roads', 'open-roads_2438901_cambridge', 'TL_RoadLink_cambridge_city.shp'), 'r') as source:
-        for src_shape in source:   
-            open_roads_network.extend([src_shape for src_shape in source if src_shape['properties']['class'] == 'Motorway' or src_shape['properties']['class'] == 'A Road' or src_shape['properties']['class'] == 'B Road']) 
-
-        for element in open_roads_network:
-            del element['properties']['name1'],
-            del element['properties']['name1_lang'],
-            del element['properties']['name2'],
-            del element['properties']['name2_lang'],
-            del element['properties']['structure'],
-            del element['properties']['nameTOID'],
-            del element['properties']['numberTOID'],
-
-    return open_roads_network
 
 def read_in_traffic_counts():
 
@@ -94,69 +36,161 @@ def read_in_traffic_counts():
 
     for x in os.listdir(TRAFFIC_COUNT_INPUTS):
         with open(os.path.join(TRAFFIC_COUNT_INPUTS, x), 'r', encoding='utf8', errors='replace') as system_file:
-            reader = csv.reader(system_file)
+            reader = csv.DictReader(system_file)
             next(reader)
             for line in reader:
                 try:
-                    if line[0] == '2016': 
+                    if line['AADFYear'] == '2016': 
                         traffic_data.append({
-                            'road': line[6],
-                            'count': line[26],
-                            'easting': line[8],
-                            'northing': line[9]
+                            'road': line['Road'],
+                            'count': line['AllMotorVehicles'],
+                            'easting': line['Easting'],
+                            'northing': line['Northing']
                         })
                 except:
                     print(x)
                 else:
-                    if line[0] == '2015': 
+                    if line['AADFYear'] == '2015': 
                         traffic_data.append({
-                            'road': line[4],
-                            'count': line[24],
-                            'easting': line[6],
-                            'northing': line[7]
+                            'road': line['Road'],
+                            'count': line['AllMotorVehicles'],
+                            'easting': line['Easting'],
+                            'northing': line['Northing']
                         })
-    
+
+    with open(os.path.join(SYSTEM_INPUT_FIXED,'dft_road_traffic_counts','minor_roads','aadt_minor_roads.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+        reader = csv.DictReader(system_file)
+        next(reader)
+        for line in reader:
+            if line['AADFYear'] == '2016':
+                traffic_data.append({
+                    'road': line['Road'],
+                    'count': line['FdAll_MV'],
+                    'easting': line['S Ref Longitude'],
+                    'northing': line['S Ref Latitude']
+                })
+
     return traffic_data
+
+
+def find_average_count(data):
+
+    roads_by_road_name = defaultdict(list)
+
+    for road in data:
+    
+        roads_by_road_name[road['road']].append(road)
+
+    average_count = defaultdict(dict)
+
+    for road in roads_by_road_name.keys():
+        summed_count = sum([int(road['count']) for road in roads_by_road_name[road]])
+        number_of_count_points = len(roads_by_road_name[road]) 
+        
+        average_count[road] = {
+            'average_count': round(summed_count / number_of_count_points, 0),
+            'summed_count': summed_count
+        }
+
+    return average_count
+
+
+def covert_data_into_list_of_dicts(data, variable1, variable2, variable3):
+    my_data = []
+
+    # output and report results for this timestep
+    for datum in data:
+        my_data.append({
+        variable1: datum,
+        variable2: data[datum][variable2],
+        variable3: data[datum][variable3]
+        })
+
+    return my_data
+
 
 def apply_road_categories(data):
 
     for point in data:
 
-        if int(point['count']) >= 170981:
-            point['geotype'] = 'very high traffic'
+        if int(point['average_count']) >= 17000:
+            point['geotype'] = 'high demand'
 
-        elif int(point['count']) >= 128236 and int(point['count']) < 170981  :
-            point['geotype'] = 'high traffic'
+        elif int(point['average_count']) >= 10000 and int(point['average_count']) < 17000:
+            point['geotype'] = 'moderate demand'
 
-        elif int(point['count']) >= 85490 and int(point['count']) < 128236  :
-            point['geotype'] = 'average traffic'
-
-        elif int(point['count']) >= 42745 and int(point['count']) < 85490  :
-            point['geotype'] = 'low traffic'
-
-        elif int(point['count']) < 42745  :
-            point['geotype'] = 'very low traffic'
+        elif int(point['average_count']) < 10000  :
+            point['geotype'] = 'low demand'
     
     return data
 
-def length_of_road_by_type(data):
 
-    roads = defaultdict(list)
-    length_of_roads = defaultdict(dict)
+def read_in_os_open_roads():
 
-    for road in data:
-        roads[road['properties']['formOfWay']].append(road['properties']['length'])
+    open_roads_network = []
 
-    for road in roads.keys():
-        #print(road)
-        summed_length_of_road = sum(roads[road])
+    DIR = os.path.join(SYSTEM_INPUT_FIXED, 'os_open_roads', 'open-roads_2443825')
 
-        length_of_roads[road] = {
-            'type_of_road': road,
-            'length_of_road': summed_length_of_road
-        }
+    for my_file in os.listdir(DIR):
+        if my_file.endswith("RoadLink.shp"):
+            with fiona.open(os.path.join(DIR, my_file), 'r') as source:
 
-    return length_of_roads
+                for src_shape in source:   
+                    #open_roads_network.extend([src_shape for src_shape in source if src_shape['properties']['function'] == 'Motorway' or src_shape['properties']['function'] == 'A Road' or src_shape['properties']['function'] == 'B Road']) 
+                    open_roads_network.extend([src_shape for src_shape in source]) 
+                    for element in open_roads_network:
+
+                        if element['properties']['name1'] in element['properties']:
+                            del element['properties']['name1']
+                        else:
+                            pass 
+
+                        if element['properties']['name1_lang'] in element['properties']:
+                            del element['properties']['name1_lang']
+                        else:
+                            pass 
+
+                        if element['properties']['name2'] in element['properties']:
+                            del element['properties']['name2']
+                        else:
+                            pass 
+
+                        if element['properties']['name2_lang'] in element['properties']:
+                            del element['properties']['name2_lang']
+                        else:
+                            pass 
+
+                        if element['properties']['structure'] in element['properties']:
+                            del element['properties']['structure']
+                        else:
+                            pass 
+
+                        if element['properties']['nameTOID'] in element['properties']:
+                            del element['properties']['nameTOID']
+                        else:
+                            pass 
+
+                        if element['properties']['numberTOID'] in element['properties']:
+                            del element['properties']['numberTOID']
+                        else:
+                            pass 
+
+    return open_roads_network
+
+def read_in_built_up_areas():
+
+    built_up_area_polygon_data = []
+
+    with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'built_up_areas', 'Builtup_Areas_December_2011_Boundaries_V2_england_and_wales', 'urban_areas_england_and_wales.shp'), 'r') as source:
+        for src_shape in source:           
+            built_up_area_polygon_data.extend([src_shape for src_shape in source]) 
+
+    with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'built_up_areas', 'shapefiles-mid-2016-settlements-localities_scotland', 'urban_areas.shp'), 'r') as source:
+        for src_shape in source:           
+            built_up_area_polygon_data.extend([src_shape for src_shape in source]) 
+
+    return built_up_area_polygon_data
+
 
 def convert_projection(data):
 
@@ -183,108 +217,102 @@ def convert_projection(data):
         
     return converted_data
 
-def calculate_road_length(data):
+def add_urban_rural_indicator_to_roads(road_data, built_up_polygons): 
 
-    roads = defaultdict(list)
-    length_of_roads = defaultdict(dict)
-
-    for road in data:
-          
-        roads[road['properties']['roadNumber']].append(road['properties']['length'])
-
-    for road in roads.keys():
-
-        summed_length_of_road = sum(roads[road])
-
-        length_of_roads[road] = {
-            'length_of_road': summed_length_of_road
-        }
-
-    return length_of_roads
-
-def add_buffer_to_road_network(data):
-
-    buffered_road_network = []
-
-    for road in data:
-        #print(road['geometry'])
-        
-        buffered_road_network.append({
-            'properties': {
-            'class': road['properties']['class'],
-            'roadNumber': road['properties']['roadNumber'],
-            'formOfWay': road['properties']['formOfWay'],
-            'length': road['properties']['length'],
-            'primary': road['properties']['primary'],
-            'trunkRoad': road['properties']['trunkRoad'],
-            'loop': road['properties']['loop'],
-            'startNode': road['properties']['startNode'],            
-            'endNode': road['properties']['endNode'],
-            'function': road['properties']['function'],
-            },
-            'geometry': mapping(shape(road['geometry']).buffer(0.0005))
-        })
-
-    return buffered_road_network
-
-def add_road_id_to_points(recieved_signal_data, road_polygons):
-
-    joined_points = []
+    joined_road_data = []
 
     # Initialze Rtree
     idx = index.Index()
 
-    for rtree_idx, received_point in enumerate(recieved_signal_data):
-        idx.insert(rtree_idx, shape(received_point['geometry']).bounds, received_point)
-
-    # Join the two
-    for road in road_polygons:
-        for n in idx.intersection((shape(road['geometry']).bounds), objects=True):
-            road_area_shape = shape(road['geometry'])
-            road_shape = shape(n.object['geometry'])
-            if road_area_shape.contains(road_shape):
-                n.object['properties']['roadNumber'] = road['properties']['roadNumber']
-                joined_points.append(n.object)
-
-    return joined_points
-
-def calculate_unique_sites_per_road(data):
-
-    sites_per_road = defaultdict(list)
-    unique_sites = defaultdict(dict)
-
-    for point in data:
-          
-        sites_per_road[point['properties']['roadNumber']].append(point['properties']['lte_pci'])
+    for rtree_idx, road in enumerate(road_data):
+        idx.insert(rtree_idx, shape(road['geometry']).bounds, road)
     
-    for road in sites_per_road.keys():
+    # Join the two
+    for area in built_up_polygons:
+        for n in idx.intersection((shape(area['geometry']).bounds), objects=True):  
+            urban_area_shape = shape(area['geometry'])
+            urban_shape = shape(n.object['geometry'])
+            if urban_area_shape.contains(urban_shape):
+                n.object['properties']['urban_rural_indicator'] = 'urban'
+                joined_road_data.append(n.object)
 
-        number_of_unique_sites = len(set(sites_per_road[road])) 
+            else:
+                n.object['properties']['urban_rural_indicator'] = 'rural'
+                joined_road_data.append(n.object) 
 
-        if number_of_unique_sites > 0:
-        
-            unique_sites[road] = {
-                'unique_sites': number_of_unique_sites
-            }
+    return joined_road_data
 
-        else:
-            unique_sites[road] = {
-                'unique_sites': 0
-            }
 
-    return unique_sites
-
-def covert_data_into_list_of_dicts(data, variable1, variable2):
+def extract_geojson_properties(data):
+    
     my_data = []
 
-    # output and report results for this timestep
-    for datum in data:
+    for item in data:
         my_data.append({
-        variable1: datum,
-        variable2: data[datum][variable2]
+            'road': item['properties']['roadNumber'],
+            'formofway': item['properties']['formOfWay'], 
+            'length': item['properties']['length'],
+            'function': item['properties']['function'], 
+            'urban_rural_indicator': item['properties']['urban_rural_indicator'],         
         })
 
     return my_data
+
+
+def deal_with_none_values(data):
+
+    my_data = []
+
+    for road in data:
+        if road['road'] == None:
+            my_data.append({
+                'road': road['function'],
+                'formofway': road['formofway'],    
+                'length': road['length'],
+                'function': road['function'],   
+                'urban_rural_indicator': road['urban_rural_indicator']      
+        })
+        else:
+            my_data.append({
+                'road': road['road'],
+                'formofway': road['formofway'],    
+                'length': road['length'],
+                'function': road['function'],    
+                'urban_rural_indicator': road['urban_rural_indicator']         
+        })
+    
+    return my_data
+
+
+def grouper(data, aggregated_metric, group_item1, group_item2, group_item3, group_item4):
+
+    my_grouper = itemgetter(group_item1, group_item2, group_item3, group_item4)
+    result = []
+    for key, grp in groupby(sorted(data, key = my_grouper), my_grouper):
+        try:
+            temp_dict = dict(zip([group_item1, group_item2, group_item3, group_item4], key))
+            temp_dict[aggregated_metric] = sum(int(item[aggregated_metric]) for item in grp)
+            result.append(temp_dict)
+        except:
+            pass
+    
+    return result
+
+
+def aggregator(data, aggregated_metric, group_item1, group_item2, group_item3):
+
+    my_grouper = itemgetter(group_item1, group_item2, group_item3)
+    result = []
+    for key, grp in groupby(sorted(data, key = my_grouper), my_grouper):
+        try:
+            temp_dict = dict(zip([group_item1, group_item2, group_item3], key))
+            temp_dict[aggregated_metric] = sum(int(item[aggregated_metric]) for item in grp)
+            result.append(temp_dict)
+        except:
+            pass
+    
+    return result
+
 
 def merge_two_list_of_dicts(data1, data2, shared_id):
 
@@ -294,17 +322,6 @@ def merge_two_list_of_dicts(data1, data2, shared_id):
 
     return result
 
-def calculate_site_densities(data):
-
-    for road in data:
-        
-        try:
-            road['site_density'] =  round(road['length_of_road'] / road['unique_sites'], 1) 
-        
-        except:
-            print("did not match {}".format(road))
-
-    return data 
 
 #####################################
 # WRITE LOOK UP TABLE (LUT) DATA
@@ -319,6 +336,7 @@ def csv_writer(data, output_fieldnames, filename):
         writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
         writer.writeheader()
         writer.writerows(data)
+
 
 def write_shapefile(data, path):
 
@@ -344,68 +362,57 @@ def write_shapefile(data, path):
 # RUN SCRIPTS
 #####################################
 
+# print("read in traffic flow data")
+# flow_data = read_in_traffic_counts()
+
+# print("calculating average count per road")
+# average_flow_data = find_average_count(flow_data)
+
+# print("converting to list of dicts structure")
+# average_flow_data = covert_data_into_list_of_dicts(average_flow_data, 'road', 'average_count', 'summed_count') 
+
+# print("categorising flow data")
+# average_flow_data = apply_road_categories(average_flow_data)
+
 print('read in road network')
 road_network = read_in_os_open_roads()
-
-print("read in traffic flow data")
-flow_data = read_in_traffic_counts()
-
-print("categorise flow data")
-flow_data = apply_road_categories(flow_data)
-
-print("calculate distance by road type")
-road_length_by_type = length_of_road_by_type(road_network)
 
 print('converting road network projection into wgs84')
 road_network = convert_projection(road_network)
 
-print("calculating length of roads in road network")
-road_lengths = calculate_road_length(road_network)
+print('read in built up area polygons')
+built_up_areas = read_in_built_up_areas()
 
-print("converting road lengths to list of dicts structure")
-road_lengths = covert_data_into_list_of_dicts(road_lengths, 'roadName', 'length_of_road')
+print('add built up area indicator to urban roads')
+road_network = add_urban_rural_indicator_to_roads(road_network, built_up_areas)
 
-print("adding buffer to road network")
-road_network = add_buffer_to_road_network(road_network)
+print("extracting geojson properties")
+aggegated_road_statistics = extract_geojson_properties(road_network)
 
-print('write road network')
-write_shapefile(road_network, 'road_network.shp')
+print("add any missing items")
+aggegated_road_statistics = deal_with_none_values(aggegated_road_statistics)   
 
-for network, name in [
-        ('23410', 'O2'),
-        #('23415', 'Voda'),
-        #('23430', 'EE'),
-        #('23420', '3')
-    ]:
+print("applying grouped aggregation")
+aggegated_road_statistics = grouper(aggegated_road_statistics, 'length', 'road', 'function', 'formofway', 'urban_rural_indicator')
 
-    print("Running:", name)
+print('write all road statistics')
+road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
+csv_writer(aggegated_road_statistics, road_statistics_fieldnames, 'aggregated_road_statistics.csv')
 
-    print('read in data')
-    received_signal_points = read_in_received_signal_data('final.csv', network)
+print("applying aggregation to road types")
+road_length_by_type = aggregator(aggegated_road_statistics, 'length', 'function', 'formofway', 'urban_rural_indicator')
 
-    print("adding road ids to points along the strategic road network ")
-    received_signal_points = add_road_id_to_points(received_signal_points, road_network)
+print('write road lengths')
+road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
+csv_writer(road_length_by_type, road_statistics_fieldnames, 'road_length_by_type.csv')
 
-    print("calculating unique sites per road")
-    unique_sites = calculate_unique_sites_per_road(received_signal_points)
+# print("merging road network stats with flow estimates")
+# average_flow_statistics = merge_two_list_of_dicts(aggegated_road_statistics, average_flow_data, 'road')
 
-    print('converting site densities to list of dicts structure')
-    unique_sites = covert_data_into_list_of_dicts(unique_sites, 'roadName', 'unique_sites')
-
-    print('merging site densities and road lengths')
-    road_site_density = merge_two_list_of_dicts(unique_sites, road_lengths, 'roadName')
-    
-    print('calculating site densities per km2')
-    road_site_density = calculate_site_densities(road_site_density)
-
-    print('write data points')
-    fieldnames = ['roadName', 'length_of_road', 'unique_sites', 'site_density']
-    csv_writer(road_site_density, fieldnames, 'road_site_densities.csv')
-
-flow_counts_fieldnames = ['road', 'count', 'easting', 'northing']
-csv_writer(flow_data, flow_counts_fieldnames, 'dft_traffic_count_points.csv')
+# print('write average flow statistics')
+# road_statistics_fieldnames = ['road', 'average_count', 'geotype', 'function', 'length']
+# csv_writer(average_flow_statistics, road_statistics_fieldnames, 'average_road_statistics.csv')
 
 print("script finished")
 
 print("now check the column integer slices were correct for desired columns")
-
