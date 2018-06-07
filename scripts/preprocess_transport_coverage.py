@@ -9,7 +9,8 @@ from itertools import groupby
 from operator import itemgetter
 
 from rtree import index
-from shapely.geometry import shape, Point, LineString, Polygon, mapping
+from shapely.geometry import shape, Point, LineString, Polygon, mapping, MultiPolygon
+from shapely.ops import unary_union
 from collections import OrderedDict, defaultdict
 from pyproj import Proj, transform
 
@@ -18,118 +19,288 @@ CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
 #####################################
-# SETUP FILE LOCATIONS
+# SETUP SYSTEM FILE LOCATIONS
 #####################################
 
-SYSTEM_INPUT_FIXED = os.path.join(BASE_PATH, 'raw')
-SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'processed')
+SYSTEM_INPUT_PATH = os.path.join(BASE_PATH, 'raw')
+SYSTEM_OUTPUT_PATH = os.path.join(BASE_PATH, 'processed')
+
+#####################################
+# SETUP CODEPOINT FILE LOCATIONS
+#####################################
+
+CODEPOINT_INPUT_PATH = os.path.join(BASE_PATH, 'raw', 'codepoint')
+CODEPOINT_OUTPUT_PATH = os.path.join(BASE_PATH, 'raw', 'codepoint')
+
+#####################################
+# IMPORT CODEPOINT SHAPES
+#####################################
+
+def import_postcodes():
+
+    my_postcode_data = []
+
+    POSTCODE_DATA_DIRECTORY = os.path.join(CODEPOINT_INPUT_PATH,'codepoint-poly_2429451')
+
+    # Initialze Rtree
+    idx = index.Index()
+
+    for dirpath, subdirs, files in os.walk(POSTCODE_DATA_DIRECTORY):
+        for x in files:
+            if x.endswith(".shp"):
+                with fiona.open(os.path.join(dirpath, x), 'r') as source:
+
+                    # Store shapes in Rtree
+                    for src_shape in source:
+                        idx.insert(int(src_shape['id']), shape(src_shape['geometry']).bounds, src_shape)
+
+                    # Split list in regular and vertical postcodes
+                    postcodes = {}
+                    vertical_postcodes = {}
+
+                    for x in source:
+
+                        x['properties']['POSTCODE'] = x['properties']['POSTCODE'].replace(" ", "")
+                        if x['properties']['POSTCODE'].startswith('V'):
+                            vertical_postcodes[x['id']] = x
+                        else:
+                            postcodes[x['id']] = x
+
+                    for key, f in vertical_postcodes.items():
+
+                        vpost_geom = shape(f['geometry'])
+                        best_neighbour = {'id': 0, 'intersection': 0}
+
+                        # Find best neighbour
+                        for n in idx.intersection((vpost_geom.bounds), objects=True):
+                            if shape(n.object['geometry']).intersection(vpost_geom).length > best_neighbour['intersection'] and n.object['id'] != f['id']:
+                                best_neighbour['id'] = n.object['id']
+                                best_neighbour['intersection'] = shape(n.object['geometry']).intersection(vpost_geom).length
+
+                        # Merge with best neighbour
+                        neighbour = postcodes[best_neighbour['id']]
+                        merged_geom = unary_union([shape(neighbour['geometry']), vpost_geom])
+
+                        merged_postcode = {
+                            'id': neighbour['id'].replace(" ", ""),
+                            'properties': neighbour['properties'],
+                            'geometry': mapping(merged_geom)
+                        }
+
+                        try:
+                            postcodes[merged_postcode['id']] = merged_postcode
+                        except:
+                            raise Exception
+
+                    for key, p in postcodes.items():
+                        p.pop('id')
+                        my_postcode_data.append(p)
+
+    return my_postcode_data
+
+def add_postcode_sector_indicator(data):
+
+    my_postcode_data = []
+
+    for x in data:
+        x['properties']['pcd_sector'] = x['properties']['POSTCODE'][:-2]
+        my_postcode_data.append(x)
+
+    return my_postcode_data
+
+def write_codepoint_shapefile(data, path):
+
+    # Translate props to Fiona sink schema
+    prop_schema = []
+    for name, value in data[0]['properties'].items():
+        fiona_prop_type = next((fiona_type for fiona_type, python_type in fiona.FIELD_TYPES_MAP.items() if python_type == type(value)), None)
+        prop_schema.append((name, fiona_prop_type))
+
+    sink_driver = 'ESRI Shapefile'
+    sink_crs = {'init': 'epsg:27700'}
+    sink_schema = {
+        'geometry': data[0]['geometry']['type'],
+        'properties': OrderedDict(prop_schema)
+    }
+
+    # Write all elements to output file
+    with fiona.open(os.path.join(SYSTEM_OUTPUT_PATH, path), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
+        for feature in data:
+            sink.write(feature)
+
+
+def dissolve(input, output, fields):
+    with fiona.open(os.path.join(CODEPOINT_INPUT_PATH, input)) as input:
+        with fiona.open(os.path.join(CODEPOINT_OUTPUT_PATH, output), 'w', **input.meta) as output:
+            grouper = itemgetter(*fields)
+            key = lambda k: grouper(k['properties'])
+            for k, group in groupby(sorted(input, key=key), key):
+                properties, geom = zip(*[(feature['properties'], shape(feature['geometry'])) for feature in group])
+                output.write({'geometry': mapping(unary_union(geom)), 'properties': properties[0]})
+
+
+def import_shapes(file_path):
+    with fiona.open(file_path, 'r') as source:
+        return [shape for shape in source]
+
 
 #####################################
 # IMPORT SUPPLY SIDE DATA
 #####################################
 
-def read_in_traffic_counts():
+def import_unique_cell_data():
 
-    traffic_data = []
+    os_unique_cell_data = []
 
-    TRAFFIC_COUNT_INPUTS = os.path.join(SYSTEM_INPUT_FIXED,'dft_road_traffic_counts', 'all_regions')
-
-    for x in os.listdir(TRAFFIC_COUNT_INPUTS):
-        with open(os.path.join(TRAFFIC_COUNT_INPUTS, x), 'r', encoding='utf8', errors='replace') as system_file:
-            reader = csv.DictReader(system_file)
-            next(reader)
-            for line in reader:
-                try:
-                    if line['AADFYear'] == '2016': 
-                        traffic_data.append({
-                            'road': line['Road'],
-                            'count': line['AllMotorVehicles'],
-                            'easting': line['Easting'],
-                            'northing': line['Northing']
-                        })
-                except:
-                    print(x)
-                else:
-                    if line['AADFYear'] == '2015': 
-                        traffic_data.append({
-                            'road': line['Road'],
-                            'count': line['AllMotorVehicles'],
-                            'easting': line['Easting'],
-                            'northing': line['Northing']
-                        })
-
-    with open(os.path.join(SYSTEM_INPUT_FIXED,'dft_road_traffic_counts','minor_roads','aadt_minor_roads.csv'), 'r', encoding='utf8', errors='replace') as system_file:
-        reader = csv.DictReader(system_file)
+    with open(os.path.join(SYSTEM_INPUT_PATH, 'received_signal_data', 'os_unique_cells_cambridge.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+        reader = csv.reader(system_file)
         next(reader)
         for line in reader:
-            if line['AADFYear'] == '2016':
-                traffic_data.append({
-                    'road': line['Road'],
-                    'count': line['FdAll_MV'],
-                    'easting': line['S Ref Longitude'],
-                    'northing': line['S Ref Latitude']
-                })
-
-    return traffic_data
-
-
-def find_average_count(data):
-
-    roads_by_road_name = defaultdict(list)
-
-    for road in data:
+            os_unique_cell_data.append({
+                'type': "Feature",
+                'geometry': {
+                    "type": "Point",
+                    "coordinates": [float(line[1]), float(line[0])]
+                },
+                'properties': {
+                    'lte_ci': line[2],
+                    'lte_pci': line[3],
+                }
+            })
     
-        roads_by_road_name[road['road']].append(road)
+    return os_unique_cell_data
 
-    average_count = defaultdict(dict)
+def add_pcd_sector_id_to_cells(cell_data, pcd_sector_polygons): 
 
-    for road in roads_by_road_name.keys():
-        summed_count = sum([int(road['count']) for road in roads_by_road_name[road]])
-        number_of_count_points = len(roads_by_road_name[road]) 
+    joined_cell_data = []
+
+    # Initialze Rtree
+    idx = index.Index()
+
+    for rtree_idx, cell in enumerate(cell_data):
+        idx.insert(rtree_idx, shape(cell['geometry']).bounds, cell)
+    
+    # Join the two
+    for pcd_sector in pcd_sector_polygons:
+        for n in idx.intersection((shape(pcd_sector['geometry']).bounds), objects=True):  
+            pcd_sector_shape = shape(pcd_sector['geometry'])
+            pcd_sector_area_shape = shape(n.object['geometry'])
+            if pcd_sector_area_shape.contains(pcd_sector_shape):
+                n.object['properties']['pcd_sector'] = pcd_sector['properties']['pcd_sector']
+                joined_cell_data.append(n.object)
+
+            else:
+                n.object['properties']['pcd_sector'] = 'not in pcd_sector'
+                joined_cell_data.append(n.object) 
+
+    return joined_cell_data
+
+#####################################
+# IMPORT DEMAND SIDE DATA
+#####################################
+
+# def read_in_traffic_counts():
+
+#     traffic_data = []
+
+#     TRAFFIC_COUNT_INPUTS = os.path.join(SYSTEM_INPUT_PATH,'dft_road_traffic_counts', 'all_regions')
+
+#     for x in os.listdir(TRAFFIC_COUNT_INPUTS):
+#         with open(os.path.join(TRAFFIC_COUNT_INPUTS, x), 'r', encoding='utf8', errors='replace') as system_file:
+#             reader = csv.DictReader(system_file)
+#             next(reader)
+#             for line in reader:
+#                 try:
+#                     if line['AADFYear'] == '2016': 
+#                         traffic_data.append({
+#                             'road': line['Road'],
+#                             'count': line['AllMotorVehicles'],
+#                             'easting': line['Easting'],
+#                             'northing': line['Northing']
+#                         })
+#                 except:
+#                     print(x)
+#                 else:
+#                     if line['AADFYear'] == '2015': 
+#                         traffic_data.append({
+#                             'road': line['Road'],
+#                             'count': line['AllMotorVehicles'],
+#                             'easting': line['Easting'],
+#                             'northing': line['Northing']
+#                         })
+
+#     with open(os.path.join(SYSTEM_INPUT_PATH,'dft_road_traffic_counts','minor_roads','aadt_minor_roads.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+#         reader = csv.DictReader(system_file)
+#         next(reader)
+#         for line in reader:
+#             if line['AADFYear'] == '2016':
+#                 traffic_data.append({
+#                     'road': line['Road'],
+#                     'count': line['FdAll_MV'],
+#                     'easting': line['S Ref Longitude'],
+#                     'northing': line['S Ref Latitude']
+#                 })
+
+#     return traffic_data
+
+
+# def find_average_count(data):
+
+#     roads_by_road_name = defaultdict(list)
+
+#     for road in data:
+    
+#         roads_by_road_name[road['road']].append(road)
+
+#     average_count = defaultdict(dict)
+
+#     for road in roads_by_road_name.keys():
+#         summed_count = sum([int(road['count']) for road in roads_by_road_name[road]])
+#         number_of_count_points = len(roads_by_road_name[road]) 
         
-        average_count[road] = {
-            'average_count': round(summed_count / number_of_count_points, 0),
-            'summed_count': summed_count
-        }
+#         average_count[road] = {
+#             'average_count': round(summed_count / number_of_count_points, 0),
+#             'summed_count': summed_count
+#         }
 
-    return average_count
-
-
-def covert_data_into_list_of_dicts(data, variable1, variable2, variable3):
-    my_data = []
-
-    # output and report results for this timestep
-    for datum in data:
-        my_data.append({
-        variable1: datum,
-        variable2: data[datum][variable2],
-        variable3: data[datum][variable3]
-        })
-
-    return my_data
+#     return average_count
 
 
-def apply_road_categories(data):
+# def covert_data_into_list_of_dicts(data, variable1, variable2, variable3):
+#     my_data = []
 
-    for point in data:
+#     # output and report results for this timestep
+#     for datum in data:
+#         my_data.append({
+#         variable1: datum,
+#         variable2: data[datum][variable2],
+#         variable3: data[datum][variable3]
+#         })
 
-        if int(point['average_count']) >= 17000:
-            point['geotype'] = 'high demand'
+#     return my_data
 
-        elif int(point['average_count']) >= 10000 and int(point['average_count']) < 17000:
-            point['geotype'] = 'moderate demand'
 
-        elif int(point['average_count']) < 10000  :
-            point['geotype'] = 'low demand'
+# def apply_road_categories(data):
+
+#     for point in data:
+
+#         if int(point['average_count']) >= 17000:
+#             point['geotype'] = 'high demand'
+
+#         elif int(point['average_count']) >= 10000 and int(point['average_count']) < 17000:
+#             point['geotype'] = 'moderate demand'
+
+#         elif int(point['average_count']) < 10000  :
+#             point['geotype'] = 'low demand'
     
-    return data
+#     return data
 
 
 def read_in_os_open_roads():
 
     open_roads_network = []
 
-    DIR = os.path.join(SYSTEM_INPUT_FIXED, 'os_open_roads', 'open-roads_2443825')
+    DIR = os.path.join(SYSTEM_INPUT_PATH, 'os_open_roads', 'open-roads_2443825')
 
     for my_file in os.listdir(DIR):
         if my_file.endswith("RoadLink.shp"):
@@ -181,11 +352,11 @@ def read_in_built_up_areas():
 
     built_up_area_polygon_data = []
 
-    with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'built_up_areas', 'Builtup_Areas_December_2011_Boundaries_V2_england_and_wales', 'urban_areas_england_and_wales.shp'), 'r') as source:
+    with fiona.open(os.path.join(SYSTEM_INPUT_PATH, 'built_up_areas', 'Builtup_Areas_December_2011_Boundaries_V2_england_and_wales', 'urban_areas_england_and_wales.shp'), 'r') as source:
         for src_shape in source:           
             built_up_area_polygon_data.extend([src_shape for src_shape in source]) 
 
-    with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'built_up_areas', 'shapefiles-mid-2016-settlements-localities_scotland', 'urban_areas.shp'), 'r') as source:
+    with fiona.open(os.path.join(SYSTEM_INPUT_PATH, 'built_up_areas', 'shapefiles-mid-2016-settlements-localities_scotland', 'urban_areas.shp'), 'r') as source:
         for src_shape in source:           
             built_up_area_polygon_data.extend([src_shape for src_shape in source]) 
 
@@ -205,12 +376,14 @@ def convert_projection(data):
         coords = feature['geometry']['coordinates']
 
         for coordList in coords:
-            
 
-            coordList = list(transform(projOSGB1936, projWGS84, coordList[0], coordList[1]))
+            try:
+                coordList = list(transform(projOSGB1936, projWGS84, coordList[0], coordList[1]))
+                new_geom.append(coordList)
 
-            new_geom.append(coordList)
-               
+            except:
+                print("Warning: Some loss of postcode sectors during projection conversion")
+                
         feature['geometry']['coordinates'] = new_geom
 
         converted_data.append(feature)
@@ -332,7 +505,7 @@ def csv_writer(data, output_fieldnames, filename):
     Write data to a CSV file path
     """
     fieldnames = data[0].keys()
-    with open(os.path.join(SYSTEM_OUTPUT_FILENAME, filename),'w') as csv_file:
+    with open(os.path.join(SYSTEM_OUTPUT_PATH, filename),'w') as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
         writer.writeheader()
         writer.writerows(data)
@@ -354,7 +527,7 @@ def write_shapefile(data, path):
         'properties': OrderedDict(prop_schema)
     }
 
-    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, path), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
+    with fiona.open(os.path.join(SYSTEM_OUTPUT_PATH, path), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         for datum in data:
             sink.write(datum)
 
@@ -362,49 +535,74 @@ def write_shapefile(data, path):
 # RUN SCRIPTS
 #####################################
 
-# print("read in traffic flow data")
-# flow_data = read_in_traffic_counts()
+# print("importing codepoint postcode data")
+# postcodes = import_postcodes()
 
-# print("calculating average count per road")
-# average_flow_data = find_average_count(flow_data)
+# print("adding pcd_sector indicator")
+# postcodes = add_postcode_sector_indicator(postcodes)
 
-# print("converting to list of dicts structure")
-# average_flow_data = covert_data_into_list_of_dicts(average_flow_data, 'road', 'average_count', 'summed_count') 
+# print("writing postcodes")
+# write_codepoint_shapefile(postcodes, 'postcodes.shp')
 
-# print("categorising flow data")
-# average_flow_data = apply_road_categories(average_flow_data)
+# print("dissolving on pcd_sector indicator")
+# dissolve('postcodes.shp', 'postcode_sectors.shp', ["pcd_sector"])
 
-print('read in road network')
-road_network = read_in_os_open_roads()
+print("reading in pcd_sector data")
+pcd_sectors = import_shapes(os.path.join(SYSTEM_INPUT_PATH, 'codepoint', 'postcode_sectors_cambridge_WGS84.shp'))
+print(pcd_sectors)
+# print("converting pcd_sector data to WSG84")
+# pcd_sectors = convert_projection(pcd_sectors)
 
-print('converting road network projection into wgs84')
-road_network = convert_projection(road_network)
+print("reading in unique cell data")
+unique_cells = import_unique_cell_data()
 
-print('read in built up area polygons')
-built_up_areas = read_in_built_up_areas()
+print("adding pcd sector id to cells")
+unique_cells = add_pcd_sector_id_to_cells(unique_cells, pcd_sectors)
+#print(unique_cells)
 
-print('add built up area indicator to urban roads')
-road_network = add_urban_rural_indicator_to_roads(road_network, built_up_areas)
+# # print("read in traffic flow data")
+# # flow_data = read_in_traffic_counts()
 
-print("extracting geojson properties")
-aggegated_road_statistics = extract_geojson_properties(road_network)
+# # print("calculating average count per road")
+# # average_flow_data = find_average_count(flow_data)
 
-print("add any missing items")
-aggegated_road_statistics = deal_with_none_values(aggegated_road_statistics)   
+# # print("converting to list of dicts structure")
+# # average_flow_data = covert_data_into_list_of_dicts(average_flow_data, 'road', 'average_count', 'summed_count') 
 
-print("applying grouped aggregation")
-aggegated_road_statistics = grouper(aggegated_road_statistics, 'length', 'road', 'function', 'formofway', 'urban_rural_indicator')
+# # print("categorising flow data")
+# # average_flow_data = apply_road_categories(average_flow_data)
 
-print('write all road statistics')
-road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
-csv_writer(aggegated_road_statistics, road_statistics_fieldnames, 'aggregated_road_statistics.csv')
+# print('read in road network')
+# road_network = read_in_os_open_roads()
 
-print("applying aggregation to road types")
-road_length_by_type = aggregator(aggegated_road_statistics, 'length', 'function', 'formofway', 'urban_rural_indicator')
+# print('converting road network projection into wgs84')
+# road_network = convert_projection(road_network)
 
-print('write road lengths')
-road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
-csv_writer(road_length_by_type, road_statistics_fieldnames, 'road_length_by_type.csv')
+# print('read in built up area polygons')
+# built_up_areas = read_in_built_up_areas()
+
+# print('add built up area indicator to urban roads')
+# road_network = add_urban_rural_indicator_to_roads(road_network, built_up_areas)
+
+# print("extracting geojson properties")
+# aggegated_road_statistics = extract_geojson_properties(road_network)
+
+# print("add any missing items")
+# aggegated_road_statistics = deal_with_none_values(aggegated_road_statistics)   
+
+# print("applying grouped aggregation")
+# aggegated_road_statistics = grouper(aggegated_road_statistics, 'length', 'road', 'function', 'formofway', 'urban_rural_indicator')
+
+# print('write all road statistics')
+# road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
+# csv_writer(aggegated_road_statistics, road_statistics_fieldnames, 'aggregated_road_statistics.csv')
+
+# print("applying aggregation to road types")
+# road_length_by_type = aggregator(aggegated_road_statistics, 'length', 'function', 'formofway', 'urban_rural_indicator')
+
+# print('write road lengths')
+# road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
+# csv_writer(road_length_by_type, road_statistics_fieldnames, 'road_length_by_type.csv')
 
 # print("merging road network stats with flow estimates")
 # average_flow_statistics = merge_two_list_of_dicts(aggegated_road_statistics, average_flow_data, 'road')
