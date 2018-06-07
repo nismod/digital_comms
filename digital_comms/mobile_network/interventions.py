@@ -1,7 +1,7 @@
 """Decide on interventions
 """
 # pylint: disable=C0103
-from digital_comms.mobile_model.ccam import PostcodeSector
+from digital_comms.mobile_network.model import PostcodeSector
 
 import copy
 import math
@@ -361,7 +361,7 @@ def _area_satisfied(area, built_interventions, threshold):
     }
     assets = area.assets + built_interventions
 
-    test_area = PostcodeSector(
+    test_area = model.PostcodeSector(
         data,
         assets,
         area._capacity_lookup_table,
