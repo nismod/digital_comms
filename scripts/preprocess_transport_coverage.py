@@ -307,8 +307,8 @@ def read_in_os_open_roads():
             with fiona.open(os.path.join(DIR, my_file), 'r') as source:
 
                 for src_shape in source:   
-                    #open_roads_network.extend([src_shape for src_shape in source if src_shape['properties']['function'] == 'Motorway' or src_shape['properties']['function'] == 'A Road' or src_shape['properties']['function'] == 'B Road']) 
-                    open_roads_network.extend([src_shape for src_shape in source]) 
+                    open_roads_network.extend([src_shape for src_shape in source if src_shape['properties']['function'] == 'Motorway' or src_shape['properties']['function'] == 'A Road' or src_shape['properties']['function'] == 'B Road' or src_shape['properties']['function'] == 'Minor Road' or src_shape['properties']['function'] == 'Local Road']) 
+                    #open_roads_network.extend([src_shape for src_shape in source]) 
                     for element in open_roads_network:
 
                         if element['properties']['name1'] in element['properties']:
@@ -416,6 +416,52 @@ def add_urban_rural_indicator_to_roads(road_data, built_up_polygons):
     return joined_road_data
 
 
+def deal_with_none_values(data):
+
+    my_data = []
+
+    for road in data:      
+        if road['properties']['roadNumber'] == None:
+            my_data.append({
+                'type': "Feature",
+                'geometry': {
+                    "type": "LineString",
+                    "coordinates": road['geometry']['coordinates']
+                },
+                'properties': {
+                    'road': road['properties']['function'],
+                    'formofway': road['properties']['formOfWay'],    
+                    'length': int(road['properties']['length']),
+                    'function': road['properties']['function'],   
+                    'urban_rural_indicator': road['properties']['urban_rural_indicator']    
+                }
+            })
+        
+    return my_data
+
+
+def write_road_network_shapefile(data, path):
+
+    # Translate props to Fiona sink schema
+    prop_schema = []
+    for name, value in data[0]['properties'].items():
+        fiona_prop_type = next((fiona_type for fiona_type, python_type in fiona.FIELD_TYPES_MAP.items() if python_type == type(value)), None)
+        prop_schema.append((name, fiona_prop_type))
+
+    sink_driver = 'ESRI Shapefile'
+    sink_crs = {'init': 'epsg:4326'}
+    sink_schema = {
+        'geometry': data[0]['geometry']['type'],
+        'properties': OrderedDict(prop_schema)
+    }
+
+    # Write all elements to output file
+    with fiona.open(os.path.join(SYSTEM_OUTPUT_PATH, path), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
+        for feature in data:
+            print(feature)
+            sink.write(feature)
+
+
 def extract_geojson_properties(data):
     
     my_data = []
@@ -432,29 +478,7 @@ def extract_geojson_properties(data):
     return my_data
 
 
-def deal_with_none_values(data):
 
-    my_data = []
-
-    for road in data:
-        if road['road'] == None:
-            my_data.append({
-                'road': road['function'],
-                'formofway': road['formofway'],    
-                'length': road['length'],
-                'function': road['function'],   
-                'urban_rural_indicator': road['urban_rural_indicator']      
-        })
-        else:
-            my_data.append({
-                'road': road['road'],
-                'formofway': road['formofway'],    
-                'length': road['length'],
-                'function': road['function'],    
-                'urban_rural_indicator': road['urban_rural_indicator']         
-        })
-    
-    return my_data
 
 
 def grouper(data, aggregated_metric, group_item1, group_item2, group_item3, group_item4):
@@ -535,54 +559,60 @@ def write_shapefile(data, path):
 # RUN SCRIPTS
 #####################################
 
-# print("importing codepoint postcode data")
-# postcodes = import_postcodes()
+# # print("importing codepoint postcode data")
+# # postcodes = import_postcodes()
 
-# print("adding pcd_sector indicator")
-# postcodes = add_postcode_sector_indicator(postcodes)
+# # print("adding pcd_sector indicator")
+# # postcodes = add_postcode_sector_indicator(postcodes)
 
-# print("writing postcodes")
-# write_codepoint_shapefile(postcodes, 'postcodes.shp')
+# # print("writing postcodes")
+# # write_codepoint_shapefile(postcodes, 'postcodes.shp')
 
-# print("dissolving on pcd_sector indicator")
-# dissolve('postcodes.shp', 'postcode_sectors.shp', ["pcd_sector"])
+# # print("dissolving on pcd_sector indicator")
+# # dissolve('postcodes.shp', 'postcode_sectors.shp', ["pcd_sector"])
 
-print("reading in pcd_sector data")
-pcd_sectors = import_shapes(os.path.join(SYSTEM_INPUT_PATH, 'codepoint', 'postcode_sectors_cambridge_WGS84.shp'))
-print(pcd_sectors)
-# print("converting pcd_sector data to WSG84")
-# pcd_sectors = convert_projection(pcd_sectors)
+# print("reading in pcd_sector data")
+# pcd_sectors = import_shapes(os.path.join(SYSTEM_INPUT_PATH, 'codepoint', 'postcode_sectors_cambridge_WGS84.shp'))
 
-print("reading in unique cell data")
-unique_cells = import_unique_cell_data()
+# # print("converting pcd_sector data to WSG84")
+# # pcd_sectors = convert_projection(pcd_sectors)
 
-print("adding pcd sector id to cells")
-unique_cells = add_pcd_sector_id_to_cells(unique_cells, pcd_sectors)
-#print(unique_cells)
+# print("reading in unique cell data")
+# unique_cells = import_unique_cell_data()
 
-# # print("read in traffic flow data")
-# # flow_data = read_in_traffic_counts()
+# print("adding pcd sector id to cells")
+# unique_cells = add_pcd_sector_id_to_cells(unique_cells, pcd_sectors)
+# #print(unique_cells)
 
-# # print("calculating average count per road")
-# # average_flow_data = find_average_count(flow_data)
+# # # print("read in traffic flow data")
+# # # flow_data = read_in_traffic_counts()
 
-# # print("converting to list of dicts structure")
-# # average_flow_data = covert_data_into_list_of_dicts(average_flow_data, 'road', 'average_count', 'summed_count') 
+# # # print("calculating average count per road")
+# # # average_flow_data = find_average_count(flow_data)
 
-# # print("categorising flow data")
-# # average_flow_data = apply_road_categories(average_flow_data)
+# # # print("converting to list of dicts structure")
+# # # average_flow_data = covert_data_into_list_of_dicts(average_flow_data, 'road', 'average_count', 'summed_count') 
 
-# print('read in road network')
-# road_network = read_in_os_open_roads()
+# # # print("categorising flow data")
+# # # average_flow_data = apply_road_categories(average_flow_data)
 
-# print('converting road network projection into wgs84')
-# road_network = convert_projection(road_network)
+print('read in road network')
+road_network = read_in_os_open_roads()
 
-# print('read in built up area polygons')
-# built_up_areas = read_in_built_up_areas()
+print('converting road network projection into wgs84')
+road_network = convert_projection(road_network)
 
-# print('add built up area indicator to urban roads')
-# road_network = add_urban_rural_indicator_to_roads(road_network, built_up_areas)
+print('read in built up area polygons')
+built_up_areas = read_in_built_up_areas()
+
+print('add built up area indicator to urban roads')
+road_network = add_urban_rural_indicator_to_roads(road_network, built_up_areas)
+
+print('delaing with missing values')
+road_network = deal_with_none_values(road_network)
+
+print("writing road network")
+write_road_network_shapefile(road_network, 'road_network.shp')
 
 # print("extracting geojson properties")
 # aggegated_road_statistics = extract_geojson_properties(road_network)

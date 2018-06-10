@@ -361,7 +361,7 @@ def _area_satisfied(area, built_interventions, threshold):
     }
     assets = area.assets + built_interventions
 
-    test_area = model.PostcodeSector(
+    test_area = PostcodeSector(
         data,
         assets,
         area._capacity_lookup_table,
