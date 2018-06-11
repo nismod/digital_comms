@@ -1,5 +1,6 @@
+import time
+start = time.time()
 import os
-from pprint import pprint
 import configparser
 import csv
 import fiona
@@ -42,7 +43,7 @@ def import_postcodes():
 
     my_postcode_data = []
 
-    POSTCODE_DATA_DIRECTORY = os.path.join(CODEPOINT_INPUT_PATH,'codepoint-poly_2429451')
+    POSTCODE_DATA_DIRECTORY = os.path.join(CODEPOINT_INPUT_PATH,'subset')
 
     # Initialze Rtree
     idx = index.Index()
@@ -110,7 +111,7 @@ def add_postcode_sector_indicator(data):
 
     return my_postcode_data
 
-def write_codepoint_shapefile(data, path):
+def write_shapefile(data, path, crs):
 
     # Translate props to Fiona sink schema
     prop_schema = []
@@ -119,32 +120,29 @@ def write_codepoint_shapefile(data, path):
         prop_schema.append((name, fiona_prop_type))
 
     sink_driver = 'ESRI Shapefile'
-    sink_crs = {'init': 'epsg:27700'}
+    sink_crs = {'init': crs}
     sink_schema = {
         'geometry': data[0]['geometry']['type'],
         'properties': OrderedDict(prop_schema)
     }
 
     # Write all elements to output file
-    with fiona.open(os.path.join(SYSTEM_OUTPUT_PATH, path), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
+    with fiona.open(path, 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         for feature in data:
             sink.write(feature)
 
-
 def dissolve(input, output, fields):
     with fiona.open(os.path.join(CODEPOINT_INPUT_PATH, input)) as input:
-        with fiona.open(os.path.join(CODEPOINT_OUTPUT_PATH, output), 'w', **input.meta) as output:
+        with fiona.open(os.path.join(SYSTEM_OUTPUT_PATH, output), 'w', **input.meta) as output:
             grouper = itemgetter(*fields)
             key = lambda k: grouper(k['properties'])
             for k, group in groupby(sorted(input, key=key), key):
                 properties, geom = zip(*[(feature['properties'], shape(feature['geometry'])) for feature in group])
                 output.write({'geometry': mapping(unary_union(geom)), 'properties': properties[0]})
 
-
 def import_shapes(file_path):
     with fiona.open(file_path, 'r') as source:
         return [shape for shape in source]
-
 
 def convert_projection_pcd_sectors(data):
 
@@ -158,47 +156,6 @@ def convert_projection_pcd_sectors(data):
         feature['geometry'] = mapping(transform(project, shape(feature['geometry'])))
 
     return data
-
-    # for feature in data:
-
-    #     if feature['geometry']['type'] == 'MultiPolygon':
-
-    #         new_geom = []
-    #         coords = [coord for coord in feature['geometry']['coordinates']]
-
-    #         for coordList in coords:
-
-    #             try:
-    #                 part = list(transform(projOSGB1936, projWGS84, coordList[0], coordList[1]))
-    #                 new_geom.append(coordList)
-
-    #             except:
-    #                 print("Warning: Some loss of postcode sectors during projection conversion")
-                    
-    #         feature['geometry']['coordinates'] = new_geom
-
-    #         converted_data.append(feature)
-        
-    #     else:
-
-    #         new_geom = []
-    #         coords = feature['geometry']['coordinates']
-
-    #         for coordList in coords:
-
-    #             try:
-    #                 coordList = list(transform(projOSGB1936, projWGS84, coordList[0], coordList[1]))
-    #                 new_geom.append(coordList)
-
-    #             except:
-    #                 print("Warning: Some loss of postcode sectors during projection conversion")
-                    
-    #         feature['geometry']['coordinates'] = new_geom
-
-    #         converted_data.append(feature)
-            
-    # return converted_data
-
 
 #####################################
 # IMPORT SUPPLY SIDE DATA
@@ -226,30 +183,95 @@ def import_unique_cell_data():
     
     return os_unique_cell_data
 
-def add_pcd_sector_id_to_cells(cell_data, pcd_sector_polygons): 
+def add_polygon_id_to_point(points, polygons):
 
-    joined_cell_data = []
+    joined_data = []
 
     # Initialze Rtree
     idx = index.Index()
 
-    for rtree_idx, cell in enumerate(cell_data):
-        idx.insert(rtree_idx, shape(cell['geometry']).bounds, cell)
-    
-    # Join the two
-    for pcd_sector in pcd_sector_polygons:
-        for n in idx.intersection((shape(pcd_sector['geometry']).bounds), objects=True):  
-            pcd_sector_shape = shape(pcd_sector['geometry'])
-            pcd_sector_area_shape = shape(n.object['geometry'])
-            if pcd_sector_area_shape.contains(pcd_sector_shape):
-                n.object['properties']['pcd_sector'] = pcd_sector['properties']['pcd_sector']
-                joined_cell_data.append(n.object)
+    for rtree_idx, point in enumerate(points):
+        idx.insert(rtree_idx, shape(point['geometry']).bounds, point)
 
+    # Join the two
+    for polygon in polygons:
+        for n in idx.intersection((shape(polygon['geometry']).bounds), objects=True):
+            polygon_area_shape = shape(polygon['geometry'])
+            polygon_shape = shape(n.object['geometry'])
+            if polygon_area_shape.contains(polygon_shape):
+                n.object['properties']['pcd_sector'] = polygon['properties']['pcd_sector']
+                joined_data.append(n.object)
             else:
                 n.object['properties']['pcd_sector'] = 'not in pcd_sector'
-                joined_cell_data.append(n.object) 
+                joined_data.append(n.object)
 
-    return joined_cell_data
+    return joined_data
+
+def sum_cells_by_pcd_sectors(data):
+    
+    #group premises by lads
+    cells_per_pcd_sector = defaultdict(list)
+
+    for datum in data:
+        """
+        'pcd_sector': [
+            cell1,
+            cell2
+        ]
+        """
+        #print(postcode)
+        cells_per_pcd_sector[datum['properties']['pcd_sector']].append(datum['properties']['lte_ci'])       
+
+    # run statistics on each lad
+    cells_results = defaultdict(dict)
+    for cell in cells_per_pcd_sector.keys():
+
+        sum_of_cells = len(cells_per_pcd_sector[cell]) # contain  list of premises objects in the lad
+
+        cells_results[cell] = {
+            'cells': sum_of_cells,
+            'pcd_sector': cell
+        }
+
+    return cells_results
+
+def calculate_area_of_pcd_sectors(data):
+    
+    my_pcd_sectors = []
+
+    for datum in data:
+        print(datum)
+        datum_area = []
+        polygons = [p.buffer(0) for p in shape(datum['geometry'])]
+
+        for poly in polygons:
+            datum_area.append(poly.area)
+
+        print(datum_area)
+
+    return my_pcd_sectors
+
+def covert_data_into_list_of_dicts(data, metric):
+    my_data = []
+
+    # output and report results for this timestep
+    for datum in data:
+        my_data.append({
+        'pcd_sector': datum,
+         metric: data[datum][metric],
+        })
+
+    return my_data
+
+def merge_two_lists_of_dicts(list_of_dicts_1, list_of_dicts_2, parameter1, parameter2):
+    """
+    Combine the list of dicts 1 and with list of dicts 2 using the household indicator and year keys. 
+    """
+    d1 = {(d[parameter1], d[parameter2]):d for d in list_of_dicts_2}
+
+    list_of_dicts_1 = [dict(d, **d1.get((d[parameter1], d[parameter2]), {})) for d in list_of_dicts_1]	
+
+    return list_of_dicts_1
 
 #####################################
 # IMPORT DEMAND SIDE DATA
@@ -591,25 +613,25 @@ def csv_writer(data, output_fieldnames, filename):
         writer.writerows(data)
 
 
-def write_shapefile(data, path):
+# def write_shapefile(data, path):
 
-    # Translate props to Fiona sink schema
-    prop_schema = []
+#     # Translate props to Fiona sink schema
+#     prop_schema = []
     
-    for name, value in data[0]['properties'].items():
-        fiona_prop_type = next((fiona_type for fiona_type, python_type in fiona.FIELD_TYPES_MAP.items() if python_type == type(value)), None)
-        prop_schema.append((name, fiona_prop_type))
+#     for name, value in data[0]['properties'].items():
+#         fiona_prop_type = next((fiona_type for fiona_type, python_type in fiona.FIELD_TYPES_MAP.items() if python_type == type(value)), None)
+#         prop_schema.append((name, fiona_prop_type))
     
-    sink_driver = 'ESRI Shapefile'
-    sink_crs = {'init': 'epsg:27700'}
-    sink_schema = {
-        'geometry': data[0]['geometry']['type'],
-        'properties': OrderedDict(prop_schema)
-    }
+#     sink_driver = 'ESRI Shapefile'
+#     sink_crs = {'init': 'epsg:4326'}
+#     sink_schema = {
+#         'geometry': data[0]['geometry']['type'],
+#         'properties': OrderedDict(prop_schema)
+#     }
 
-    with fiona.open(os.path.join(SYSTEM_OUTPUT_PATH, path), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
-        for datum in data:
-            sink.write(datum)
+#     with fiona.open(os.path.join(SYSTEM_OUTPUT_PATH, path), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
+#         for datum in data:
+#             sink.write(datum)
 
 #####################################
 # RUN SCRIPTS
@@ -622,28 +644,41 @@ def write_shapefile(data, path):
 # postcodes = add_postcode_sector_indicator(postcodes)
 
 # print("writing postcodes")
-# write_codepoint_shapefile(postcodes, 'postcodes.shp')
+# write_shapefile(postcodes, os.path.join(CODEPOINT_OUTPUT_PATH, 'postcodes.shp'), 'epsg:27700')
 
 # print("dissolving on pcd_sector indicator")
 # dissolve('postcodes.shp', 'postcode_sectors.shp', ["pcd_sector"])
 
 print("reading in pcd_sector data")
-pcd_sectors = import_shapes(os.path.join(SYSTEM_INPUT_PATH, 'codepoint', 'postcode_sectors_cambridge.shp'))
+pcd_sectors = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'postcode_sectors.shp'))
 
 print("converting pcd_sector data to WSG84")
 pcd_sectors = convert_projection_pcd_sectors(pcd_sectors)
 
 print("writing postcode sectors")
-write_codepoint_shapefile(pcd_sectors, 'pcd_sectors.shp')
+write_shapefile(pcd_sectors, os.path.join(SYSTEM_OUTPUT_PATH, 'pcd_sectors.shp'), 'epsg:4326')
 
-# print("reading in unique cell data")
-# unique_cells = import_unique_cell_data()
+print("reading in unique cell data")
+unique_cells = import_unique_cell_data()
 
-# print("adding pcd sector id to cells")
-# unique_cells = add_pcd_sector_id_to_cells(unique_cells, pcd_sectors)
+print("adding pcd sector id to cells")
+unique_cells = add_polygon_id_to_point(unique_cells, pcd_sectors)
 
-# print("writing unique_cells to shapefile")
-# write_codepoint_shapefile(unique_cells, 'unique_cells.shp')
+print("writing unique_cells to shapefile")
+write_shapefile(unique_cells, os.path.join(SYSTEM_OUTPUT_PATH, 'unique_cells.shp'), 'epsg:4326')
+
+print("summing unique_cells by pcd_sector")
+summed_cells = sum_cells_by_pcd_sectors(unique_cells)
+
+print("coverting data to list of dict structure")
+summed_cells = covert_data_into_list_of_dicts(summed_cells, 'cells')
+
+print("calculate area of pcd_sectors")
+pcd_sector_area = calculate_area_of_pcd_sectors(pcd_sectors)
+
+print('write pcd_sector data')
+summed_cells_fieldnames = ['pcd_sector', 'cells']
+csv_writer(summed_cells, summed_cells_fieldnames, 'summed_cells_by_pcd_sector.csv')
 
 # # print("read in traffic flow data")
 # # flow_data = read_in_traffic_counts()
@@ -702,6 +737,7 @@ write_codepoint_shapefile(pcd_sectors, 'pcd_sectors.shp')
 # road_statistics_fieldnames = ['road', 'average_count', 'geotype', 'function', 'length']
 # csv_writer(average_flow_statistics, road_statistics_fieldnames, 'average_road_statistics.csv')
 
-print("script finished")
 
-print("now check the column integer slices were correct for desired columns")
+end = time.time()
+print("script finished")
+print("script took {} minutes to complete".format(round((end - start)/60, 0))) 
