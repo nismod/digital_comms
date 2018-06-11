@@ -144,6 +144,54 @@ def import_shapes(file_path):
         return [shape for shape in source]
 
 
+def convert_projection_pcd_sectors(data):
+
+    converted_data = []
+
+    projOSGB1936 = Proj(init='epsg:27700')
+    projWGS84 = Proj(init='epsg:4326')
+
+    for feature in data:
+
+        if feature['geometry']['type'] == 'MultiPolygon':
+
+            new_geom = []
+            coords = [coord for coord in feature['geometry']['coordinates']]
+
+            for coordList in coords:
+
+                try:
+                    part = list(transform(projOSGB1936, projWGS84, coordList[0], coordList[1]))
+                    new_geom.append(coordList)
+
+                except:
+                    print("Warning: Some loss of postcode sectors during projection conversion")
+                    
+            feature['geometry']['coordinates'] = new_geom
+
+            converted_data.append(feature)
+        
+        else:
+
+            new_geom = []
+            coords = feature['geometry']['coordinates']
+
+            for coordList in coords:
+
+                try:
+                    coordList = list(transform(projOSGB1936, projWGS84, coordList[0], coordList[1]))
+                    new_geom.append(coordList)
+
+                except:
+                    print("Warning: Some loss of postcode sectors during projection conversion")
+                    
+            feature['geometry']['coordinates'] = new_geom
+
+            converted_data.append(feature)
+            
+    return converted_data
+
+
 #####################################
 # IMPORT SUPPLY SIDE DATA
 #####################################
@@ -559,60 +607,65 @@ def write_shapefile(data, path):
 # RUN SCRIPTS
 #####################################
 
-# # print("importing codepoint postcode data")
-# # postcodes = import_postcodes()
+# print("importing codepoint postcode data")
+# postcodes = import_postcodes()
 
-# # print("adding pcd_sector indicator")
-# # postcodes = add_postcode_sector_indicator(postcodes)
+# print("adding pcd_sector indicator")
+# postcodes = add_postcode_sector_indicator(postcodes)
 
-# # print("writing postcodes")
-# # write_codepoint_shapefile(postcodes, 'postcodes.shp')
+# print("writing postcodes")
+# write_codepoint_shapefile(postcodes, 'postcodes.shp')
 
-# # print("dissolving on pcd_sector indicator")
-# # dissolve('postcodes.shp', 'postcode_sectors.shp', ["pcd_sector"])
+# print("dissolving on pcd_sector indicator")
+# dissolve('postcodes.shp', 'postcode_sectors.shp', ["pcd_sector"])
 
-# print("reading in pcd_sector data")
-# pcd_sectors = import_shapes(os.path.join(SYSTEM_INPUT_PATH, 'codepoint', 'postcode_sectors_cambridge_WGS84.shp'))
+print("reading in pcd_sector data")
+pcd_sectors = import_shapes(os.path.join(SYSTEM_INPUT_PATH, 'codepoint', 'postcode_sectors_cambridge.shp'))
 
-# # print("converting pcd_sector data to WSG84")
-# # pcd_sectors = convert_projection(pcd_sectors)
+print("converting pcd_sector data to WSG84")
+pcd_sectors = convert_projection_pcd_sectors(pcd_sectors)
+
+print("writing postcode sectors")
+write_codepoint_shapefile(pcd_sectors, 'pcd_sectors.shp')
 
 # print("reading in unique cell data")
 # unique_cells = import_unique_cell_data()
 
 # print("adding pcd sector id to cells")
 # unique_cells = add_pcd_sector_id_to_cells(unique_cells, pcd_sectors)
-# #print(unique_cells)
 
-# # # print("read in traffic flow data")
-# # # flow_data = read_in_traffic_counts()
+# print("writing unique_cells to shapefile")
+# write_codepoint_shapefile(unique_cells, 'unique_cells.shp')
 
-# # # print("calculating average count per road")
-# # # average_flow_data = find_average_count(flow_data)
+# # print("read in traffic flow data")
+# # flow_data = read_in_traffic_counts()
 
-# # # print("converting to list of dicts structure")
-# # # average_flow_data = covert_data_into_list_of_dicts(average_flow_data, 'road', 'average_count', 'summed_count') 
+# # print("calculating average count per road")
+# # average_flow_data = find_average_count(flow_data)
 
-# # # print("categorising flow data")
+# # print("converting to list of dicts structure")
+# # average_flow_data = covert_data_into_list_of_dicts(average_flow_data, 'road', 'average_count', 'summed_count') 
+
+# # print("categorising flow data")
 # # # average_flow_data = apply_road_categories(average_flow_data)
 
-print('read in road network')
-road_network = read_in_os_open_roads()
+# print('read in road network')
+# road_network = read_in_os_open_roads()
 
-print('converting road network projection into wgs84')
-road_network = convert_projection(road_network)
+# print('converting road network projection into wgs84')
+# road_network = convert_projection(road_network)
 
-print('read in built up area polygons')
-built_up_areas = read_in_built_up_areas()
+# print('read in built up area polygons')
+# built_up_areas = read_in_built_up_areas()
 
-print('add built up area indicator to urban roads')
-road_network = add_urban_rural_indicator_to_roads(road_network, built_up_areas)
+# print('add built up area indicator to urban roads')
+# road_network = add_urban_rural_indicator_to_roads(road_network, built_up_areas)
 
-print('delaing with missing values')
-road_network = deal_with_none_values(road_network)
+# print('delaing with missing values')
+# road_network = deal_with_none_values(road_network)
 
-print("writing road network")
-write_road_network_shapefile(road_network, 'road_network.shp')
+# print("writing road network")
+# write_road_network_shapefile(road_network, 'road_network.shp')
 
 # print("extracting geojson properties")
 # aggegated_road_statistics = extract_geojson_properties(road_network)
