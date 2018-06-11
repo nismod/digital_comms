@@ -12,7 +12,9 @@ from rtree import index
 from shapely.geometry import shape, Point, LineString, Polygon, mapping, MultiPolygon
 from shapely.ops import unary_union
 from collections import OrderedDict, defaultdict
-from pyproj import Proj, transform
+from functools import partial
+import pyproj
+from shapely.ops import transform
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
@@ -146,50 +148,56 @@ def import_shapes(file_path):
 
 def convert_projection_pcd_sectors(data):
 
-    converted_data = []
-
-    projOSGB1936 = Proj(init='epsg:27700')
-    projWGS84 = Proj(init='epsg:4326')
+    project = partial(
+        pyproj.transform,
+        pyproj.Proj(init='epsg:27700'),
+        pyproj.Proj(init='epsg:4326')
+    )
 
     for feature in data:
+        feature['geometry'] = mapping(transform(project, shape(feature['geometry'])))
 
-        if feature['geometry']['type'] == 'MultiPolygon':
+    return data
 
-            new_geom = []
-            coords = [coord for coord in feature['geometry']['coordinates']]
+    # for feature in data:
 
-            for coordList in coords:
+    #     if feature['geometry']['type'] == 'MultiPolygon':
 
-                try:
-                    part = list(transform(projOSGB1936, projWGS84, coordList[0], coordList[1]))
-                    new_geom.append(coordList)
+    #         new_geom = []
+    #         coords = [coord for coord in feature['geometry']['coordinates']]
 
-                except:
-                    print("Warning: Some loss of postcode sectors during projection conversion")
+    #         for coordList in coords:
+
+    #             try:
+    #                 part = list(transform(projOSGB1936, projWGS84, coordList[0], coordList[1]))
+    #                 new_geom.append(coordList)
+
+    #             except:
+    #                 print("Warning: Some loss of postcode sectors during projection conversion")
                     
-            feature['geometry']['coordinates'] = new_geom
+    #         feature['geometry']['coordinates'] = new_geom
 
-            converted_data.append(feature)
+    #         converted_data.append(feature)
         
-        else:
+    #     else:
 
-            new_geom = []
-            coords = feature['geometry']['coordinates']
+    #         new_geom = []
+    #         coords = feature['geometry']['coordinates']
 
-            for coordList in coords:
+    #         for coordList in coords:
 
-                try:
-                    coordList = list(transform(projOSGB1936, projWGS84, coordList[0], coordList[1]))
-                    new_geom.append(coordList)
+    #             try:
+    #                 coordList = list(transform(projOSGB1936, projWGS84, coordList[0], coordList[1]))
+    #                 new_geom.append(coordList)
 
-                except:
-                    print("Warning: Some loss of postcode sectors during projection conversion")
+    #             except:
+    #                 print("Warning: Some loss of postcode sectors during projection conversion")
                     
-            feature['geometry']['coordinates'] = new_geom
+    #         feature['geometry']['coordinates'] = new_geom
 
-            converted_data.append(feature)
+    #         converted_data.append(feature)
             
-    return converted_data
+    # return converted_data
 
 
 #####################################
