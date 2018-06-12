@@ -237,17 +237,27 @@ def sum_cells_by_pcd_sectors(data):
 
 def calculate_area_of_pcd_sectors(data):
     
-    my_pcd_sectors = []
+    my_pcd_sectors = defaultdict(list)
 
     for datum in data:
-        print(datum)
-        datum_area = []
-        polygons = [p.buffer(0) for p in shape(datum['geometry'])]
+        geom = shape(datum['geometry'])
 
-        for poly in polygons:
-            datum_area.append(poly.area)
+        # Transform polygon to projected equal area coordinates
+        geom_area = transform(
+            partial(
+                pyproj.transform,
+                pyproj.Proj(init='EPSG:4326'),
+                pyproj.Proj(
+                    proj='aea',
+                    lat1=geom.bounds[1],
+                    lat2=geom.bounds[3])),
+                    geom
+                )
 
-        print(datum_area)
+        # geom_area.area gives the area in m^2, convert to km^2
+        my_pcd_sectors[datum['properties']['POSTCODE']] = {
+            'area': geom_area.area / 1000000
+        }
 
     return my_pcd_sectors
 
