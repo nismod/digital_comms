@@ -43,7 +43,7 @@ def import_postcodes():
 
     my_postcode_data = []
 
-    POSTCODE_DATA_DIRECTORY = os.path.join(CODEPOINT_INPUT_PATH,'subset')
+    POSTCODE_DATA_DIRECTORY = os.path.join(CODEPOINT_INPUT_PATH,'codepoint-poly_2429451')
 
     # Initialze Rtree
     idx = index.Index()
@@ -165,7 +165,7 @@ def import_unique_cell_data():
 
     os_unique_cell_data = []
 
-    with open(os.path.join(SYSTEM_INPUT_PATH, 'received_signal_data', 'os_unique_cells_cambridge.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(SYSTEM_INPUT_PATH, 'received_signal_data', 'os_unique_cells.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
@@ -228,10 +228,16 @@ def sum_cells_by_pcd_sectors(data):
 
         sum_of_cells = len(cells_per_pcd_sector[cell]) # contain  list of premises objects in the lad
 
-        cells_results[cell] = {
-            'cells': sum_of_cells,
-            'pcd_sector': cell
-        }
+        if sum_of_cells > 0:
+            cells_results[cell] = {
+                'cells': sum_of_cells,
+                'pcd_sector': cell
+            }
+        else:
+            cells_results[cell] = {
+                'cells': 0,
+                'pcd_sector': cell
+            }
 
     return cells_results
 
@@ -253,11 +259,16 @@ def calculate_area_of_pcd_sectors(data):
                     lat2=geom.bounds[3])),
                     geom
                 )
+        polygon_area = round(geom_area.area / 1000000, 2)
 
-        # geom_area.area gives the area in m^2, convert to km^2
-        my_pcd_sectors[datum['properties']['POSTCODE']] = {
-            'area': geom_area.area / 1000000
-        }
+        if polygon_area > 0:
+            my_pcd_sectors[datum['properties']['pcd_sector']] = {
+                'area': polygon_area
+            } 
+        else:
+            my_pcd_sectors[datum['properties']['pcd_sector']] = {
+                'area': 'not available'
+            }             
 
     return my_pcd_sectors
 
@@ -273,15 +284,61 @@ def covert_data_into_list_of_dicts(data, metric):
 
     return my_data
 
-def merge_two_lists_of_dicts(list_of_dicts_1, list_of_dicts_2, parameter1, parameter2):
-    """
-    Combine the list of dicts 1 and with list of dicts 2 using the household indicator and year keys. 
-    """
-    d1 = {(d[parameter1], d[parameter2]):d for d in list_of_dicts_2}
 
-    list_of_dicts_1 = [dict(d, **d1.get((d[parameter1], d[parameter2]), {})) for d in list_of_dicts_1]	
+def deal_with_missing_values(data):
 
-    return list_of_dicts_1
+    my_data = []
+
+    for datum in data:
+        
+        if 'area' in datum:
+            my_data.append({
+                'pcd_sector': datum['pcd_sector'],
+                'cells': datum['cells'],
+                'area': datum['area'],
+            })
+
+        else:
+            my_data.append({
+                'pcd_sector': datum['pcd_sector'],
+                'cells': datum['cells'],
+                'area': 'not available'
+            })
+
+    return my_data
+
+def calculate_cell_densities(data):
+
+    my_data = []
+
+    for datum in data:
+
+        if datum['area'] != 'not available':
+            if datum['cells'] > 0.01:
+                #print(datum)
+                cell_density = round(float(datum['cells']) / float(datum['area']), 3)
+                my_data.append({
+                    'pcd_sector': datum['pcd_sector'],
+                    'cells': datum['cells'],
+                    'area': datum['area'],
+                    'cell_density': cell_density
+                    })
+            else:
+                my_data.append({
+                    'pcd_sector': datum['pcd_sector'],
+                    'cells': 0,
+                    'area': datum['area'],
+                    'cell_density': 'not available'
+                    })     
+        else:
+            my_data.append({
+                'pcd_sector': datum['pcd_sector'],
+                'cells': datum['cells'],
+                'area': datum['area'],
+                'cell_density': 'not available'
+                })
+
+    return my_data
 
 #####################################
 # IMPORT DEMAND SIDE DATA
@@ -440,6 +497,11 @@ def read_in_built_up_areas():
 
     built_up_area_polygon_data = []
 
+
+    # with fiona.open(os.path.join(SYSTEM_INPUT_PATH, 'built_up_areas', 'built_up_areas_cambridgeshire.shp'), 'r') as source:
+    #     for src_shape in source:           
+    #         built_up_area_polygon_data.extend([src_shape for src_shape in source]) 
+
     with fiona.open(os.path.join(SYSTEM_INPUT_PATH, 'built_up_areas', 'Builtup_Areas_December_2011_Boundaries_V2_england_and_wales', 'urban_areas_england_and_wales.shp'), 'r') as source:
         for src_shape in source:           
             built_up_area_polygon_data.extend([src_shape for src_shape in source]) 
@@ -455,8 +517,8 @@ def convert_projection(data):
 
     converted_data = []
 
-    projOSGB1936 = Proj(init='epsg:27700')
-    projWGS84 = Proj(init='epsg:4326')
+    projOSGB1936 = pyproj.Proj(init='epsg:27700')
+    projWGS84 = pyproj.Proj(init='epsg:4326')
 
     for feature in data:
 
@@ -466,7 +528,7 @@ def convert_projection(data):
         for coordList in coords:
 
             try:
-                coordList = list(transform(projOSGB1936, projWGS84, coordList[0], coordList[1]))
+                coordList = list(pyproj.transform(projOSGB1936, projWGS84, coordList[0], coordList[1]))
                 new_geom.append(coordList)
 
             except:
@@ -478,6 +540,7 @@ def convert_projection(data):
         
     return converted_data
 
+
 def add_urban_rural_indicator_to_roads(road_data, built_up_polygons): 
 
     joined_road_data = []
@@ -485,23 +548,44 @@ def add_urban_rural_indicator_to_roads(road_data, built_up_polygons):
     # Initialze Rtree
     idx = index.Index()
 
-    for rtree_idx, road in enumerate(road_data):
-        idx.insert(rtree_idx, shape(road['geometry']).bounds, road)
+    for rtree_idx, area in enumerate(built_up_polygons):
+        idx.insert(rtree_idx, shape(area['geometry']).bounds, area)
     
     # Join the two
-    for area in built_up_polygons:
-        for n in idx.intersection((shape(area['geometry']).bounds), objects=True):  
-            urban_area_shape = shape(area['geometry'])
-            urban_shape = shape(n.object['geometry'])
-            if urban_area_shape.contains(urban_shape):
-                n.object['properties']['urban_rural_indicator'] = 'urban'
-                joined_road_data.append(n.object)
+    for road in road_data:
+        matches = [n for n in idx.intersection((shape(road['geometry']).bounds), objects=True)]
+        if len(matches) > 0:
+            road['properties']['urban_rural_indicator'] = 'urban'
+        else:
+            road['properties']['urban_rural_indicator'] = 'rural'
 
-            else:
-                n.object['properties']['urban_rural_indicator'] = 'rural'
-                joined_road_data.append(n.object) 
+    return road_data
 
-    return joined_road_data
+# def add_urban_rural_indicator_to_roads(road_data, built_up_polygons): 
+
+#     joined_road_data = []
+
+#     # Initialze Rtree
+#     idx = index.Index()
+
+#     for rtree_idx, road in enumerate(road_data):
+#         idx.insert(rtree_idx, shape(road['geometry']).bounds, road)
+    
+#     # Join the two
+#     for area in built_up_polygons:
+#         for n in idx.intersection((shape(area['geometry']).bounds), objects=True):  
+#             urban_area_shape = shape(area['geometry'])
+#             urban_shape = shape(n.object['geometry'])
+#             if urban_area_shape.contains(urban_shape):
+#                 n.object['properties']['urban_rural_indicator'] = 'urban'
+#                 joined_road_data.append(n.object)
+
+#             else:
+#                 n.object['properties']['urban_rural_indicator'] = 'rural'
+#                 joined_road_data.append(n.object) 
+
+#     return joined_road_data
+
 
 
 def deal_with_none_values(data):
@@ -524,9 +608,23 @@ def deal_with_none_values(data):
                     'urban_rural_indicator': road['properties']['urban_rural_indicator']    
                 }
             })
+        else:
+            my_data.append({
+                'type': "Feature",
+                'geometry': {
+                    "type": "LineString",
+                    "coordinates": road['geometry']['coordinates']
+                },
+                'properties': {
+                    'road': road['properties']['function'],
+                    'formofway': road['properties']['formOfWay'],    
+                    'length': int(road['properties']['length']),
+                    'function': road['properties']['function'],   
+                    'urban_rural_indicator': road['properties']['urban_rural_indicator']    
+                }
+            })
         
     return my_data
-
 
 def write_road_network_shapefile(data, path):
 
@@ -546,7 +644,7 @@ def write_road_network_shapefile(data, path):
     # Write all elements to output file
     with fiona.open(os.path.join(SYSTEM_OUTPUT_PATH, path), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         for feature in data:
-            print(feature)
+            #print(feature)
             sink.write(feature)
 
 
@@ -556,17 +654,14 @@ def extract_geojson_properties(data):
 
     for item in data:
         my_data.append({
-            'road': item['properties']['roadNumber'],
-            'formofway': item['properties']['formOfWay'], 
+            'road': item['properties']['road'],
+            'formofway': item['properties']['formofway'], 
             'length': item['properties']['length'],
             'function': item['properties']['function'], 
-            'urban_rural_indicator': item['properties']['urban_rural_indicator'],         
+            'urban_rural_indicator': item['properties']['urban_rura'],         
         })
 
     return my_data
-
-
-
 
 
 def grouper(data, aggregated_metric, group_item1, group_item2, group_item3, group_item4):
@@ -599,17 +694,27 @@ def aggregator(data, aggregated_metric, group_item1, group_item2, group_item3):
     return result
 
 
-def merge_two_list_of_dicts(data1, data2, shared_id):
+def merge_two_lists_of_dicts(msoa_list_of_dicts, oa_list_of_dicts, parameter1, parameter2):
+    """
+    Combine the msoa and oa dicts using the household indicator and year keys. 
+    """
+    d1 = {(d[parameter1], d[parameter2]):d for d in oa_list_of_dicts}
 
-    d1 = {d[shared_id]:d for d in data1}
+    msoa_list_of_dicts = [dict(d, **d1.get((d[parameter1], d[parameter2]), {})) for d in msoa_list_of_dicts]	
 
-    result = [dict(d, **d1.get(d[shared_id], {})) for d in data2]
+    return msoa_list_of_dicts
 
-    return result
+#####################################
+# CALCULATE COSTS
+#####################################
+
+
+
+
 
 
 #####################################
-# WRITE LOOK UP TABLE (LUT) DATA
+# WRITE CSV DATA
 #####################################
 
 def csv_writer(data, output_fieldnames, filename):
@@ -622,26 +727,6 @@ def csv_writer(data, output_fieldnames, filename):
         writer.writeheader()
         writer.writerows(data)
 
-
-# def write_shapefile(data, path):
-
-#     # Translate props to Fiona sink schema
-#     prop_schema = []
-    
-#     for name, value in data[0]['properties'].items():
-#         fiona_prop_type = next((fiona_type for fiona_type, python_type in fiona.FIELD_TYPES_MAP.items() if python_type == type(value)), None)
-#         prop_schema.append((name, fiona_prop_type))
-    
-#     sink_driver = 'ESRI Shapefile'
-#     sink_crs = {'init': 'epsg:4326'}
-#     sink_schema = {
-#         'geometry': data[0]['geometry']['type'],
-#         'properties': OrderedDict(prop_schema)
-#     }
-
-#     with fiona.open(os.path.join(SYSTEM_OUTPUT_PATH, path), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
-#         for datum in data:
-#             sink.write(datum)
 
 #####################################
 # RUN SCRIPTS
@@ -657,38 +742,57 @@ def csv_writer(data, output_fieldnames, filename):
 # write_shapefile(postcodes, os.path.join(CODEPOINT_OUTPUT_PATH, 'postcodes.shp'), 'epsg:27700')
 
 # print("dissolving on pcd_sector indicator")
-# dissolve('postcodes.shp', 'postcode_sectors.shp', ["pcd_sector"])
+# dissolve('postcodes.shp', 'pcd_sectors.shp', ["pcd_sector"])
 
-print("reading in pcd_sector data")
-pcd_sectors = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'postcode_sectors.shp'))
+# print("reading in pcd_sector data")
+# pcd_sectors = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'pcd_sectors.shp'))
 
-print("converting pcd_sector data to WSG84")
-pcd_sectors = convert_projection_pcd_sectors(pcd_sectors)
+# print("converting pcd_sector data to WSG84")
+# pcd_sectors = convert_projection_pcd_sectors(pcd_sectors)
 
-print("writing postcode sectors")
-write_shapefile(pcd_sectors, os.path.join(SYSTEM_OUTPUT_PATH, 'pcd_sectors.shp'), 'epsg:4326')
+# print("writing postcode sectors")
+# write_shapefile(pcd_sectors, os.path.join(SYSTEM_OUTPUT_PATH, 'pcd_sectors.shp'), 'epsg:4326')
 
-print("reading in unique cell data")
-unique_cells = import_unique_cell_data()
+#####################################
 
-print("adding pcd sector id to cells")
-unique_cells = add_polygon_id_to_point(unique_cells, pcd_sectors)
+# print("reading in pcd_sector data")
+# pcd_sectors = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'pcd_sectors.shp'))
 
-print("writing unique_cells to shapefile")
-write_shapefile(unique_cells, os.path.join(SYSTEM_OUTPUT_PATH, 'unique_cells.shp'), 'epsg:4326')
+# print("reading in unique cell data")
+# unique_cells = import_unique_cell_data()
 
-print("summing unique_cells by pcd_sector")
-summed_cells = sum_cells_by_pcd_sectors(unique_cells)
+# print("adding pcd sector id to cells")
+# unique_cells = add_polygon_id_to_point(unique_cells, pcd_sectors)
 
-print("coverting data to list of dict structure")
-summed_cells = covert_data_into_list_of_dicts(summed_cells, 'cells')
+# print("writing unique_cells to shapefile")
+# write_shapefile(unique_cells, os.path.join(SYSTEM_OUTPUT_PATH, 'unique_cells.shp'), 'epsg:4326')
 
-print("calculate area of pcd_sectors")
-pcd_sector_area = calculate_area_of_pcd_sectors(pcd_sectors)
+# print("summing unique_cells by pcd_sector")
+# summed_cells = sum_cells_by_pcd_sectors(unique_cells)
 
-print('write pcd_sector data')
-summed_cells_fieldnames = ['pcd_sector', 'cells']
-csv_writer(summed_cells, summed_cells_fieldnames, 'summed_cells_by_pcd_sector.csv')
+# print("coverting data to list of dict structure")
+# summed_cells = covert_data_into_list_of_dicts(summed_cells, 'cells')
+
+# print("calculate area of pcd_sectors")
+# pcd_sector_area = calculate_area_of_pcd_sectors(pcd_sectors)
+
+# print("coverting data to list of dict structure")
+# pcd_sector_area = covert_data_into_list_of_dicts(pcd_sector_area, 'area')
+
+# print("merge two list of dicts")
+# pcd_sectors = merge_two_lists_of_dicts(summed_cells, pcd_sector_area, 'pcd_sector', 'pcd_sector')
+
+# print("dealing with missing values")
+# pcd_sectors = deal_with_missing_values(pcd_sectors)
+
+# print("calculate cell densities")
+# pcd_sectors = calculate_cell_densities (pcd_sectors)
+
+# print('write pcd_sector data')
+# summed_cells_fieldnames = ['pcd_sector', 'area', 'cells', 'cell_density']
+# csv_writer(pcd_sectors, summed_cells_fieldnames, 'pcd_sector_cell_densities.csv')
+
+#####################################
 
 # # print("read in traffic flow data")
 # # flow_data = read_in_traffic_counts()
@@ -701,6 +805,8 @@ csv_writer(summed_cells, summed_cells_fieldnames, 'summed_cells_by_pcd_sector.cs
 
 # # print("categorising flow data")
 # # # average_flow_data = apply_road_categories(average_flow_data)
+
+#####################################
 
 # print('read in road network')
 # road_network = read_in_os_open_roads()
@@ -720,32 +826,28 @@ csv_writer(summed_cells, summed_cells_fieldnames, 'summed_cells_by_pcd_sector.cs
 # print("writing road network")
 # write_road_network_shapefile(road_network, 'road_network.shp')
 
-# print("extracting geojson properties")
-# aggegated_road_statistics = extract_geojson_properties(road_network)
+#####################################
 
-# print("add any missing items")
-# aggegated_road_statistics = deal_with_none_values(aggegated_road_statistics)   
+print('read in road network')
+road_network = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'road_network.shp'))
 
-# print("applying grouped aggregation")
-# aggegated_road_statistics = grouper(aggegated_road_statistics, 'length', 'road', 'function', 'formofway', 'urban_rural_indicator')
+print("extracting geojson properties")
+aggegated_road_statistics = extract_geojson_properties(road_network)
 
-# print('write all road statistics')
-# road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
-# csv_writer(aggegated_road_statistics, road_statistics_fieldnames, 'aggregated_road_statistics.csv')
+print("applying grouped aggregation")
+aggegated_road_statistics = grouper(aggegated_road_statistics, 'length', 'road', 'function', 'formofway', 'urban_rural_indicator')
 
-# print("applying aggregation to road types")
-# road_length_by_type = aggregator(aggegated_road_statistics, 'length', 'function', 'formofway', 'urban_rural_indicator')
+print('write all road statistics')
+road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
+csv_writer(aggegated_road_statistics, road_statistics_fieldnames, 'aggregated_road_statistics.csv')
 
-# print('write road lengths')
-# road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
-# csv_writer(road_length_by_type, road_statistics_fieldnames, 'road_length_by_type.csv')
+print("applying aggregation to road types")
+road_length_by_type = aggregator(aggegated_road_statistics, 'length', 'function', 'formofway', 'urban_rural_indicator')
 
-# print("merging road network stats with flow estimates")
-# average_flow_statistics = merge_two_list_of_dicts(aggegated_road_statistics, average_flow_data, 'road')
+print('write road lengths')
+road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
+csv_writer(road_length_by_type, road_statistics_fieldnames, 'road_length_by_type.csv')
 
-# print('write average flow statistics')
-# road_statistics_fieldnames = ['road', 'average_count', 'geotype', 'function', 'length']
-# csv_writer(average_flow_statistics, road_statistics_fieldnames, 'average_road_statistics.csv')
 
 
 end = time.time()
