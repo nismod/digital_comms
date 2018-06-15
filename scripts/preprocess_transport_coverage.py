@@ -39,16 +39,14 @@ CODEPOINT_OUTPUT_PATH = os.path.join(BASE_PATH, 'raw', 'codepoint')
 # IMPORT CODEPOINT SHAPES
 #####################################
 
-def import_postcodes():
+def import_postcodes(data):
 
     my_postcode_data = []
-
-    POSTCODE_DATA_DIRECTORY = os.path.join(CODEPOINT_INPUT_PATH,'codepoint-poly_2429451')
 
     # Initialze Rtree
     idx = index.Index()
 
-    for dirpath, subdirs, files in os.walk(POSTCODE_DATA_DIRECTORY):
+    for dirpath, subdirs, files in os.walk(data):
         for x in files:
             if x.endswith(".shp"):
                 with fiona.open(os.path.join(dirpath, x), 'r') as source:
@@ -120,7 +118,7 @@ def write_shapefile(data, path, crs):
         prop_schema.append((name, fiona_prop_type))
 
     sink_driver = 'ESRI Shapefile'
-    sink_crs = {'init': crs}
+    sink_crs = {'init':crs}
     sink_schema = {
         'geometry': data[0]['geometry']['type'],
         'properties': OrderedDict(prop_schema)
@@ -144,12 +142,16 @@ def import_shapes(file_path):
     with fiona.open(file_path, 'r') as source:
         return [shape for shape in source]
 
-def convert_projection_pcd_sectors(data):
+#####################################
+# CONVERT PROTECTIONS
+#####################################
+
+def convert_projection_cells(data):
 
     project = partial(
         pyproj.transform,
-        pyproj.Proj(init='epsg:27700'),
-        pyproj.Proj(init='epsg:4326')
+        pyproj.Proj(init='epsg:4326'),
+        pyproj.Proj(init='epsg:27700')
     )
 
     for feature in data:
@@ -157,15 +159,42 @@ def convert_projection_pcd_sectors(data):
 
     return data
 
+def convert_projection(data):
+
+    converted_data = []
+
+    projOSGB1936 = pyproj.Proj(init='epsg:27700')
+    projWGS84 = pyproj.Proj(init='epsg:4326')
+
+    for feature in data:
+
+        new_geom = []
+        coords = feature['geometry']['coordinates']
+
+        for coordList in coords:
+
+            try:
+                coordList = list(pyproj.transform(projWGS84, projOSGB1936, coordList[0], coordList[1]))
+                new_geom.append(coordList)
+
+            except:
+                print("Warning: Some loss of postcode sectors during projection conversion")
+                
+        feature['geometry']['coordinates'] = new_geom
+
+        converted_data.append(feature)
+        
+    return converted_data
+
 #####################################
 # IMPORT SUPPLY SIDE DATA
 #####################################
 
-def import_unique_cell_data():
+def import_unique_cell_data(data):
 
     os_unique_cell_data = []
 
-    with open(os.path.join(SYSTEM_INPUT_PATH, 'received_signal_data', 'os_unique_cells.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(data, 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
@@ -513,34 +542,6 @@ def read_in_built_up_areas():
     return built_up_area_polygon_data
 
 
-def convert_projection(data):
-
-    converted_data = []
-
-    projOSGB1936 = pyproj.Proj(init='epsg:27700')
-    projWGS84 = pyproj.Proj(init='epsg:4326')
-
-    for feature in data:
-
-        new_geom = []
-        coords = feature['geometry']['coordinates']
-
-        for coordList in coords:
-
-            try:
-                coordList = list(pyproj.transform(projOSGB1936, projWGS84, coordList[0], coordList[1]))
-                new_geom.append(coordList)
-
-            except:
-                print("Warning: Some loss of postcode sectors during projection conversion")
-                
-        feature['geometry']['coordinates'] = new_geom
-
-        converted_data.append(feature)
-        
-    return converted_data
-
-
 def add_urban_rural_indicator_to_roads(road_data, built_up_polygons): 
 
     joined_road_data = []
@@ -701,19 +702,19 @@ def csv_writer(data, output_fieldnames, filename):
         writer.writeheader()
         writer.writerows(data)
 
-
 #####################################
 # RUN SCRIPTS
 #####################################
 
 # print("importing codepoint postcode data")
-# postcodes = import_postcodes()
+# postcodes = import_postcodes(os.path.join(CODEPOINT_INPUT_PATH,'subset'))
+# #postcodes = import_postcodes(os.path.join(CODEPOINT_INPUT_PATH,'codepoint-poly_2429451'))
 
 # print("adding pcd_sector indicator")
 # postcodes = add_postcode_sector_indicator(postcodes)
 
 # print("writing postcodes")
-# write_shapefile(postcodes, os.path.join(CODEPOINT_OUTPUT_PATH, 'postcodes.shp'), 'epsg:27700')
+# write_shapefile(postcodes, os.path.join(CODEPOINT_OUTPUT_PATH, 'test_postcodes.shp'), 'epsg:27700')
 
 # print("dissolving on pcd_sector indicator")
 # dissolve('postcodes.shp', 'pcd_sectors.shp', ["pcd_sector"])
@@ -721,25 +722,32 @@ def csv_writer(data, output_fieldnames, filename):
 # print("reading in pcd_sector data")
 # pcd_sectors = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'pcd_sectors.shp'))
 
-# print("converting pcd_sector data to WSG84")
-# pcd_sectors = convert_projection_pcd_sectors(pcd_sectors)
+# ####print("converting pcd_sector data to WSG84")
+# ####pcd_sectors = convert_projection_pcd_sectors(pcd_sectors)
 
 # print("writing postcode sectors")
-# write_shapefile(pcd_sectors, os.path.join(SYSTEM_OUTPUT_PATH, 'pcd_sectors.shp'), 'epsg:4326')
+# write_shapefile(pcd_sectors, os.path.join(SYSTEM_OUTPUT_PATH, 'pcd_sectors.shp'), 'epsg:27700')
 
 #####################################
 
 # print("reading in pcd_sector data")
 # pcd_sectors = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'pcd_sectors.shp'))
 
-# print("reading in unique cell data")
-# unique_cells = import_unique_cell_data()
+print("reading in unique cell data")
+#unique_cells = import_unique_cell_data(os.path.join(SYSTEM_INPUT_PATH, 'received_signal_data', 'os_unique_cells_GB_27700.csv'))
+unique_cells = import_unique_cell_data(os.path.join(SYSTEM_INPUT_PATH, 'received_signal_data', 'os_unique_cells.csv'))
+
+print("converting data to GB grid 27700")
+unique_cells = convert_projection_cells(unique_cells)
+#unique_cells = convert_projection(unique_cells)
 
 # print("adding pcd sector id to cells")
 # unique_cells = add_polygon_id_to_point(unique_cells, pcd_sectors)
 
-# print("writing unique_cells to shapefile")
-# write_shapefile(unique_cells, os.path.join(SYSTEM_OUTPUT_PATH, 'unique_cells.shp'), 'epsg:4326')
+print(unique_cells[0])
+
+print("writing unique_cells to shapefile")
+write_shapefile(unique_cells, os.path.join(SYSTEM_OUTPUT_PATH, 'unique_cells.shp'), 'epsg:27700')
 
 # print("summing unique_cells by pcd_sector")
 # summed_cells = sum_cells_by_pcd_sectors(unique_cells)
@@ -824,38 +832,56 @@ def csv_writer(data, output_fieldnames, filename):
 
 #####################################
 
-print('read in road network')
-road_network = import_shapes(os.path.join(SYSTEM_INPUT_PATH, 'os_open_roads', 'open-roads_2438901_cambridge', 'TL_RoadLink.shp'))
+# print('read in road network')
+# road_network = import_shapes(os.path.join(SYSTEM_INPUT_PATH, 'os_open_roads', 'open-roads_2438901_cambridge', 'TL_RoadLink.shp'))
 
-print("reading in pcd_sector data")
-pcd_sectors = import_shapes(os.path.join(SYSTEM_INPUT_PATH,'codepoint', 'postcode_sectors_cambridge.shp'))
+# print("reading in pcd_sector data")
+# pcd_sectors = import_shapes(os.path.join(SYSTEM_INPUT_PATH,'codepoint', 'postcode_sectors_cambridge.shp'))
 
 def add_pcd_sector_indicator_to_roads(road_data, pcd_sector_polygons): 
-
-    joined_road_data = []
 
     # Initialze Rtree
     idx = index.Index()
 
-    for rtree_idx, road in enumerate(road_data):
-        idx.insert(rtree_idx, shape(road['geometry']).bounds, road)
-
-    # Join the two
-    for polygon in pcd_sector_polygons:
-        for n in idx.intersection((shape(polygon['geometry']).bounds), objects=True):
-            polygon_area_shape = shape(polygon['geometry'])
-            polygon_shape = shape(n.object['geometry'])
-            if polygon_area_shape.contains(polygon_shape):
-                n.object['properties']['pcd_sector'] = polygon['properties']['pcd_sector']
-                joined_road_data.append(n.object)
-            else:
-                n.object['properties']['pcd_sector'] = 'not in pcd_sector'
-                joined_road_data.append(n.object)
+    for rtree_idx, area in enumerate(pcd_sector_polygons):
+        idx.insert(rtree_idx, shape(area['geometry']).bounds, area)
     
-    return joined_road_data
+    # Join the two
+    for road in road_data:
+        matches = [n for n in idx.intersection((shape(road['geometry']).bounds), objects=True)]
+        if len(matches) > 0:
+            road['properties']['pcd_sector'] = matches[0].object['properties']['pcd_sector']
+        else:
+            road['properties']['pcd_sector'] = 'undefined'
 
-print('add pcd sector id to roads')
-road_network = add_pcd_sector_indicator_to_roads(road_network, pcd_sectors)
+    return road_data
+
+# def add_pcd_sector_indicator_to_roads(road_data, pcd_sector_polygons): 
+
+#     joined_road_data = []
+
+#     # Initialze Rtree
+#     idx = index.Index()
+
+#     for rtree_idx, road in enumerate(road_data):
+#         idx.insert(rtree_idx, shape(road['geometry']).bounds, road)
+
+#     # Join the two
+#     for polygon in pcd_sector_polygons:
+#         for n in idx.intersection((shape(polygon['geometry']).bounds), objects=True):
+#             polygon_area_shape = shape(polygon['geometry'])
+#             polygon_shape = shape(n.object['geometry'])
+#             if polygon_area_shape.contains(polygon_shape):
+#                 n.object['properties']['pcd_sector'] = polygon['properties']['pcd_sector']
+#                 joined_road_data.append(n.object)
+#             else:
+#                 n.object['properties']['pcd_sector'] = 'not in pcd_sector'
+#                 joined_road_data.append(n.object)
+    
+#     return joined_road_data
+
+# print('add pcd sector id to roads')
+# road_network = add_pcd_sector_indicator_to_roads(road_network, pcd_sectors)
 
 
 # print('delaing with missing values')
