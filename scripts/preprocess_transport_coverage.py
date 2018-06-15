@@ -561,32 +561,6 @@ def add_urban_rural_indicator_to_roads(road_data, built_up_polygons):
 
     return road_data
 
-# def add_urban_rural_indicator_to_roads(road_data, built_up_polygons): 
-
-#     joined_road_data = []
-
-#     # Initialze Rtree
-#     idx = index.Index()
-
-#     for rtree_idx, road in enumerate(road_data):
-#         idx.insert(rtree_idx, shape(road['geometry']).bounds, road)
-    
-#     # Join the two
-#     for area in built_up_polygons:
-#         for n in idx.intersection((shape(area['geometry']).bounds), objects=True):  
-#             urban_area_shape = shape(area['geometry'])
-#             urban_shape = shape(n.object['geometry'])
-#             if urban_area_shape.contains(urban_shape):
-#                 n.object['properties']['urban_rural_indicator'] = 'urban'
-#                 joined_road_data.append(n.object)
-
-#             else:
-#                 n.object['properties']['urban_rural_indicator'] = 'rural'
-#                 joined_road_data.append(n.object) 
-
-#     return joined_road_data
-
-
 
 def deal_with_none_values(data):
 
@@ -828,26 +802,67 @@ def csv_writer(data, output_fieldnames, filename):
 
 #####################################
 
+# print('read in road network')
+# road_network = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'road_network.shp'))
+
+# print("extracting geojson properties")
+# aggegated_road_statistics = extract_geojson_properties(road_network)
+
+# print("applying grouped aggregation")
+# aggegated_road_statistics = grouper(aggegated_road_statistics, 'length', 'road', 'function', 'formofway', 'urban_rural_indicator')
+
+# print('write all road statistics')
+# road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
+# csv_writer(aggegated_road_statistics, road_statistics_fieldnames, 'aggregated_road_statistics.csv')
+
+# print("applying aggregation to road types")
+# road_length_by_type = aggregator(aggegated_road_statistics, 'length', 'function', 'formofway', 'urban_rural_indicator')
+
+# print('write road lengths')
+# road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
+# csv_writer(road_length_by_type, road_statistics_fieldnames, 'road_length_by_type.csv')
+
+#####################################
+
 print('read in road network')
-road_network = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'road_network.shp'))
+road_network = import_shapes(os.path.join(SYSTEM_INPUT_PATH, 'os_open_roads', 'open-roads_2438901_cambridge', 'TL_RoadLink.shp'))
 
-print("extracting geojson properties")
-aggegated_road_statistics = extract_geojson_properties(road_network)
+print("reading in pcd_sector data")
+pcd_sectors = import_shapes(os.path.join(SYSTEM_INPUT_PATH,'codepoint', 'postcode_sectors_cambridge.shp'))
 
-print("applying grouped aggregation")
-aggegated_road_statistics = grouper(aggegated_road_statistics, 'length', 'road', 'function', 'formofway', 'urban_rural_indicator')
+def add_pcd_sector_indicator_to_roads(road_data, pcd_sector_polygons): 
 
-print('write all road statistics')
-road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
-csv_writer(aggegated_road_statistics, road_statistics_fieldnames, 'aggregated_road_statistics.csv')
+    joined_road_data = []
 
-print("applying aggregation to road types")
-road_length_by_type = aggregator(aggegated_road_statistics, 'length', 'function', 'formofway', 'urban_rural_indicator')
+    # Initialze Rtree
+    idx = index.Index()
 
-print('write road lengths')
-road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
-csv_writer(road_length_by_type, road_statistics_fieldnames, 'road_length_by_type.csv')
+    for rtree_idx, road in enumerate(road_data):
+        idx.insert(rtree_idx, shape(road['geometry']).bounds, road)
 
+    # Join the two
+    for polygon in pcd_sector_polygons:
+        for n in idx.intersection((shape(polygon['geometry']).bounds), objects=True):
+            polygon_area_shape = shape(polygon['geometry'])
+            polygon_shape = shape(n.object['geometry'])
+            if polygon_area_shape.contains(polygon_shape):
+                n.object['properties']['pcd_sector'] = polygon['properties']['pcd_sector']
+                joined_road_data.append(n.object)
+            else:
+                n.object['properties']['pcd_sector'] = 'not in pcd_sector'
+                joined_road_data.append(n.object)
+    
+    return joined_road_data
+
+print('add pcd sector id to roads')
+road_network = add_pcd_sector_indicator_to_roads(road_network, pcd_sectors)
+
+
+# print('delaing with missing values')
+# road_network = deal_with_none_values(road_network)
+
+# print("writing road network")
+# write_road_network_shapefile(road_network, 'road_network.shp')
 
 
 end = time.time()
