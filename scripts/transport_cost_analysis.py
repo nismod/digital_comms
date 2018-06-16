@@ -3,6 +3,7 @@ from pprint import pprint
 import configparser
 import csv
 import numpy as np
+from math import exp
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
@@ -145,6 +146,35 @@ def calculate_potential_demand(data, car_length, car_spacing):
     return data
 
 
+def s_curve_function(year, start, end, inflection, takeover, curviness):
+    
+    return start + (end - start) / (1 + curviness ** ((inflection + takeover / 2-(year-2019))/takeover))
+
+
+def calculate_yearly_CAV_take_up(data, year, scenario):
+
+    for road in data:
+        road['annual_CAV_take_up'] = round(road['total_cars'] * s_curve_function(year, 0, 0.75, 3, 6, 500), 0)
+
+    wtp_per_user = _get_scenario_wtp_value(scenario)
+
+    for road in data:
+        road['CAV_revenue'] = road['annual_CAV_take_up'] * (wtp_per_user * 12)
+
+    return data
+
+def _get_scenario_wtp_value(scenario):
+        
+    if scenario == 'high':
+        spacing = 10
+
+    elif scenario == 'baseline':
+        spacing = 4
+
+    elif scenario == 'low':
+        spacing = 1
+    
+    return spacing
 #####################################
 # calculate supply side costings
 #####################################
@@ -179,11 +209,13 @@ def calculate_tco_for_each_asset(capex, opex, discount_rate, current_year, year_
     return total_cost_of_ownership
 
 
-def calculate_number_of_RAN_units_and_civil_works_costs(data, year, cell_spacing, cell_capex, cell_civil_works_capex):
+def calculate_number_of_RAN_units_and_civil_works_costs(data, year, scenario, cell_capex, cell_civil_works_capex):
+
+    cell_spacing = _get_scenario_spacing_value(scenario)
 
     if BASE_YEAR <= year < 2024:  
         for road in data:
-            road['RAN_units'] = int(round(int(road['length_meters']) / cell_spacing, 0))
+            road['RAN_units'] = int(round(int(road['length_meters']) / int(cell_spacing), 0))
         
         for road in data:
             road['RAN_cost'] = road['RAN_units'] * cell_capex
@@ -208,17 +240,30 @@ def calculate_number_of_RAN_units_and_civil_works_costs(data, year, cell_spacing
 
     return data
 
-def calculate_backhaul_costs(data, scenario, fibre_tco):
+def _get_scenario_spacing_value(scenario):
+        
+    if scenario == 'high':
+        spacing = 200
+
+    elif scenario == 'baseline':
+        spacing = 800
+
+    elif scenario == 'low':
+        spacing = 2000
+    
+    return spacing
+
+def calculate_backhaul_costs(data, strategy, fibre_tco):
    
     if BASE_YEAR <= year < 2024:  
         for road in data:
             road['fibre_backhaul_meters'] = road['length_meters']  
 
-        if scenario == 'DSRC_full_greenfield':
+        if strategy == 'DSRC_full_greenfield':
             for road in data:
                 road['fibre_backhaul_cost'] = int(road['fibre_backhaul_meters']) *  fibre_tco
 
-        if scenario == 'DSRC_NRTS_greenfield':
+        if strategy == 'DSRC_NRTS_greenfield':
             for road in data:
                 road['fibre_backhaul_cost'] = (int(road['fibre_backhaul_meters'])/4) *  fibre_tco
 
@@ -241,17 +286,17 @@ def calculate_backhaul_costs(data, scenario, fibre_tco):
 # write out 
 #####################################
 
-def write_spend(data, year, scenario, cell_spacing, car_spacing):
-    suffix = _get_suffix(scenario, cell_spacing, car_spacing)
+def write_spend(data, year, scenario, strategy, car_spacing):
+    suffix = _get_suffix(scenario, strategy, car_spacing)
     filename = os.path.join(FILE_LOCATION, 'spend_{}.csv'.format(suffix))
 
     if year == BASE_YEAR:
         spend_file = open(filename, 'w', newline='')
         spend_writer = csv.writer(spend_file)
         spend_writer.writerow(
-            ('year', 'scenario', 'cell_spacing', 'car_spacing',
-             'road','road_function','formofway', 'length_meters',
-             'urban_rural', 'cars_per_lane', 'total_cars',
+            ('year', 'scenario', 'strategy', 'car_spacing',
+             'road','road_function','formofway', 'length_meters','urban_rural', 
+             'cars_per_lane', 'total_cars', 'annual_CAV_take_up','CAV_revenue',
              'RAN_units','RAN_cost','small_cell_mounting_points','small_cell_mounting_cost', 
              'fibre_backhaul_meters', 'fibre_backhaul_cost', 'total_tco'))
     else:
@@ -261,14 +306,14 @@ def write_spend(data, year, scenario, cell_spacing, car_spacing):
     # output and report results for this timestep
     for road in data:
         spend_writer.writerow(
-            (year, scenario, cell_spacing, car_spacing, 
-            road['road'], road['function'], road['formofway'], road['length_meters'], 
-            road['urban_rural'], road['cars_per_lane'], road['total_cars'],
+            (year, scenario, strategy, car_spacing, 
+            road['road'], road['function'], road['formofway'], road['length_meters'], road['urban_rural'], 
+            road['cars_per_lane'], road['total_cars'], road['annual_CAV_take_up'], road['CAV_revenue'],
             road['RAN_units'], road['RAN_cost'], road['small_cell_mounting_points'],road['small_cell_mounting_cost'], 
             road['fibre_backhaul_meters'], road['fibre_backhaul_cost'], road['total_tco']))
 
-def _get_suffix(scenario, cell_spacing, car_spacing):
-    suffix = 'scenario_{}_cell_spacing_{}_car_spacing{}'.format(scenario, cell_spacing, car_spacing)
+def _get_suffix(scenario, strategy, car_spacing):
+    suffix = 'scenario_{}_strategy_{}_car_spacing{}'.format(scenario, strategy, car_spacing)
     return suffix
 
 #####################################
@@ -284,27 +329,29 @@ small_cell_civil_works_tco = calculate_tco_for_each_asset(13300, 0, 0.035, 2019,
 fibre_tco_per_meter = calculate_tco_for_each_asset(10, 0.6, 0.035, 2019, 2020, 0, 2029, 'no') 
 
 print('running scenarios')
-for scenario, cell_spacing, car_spacing in [
-        ('DSRC_full_greenfield', 200, 15),
-        ('DSRC_full_greenfield', 800, 30),
-        ('DSRC_full_greenfield', 2000, 60),
+for scenario, strategy, car_spacing in [
+        ('high', 'DSRC_full_greenfield', 15),
+        ('baseline', 'DSRC_full_greenfield', 30),
+        ('low', 'DSRC_full_greenfield', 60),
 
-        ('DSRC_NRTS_greenfield', 200, 15),
-        ('DSRC_NRTS_greenfield', 800, 30),
-        ('DSRC_NRTS_greenfield', 2000, 60),
-
+        ('high', 'DSRC_NRTS_greenfield', 15),
+        ('baseline', 'DSRC_NRTS_greenfield', 30),
+        ('low', 'DSRC_NRTS_greenfield', 60),
     ]:
-    print("Running:", scenario, cell_spacing, car_spacing)
+
+    print("Running:", scenario, strategy, car_spacing)
 
     for year in TIMESTEPS:
         
         road_geotype_data = calculate_potential_demand(road_geotype_data, 5, car_spacing)
 
-        road_geotype_data = calculate_number_of_RAN_units_and_civil_works_costs(road_geotype_data, year, cell_spacing, small_cell_tco, small_cell_civil_works_tco)
+        road_geotype_data = calculate_yearly_CAV_take_up(road_geotype_data, year, scenario)
 
-        road_geotype_data = calculate_backhaul_costs(road_geotype_data, scenario, fibre_tco_per_meter)
+        road_geotype_data = calculate_number_of_RAN_units_and_civil_works_costs(road_geotype_data, year, scenario, small_cell_tco, small_cell_civil_works_tco)
 
-        write_spend(road_geotype_data, year, scenario, cell_spacing, car_spacing)
+        road_geotype_data = calculate_backhaul_costs(road_geotype_data, strategy, fibre_tco_per_meter)
+
+        write_spend(road_geotype_data, year, scenario, strategy, car_spacing)
 
 
 
