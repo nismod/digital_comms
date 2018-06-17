@@ -57,7 +57,7 @@ def read_in_csv_road_geotype_data(data):
         for line in reader:
             road_type_data.append({
                 'road': line[0],
-                'function': line[1],
+                'road_function': line[1],
                 'formofway': line[2],
                 'urban_rural': line[3],
                 'length_meters': line[4]
@@ -75,7 +75,7 @@ def calculate_potential_demand(data, car_length, car_spacing):
         road['cars_per_lane'] = int(round(int(road['length_meters']) / (car_length + car_spacing), 0))
 
     for road in data:
-        if road['function'] == 'Motorway': 
+        if road['road_function'] == 'Motorway': 
             if road['formofway'] == 'Collapsed Dual Carriageway':
                 road['total_cars'] = road['cars_per_lane'] * 6
             elif road['formofway'] == 'Dual Carriageway':
@@ -87,7 +87,7 @@ def calculate_potential_demand(data, car_length, car_spacing):
             elif road['formofway'] == 'Slip Road':
                 road['total_cars'] = road['cars_per_lane'] * 1
 
-        elif road['function'] == 'A Road': 
+        elif road['road_function'] == 'A Road': 
             if road['formofway'] == 'Collapsed Dual Carriageway':
                 road['total_cars'] = road['cars_per_lane'] * 4
             elif road['formofway'] == 'Dual Carriageway':
@@ -99,7 +99,7 @@ def calculate_potential_demand(data, car_length, car_spacing):
             elif road['formofway'] == 'Slip Road':
                 road['total_cars'] = road['cars_per_lane'] * 1
 
-        elif road['function'] == 'B Road': 
+        elif road['road_function'] == 'B Road': 
             if road['formofway'] == 'Collapsed Dual Carriageway':
                 road['total_cars'] = road['cars_per_lane'] * 2
             elif road['formofway'] == 'Dual Carriageway':
@@ -111,7 +111,7 @@ def calculate_potential_demand(data, car_length, car_spacing):
             elif road['formofway'] == 'Slip Road':
                 road['total_cars'] = road['cars_per_lane'] * 1
 
-        elif road['function'] == 'Minor Road': 
+        elif road['road_function'] == 'Minor Road': 
             if road['formofway'] == 'Collapsed Dual Carriageway':
                 road['total_cars'] = road['cars_per_lane'] * 2
             elif road['formofway'] == 'Dual Carriageway':
@@ -123,7 +123,7 @@ def calculate_potential_demand(data, car_length, car_spacing):
             elif road['formofway'] == 'Slip Road':
                 road['total_cars'] = road['cars_per_lane'] * 1
 
-        elif road['function'] == 'Local Road': 
+        elif road['road_function'] == 'Local Road': 
             if road['formofway'] == 'Collapsed Dual Carriageway':
                 road['total_cars'] = road['cars_per_lane'] * 2
             elif road['formofway'] == 'Dual Carriageway':
@@ -321,7 +321,7 @@ def write_spend(data, year, scenario, strategy, car_spacing):
     for road in data:
         spend_writer.writerow(
             (year, scenario, strategy, car_spacing, 
-            road['road'], road['function'], road['formofway'], road['length_meters'], road['urban_rural'], 
+            road['road'], road['road_function'], road['formofway'], road['length_meters'], road['urban_rural'], 
             road['cars_per_lane'], road['total_cars'], road['annual_CAV_take_up'], road['CAV_revenue'], road['CAV_mbps_demand'],
             road['RAN_units'], road['RAN_cost'], road['small_cell_mounting_points'],road['small_cell_mounting_cost'], 
             road['fibre_backhaul_meters'], road['fibre_backhaul_cost'], road['total_tco']))
@@ -386,7 +386,7 @@ def read_in_road_geotype_data(data):
             road_type_data.append({
                 
                 'pcd_sector': line[0],
-                'function': line[1],
+                'road_function': line[1],
                 'formofway': line[2],
                 'urban_rural': line[3],
                 'length_meters': line[4]
@@ -477,11 +477,17 @@ def merge_two_lists_of_dicts(msoa_list_of_dicts, oa_list_of_dicts, parameter1, p
 def deal_with_missing_population(data):
     
     my_data = []
-    
+    missing_data = []
+
     for datum in data:
         if 'population' and 'base_demand' in datum:
             my_data.append({
                 'pcd_sector': datum['pcd_sector'],
+                #'road_function': datum['road_function'],
+                #'formofway': datum['formofway'],
+                #'urban_rural': datum['urban_rural'],
+                #'length_meters': datum['length_meters'],
+                #'cars_per_lane': datum['cars_per_lane'],
                 'total_cars': datum['total_cars'],
                 'annual_CAV_take_up': datum['annual_CAV_take_up'],
                 'CAV_revenue': datum['CAV_revenue'],
@@ -490,24 +496,34 @@ def deal_with_missing_population(data):
                 'base_demand': datum['base_demand'],
             })
         else:
-            pass
-            print("THOWING AWAY NON COMPLETE POPULATION DATA")
+            missing_data.append({
+                'pcd_sector': datum['pcd_sector'],
+            })
     
+    if len(missing_data) > 0: 
+        print("THOWING AWAY NON COMPLETE POPULATION DATA")
+
     return my_data
 
 def deal_with_missing_cells(data):
 
     my_data = []
+    missing_data = []
 
     for datum in data:
         if 'cells' and 'area' and 'density' in datum:
             my_data.append({
                 'pcd_sector': datum['pcd_sector'],
+                #'road_function': datum['road_function'],
+                #'formofway': datum['formofway'],
+                #'urban_rural': datum['urban_rural'],
+                #'length_meters': datum['length_meters'],
+                #'cars_per_lane': datum['cars_per_lane'],
                 'total_cars': datum['total_cars'],
                 'annual_CAV_take_up': datum['annual_CAV_take_up'],
                 'CAV_revenue': datum['CAV_revenue'],
                 'CAV_mbps_demand': datum['CAV_mbps_demand'],
-                'population': datum['population'],
+                'population': datum['population'],              
                 'base_demand': datum['base_demand'],
                 'cells': datum['cells'],
                 'site_density': datum['site_density'],
@@ -516,8 +532,12 @@ def deal_with_missing_cells(data):
             })
 
         else:
-            pass
-            print("THOWING AWAY NON COMPLETE CELLS DATA")
+            missing_data.append({
+                'pcd_sector': datum['pcd_sector'],
+            })
+    
+    if len(missing_data) > 0: 
+        print("THOWING AWAY NON COMPLETE CELLS DATA")
 
     return my_data
 
@@ -535,7 +555,6 @@ def read_in_capacity_lut(data):
                     })  #load in capacity
 
     return capacity_lut_data
-
 
 def get_pcd_sector_capacity(data, lut):
 
@@ -576,13 +595,71 @@ def calculate_cost_of_new_assets(data, macrocell_asset_tco):
     for datum in data:
         datum['new_macro_cost'] = round(datum['new_sites'] * macrocell_asset_tco, 0)
 
-        datum['total_tco'] = round(datum['new_macro_cost'], 0) 
+        datum['total_tco'] = float(round(datum['new_macro_cost'], 0)) 
 
     return data
 
+def transfer_cost_from_pcd_sector_to_road_type(pcd_sector_data, road_data):
+
+    road_cost_data = []
+
+    for road in road_data:
+        for datum in pcd_sector_data:
+            if road['pcd_sector'] == datum['pcd_sector']:
+                if datum['total_tco'] > 0:
+                    try: 
+                        cost_per_car = float(datum['total_tco']) / float(datum['total_cars'])
+                        road['total_tco'] = float(road['total_cars']) * cost_per_car
+                    except:
+                        pass
+                elif datum['total_tco'] == 0:
+                    road['total_tco'] = 0
+                else:
+                    road['total_tco'] = 0
+                
+                road_cost_data.append({
+                    'pcd_sector': road['pcd_sector'],
+                    'road_function': road['road_function'],
+                    'formofway': road['formofway'],
+                    'urban_rural': road['urban_rural'],
+                    'length_meters': road['length_meters'],
+                    'cars_per_lane': road['cars_per_lane'],
+                    'total_cars': road['total_cars'],
+                    'total_tco': road['total_tco']
+                })
+    
+    return road_cost_data
+
+def deal_with_missing_road(data):
+
+    my_data = []
+    missing_data = []
+
+    for datum in data:
+        if 'total_tco' in datum:
+            my_data.append({
+                'pcd_sector': datum['pcd_sector'],
+                'road_function': datum['road_function'],
+                'formofway': datum['formofway'],
+                'urban_rural': datum['urban_rural'],
+                'length_meters': datum['length_meters'],
+                'cars_per_lane': datum['cars_per_lane'],
+                'total_cars': datum['total_cars'],
+                'total_tco': datum['total_tco'],
+            })
+
+        else:
+            missing_data.append({
+                'pcd_sector': datum['pcd_sector'],
+            })
+    
+    if len(missing_data) > 0: 
+        print("THOWING AWAY NON COMPLETE ROAD COST DATA")
+
+    return my_data
 
 #####################################
-# run functions
+# WRITE OUT CELLULAR SPEND BY PCD SECTOR
 #####################################
 
 def write_cellular_spend(data, year, scenario, strategy, car_spacing):
@@ -614,6 +691,34 @@ def write_cellular_spend(data, year, scenario, strategy, car_spacing):
             road['capacity'], road['new_density'], road['new_sites'], road['new_macro_cost'], road['total_tco']))
 
 #####################################
+# WRITE OUT CELLULAR SPEND BY ROAD
+#####################################
+
+def write_cellular_spend_by_road(data, year, scenario, strategy, car_spacing):
+    suffix = _get_suffix(scenario, strategy, car_spacing)
+    filename = os.path.join(FILE_LOCATION, 'road_spend_{}.csv'.format(suffix))
+
+    if year == BASE_YEAR:
+        spend_file = open(filename, 'w', newline='')
+        spend_writer = csv.writer(spend_file)
+        spend_writer.writerow(
+            ('year', 'scenario', 'strategy', 'car_spacing',
+             'road_function', 'urban_rural', 'total_tco'))
+    else:
+        spend_file = open(filename, 'a', newline='')
+        spend_writer = csv.writer(spend_file)
+
+    # output and report results for this timestep
+    for road in data:
+        spend_writer.writerow(
+            (year, scenario, strategy, car_spacing, 
+            road['road_function'], road['urban_rural'],  road['total_tco']))
+
+def _get_suffix(scenario, strategy, car_spacing):
+    suffix = 'scenario_{}_strategy_{}_car_spacing{}'.format(scenario, strategy, car_spacing)
+    return suffix
+
+#####################################
 # run functions
 #####################################
 
@@ -643,9 +748,11 @@ for scenario, strategy, car_spacing in [
 
     for year in TIMESTEPS:
         
-        pcd_sector_road_demand = calculate_potential_demand(road_by_pcd_sectors, 5, car_spacing)
+        print("-", year)
+        
+        all_roads_pcd_demand = calculate_potential_demand(road_by_pcd_sectors, 5, car_spacing)
 
-        pcd_sector_road_demand = aggregator(pcd_sector_road_demand,'total_cars','pcd_sector','pcd_sector')
+        pcd_sector_road_demand = aggregator(all_roads_pcd_demand,'total_cars','pcd_sector','pcd_sector')
 
         pcd_sector_road_demand = calculate_yearly_CAV_take_up(pcd_sector_road_demand, year, scenario)
 
@@ -668,6 +775,14 @@ for scenario, strategy, car_spacing in [
         pcd_sector_data = build_new_sites(pcd_sector_data, capacity_lut)
 
         pcd_sector_data = calculate_cost_of_new_assets(pcd_sector_data, macrocell_tco)
+
+        cost_by_road_type = transfer_cost_from_pcd_sector_to_road_type(pcd_sector_data, all_roads_pcd_demand)
+
+        cost_by_road_type = deal_with_missing_road(cost_by_road_type)
+
+        cost_by_road_type = aggregator(cost_by_road_type,'total_tco','road_function','urban_rural')
+
+        write_cellular_spend_by_road(cost_by_road_type, year, scenario, strategy, car_spacing)
 
         write_cellular_spend(pcd_sector_data, year, scenario, strategy, car_spacing)
         
