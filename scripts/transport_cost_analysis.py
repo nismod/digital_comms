@@ -569,7 +569,6 @@ def get_pcd_sector_capacity(data, lut):
 
         except:
             datum['capacity'] = 0 
-            raise Exception
 
     return data
 
