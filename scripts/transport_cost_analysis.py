@@ -577,6 +577,14 @@ def build_new_sites(data, lut):
 
 def calculate_cost_of_new_assets(data, macrocell_asset_tco):
 
+
+upgrade_lte_macro_tco = calculate_tco_for_each_asset(15000, 1800, 0.035, 2019, 2020, 10, 2029, 'no') 
+upgrade_macro_to_lte_tco = calculate_tco_for_each_asset(40900, 8898, 0.035, 2019, 2020, 10, 2029, 'no') 
+upgrade_macro_to_lte_civil_works = calculate_tco_for_each_asset(18000, 0, 0.035, 2019, 2020, 10, 2029, 'no') 
+fibre_tco_per_meter = calculate_tco_for_each_asset(10, 0.6, 0.035, 2019, 2020, 0, 2029, 'no') 
+
+
+
     for datum in data:
         datum['new_macro_cost'] = round(datum['new_sites'] * macrocell_asset_tco, 0)
 
@@ -717,7 +725,10 @@ print("reading in capacity lut")
 capacity_lut = read_in_capacity_lut('lookup_table_long.csv')
 
 print("calculating tco costs")
-macrocell_tco = calculate_tco_for_each_asset(110000, 1000, 0.035, 2019, 2020, 10, 2029, 'no') 
+upgrade_lte_macro_tco = calculate_tco_for_each_asset(15000, 1800, 0.035, 2019, 2020, 10, 2029, 'no') 
+upgrade_macro_to_lte_tco = calculate_tco_for_each_asset(40900, 8898, 0.035, 2019, 2020, 10, 2029, 'no') 
+upgrade_macro_to_lte_civil_works = calculate_tco_for_each_asset(18000, 0, 0.035, 2019, 2020, 10, 2029, 'no') 
+fibre_tco_per_meter = calculate_tco_for_each_asset(10, 0.6, 0.035, 2019, 2020, 0, 2029, 'no') 
 
 print('running scenarios')
 for scenario, strategy, car_spacing in [
