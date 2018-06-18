@@ -8,6 +8,8 @@ from math import exp
 from itertools import groupby
 from operator import itemgetter
 
+from digital_comms.mobile_network.model import pairwise, interpolate
+
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
@@ -545,11 +547,25 @@ def get_pcd_sector_capacity(data, lut):
 
     for datum in data:            
         try:
-            closest = {'site_density': float('inf'), 'capacity': None}
-            for l in lut:
-                if abs(l['site_density'] - datum['site_density']) < abs(closest['site_density'] - datum['site_density']):
-                    closest = l
-            datum['capacity'] = closest['capacity']
+            density_capacities = [(entry['site_density'], entry['capacity']) for entry in lut]
+            density_capacities.sort(key=lambda lut: lut[0])
+
+            lowest_density, lowest_capacity = density_capacities[0]
+            if datum['site_density'] < lowest_density:
+                # Never fail, return zero capacity if site density is below range
+                datum['capacity'] = 0
+            else:
+                for a, b in pairwise(density_capacities):
+                    lower_density, lower_capacity = a
+                    upper_density, upper_capacity = b
+                    if lower_density <= datum['site_density'] and datum['site_density'] < upper_density:
+                        # Interpolate between values
+                        datum['capacity'] = interpolate(lower_density, lower_capacity, upper_density, upper_capacity, datum['site_density'])
+
+            # If not caught between bounds return highest capacity
+            if not 'capacity' in datum:
+                highest_density, highest_capacity = density_capacities[-1]
+                datum['capacity'] = highest_capacity
 
         except:
             datum['capacity'] = 0 
