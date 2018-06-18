@@ -22,21 +22,6 @@ TIMESTEP_INCREMENT = 1
 TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
 
 #####################################
-# setup scenarios
-#####################################
-
-# SCENARIOS = [
-#     "DSRC_full_greenfield",
-#     "DSRC_NRTS_greenfield",
-# ]
-
-# CELL_SPACING = [
-#     200,
-#     800,
-#     2000
-# ]
-
-#####################################
 # setup file locations and data files
 #####################################
 
@@ -734,9 +719,6 @@ capacity_lut = read_in_capacity_lut('lookup_table_long.csv')
 print("calculating tco costs")
 macrocell_tco = calculate_tco_for_each_asset(110000, 1000, 0.035, 2019, 2020, 10, 2029, 'no') 
 
-# print("sorting capacity lut on capacity variable")
-# capacity_lut.sort(key=lambda lut: lut[0])
-# print(capacity_lut)
 print('running scenarios')
 for scenario, strategy, car_spacing in [
         ('high', 'cellular_V2X', 15),
