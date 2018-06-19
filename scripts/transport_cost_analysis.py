@@ -645,30 +645,30 @@ def build_new_sites(data, year, deployment_period, lut):
 
         for datum in data:            
             try:
-                density_capacities = [(entry['site_density'], entry['capacity']) for entry in lut]
-                density_capacities.sort(key=lambda lut: lut[0])
-               
-                lowest_density, lowest_capacity = density_capacities[0]
+                capacities_density = [(entry['capacity'], entry['site_density']) for entry in lut]
+                capacities_density.sort(key=lambda lut: lut[0])
+
+                lowest_capacity, lowest_density = capacities_density[0]
                 if datum['CAV_mbps_demand'] < lowest_capacity:
                     # Never fail, return zero capacity if site density is below range
                     datum['new_density'] = 0
                 else:
-                    for a, b in pairwise(density_capacities):
-                        lower_density, lower_capacity = a
-                        upper_density, upper_capacity = b
-                        if lower_capacity <= datum['CAV_demand'] and datum['CAV_demand'] < lower_capacity:
+                    for a, b in pairwise(capacities_density):
+                        lower_capacity, lower_density = a
+                        upper_capacity, upper_density = b
+                        if lower_capacity <= datum['CAV_mbps_demand'] and datum['CAV_mbps_demand'] < upper_capacity:
                             # Interpolate between values
-                            datum['new_density'] = round(interpolate(lower_density, lower_capacity, upper_density, upper_capacity, datum['CAV_mbps_demand']), 2)
-
+                            datum['new_density'] = round(interpolate(lower_capacity, lower_density, upper_capacity, upper_density, datum['CAV_mbps_demand']), 2)
+                            
                 # If not caught between bounds return highest capacity
                 if not 'new_density' in datum:
-                    highest_density, highest_capacity = density_capacities[-1]
-                    datum['new_density'] = round(highest_capacity, 2)
-
-                for datum in data:
-                    total_sites = datum['new_density'] * datum['area']
-                    datum['new_sites'] = int(round((total_sites - datum['site_density']) / deployment_period, 0))
-
+                    highest_capacity, highest_density = capacities_density[-1]
+                    datum['new_density'] = round(highest_density, 2)
+                    
+                # for datum in data:
+                #     total_sites = datum['new_density'] * datum['area']
+                #     datum['new_sites'] = int(round((total_sites - datum['site_density']) / deployment_period, 0))
+                    
             except:
                 datum['new_density'] = 0 
 
