@@ -313,9 +313,9 @@ def calculate_tco_for_each_asset(capex, opex, discount_rate, current_year, year_
     return total_cost_of_ownership
 
 
-def calculate_number_of_RAN_units_and_civil_works_costs(data, deployment_period, year, scenario, cell_capex, cell_civil_works_capex):
+def calculate_number_of_RAN_units_and_civil_works_costs(data, deployment_period, year, scenario, strategy, cell_capex, cell_civil_works_capex, cells_per_mounting):
 
-    cell_spacing = _get_scenario_cell_spacing_value(scenario)
+    cell_spacing = _get_scenario_cell_spacing_value(scenario, strategy)
 
     if BASE_YEAR <= year < (BASE_YEAR + deployment_period):  
         for road in data:
@@ -325,7 +325,7 @@ def calculate_number_of_RAN_units_and_civil_works_costs(data, deployment_period,
             road['RAN_cost'] = int(round((road['RAN_units'] * cell_capex) / deployment_period, 0))
 
         for road in data:
-            road['small_cell_mounting_points'] = int(round(road['RAN_units'] / deployment_period, 0))
+            road['small_cell_mounting_points'] = int(round((road['RAN_units'] / cells_per_mounting) / deployment_period, 0))
 
         for road in data:
             road['small_cell_mounting_cost'] = int(round((road['small_cell_mounting_points'] * cell_civil_works_capex) / deployment_period, 0))
@@ -344,16 +344,27 @@ def calculate_number_of_RAN_units_and_civil_works_costs(data, deployment_period,
 
     return data
 
-def _get_scenario_cell_spacing_value(scenario):
-        
-    if scenario == 'high':
-        spacing = 200
+def _get_scenario_cell_spacing_value(scenario, strategy):
+    
+    if strategy == 'cellular_V2X':
+        if scenario == 'high':
+            spacing = 400
 
-    elif scenario == 'baseline':
-        spacing = 800
+        elif scenario == 'baseline':
+            spacing = 800
 
-    elif scenario == 'low':
-        spacing = 2000
+        elif scenario == 'low':
+            spacing = 1000
+    
+    else:
+        if scenario == 'high':
+            spacing = 200
+
+        elif scenario == 'baseline':
+            spacing = 400
+
+        elif scenario == 'low':
+            spacing = 500
     
     return spacing
 
@@ -627,25 +638,40 @@ def upgrade_existing_sites(data, year, scenario, cell_tco, cell_civil_works_tco)
         
     return data
 
+
 def build_new_sites(data, year, deployment_period, lut):
 
     if BASE_YEAR <= year < 2024:  
 
-        for datum in data:                 
+        for datum in data:            
             try:
-                closest = {'site_density': float('inf'), 'demand': None}
-                for l in lut:
-                    if abs(l['site_density'] - datum['CAV_mbps_demand']) < abs(closest['site_density'] - datum['CAV_mbps_demand']):
-                        closest = l
-                datum['new_density'] = closest['site_density']
-            
-            except:
-                datum['new_density'] = 0        
+                density_capacities = [(entry['site_density'], entry['capacity']) for entry in lut]
+                density_capacities.sort(key=lambda lut: lut[0])
+               
+                lowest_density, lowest_capacity = density_capacities[0]
+                if datum['CAV_mbps_demand'] < lowest_capacity:
+                    # Never fail, return zero capacity if site density is below range
+                    datum['new_density'] = 0
+                else:
+                    for a, b in pairwise(density_capacities):
+                        lower_density, lower_capacity = a
+                        upper_density, upper_capacity = b
+                        if lower_capacity <= datum['CAV_demand'] and datum['CAV_demand'] < lower_capacity:
+                            # Interpolate between values
+                            datum['new_density'] = round(interpolate(lower_density, lower_capacity, upper_density, upper_capacity, datum['CAV_mbps_demand']), 2)
 
-        for datum in data:
-            total_sites = datum['new_density'] * datum['area']
-            datum['new_sites'] = int(round((total_sites - datum['site_density']) / deployment_period, 0))
-    
+                # If not caught between bounds return highest capacity
+                if not 'new_density' in datum:
+                    highest_density, highest_capacity = density_capacities[-1]
+                    datum['new_density'] = round(highest_capacity, 2)
+
+                for datum in data:
+                    total_sites = datum['new_density'] * datum['area']
+                    datum['new_sites'] = int(round((total_sites - datum['site_density']) / deployment_period, 0))
+
+            except:
+                datum['new_density'] = 0 
+
     else:
         for datum in data:  
             datum['new_density'] = 0
@@ -994,64 +1020,64 @@ for scenario, strategy, car_spacing in [
 
     print("Running:", scenario, strategy, car_spacing)
 
-    if strategy == 'DSRC_full_greenfield' or strategy == 'DSRC_NRTS_greenfield':
+    #if strategy == 'DSRC_full_greenfield' or strategy == 'DSRC_NRTS_greenfield':
         
-        for year in TIMESTEPS:
+    for year in TIMESTEPS:
 
-            print("-", year)
-            
-            road_geotype_data = calculate_potential_demand(road_geotype_data, 5, car_spacing)
-
-            road_geotype_data = calculate_yearly_CAV_take_up(road_geotype_data, year, scenario)
-
-            road_geotype_data = calculate_number_of_RAN_units_and_civil_works_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, scenario, small_cell_tco, small_cell_civil_works_tco)
-
-            road_geotype_data = calculate_backhaul_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, strategy, fibre_tco_per_meter)
-
-            write_spend(road_geotype_data, year, scenario, strategy, car_spacing)
+        print("-", year)
         
-    else:
+        road_geotype_data = calculate_potential_demand(road_geotype_data, 5, car_spacing)
+
+        road_geotype_data = calculate_yearly_CAV_take_up(road_geotype_data, year, scenario)
+
+        road_geotype_data = calculate_number_of_RAN_units_and_civil_works_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, scenario, strategy, small_cell_tco, small_cell_civil_works_tco, 2)
+
+        road_geotype_data = calculate_backhaul_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, strategy, fibre_tco_per_meter)
+
+        write_spend(road_geotype_data, year, scenario, strategy, car_spacing)
         
-        for year in TIMESTEPS:
+    # else:
+        
+    #     for year in TIMESTEPS:
 
-            print("-", year)
+    #         print("-", year)
 
-            all_roads_pcd_demand = calculate_potential_demand(road_by_pcd_sectors, 5, car_spacing)
+    #         all_roads_pcd_demand = calculate_potential_demand(road_by_pcd_sectors, 5, car_spacing)
 
-            pcd_sector_road_demand = aggregator(all_roads_pcd_demand,'total_cars','pcd_sector','pcd_sector')
+    #         pcd_sector_road_demand = aggregator(all_roads_pcd_demand,'total_cars','pcd_sector','pcd_sector')
 
-            pcd_sector_road_demand = calculate_yearly_CAV_take_up(pcd_sector_road_demand, year, scenario)
+    #         pcd_sector_road_demand = calculate_yearly_CAV_take_up(pcd_sector_road_demand, year, scenario)
 
-            pcd_sector_population = read_in_population_estimates('population_baseline_pcd.csv', year)
+    #         pcd_sector_population = read_in_population_estimates('population_baseline_pcd.csv', year)
 
-            user_demand = get_annual_user_demand('monthly_data_growth_scenarios.csv', year)
+    #         user_demand = get_annual_user_demand('monthly_data_growth_scenarios.csv', year)
 
-            baseline_demand = calc_pcd_sector_baseline_demand(pcd_sector_population, user_demand)
+    #         baseline_demand = calc_pcd_sector_baseline_demand(pcd_sector_population, user_demand)
 
-            pcd_sector_data = merge_two_lists_of_dicts(pcd_sector_road_demand, baseline_demand, 'pcd_sector', 'pcd_sector')
+    #         pcd_sector_data = merge_two_lists_of_dicts(pcd_sector_road_demand, baseline_demand, 'pcd_sector', 'pcd_sector')
 
-            pcd_sector_data = deal_with_missing_population(pcd_sector_data)
+    #         pcd_sector_data = deal_with_missing_population(pcd_sector_data)
 
-            pcd_sector_data = merge_two_lists_of_dicts(pcd_sector_data, cell_densities, 'pcd_sector', 'pcd_sector')
+    #         pcd_sector_data = merge_two_lists_of_dicts(pcd_sector_data, cell_densities, 'pcd_sector', 'pcd_sector')
 
-            pcd_sector_data = deal_with_missing_cells(pcd_sector_data)
+    #         pcd_sector_data = deal_with_missing_cells(pcd_sector_data)
 
-            pcd_sector_data = get_pcd_sector_capacity(pcd_sector_data, capacity_lut)
+    #         pcd_sector_data = get_pcd_sector_capacity(pcd_sector_data, capacity_lut)
 
-            pcd_sector_data = upgrade_existing_sites(pcd_sector_data, year, scenario, upgrade_lte_macro_tco, 0)
+    #         pcd_sector_data = upgrade_existing_sites(pcd_sector_data, year, scenario, upgrade_lte_macro_tco, 0)
             
-            pcd_sector_data = build_new_sites(pcd_sector_data, year, DEPLOYMENT_PERIOD, capacity_lut)
+    #         pcd_sector_data = build_new_sites(pcd_sector_data, year, DEPLOYMENT_PERIOD, capacity_lut)
 
-            pcd_sector_data = calculate_cost_of_new_assets(pcd_sector_data, DEPLOYMENT_PERIOD, upgrade_macro_to_lte_tco, upgrade_macro_to_lte_civil_works, fibre_tco_per_meter)
+    #         # pcd_sector_data = calculate_cost_of_new_assets(pcd_sector_data, DEPLOYMENT_PERIOD, upgrade_macro_to_lte_tco, upgrade_macro_to_lte_civil_works, fibre_tco_per_meter)
 
-            cost_by_road_type = transfer_cost_from_pcd_sector_to_road_type(pcd_sector_data, all_roads_pcd_demand)
+    #         # cost_by_road_type = transfer_cost_from_pcd_sector_to_road_type(pcd_sector_data, all_roads_pcd_demand)
             
-            cost_by_road_type = deal_with_missing_road(cost_by_road_type)
+    #         # cost_by_road_type = deal_with_missing_road(cost_by_road_type)
             
-            cost_by_road_type = aggregate_costs_by_road_type(cost_by_road_type)
+    #         # cost_by_road_type = aggregate_costs_by_road_type(cost_by_road_type)
 
-            write_cellular_spend_by_road(cost_by_road_type, year, scenario, strategy, car_spacing)
+    #         # write_cellular_spend_by_road(cost_by_road_type, year, scenario, strategy, car_spacing)
 
-            write_cellular_spend(pcd_sector_data, year, scenario, strategy, car_spacing)
+    #         # write_cellular_spend(pcd_sector_data, year, scenario, strategy, car_spacing)
 
        
