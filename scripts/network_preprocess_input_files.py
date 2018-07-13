@@ -1144,7 +1144,7 @@ def generate_link_straight_line(origin_points, dest_points):
 
 def generate_link_shortest_path(origin_points, dest_points, matching_area, cachefile=None):
 
-    ox.config(log_file=False, log_console=True, use_cache=True)
+    ox.config(log_file=False, log_console=False, use_cache=True)
 
     projUTM = Proj(init='epsg:27700')
     projWGS84 = Proj(init='epsg:4326')
