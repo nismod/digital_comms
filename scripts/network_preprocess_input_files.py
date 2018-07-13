@@ -27,16 +27,16 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 # setup file locations and data files
 #####################################
 
-SYSTEM_INPUT_FIXED = os.path.join(BASE_PATH, 'raw')
-SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'processed_cluster')
-SYSTEM_INPUT_NETWORK = os.path.join(SYSTEM_INPUT_FIXED, 'network_hierarchy_data')
+DATA_RAW = os.path.join(BASE_PATH, 'raw')
+DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
+SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'network_hierarchy_data')
 
 #####################################
 # READ LOOK UP TABLE (LUT) DATA
 #####################################
 
 def read_exchange_area(exchange_name):
-    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, '_exchange_areas.shp'), 'r') as source:
+    with fiona.open(os.path.join(DATA_INTERMEDIATE, '_exchange_areas.shp'), 'r') as source:
         return [exchange for exchange in source if exchange['properties']['id'] == exchange_name][0]
 
 def read_pcd_to_exchange_lut():
@@ -210,12 +210,12 @@ def read_postcode_areas(exchange_area):
 
     exchange_geom = shape(exchange_area['geometry'])
 
-    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, '_postcode_areas.shp'), 'r') as source:
+    with fiona.open(os.path.join(DATA_INTERMEDIATE, '_postcode_areas.shp'), 'r') as source:
         return [postcode_area for postcode_area in source if exchange_geom.contains(shape(postcode_area['geometry']))]
 
 def read_postcode_technology_lut():
 
-    SYSTEM_INPUT_NETWORK = os.path.join(SYSTEM_INPUT_FIXED, 'offcom_initial_system', 'fixed-postcode-2017')
+    SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'offcom_initial_system', 'fixed-postcode-2017')
 
     postcode_technology_lut = []
     for filename in os.listdir(SYSTEM_INPUT_NETWORK):
@@ -238,14 +238,14 @@ def read_postcode_technology_lut():
     return postcode_technology_lut
 
 def read_lads(exchange_area):
-    with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'), 'r') as source:
+    with fiona.open(os.path.join(DATA_RAW, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'), 'r') as source:
         exchange_geom = shape(exchange_area['geometry'])
         return [lad for lad in source if exchange_geom.intersection(shape(lad['geometry']))]
 
 def read_city_exchange_geotype_lut():
 
     exchange_geotypes = []
-    with open(os.path.join(SYSTEM_INPUT_FIXED, 'exchange_geotype_lut', 'exchange_geotype_lut.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW, 'exchange_geotype_lut', 'exchange_geotype_lut.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         next(reader)    
         for line in reader:
@@ -290,7 +290,7 @@ def read_premises(exchange_area):
     premises_data = []
     idx = index.Index()
 
-    pathlist = glob.iglob(os.path.join(SYSTEM_INPUT_FIXED, 'layer_5_premises', 'blds_with_functions_EO_2018_03_29') + '/*.csv', recursive=True)
+    pathlist = glob.iglob(os.path.join(DATA_RAW, 'layer_5_premises', 'blds_with_functions_EO_2018_03_29') + '/*.csv', recursive=True)
 
     exchange_geom = shape(exchange_area['geometry'])
     exchange_bounds = shape(exchange_area['geometry']).bounds
@@ -354,7 +354,7 @@ def read_exchanges(exchange_area):
 
     idx = index.Index()
 
-    with open(os.path.join(SYSTEM_INPUT_FIXED, 'layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
+    with open(os.path.join(DATA_RAW, 'layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
         reader = csv.reader(system_file)
         next(reader)
     
@@ -1039,7 +1039,7 @@ def generate_exchange_area(exchanges, merge=True):
 # PROCESS ASSETS
 #####################################
 
-def estimate_dist_points(premises, cachefile=None):
+def estimate_dist_points(premises, exchange_name, cachefile=None):
     """Estimate distribution point locations.
 
     Parameters
@@ -1056,7 +1056,7 @@ def estimate_dist_points(premises, cachefile=None):
 
     # Use previous file if specified
     if cachefile != None:
-        cachefile = os.path.join(SYSTEM_OUTPUT_FILENAME, cachefile)
+        cachefile = os.path.join(DATA_INTERMEDIATE, cachefile)
         if os.path.isfile(cachefile):
             with fiona.open(cachefile, 'r') as source:
                 for f in source:
@@ -1084,7 +1084,7 @@ def estimate_dist_points(premises, cachefile=None):
                     "coordinates": [dist_point_location[0], dist_point_location[1]]
                 },
                 'properties': {
-                    "id": "distribution_" + str(idx)
+                    "id": "distribution_{" + exchange_name + "}{" + str(idx) + "}"
                 }
             })        
 
@@ -1153,7 +1153,7 @@ def generate_link_shortest_path(origin_points, dest_points, matching_area, cache
 
     lookup = {}
     if cachefile != None:
-        cachefile = os.path.join(SYSTEM_OUTPUT_FILENAME, cachefile)
+        cachefile = os.path.join(DATA_INTERMEDIATE, cachefile)
         if os.path.isfile(cachefile):
             with fiona.open(cachefile, 'r') as source:
                 for f in source:
@@ -1283,7 +1283,7 @@ def write_shapefile(data, exchange_name, filename):
     }
 
     # Create path
-    directory = os.path.join(SYSTEM_OUTPUT_FILENAME, exchange_name)
+    directory = os.path.join(DATA_INTERMEDIATE, exchange_name)
     if not os.path.exists(directory):
         os.makedirs(directory)
 
@@ -1356,7 +1356,7 @@ if __name__ == "__main__":
     geojson_postcode_areas = complement_postcode_cabinets(geojson_postcode_areas, geojson_layer5_premises, geojson_layer2_exchanges)
 
     print('estimate location of distribution points')
-    geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises)
+    geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises, exchange_name)
 
     print('estimate cabinet locations')
     geojson_layer3_cabinets = estimate_cabinet_locations(geojson_postcode_areas)
