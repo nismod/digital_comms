@@ -556,7 +556,7 @@ def add_urban_geotype_to_exchanges(exchanges, exchange_geotype_lut):
     
     return exchanges
 
-def complement_postcode_cabinets(postcode_areas, premises, exchanges):
+def complement_postcode_cabinets(postcode_areas, premises, exchanges, exchange_abbr):
 
     for exchange in exchanges:
 
@@ -606,7 +606,7 @@ def complement_postcode_cabinets(postcode_areas, premises, exchanges):
                             "coordinates": [cab_point_location[0], cab_point_location[1]]
                         },
                         'properties': {
-                            "id": "cabinet_{" + exchange['properties']['id'] + "}{GEN" + str(idx) + '}'
+                            "id": "{" + exchange_abbr + "}{GEN" + str(idx) + '}'
                         }
                     })     
 
@@ -1303,6 +1303,7 @@ if __name__ == "__main__":
     # Read LUTs
     print('Process ' + sys.argv[1])
     exchange_name = sys.argv[1]
+    exchange_abbr = sys.argv[1].replace('exchange_', '')
 
     print('read exchange area')
     exchange_area = read_exchange_area(exchange_name)
@@ -1353,10 +1354,10 @@ if __name__ == "__main__":
 
     # Process/Estimate assets    
     print('complement cabinet locations as expected for this geotype')
-    geojson_postcode_areas = complement_postcode_cabinets(geojson_postcode_areas, geojson_layer5_premises, geojson_layer2_exchanges)
+    geojson_postcode_areas = complement_postcode_cabinets(geojson_postcode_areas, geojson_layer5_premises, geojson_layer2_exchanges, exchange_abbr)
 
     print('estimate location of distribution points')
-    geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises, exchange_name)
+    geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises, exchange_abbr)
 
     print('estimate cabinet locations')
     geojson_layer3_cabinets = estimate_cabinet_locations(geojson_postcode_areas)
