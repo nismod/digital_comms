@@ -12,7 +12,6 @@ from shapely.geometry import shape, Point, LineString, Polygon, MultiPolygon, ma
 from shapely.ops import unary_union, cascaded_union
 from pyproj import Proj, transform
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
-from scipy.spatial import Voronoi, voronoi_plot_2d
 from rtree import index
 
 from collections import OrderedDict, defaultdict
@@ -27,9 +26,8 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 # setup file locations and data files
 #####################################
 
-SYSTEM_INPUT_FIXED = os.path.join(BASE_PATH, 'raw')
-SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'processed')
-SYSTEM_INPUT_NETWORK = os.path.join(SYSTEM_INPUT_FIXED, 'network_hierarchy_data')
+DATA_RAW = os.path.join(BASE_PATH, 'raw')
+DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 
 #####################################
 # READ LOOK UP TABLE (LUT) DATA
@@ -58,7 +56,7 @@ def read_pcd_to_exchange_lut():
     """
     pcd_to_exchange_data = []
 
-    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW, 'network_hierarchy_data', 'January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
@@ -68,7 +66,7 @@ def read_pcd_to_exchange_lut():
                 'postcode': line[1].replace(" ", "")
             })
 
-    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part One.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW, 'network_hierarchy_data', 'January 2013 PCP to Postcode File Part One.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
@@ -78,7 +76,7 @@ def read_pcd_to_exchange_lut():
                 'postcode': line[1].replace(" ", "")
             })
 
-    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'pcp.to.pcd.dec.11.one.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW, 'network_hierarchy_data', 'pcp.to.pcd.dec.11.one.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
@@ -88,7 +86,7 @@ def read_pcd_to_exchange_lut():
                 'postcode': line[1].replace(" ", "")
             })
 
-    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'pcp.to.pcd.dec.11.two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW, 'network_hierarchy_data', 'pcp.to.pcd.dec.11.two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
@@ -97,7 +95,7 @@ def read_pcd_to_exchange_lut():
                 'postcode': line[1].replace(" ", "")
             })
 
-    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'from_tomasso_valletti.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW, 'network_hierarchy_data', 'from_tomasso_valletti.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
@@ -126,7 +124,7 @@ def read_postcode_areas():
 
     postcode_areas = []
 
-    pathlist = glob.iglob(os.path.join(SYSTEM_INPUT_FIXED, 'codepoint', 'codepoint-poly_2429451') + '/**/*.shp', recursive=True)
+    pathlist = glob.iglob(os.path.join(DATA_RAW, 'codepoint', 'codepoint-poly_2429451') + '/**/*.shp', recursive=True)
 
     for path in pathlist:
 
@@ -209,7 +207,7 @@ def read_exchanges():
 
     exchanges = []
 
-    with open(os.path.join(SYSTEM_INPUT_FIXED, 'layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
+    with open(os.path.join(DATA_RAW, 'layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
         reader = csv.reader(system_file)
         next(reader)
     
@@ -398,7 +396,7 @@ def generate_exchange_area(exchanges, merge=True):
     return exchange_areas
 
 def read_exchange_area():
-    with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'exchange_areas', '_exchange_areas.shp'), 'r') as source:
+    with fiona.open(os.path.join(DATA_INTERMEDIATE, 'exchange_areas', '_exchange_areas.shp'), 'r') as source:
         return [exchange for exchange in source]
 
 def write_shapefile(data, path):
@@ -417,7 +415,7 @@ def write_shapefile(data, path):
     }
 
     # Write all elements to output file
-    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, path), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
+    with fiona.open(os.path.join(DATA_INTERMEDIATE, path), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         for feature in data:
             sink.write(feature)
 
@@ -427,9 +425,9 @@ def write_shapefile(data, path):
 
 if __name__ == "__main__":
 
-    SYSTEM_INPUT = os.path.join('data', 'raw')
+    SYSTEM_INPUT = os.path.join('data', 'digital_comms', 'raw')
 
-    if not os.path.isfile(os.path.join(SYSTEM_INPUT_FIXED, 'exchange_areas', '_exchange_areas.shp')):
+    if not os.path.isfile(os.path.join(DATA_INTERMEDIATE, 'exchange_areas', '_exchange_areas.shp')):
 
         # Read LUTs
         print('read_pcd_to_exchange_lut')
@@ -458,8 +456,28 @@ if __name__ == "__main__":
 
     exchange_areas = read_exchange_area()
     #[print(exchange['properties']['id']) for exchange in exchange_areas]
-    print('exchange_SMOF')
-    print('exchange_SMSM')
-    print('exchange_SMHD')
-    print('exchange_SMCO')
-    print('exchange_SMCNR')
+
+    print('exchange_EAARR')
+    print('exchange_EABTM')
+    print('exchange_EABWL')
+    print('exchange_EACAM')
+    print('exchange_EACFH')
+    print('exchange_EACOM')
+    print('exchange_EACRH')
+    print('exchange_EACTM')
+    print('exchange_EAESW')
+    print('exchange_EAFUL')
+    print('exchange_EAGIR')
+    print('exchange_EAHIS')
+    print('exchange_EAHST')
+    print('exchange_EALNT')
+    print('exchange_EAMAD')
+    print('exchange_EAMBN')
+    print('exchange_EASCI')
+    print('exchange_EASIX')
+    print('exchange_EASST')
+    print('exchange_EASWV')
+    print('exchange_EATEV')
+    print('exchange_EATRU')
+    print('exchange_EAWLM')
+    print('exchange_EAWTB')
