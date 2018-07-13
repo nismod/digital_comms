@@ -15,6 +15,7 @@ Contents
    :maxdepth: 2
 
    Getting Started <getting_started>
+   Fixed Network <fixed_network>
    Changelog <changes>
    License <license>
    Authors <authors>
