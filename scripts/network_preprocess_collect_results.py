@@ -9,14 +9,14 @@ CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
-SYSTEM_INPUT_FIXED = os.path.join(BASE_PATH, 'processed_cluster')
-SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'processed')
+DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
+DATA_PROCESSED = os.path.join(BASE_PATH, 'processed')
 
 def collect_results(selection, name):
 
     results = []
     for entry in selection:
-        results.append(os.path.join(SYSTEM_INPUT_FIXED, entry, name))
+        results.append(os.path.join(DATA_INTERMEDIATE, entry, name))
     
     geojson_results = []
     for result_file in results:
@@ -44,7 +44,7 @@ def write_shapefile(data, filename):
     }
 
     # Create path
-    directory = os.path.join(SYSTEM_OUTPUT_FILENAME)
+    directory = os.path.join(DATA_PROCESSED)
     if not os.path.exists(directory):
         os.makedirs(directory)
 
@@ -56,7 +56,10 @@ if __name__ == "__main__":
 
     selection = []
 
-    if sys.argv[1] == 'cambridge':
+    if 1 not in sys.argv:
+        selection = [item for item in os.listdir(DATA_INTERMEDIATE) if os.path.isdir(os.path.join(DATA_INTERMEDIATE, item))]
+        selection.remove('exchange_areas')
+    elif sys.argv[1] == 'cambridge':
         selection = [
             'exchange_EAARR',
             'exchange_EABTM',
@@ -84,7 +87,7 @@ if __name__ == "__main__":
             'exchange_EAWTB'
         ]
 
-    if sys.argv[1] == 'oxford':
+    elif sys.argv[1] == 'oxford':
         selection = [
             'exchange_SMSLK',
             'exchange_SMSNF',
@@ -121,7 +124,7 @@ if __name__ == "__main__":
             'exchange_SMGN',
         ]
 
-    if sys.argv[1] == 'leeds':
+    elif sys.argv[1] == 'leeds':
         selection = [
             'exchange_MYTAD',
             'exchange_MYBOS',
@@ -222,7 +225,7 @@ if __name__ == "__main__":
             'exchange_MYADD',
         ]
 
-    if sys.argv[1] == 'newcastle':
+    elif sys.argv[1] == 'newcastle':
         selection = [
             'exchange_NENTE',
             'exchange_NENT',
