@@ -7,6 +7,7 @@ import fiona
 import numpy as np
 import random
 import glob
+import networkx
 
 from shapely.geometry import shape, Point, LineString, Polygon, MultiPolygon, mapping
 from shapely.ops import unary_union, cascaded_union
@@ -1198,18 +1199,21 @@ def generate_link_shortest_path(origin_points, dest_points, matching_area, cache
                         origin_node = ox.get_nearest_node(G, point1)
                         destination_node = ox.get_nearest_node(G, point2)
 
-                        if origin_node != destination_node:           
-                            # Find the shortest path over the network between these nodes
-                            route = nx.shortest_path(G, origin_node, destination_node)
+                        try:
+                            if origin_node != destination_node:           
+                                # Find the shortest path over the network between these nodes
+                                route = nx.shortest_path(G, origin_node, destination_node)
 
-                            # Retrieve route nodes and lookup geographical location
-                            routeline = []
-                            routeline.append((origin_x, origin_y))
-                            for node in route:
-                                routeline.append((transform(projWGS84, projUTM, G.nodes[node]['x'], G.nodes[node]['y'])))
-                            routeline.append((dest_x, dest_y))
-                            line = routeline
-                        else:
+                                # Retrieve route nodes and lookup geographical location
+                                routeline = []
+                                routeline.append((origin_x, origin_y))
+                                for node in route:
+                                    routeline.append((transform(projWGS84, projUTM, G.nodes[node]['x'], G.nodes[node]['y'])))
+                                routeline.append((dest_x, dest_y))
+                                line = routeline
+                            else:
+                                line = [(origin_x, origin_y), (dest_x, dest_y)]
+                        except networkx.exception.NetworkXNoPath:
                             line = [(origin_x, origin_y), (dest_x, dest_y)]
                     else:
                         line = lookup[tuple(origin['geometry']['coordinates'])]
