@@ -1,0 +1,84 @@
+name: NISMOD v2.0.0
+# ------------------------------------------------
+scenario_sets:
+- name: population
+  description: UK population, total people
+  facets:
+  - name: population
+    description: ''
+- name: gva
+  description: Gross value added
+  facets:
+  - name: gva
+    description: ''
+region_definitions:
+# shared understanding of regions within the modelled area (e.g. GB)
+- description: Broadband network distributions (Fixed network)
+  filename: ../digital_comms/processed/assets_layer4_distributions.shp
+  name: broadband_distributions
+- description: Broadband network cabinets (Fixed network)
+  filename: ../digital_comms/processed/assets_layer3_cabinets.shp
+  name: broadband_cabinets
+- description: Boundary of Great Britain
+  filename: national.shp
+  name: national
+# ------------------------------------------------
+interval_definitions:
+# shared understanding of time intervals within a year
+- name: hourly
+  description: Every hour in a year
+  filename: hourly_intervals.csv
+- description: One annual interval of 8760 hours
+  filename: annual_intervals.csv
+  name: annual
+- description: One representative day
+  filename: annual_day.csv
+  name: annual_day
+- description: One week in each season mapped to all other weeks in the season
+  filename: seasonal_week.csv
+  name: seasonal_week
+- description: The seasons covered by the model
+  filename: seasons.csv
+  name: seasons
+# ------------------------------------------------
+units: units.txt
+# ------------------------------------------------
+scenarios:
+- name: pop_baseline
+  description: Baseline population for the UK
+  scenario_set: population
+  facets:
+  - name: population
+    filename: uk_population_by_district_codes_Baseline.csv
+    spatial_resolution: lad_uk_2016
+    temporal_resolution: annual
+    units: people
+- name: pop_high
+  description: High population for the UK
+  scenario_set: population
+  facets:
+  - name: population
+    filename: uk_population_by_district_codes_High.csv
+    spatial_resolution: lad_uk_2016
+    temporal_resolution: annual
+    units: people
+- name: pop_low
+  description: Low population for the UK
+  scenario_set: population
+  facets:
+  - name: population
+    filename: uk_population_by_district_codes_Low.csv
+    spatial_resolution: lad_uk_2016
+    temporal_resolution: annual
+    units: people
+- name: gva_baseline
+  description: Baseline gva for the UK
+  scenario_set: gva
+  facets:
+  - name: gva
+    filename: gva_sven.csv
+    spatial_resolution: lad_uk_2016
+    temporal_resolution: annual
+    units: GBP
+narrative_sets: []
+narratives: []

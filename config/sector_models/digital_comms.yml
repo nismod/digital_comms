@@ -1,0 +1,173 @@
+classname: DigitalCommsWrapper
+description: The Cambridge Communications Assessment Model provides analytics for
+  decision-makers on (i) capacity-demand and (ii) risk, vulnerability and resilience.
+  The fixed, wireless and satellite sectors are currently under development.
+initial_conditions: []
+inputs: []
+interventions: []
+name: digital_comms
+outputs:
+- name: interventions
+  spatial_resolution: national
+  temporal_resolution: annual
+  units: assets
+- name: distribution_upgrades
+  spatial_resolution: broadband_distributions
+  temporal_resolution: annual
+  units: GBP
+- name: distribution_upgrade_costs_fttp
+  spatial_resolution: broadband_distributions
+  temporal_resolution: annual
+  units: GBP
+parameters:
+- absolute_range: (0, 1000)
+  default_value: 20
+  description: The cost of installing a fiber link
+  name: costs_links_fiber_meter
+  suggested_range: (0, 100)
+  units: GBP
+- absolute_range: (0, 1000)
+  default_value: 10
+  description: The cost of installing a copper link
+  name: costs_links_copper_meter
+  suggested_range: (0, 100)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 50000
+  description: The costs to enable an exchange to service FTTP
+  name: costs_assets_exchange_fttp
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 40000
+  description: The costs to enable an exchange to service GFast
+  name: costs_assets_exchange_gfast
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 30000
+  description: The costs to enable an exchange to service FTTC
+  name: costs_assets_exchange_fttc
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 20000
+  description: The costs to enable an exchange to service ADSL
+  name: costs_assets_exchange_adsl
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 5000
+  description: The costs to enable a cabinet to service FTTP
+  name: costs_assets_cabinet_fttp_32_ports
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 4000
+  description: The costs to enable a cabinet to service GFast
+  name: costs_assets_cabinet_gfast
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 3000
+  description: The costs to enable a cabinet to service FTTC
+  name: costs_assets_cabinet_fttc
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 2000
+  description: The costs to enable a cabinet to service ADSL
+  name: costs_assets_cabinet_adsl
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 500
+  description: The costs to enable a distribution to service FTTP
+  name: costs_assets_distribution_fttp_32_ports
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 400
+  description: The costs to enable a distribution to service GFast
+  name: costs_assets_distribution_gfast_4_ports
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 300
+  description: The costs to enable a distribution to service FTTC
+  name: costs_assets_distribution_fttc
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 200
+  description: The costs to enable a distribution to service ADSL
+  name: costs_assets_distribution_adsl
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 50
+  description: The costs to enable a premise to receive FTTP
+  name: costs_assets_premise_fttp_modem
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 50
+  description: The costs to enable a premise to receive FTTP
+  name: costs_assets_premise_fttp_optical_network_terminator
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 40
+  description: The costs to enable a premise to receive GFast
+  name: costs_assets_premise_gfast_modem
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 30
+  description: The costs to enable a premise to receive FTTC
+  name: costs_assets_premise_fttc_modem
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 20
+  description: The costs to enable a premise to receive ADSL
+  name: costs_assets_premise_adsl_modem
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 50
+  description: The benefits to enable a premise to receive FTTP
+  name: benefits_assets_premise_fttp
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 40
+  description: The benefits to enable a premise to receive GFast
+  name: benefits_assets_premise_gfast
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 30
+  description: The benefits to enable a premise to receive FTTC
+  name: benefits_assets_premise_fttc
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000)
+  default_value: 20
+  description: The benefits to enable a premise to receive ADSL
+  name: benefits_assets_premise_adsl
+  suggested_range: (0, 100000)
+  units: GBP
+- absolute_range: (0, 100000000)
+  default_value: 100000
+  description: The yearly budget to spend on infrastructure
+  name: annual_budget
+  suggested_range: (0, 1000000)
+  units: GBP
+- absolute_range: (0, 10000)
+  default_value: 10
+  description: Service obligation capacity
+  name: service_obligation_capacity
+  suggested_range: (0, 1000)
+  units: mbps
+path: digital_comms/run.py
