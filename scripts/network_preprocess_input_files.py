@@ -143,54 +143,60 @@ def read_pcd_to_cabinet_lut():
     pcp_data = {}
     exchange_id =  exchange_name.replace('exchange_', '')
 
+
     with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
         for line in reader:
-            pcp_data[line[2].replace(" ", "")] = {
-                'exchange_id': line[0],
-                'name': line[1],
-                'cabinet_id': line[3],
-                'exchange_only_flag': line[4]
-            }
+            if line[0] == exchange_id:
+                pcp_data[line[2].replace(" ", "")] = {
+                    'exchange_id': line[0],
+                    'name': line[1],
+                    'cabinet_id': line[3],
+                    'exchange_only_flag': line[4]
+                }
 
     with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part Two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
         for line in reader:
-            pcp_data[line[2].replace(" ", "")] = {
-                'exchange_id': line[0],
-                'name': line[1],
-                'cabinet_id': line[3],
-                'exchange_only_flag': line[4]
-                ###skip other unwanted variables
-            }
+            if line[0] == exchange_id:
+                pcp_data[line[2].replace(" ", "")] = {
+                    'exchange_id': line[0],
+                    'name': line[1],
+                    'cabinet_id': line[3],
+                    'exchange_only_flag': line[4]
+                    ###skip other unwanted variables
+                }
 
     with open(os.path.join(SYSTEM_INPUT_NETWORK, 'pcp.to.pcd.dec.11.one.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
-            pcp_data[line[2].replace(" ", "")] = {
-                'exchange_id': line[0],
-                'name': line[1],
-                'cabinet_id': line[3],
-                'exchange_only_flag': line[4]
-                ###skip other unwanted variables
-            }
+            if line[0] == exchange_id:
+                pcp_data[line[2].replace(" ", "")] = {
+                    'exchange_id': line[0],
+                    'name': line[1],
+                    'cabinet_id': line[3],
+                    'exchange_only_flag': line[4]
+                    ###skip other unwanted variables
+                }
 
     with open(os.path.join(SYSTEM_INPUT_NETWORK, 'pcp.to.pcd.dec.11.two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
-            pcp_data[line[2].replace(" ", "")] = {
-                'exchange_id': line[0],
-                'name': line[1],
-                'cabinet_id': line[3],
-                'exchange_only_flag': line[4]
-                ###skip other unwanted variables
-            }
+            if line[0] == exchange_id:
+                pcp_data[line[2].replace(" ", "")] = {
+                    'exchange_id': line[0],
+                    'name': line[1],
+                    'cabinet_id': line[3],
+                    'exchange_only_flag': line[4]
+                    ###skip other unwanted variables
+                }
+
 
     return pcp_data
 

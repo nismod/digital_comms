@@ -58,7 +58,6 @@ if __name__ == "__main__":
 
     if 1 not in sys.argv:
         selection = [item for item in os.listdir(DATA_INTERMEDIATE) if os.path.isdir(os.path.join(DATA_INTERMEDIATE, item))]
-        selection.remove('exchange_areas')
     elif sys.argv[1] == 'cambridge':
         selection = [
             'exchange_EAARR',
