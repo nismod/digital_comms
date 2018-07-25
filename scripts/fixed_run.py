@@ -30,7 +30,7 @@ MARKET_SHARE = 0.3
 
 # Annual capital budget constraint for the whole industry, GBP * market share
 # ANNUAL_BUDGET = (2 * 10 ** 9) * MARKET_SHARE
-ANNUAL_BUDGET = 100000
+ANNUAL_BUDGET = 1000000
 
 # Target threshold for universal mobile service, in Mbps/user
 SERVICE_OBLIGATION_CAPACITY = 10
@@ -198,16 +198,12 @@ if __name__ == "__main__": # allow the module to be executed directly
             # Simulate first
             if year == BASE_YEAR:
                 system = model.ICTManager(assets, links, parameters)
-                #pprint.pprint(system.capacity())
 
             # Decide interventions
             intervention_decisions, budget, spend = interventions.decide_interventions(intervention_strategy, budget, service_obligation_capacity, system, year)
 
             # Upgrade
             system.upgrade(intervention_decisions)
-
-            # for premises in system._premises: 
-            #     pprint.pprint(premises.gfast)
 
             write_decisions(intervention_decisions, year, intervention_strategy)
 

@@ -288,7 +288,7 @@ def calculate_area_of_pcd_sectors(data):
                     lat2=geom.bounds[3])),
                     geom
                 )
-        polygon_area = round(geom_area.area / 1000000, 2)
+        polygon_area = round(geom_area.area / 1000000, 4)
 
         if polygon_area > 0:
             my_pcd_sectors[datum['properties']['pcd_sector']] = {
@@ -723,18 +723,18 @@ def csv_writer(data, output_fieldnames, filename):
 
 #####################################
 
-# print('read in road network')
-# road_network = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'road_network.shp'))
+print('read in road network')
+road_network = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'road_network.shp'))
 
-# print("extracting geojson properties")
-# aggegated_road_statistics = extract_geojson_properties(road_network)
+print("extracting geojson properties")
+aggegated_road_statistics = extract_geojson_properties(road_network)
 
-# print("applying grouped aggregation")
-# aggegated_road_statistics = grouper(aggegated_road_statistics, 'length', 'road', 'function', 'formofway', 'urban_rural_indicator')
+print("applying grouped aggregation")
+aggegated_road_statistics = grouper(aggegated_road_statistics, 'length', 'road', 'function', 'formofway', 'urban_rural_indicator')
 
-# print('write all road statistics')
-# road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
-# csv_writer(aggegated_road_statistics, road_statistics_fieldnames, 'aggregated_road_statistics.csv')
+print('write all road statistics')
+road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
+csv_writer(aggegated_road_statistics, road_statistics_fieldnames, 'aggregated_road_statistics.csv')
 
 # print("applying aggregation to road types")
 # road_length_by_type = aggregator(aggegated_road_statistics, 'length', 'function', 'formofway', 'urban_rural_indicator')

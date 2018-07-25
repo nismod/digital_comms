@@ -205,7 +205,7 @@ def read_postcode_areas():
     # Initialze Rtree
     idx = index.Index()
 
-    with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'postcode_shapes', 'cb.shp'), 'r') as source:
+    with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'codepoint', 'subset', 'cb.shp'), 'r') as source:
 
         # Store shapes in Rtree
         for src_shape in source:
