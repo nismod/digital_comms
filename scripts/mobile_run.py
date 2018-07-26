@@ -11,8 +11,8 @@ import pprint
 
 from collections import defaultdict
 
-from digital_comms.mobile_model.ccam import ICTManager
-from digital_comms.mobile_model.interventions import decide_interventions
+from digital_comms.mobile_network.model import ICTManager
+from digital_comms.mobile_network.interventions import decide_interventions
 
 ################################################################
 # SETUP MODEL RUN CONFIGURATION
@@ -23,6 +23,9 @@ from digital_comms.mobile_model.interventions import decide_interventions
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
+
+SYSTEM_INPUT_PATH = os.path.join(BASE_PATH, 'raw', 'mobile_model_1.0')
+SYSTEM_OUTPUT_PATH = os.path.join(BASE_PATH, 'processed', 'mobile_model_1.0')
 
 BASE_YEAR = 2016
 END_YEAR = 2030
@@ -72,7 +75,7 @@ print('Loading regions')
 # 	},
 # ]
 lads = []
-LAD_FILENAME = os.path.join(BASE_PATH, 'initial_system', 'lads.csv')
+LAD_FILENAME = os.path.join(SYSTEM_INPUT_PATH, 'initial_system', 'lads.csv')
 
 with open(LAD_FILENAME, 'r') as lad_file:
     reader = csv.reader(lad_file)
@@ -93,7 +96,7 @@ with open(LAD_FILENAME, 'r') as lad_file:
 # 	},
 # ]
 pcd_sectors = []
-PCD_SECTOR_FILENAME = os.path.join(BASE_PATH, 'initial_system', 'pcd_sectors.csv')
+PCD_SECTOR_FILENAME = os.path.join(SYSTEM_INPUT_PATH, 'initial_system', 'pcd_sectors.csv')
 with open(PCD_SECTOR_FILENAME, 'r') as pcd_sector_file:
     reader = csv.reader(pcd_sector_file)
     next(reader)  # skip header
@@ -112,7 +115,7 @@ with open(PCD_SECTOR_FILENAME, 'r') as pcd_sector_file:
 print('Loading scenario data')
 
 scenario_files = {
-    scenario: os.path.join(BASE_PATH, 'scenario_data', 'population_{}_pcd.csv'.format(scenario))
+    scenario: os.path.join(SYSTEM_INPUT_PATH, 'scenario_data', 'population_{}_pcd.csv'.format(scenario))
     for scenario in POPULATION_SCENARIOS
 }
 population_by_scenario_year_pcd = {
@@ -136,7 +139,7 @@ for scenario, filename in scenario_files.items():
 user_throughput_by_scenario_year = {
     scenario: {} for scenario in THROUGHPUT_SCENARIOS
 }
-THROUGHPUT_FILENAME = os.path.join(BASE_PATH, 'scenario_data', 'monthly_data_growth_scenarios.csv')
+THROUGHPUT_FILENAME = os.path.join(SYSTEM_INPUT_PATH, 'scenario_data', 'monthly_data_growth_scenarios.csv')
 with open(THROUGHPUT_FILENAME, 'r') as throughput_file:
     reader = csv.reader(throughput_file)
     next(reader)  # skip header
@@ -168,7 +171,8 @@ print('Loading initial system')
 #       'bandwidth': '2x10MHz',
 # 	}
 # ]
-SYSTEM_FILENAME = os.path.join(BASE_PATH, 'initial_system', 'initial_system_with_4G.csv')
+
+SYSTEM_FILENAME = os.path.join(SYSTEM_INPUT_PATH, 'initial_system', 'initial_system_with_4G.csv')
 
 initial_system = []
 pcd_sector_ids = {pcd_sector["id"]: True for pcd_sector in pcd_sectors}
@@ -196,7 +200,7 @@ with open(SYSTEM_FILENAME, 'r') as system_file:
 ################################################################
 print('Loading lookup tables')
 
-CAPACITY_LOOKUP_FILENAME = os.path.join(BASE_PATH, 'lookup_tables', 'lookup_table_long.csv')
+CAPACITY_LOOKUP_FILENAME = os.path.join(SYSTEM_INPUT_PATH, 'lookup_tables', 'lookup_table_long.csv')
 
 # create empty dictionary for capacity lookup
 capacity_lookup_table = {}
@@ -223,7 +227,7 @@ with open(CAPACITY_LOOKUP_FILENAME, 'r') as capacity_lookup_file:
         value_list.sort(key=lambda tup: tup[0])
 
 
-CLUTTER_GEOTYPE_FILENAME = os.path.join(BASE_PATH, 'lookup_tables', 'lookup_table_geotype.csv')
+CLUTTER_GEOTYPE_FILENAME = os.path.join(SYSTEM_INPUT_PATH, 'lookup_tables', 'lookup_table_geotype.csv')
 
 # Create empty list for clutter geotype lookup
 clutter_lookup = []
@@ -242,7 +246,7 @@ with open(CLUTTER_GEOTYPE_FILENAME, 'r') as clutter_geotype_file:
 def write_lad_results(ict_manager, year, pop_scenario, throughput_scenario,
                       intervention_strategy, cost_by_lad):
     suffix = _get_suffix(pop_scenario, throughput_scenario, intervention_strategy)
-    metrics_filename = os.path.join(BASE_PATH, 'outputs', 'metrics_{}.csv'.format(suffix))
+    metrics_filename = os.path.join(SYSTEM_INPUT_PATH, 'outputs', 'metrics_{}.csv'.format(suffix))
 
     if year == BASE_YEAR:
         metrics_file = open(metrics_filename, 'w', newline='')
@@ -273,7 +277,7 @@ def write_lad_results(ict_manager, year, pop_scenario, throughput_scenario,
 def write_pcd_results(ict_manager, year, pop_scenario, throughput_scenario,
                       intervention_strategy, cost_by_pcd):
     suffix = _get_suffix(pop_scenario, throughput_scenario, intervention_strategy)
-    metrics_filename = os.path.join(BASE_PATH, 'outputs', 'pcd_metrics_{}.csv'.format(suffix))
+    metrics_filename = os.path.join(SYSTEM_INPUT_PATH, 'outputs', 'pcd_metrics_{}.csv'.format(suffix))
 
     if year == BASE_YEAR:
         metrics_file = open(metrics_filename, 'w', newline='')
@@ -302,7 +306,7 @@ def write_pcd_results(ict_manager, year, pop_scenario, throughput_scenario,
 
 def write_decisions(decisions, year, pop_scenario, throughput_scenario, intervention_strategy):
     suffix = _get_suffix(pop_scenario, throughput_scenario, intervention_strategy)
-    decisions_filename = os.path.join(BASE_PATH, 'outputs', 'decisions_{}.csv'.format(suffix))
+    decisions_filename = os.path.join(SYSTEM_INPUT_PATH, 'outputs', 'decisions_{}.csv'.format(suffix))
 
     if year == BASE_YEAR:
         decisions_file = open(decisions_filename, 'w', newline='')
@@ -331,7 +335,7 @@ def write_decisions(decisions, year, pop_scenario, throughput_scenario, interven
 
 def write_spend(spend, year, pop_scenario, throughput_scenario, intervention_strategy):
     suffix = _get_suffix(pop_scenario, throughput_scenario, intervention_strategy)
-    spend_filename = os.path.join(BASE_PATH, 'outputs', 'spend_{}.csv'.format(suffix))
+    spend_filename = os.path.join(SYSTEM_INPUT_PATH, 'outputs', 'spend_{}.csv'.format(suffix))
 
     if year == BASE_YEAR:
         spend_file = open(spend_filename, 'w', newline='')

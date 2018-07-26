@@ -1,7 +1,7 @@
 """Decide on interventions
 """
 # pylint: disable=C0103
-from digital_comms.mobile_model.ccam import PostcodeSector
+from digital_comms.mobile_network.model import PostcodeSector
 
 import copy
 import math

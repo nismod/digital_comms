@@ -14,7 +14,7 @@ CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
 # Config
-input_shapefiles_dir = os.path.join('tests', 'fixed_model', 'fixtures')
+input_shapefiles_dir = os.path.join('tests', 'fixed_network', 'fixtures')
 
 # Helper functions
 def write_points_to_shp(filename, data, schema):

@@ -214,7 +214,6 @@ def read_postcode_areas(exchange_area):
     -------
     postcode_areas = list of dicts
     """
-
     exchange_geom = shape(exchange_area['geometry'])
 
     with fiona.open(os.path.join(DATA_INTERMEDIATE, '_postcode_areas.shp'), 'r') as source:

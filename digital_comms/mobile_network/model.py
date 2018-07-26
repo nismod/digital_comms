@@ -625,7 +625,8 @@ if __name__ == '__main__':
             "technology": "LTE",
             "frequency": "800",
             "bandwidth": "2x10MHz",
-            "build_date": 2017
+            "build_date": 2017,
+            "type": 'macro'
         },
         {
             "pcd_sector": "CB12",
@@ -633,16 +634,38 @@ if __name__ == '__main__':
             "technology": "LTE",
             "frequency": "2600",
             "bandwidth": "2x10MHz",
-            "build_date": 2017
+            "build_date": 2017,
+            "type": 'macro'
+        },
+        {
+            "pcd_sector": "CB12",
+            "site_ngr": 101,
+            "technology": "LTE",
+            "frequency": "3500",
+            "bandwidth": "2x25MHz",
+            "build_date": 2017,
+            "type": 'small_cell'
         }
     ]
 
     CAPACITY_LOOKUP = {
+        ("Urban", "700", "2x10MHz"): [
+            (0, 1),
+            (1, 2),
+        ],
         ("Urban", "800", "2x10MHz"): [
             (0, 1),
             (1, 2),
         ],
         ("Urban", "2600", "2x10MHz"): [
+            (0, 3),
+            (3, 5),
+        ],
+        ("Urban", "3500", "2x10MHz"): [
+            (0, 3),
+            (3, 5),
+        ],
+        ("Small cells", "3700", "2x25MHz"): [
             (0, 3),
             (3, 5),
         ]
