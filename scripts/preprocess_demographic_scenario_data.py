@@ -221,85 +221,12 @@ def read_premises_data():
         if row['non_residential_address_count'] == 'None':
             premises_data[idx]['non_residential_address_count'] = '0'
 
+    for row in premises_data:
+        row['residential_address_count']  = int(row['residential_address_count'])
+
     return premises_data
 
-#####################################
-# SUBSET RESIDENTIAL SINGLE UNIT DATA
-#####################################
-
-single_unit_residential_data = []
-
-def subset_single_unit_residential_addresses(premise_data):
-    """
-    Subset single unit residential addresses if count == 1.
-    """
-    i = 0
-    for line in premise_data:
-        if int(line['residential_address_count']) == 1:
-            single_unit_residential_data.append({
-                'id': line['id'],
-                'oa': line['oa'],
-                'residential_address_count': line['residential_address_count'],
-                'non_residential_address_count': line['non_residential_address_count'],
-                'postgis_geom': line['postgis_geom'],
-                'E': line['E'],
-                'N':line['N'],
-                'my_residential_id': i, 
-                #'year': '2017'               
-                })
-
-            i += 1
-    
-    return single_unit_residential_data
-
-multi_dwelling_residential_data = []
-
-#####################################
-# SUBSET RESIDENTIAL MULTIPLE UNIT DATA
-#####################################
-
-def subset_multiple_unit_residential_addresses(premise_data):
-    """
-    Subset multiple unit residential addressed if count > 1.
-    """        
-    i = 0
-    for line in premise_data:
-        if int(line['residential_address_count']) > 1:
-            multi_dwelling_residential_data.append({
-                'id': line['id'],
-                'oa': line['oa'],
-                'residential_address_count': line['residential_address_count'],
-                'non_residential_address_count': line['non_residential_address_count'],
-                'postgis_geom': line['postgis_geom'],
-                'E': line['E'],
-                'N':line['N'],
-                'my_residential_id': i, 
-                'year': '2017'               
-                })
-
-            i += 1
-    
-    return multi_dwelling_residential_data
-
-subset_multiple_units_data = []
-
-def subset_multiple_units_for_processing(premise_data):
-    """
-    Subset just the id and residential address count variables for multiple units.
-    """        
-    i = 0
-    for line in premise_data:
-        if int(line['residential_address_count']) > 1:
-            subset_multiple_units_data.append({
-                'id': line['id'],
-                'residential_address_count': int(line['residential_address_count']),             
-                })
-
-            i += 1
-    
-    return subset_multiple_units_data
-
-def expand_multiple_premises(pemises_data):
+def expand_premises(pemises_data):
     """
     Take a single address with multiple units, and expand to get a dict for each unit.
     """
@@ -309,71 +236,48 @@ def expand_multiple_premises(pemises_data):
 
     return processed_pemises_data
 
-#####################################
-# SUBSET HOUSEHOLD WTP 
-#####################################
+# def add_new_unique_id(pemises_data):
+    
+#     premises_data = []
+#     i = 0
+#     for line in pemises_data:
+#         premises_data.append({
+#             'id': line['id'],
+#             'oa': line['oa'],
+#             'residential_address_count': line['residential_address_count'],
+#             'non_residential_address_count': line['non_residential_address_count'],
+#             'postgis_geom': line['postgis_geom'],
+#             'E': line['E'],
+#             'N':line['N'],
+#             "my_id": i,
+#         })     
+        
+#         i =+ 1
 
-def subset_households_for_single_units(household_data, single_unit_data):
-    """
-    Subset households to be joined with multiple units
-    """
-    sliced_data = household_data[0:len(single_unit_data)]
-
-    return sliced_data
-
-def subset_households_for_multiple_units(household_data, multiple_unit_data):
-    """
-    Subset households to be joined with multiple units
-    """
-    sliced_data = household_data[-len(multiple_unit_data):]
-
-    return sliced_data
+#     return pemises_data
 
 #####################################
 # MERGE PREMISES AND HOUSEHOLD WTP
 #####################################
 
-def merge_prems_and_housholds(premises_data, household_data):
-    """
-    merges two aligned datasets, zipping row to row
-    """
-    for premise, household in zip(premises_data, household_data):
-        premise.update(household)
+# def merge_prems_and_housholds(premises_data, household_data):
+#     """
+#     merges two aligned datasets, zipping row to row
+#     """
     
-    return premises_data
+#     processed_premises_data = []
+    
+#     for premise, household in zip(premises_data, household_data):
+#         premise.update(household)
+    
+#     processed_premises_data = [{**i, **{'my_id':i['id']}} for i in processed_premises_data]
+    
+#     return processed_premises_data
 
-#####################################
-# SUBSET MULTIPLE UNIT DATA, SUM AND MERGE
-#####################################
-
-def subset_multiple_units_data_for_summing(multiple_unit_data):
-    """
-    subset variables for summing
-    """
-    data_subset = []
-
-    for line in multiple_unit_data:
-        data_subset.append({
-            'id': line['id'],
-            'residential_address_count': line['residential_address_count'],
-            'SES': line['SES'],
-            'year': line['year'],
-            'wtp': line['wtp']            
-            })
-
-    return data_subset
-
-def summing_multiple_units_wtp(multiple_unit_data):
-    """
-    """
-    wtp_by_multi_unit_premises = []
-    grouper = itemgetter("id", "SES", "year")
-    for key, grp in groupby(sorted(multiple_unit_data, key = grouper), grouper):
-        temp_dict = dict(zip(["id", "SES", "year"], key))
-        temp_dict["wtp"] = sum(item["wtp"] for item in grp)
-        wtp_by_multi_unit_premises.append(temp_dict)
-
-    return wtp_by_multi_unit_premises
+def merge_prems_and_housholds(premises_data, household_data):
+    result = [a.copy() for a in premises_data]
+    [a.update(b) for a, b in zip(result, household_data)]
+    return result
 
 #####################################
 # WRITE DATA
@@ -418,45 +322,60 @@ csv_writer(household_wtp, 'household_wtp.csv', wtp_fieldnames)
 print('Reading premises data')
 premises = read_premises_data()
 
-i = 0
-print('Subset single unit residential data')
-premises_single = subset_single_unit_residential_addresses(premises)
+print('Expand premises entries')
+premises = expand_premises(premises)
 
-print('Subset households for single units')
-households_single_subset = subset_households_for_single_units(household_wtp, premises_single)
+# print('Expand premises entries')
+# i = 0
+# premises = add_new_unique_id(premises)
+# print(premises)
 
 print('Adding household data to premises')
-premises_single = merge_prems_and_housholds(premises_single, household_wtp)
-
-print('Write premises_single by household to .csv')
-premises_single_fieldnames = ['id','oa','residential_address_count','non_residential_address_count','postgis_geom','E','N','my_residential_id', 'HID','SES','year','wtp']
-csv_writer(premises_single, 'premises_single.csv', premises_single_fieldnames)
-
-i = 0
-print('Subset multiple unit residential data')
-premises_multiple = subset_multiple_unit_residential_addresses(premises)
-
-print('Subset multiple unit residential data for processing')
-premises_multiple_subset = subset_multiple_units_for_processing(premises_multiple)
-
-print('Expand multiple premises entries')
-premises_multiple_subset = expand_multiple_premises(premises_multiple_subset)
-
-print('Subset households for multiple units')
-households_multiple_subset = subset_households_for_multiple_units(household_wtp, premises_multiple_subset)
-
-print('Subset households for multiple units')
-premises_multiple_subset = merge_prems_and_housholds(households_multiple_subset, premises_multiple_subset)
-
-print('Subset items for multiple units ready for summing')
-premises_multiple_subset = subset_multiple_units_data_for_summing(premises_multiple_subset)
-
-print('Summing wtp data for multiple units')
-premises_multiple_subset = summing_multiple_units_wtp(premises_multiple_subset)
+premises = merge_prems_and_housholds(premises, household_wtp)
 
 print('Write premises_multiple by household to .csv')
-premises_multiple_fieldnames = ['id','oa','residential_address_count','non_residential_address_count','postgis_geom','E','N','my_residential_id', 'HID','SES','year','wtp']
-csv_writer(premises_multiple_subset, 'premises_multiple.csv', premises_multiple_fieldnames)
+premises_fieldnames = ['id','oa','residential_address_count','non_residential_address_count','postgis_geom','E','N','my_residential_id', 'HID','SES','year','wtp']
+csv_writer(premises, 'premises.csv', premises_fieldnames)
+
+# i = 0
+# print('Subset single unit residential data')
+# premises_single = subset_single_unit_residential_addresses(premises)
+
+# print('Subset households for single units')
+# households_single_subset = subset_households_for_single_units(household_wtp, premises_single)
+
+# print('Adding household data to premises')
+# premises_single = merge_prems_and_housholds(premises_single, household_wtp)
+
+# print('Write premises_single by household to .csv')
+# premises_single_fieldnames = ['id','oa','residential_address_count','non_residential_address_count','postgis_geom','E','N','my_residential_id', 'HID','SES','year','wtp']
+# csv_writer(premises_single, 'premises_single.csv', premises_single_fieldnames)
+
+# i = 0
+# print('Subset multiple unit residential data')
+# premises_multiple = subset_multiple_unit_residential_addresses(premises)
+
+# print('Subset multiple unit residential data for processing')
+# premises_multiple_subset = subset_multiple_units_for_processing(premises_multiple)
+
+# print('Expand multiple premises entries')
+# premises_multiple_subset = expand_multiple_premises(premises_multiple_subset)
+
+# print('Subset households for multiple units')
+# households_multiple_subset = subset_households_for_multiple_units(household_wtp, premises_multiple_subset)
+
+# print('Subset households for multiple units')
+# premises_multiple_subset = merge_prems_and_housholds(households_multiple_subset, premises_multiple_subset)
+
+# print('Subset items for multiple units ready for summing')
+# premises_multiple_subset = subset_multiple_units_data_for_summing(premises_multiple_subset)
+
+# print('Summing wtp data for multiple units')
+# premises_multiple_subset = summing_multiple_units_wtp(premises_multiple_subset)
+
+# print('Write premises_multiple by household to .csv')
+# premises_multiple_fieldnames = ['id','oa','residential_address_count','non_residential_address_count','postgis_geom','E','N','my_residential_id', 'HID','SES','year','wtp']
+# csv_writer(premises_multiple_subset, 'premises_multiple.csv', premises_multiple_fieldnames)
 
 
 # print('Combine premises and household data, and write out per year')
