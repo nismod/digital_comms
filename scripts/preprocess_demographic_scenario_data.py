@@ -4,6 +4,7 @@ import os
 import statistics
 from itertools import groupby
 from operator import itemgetter
+from collections import defaultdict
 from copy import deepcopy
 import pprint
 
@@ -160,9 +161,6 @@ def merge_two_lists_of_dicts(msoa_list_of_dicts, oa_list_of_dicts, parameter1, p
 #####################################
 
 
-from collections import defaultdict
-from operator import itemgetter
-
 def aggregate_wtp_and_wta_by_household(data):
     """
     Aggregate wtp by household by Household ID (HID), Socio Economic Status (SES) and year.
@@ -208,19 +206,22 @@ def read_premises_data():
     """
     premises_data = []
 
-    with open(os.path.join(BASE_PATH,'raw','layer_5_premises','cambridge_points.csv'), 'r') as system_file:
-        reader = csv.reader(system_file)
-        next(reader)
-        for line in reader:
-            premises_data.append({
-                'id': line[0],
-                'oa': line[1],
-                'residential_address_count': line[2],
-                'non_residential_address_count': line[3],
-                'postgis_geom': line[4],
-                'E': line[5],
-                'N':line[6],
-            })
+    pathlist = glob.iglob(os.path.join(DATA_RAW, 'layer_5_premises', 'blds_with_functions_EO_2018_03_29') + '/*.csv', recursive=True)
+
+    for path in pathlist:
+        with open(os.path.join(path), 'r') as system_file:
+            reader = csv.reader(system_file)
+            next(reader)
+            for line in reader:
+                premises_data.append({
+                    'id': line[0],
+                    'oa': line[1],
+                    'residential_address_count': line[3],
+                    'non_residential_address_count': line[4],
+                    'postgis_geom': line[6],
+                    'E': line[7],
+                    'N':line[8],
+                })
     
     # remove 'None' and replace with '0'
     for idx, row in enumerate(premises_data):
@@ -243,10 +244,6 @@ def expand_premises(pemises_data):
     [processed_pemises_data.extend([entry]*entry['residential_address_count']) for entry in pemises_data]
 
     return processed_pemises_data
-
-#####################################
-# MERGE PREMISES AND HOUSEHOLD WTP
-#####################################
 
 def merge_prems_and_housholds(premises_data, household_data):
     """
