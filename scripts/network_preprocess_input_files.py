@@ -40,12 +40,252 @@ DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'network_hierarchy_data')
 
 #####################################
-# READ LOOK UP TABLE (LUT) DATA
+# READ EXCHANGE AREA
 #####################################
 
 def read_exchange_area(exchange_name):
     with fiona.open(os.path.join(DATA_INTERMEDIATE, '_exchange_areas.shp'), 'r') as source:
         return [exchange for exchange in source if exchange['properties']['id'] == exchange_name][0]
+
+#####################################
+# INTEGRATE WTP AND WTA HOUSEHOLD DATA INTO PREMISES
+#####################################
+
+def read_wtp_data():
+    """
+    Contains data on wtp by age :
+        - Age 
+        - Willingness to Pay
+        - Willingness to Adopt
+    """
+    wtp_data = []
+
+    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'simple_willingness_to_pay_scenarios.csv'), 'r') as wtp_file:
+        reader = csv.reader(wtp_file)
+        next(reader, None)
+        # Put the values in the population dict
+        for row in reader:
+            wtp_data.append({
+                'age': row[0],
+                'wtp': int(row[1]),
+                'wta': float(row[2])
+            })
+
+        return wtp_data
+
+def read_wtp_data():
+    """
+    Contains data on wtp by age :
+        - Age 
+        - Willingness to Pay
+        - Willingness to Adopt
+    """
+    wtp_data = []
+
+    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'simple_willingness_to_pay_scenarios.csv'), 'r') as wtp_file:
+        reader = csv.reader(wtp_file)
+        next(reader, None)
+        # Put the values in the population dict
+        for row in reader:
+            wtp_data.append({
+                'age': row[0],
+                'wtp': int(row[1]),
+                'wta': float(row[2])
+            })
+
+        return wtp_data
+
+msoa_year_files = {
+     year: os.path.join(DATA_RAW,'demographic_scenario_data','msoa_test_data','ass_E07000008_MSOA11_{}.csv'.format(year))
+     for year in TIMESTEPS
+}
+
+MSOA_data = []
+
+def read_msoa_data():
+    """
+    MSOA data contains individual level demographic characteristics including:
+        - PID - Person ID
+        - MSOA - Area ID
+        - DC1117EW_C_SEX - Gender
+        - DC1117EW_C_AGE - Age
+        - DC2101EW_C_ETHPUK11 - Ethnicity
+        - HID - Household ID
+        - year - year
+    """
+    pathlist = glob.iglob(os.path.join(DATA_RAW, 'demographic_scenario_data','msoa_test_data') + '/*.csv', recursive=True)
+
+    for filename in msoa_year_files.values():
+        with open(os.path.join(filename), 'r') as system_file:
+            year_reader = csv.reader(system_file)
+            next(year_reader, None)
+            # Put the values in the population dict
+            for line in year_reader:
+                MSOA_data.append({
+                    'PID': line[0],
+                    'MSOA': line[1],
+                    'gender': line[2],
+                    'age': line[3],
+                    'ethnicity': line[4],
+                    'HID': line[5],
+                    'year': int(filename[-8:-4]),
+                })     
+
+    return MSOA_data
+
+def add_wtp_to_MSOA_data(consumer_data, population_data):
+    """
+    Take the WTP lookup table for all ages. Add to the population data based on age.
+    """
+    d1 = {d['age']:d for d in consumer_data}
+
+    population_data = [dict(d, **d1.get(d['age'], {})) for d in population_data]	
+
+    return population_data
+
+oa_year_files = {
+     year: os.path.join(DATA_RAW, 'demographic_scenario_data','oa_test_data','ass_hh_E07000008_OA11_{}.csv'.format(year))
+     for year in TIMESTEPS
+}
+
+OA_data = []
+
+def read_oa_data():
+    """
+    MSOA data contains individual level demographic characteristics including:
+        - HID - Household ID
+        - OA - Output Area ID
+        - SES - Household Socio-Economic Status
+        - year - year
+    """
+    
+    for filename in oa_year_files.values():
+        # Open file
+        with open(filename, 'r') as year_file:
+            year_reader = csv.reader(year_file)
+            next(year_reader, None)
+            # Put the values in the population dict
+            for line in year_reader:
+                OA_data.append({
+                    'HID': line[0],
+                    'OA': line[1],
+                    'SES': line[12],
+                    'year': int(filename[-8:-4]),
+                })     
+
+    return OA_data
+
+def merge_two_lists_of_dicts(msoa_list_of_dicts, oa_list_of_dicts, parameter1, parameter2):
+    """
+    Combine the msoa and oa dicts using the household indicator and year keys. 
+    """
+    d1 = {(d[parameter1], d[parameter2]):d for d in oa_list_of_dicts}
+
+    msoa_list_of_dicts = [dict(d, **d1.get((d[parameter1], d[parameter2]), {})) for d in msoa_list_of_dicts]	
+
+    return msoa_list_of_dicts
+
+def aggregate_wtp_and_wta_by_household(data):
+    """
+    Aggregate wtp by household by Household ID (HID), Socio Economic Status (SES) and year.
+    """
+    d = defaultdict(lambda: defaultdict(int))
+
+    group_keys = ['HID', 'SES', 'year']
+    sum_keys = ['wtp', 'wta']
+
+    for item in data:
+        for key in sum_keys:
+            d[itemgetter(*group_keys)(item)][key] += item[key]
+
+    results = [{**dict(zip(group_keys, k)), **v} for k, v in d.items()]
+
+    return results
+
+def read_premises_data(exchange_area):
+    """
+    Reads in premises points from the OS AddressBase data (.csv).
+
+    Data Schema
+    ----------
+    * id: :obj:`int`
+        Unique Premises ID
+    * oa: :obj:`str`
+        ONS output area code
+    * residential address count: obj:'str'
+        Number of residential addresses
+    * non-res address count: obj:'str'
+        Number of non-residential addresses
+    * postgis geom: obj:'str'
+        Postgis reference
+    * E: obj:'float'
+        Easting coordinate
+    * N: obj:'float'
+        Northing coordinate
+
+    """
+    premises_data = []
+
+    pathlist = glob.iglob(os.path.join(DATA_RAW, 'layer_5_premises', 'blds_with_functions_EO_2018_03_29') + '/*.csv', recursive=True)
+
+    exchange_geom = shape(exchange_area['geometry'])
+    exchange_bounds = shape(exchange_area['geometry']).bounds
+
+    for path in pathlist:
+        with open(os.path.join(path), 'r') as system_file:
+            reader = csv.reader(system_file)
+            next(reader)
+            [premises_data.append({
+                'uid': line[0],
+                'oa': line[1],
+                'gor': line[2],
+                'residential_address_count': line[3],
+                'non_residential_address_count': line[4],
+                'function': line[5],
+                'postgis_geom': line[6],
+                'N': line[7],
+                'E':line[8],
+            }) 
+                for line in reader
+                if (exchange_bounds[0] <= float(line[8]) and exchange_bounds[1] <= float(line[7]) and exchange_bounds[2] >= float(line[8]) and exchange_bounds[3] >= float(line[7]))
+            ]
+  
+    # remove 'None' and replace with '0'
+    for idx, row in enumerate(premises_data):
+        if row['residential_address_count'] == 'None':
+            premises_data[idx]['residential_address_count'] = '0'
+        if row['non_residential_address_count'] == 'None':
+            premises_data[idx]['non_residential_address_count'] = '0'
+
+    for row in premises_data:
+        row['residential_address_count']  = int(row['residential_address_count'])
+
+    return premises_data
+
+def expand_premises(pemises_data):
+    """
+    Take a single address with multiple units, and expand to get a dict for each unit.
+    """
+    processed_pemises_data = [] 
+
+    [processed_pemises_data.extend([entry]*entry['residential_address_count']) for entry in pemises_data]
+
+    return processed_pemises_data
+
+def merge_prems_and_housholds(premises_data, household_data):
+    """
+    Merges two aligned datasets, zipping row to row. 
+    Deals with premises_data having multiple repeated dict references due to expand function.
+    """
+    result = [a.copy() for a in premises_data]
+
+    [a.update(b) for a, b in zip(result, household_data)]
+
+    return result
+
+#####################################
+# READ LOOK UP TABLE (LUT) DATA
+#####################################
 
 def read_pcd_to_exchange_lut():
     """
@@ -325,7 +565,12 @@ def read_premises(exchange_area):
                     'residential_address_count': line[3],
                     'non_residential_address_count': line[4],
                     'function': line[5],
-                    'postgis_geom': line[6]
+                    'postgis_geom': line[6],
+                    'HID': line[9],
+                    'SES': line[10],
+                    'year': line[11],
+                    'wtp': line[12],
+                    'wta': line[13]
                 }
             }) 
             for line in reader
@@ -1280,237 +1525,6 @@ def copy_id_to_name(data):
         entry['properties']['name'] = entry['properties']['id']
     return data
 
-#####################################
-# INTEGRATE WTP AND WTA HOUSEHOLD DATA INTO PREMISES
-#####################################
-
-def read_wtp_data():
-    """
-    Contains data on wtp by age :
-        - Age 
-        - Willingness to Pay
-        - Willingness to Adopt
-    """
-    wtp_data = []
-
-    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'simple_willingness_to_pay_scenarios.csv'), 'r') as wtp_file:
-        reader = csv.reader(wtp_file)
-        next(reader, None)
-        # Put the values in the population dict
-        for row in reader:
-            wtp_data.append({
-                'age': row[0],
-                'wtp': int(row[1]),
-                'wta': float(row[2])
-            })
-
-        return wtp_data
-
-def read_wtp_data():
-    """
-    Contains data on wtp by age :
-        - Age 
-        - Willingness to Pay
-        - Willingness to Adopt
-    """
-    wtp_data = []
-
-    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'simple_willingness_to_pay_scenarios.csv'), 'r') as wtp_file:
-        reader = csv.reader(wtp_file)
-        next(reader, None)
-        # Put the values in the population dict
-        for row in reader:
-            wtp_data.append({
-                'age': row[0],
-                'wtp': int(row[1]),
-                'wta': float(row[2])
-            })
-
-        return wtp_data
-
-msoa_year_files = {
-     year: os.path.join(DATA_RAW, 'demographic_scenario_data', 'ass_E07000008_MSOA11_{}.csv'.format(year))
-     for year in TIMESTEPS
-}
-
-MSOA_data = []
-
-def read_msoa_data():
-    """
-    MSOA data contains individual level demographic characteristics including:
-        - PID - Person ID
-        - MSOA - Area ID
-        - DC1117EW_C_SEX - Gender
-        - DC1117EW_C_AGE - Age
-        - DC2101EW_C_ETHPUK11 - Ethnicity
-        - HID - Household ID
-        - year - year
-    """
-
-    for filename in msoa_year_files.values():
-        # Open file
-        with open(filename, 'r') as year_file:
-            year_reader = csv.reader(year_file)
-            next(year_reader, None)
-            # Put the values in the population dict
-            for line in year_reader:
-                MSOA_data.append({
-                    'PID': line[0],
-                    'MSOA': line[1],
-                    'gender': line[2],
-                    'age': line[3],
-                    'ethnicity': line[4],
-                    'HID': line[5],
-                    'year': int(filename[-8:-4]),
-                })     
-
-    return MSOA_data
-
-def add_wtp_to_MSOA_data(consumer_data, population_data):
-    """
-    Take the WTP lookup table for all ages. Add to the population data based on age.
-    """
-    d1 = {d['age']:d for d in consumer_data}
-
-    population_data = [dict(d, **d1.get(d['age'], {})) for d in population_data]	
-
-    return population_data
-
-oa_year_files = {
-     year: os.path.join(DATA_RAW, 'demographic_scenario_data', 'ass_hh_E07000008_OA11_{}.csv'.format(year))
-     for year in TIMESTEPS
-}
-
-OA_data = []
-
-def read_oa_data():
-    """
-    MSOA data contains individual level demographic characteristics including:
-        - HID - Household ID
-        - OA - Output Area ID
-        - SES - Household Socio-Economic Status
-        - year - year
-    """
-    
-    for filename in oa_year_files.values():
-        # Open file
-        with open(filename, 'r') as year_file:
-            year_reader = csv.reader(year_file)
-            next(year_reader, None)
-            # Put the values in the population dict
-            for line in year_reader:
-                OA_data.append({
-                    'HID': line[0],
-                    'OA': line[1],
-                    'SES': line[12],
-                    'year': int(filename[-8:-4]),
-                })     
-
-    return OA_data
-
-def merge_two_lists_of_dicts(msoa_list_of_dicts, oa_list_of_dicts, parameter1, parameter2):
-    """
-    Combine the msoa and oa dicts using the household indicator and year keys. 
-    """
-    d1 = {(d[parameter1], d[parameter2]):d for d in oa_list_of_dicts}
-
-    msoa_list_of_dicts = [dict(d, **d1.get((d[parameter1], d[parameter2]), {})) for d in msoa_list_of_dicts]	
-
-    return msoa_list_of_dicts
-
-def aggregate_wtp_and_wta_by_household(data):
-    """
-    Aggregate wtp by household by Household ID (HID), Socio Economic Status (SES) and year.
-    """
-    d = defaultdict(lambda: defaultdict(int))
-
-    group_keys = ['HID', 'SES', 'year']
-    sum_keys = ['wtp', 'wta']
-
-    for item in data:
-        for key in sum_keys:
-            d[itemgetter(*group_keys)(item)][key] += item[key]
-
-    results = [{**dict(zip(group_keys, k)), **v} for k, v in d.items()]
-
-    return results
-
-def read_premises_data():
-    """
-    Reads in premises points from the OS AddressBase data (.csv).
-
-    Data Schema
-    ----------
-    * id: :obj:`int`
-        Unique Premises ID
-    * oa: :obj:`str`
-        ONS output area code
-    * residential address count: obj:'str'
-        Number of residential addresses
-    * non-res address count: obj:'str'
-        Number of non-residential addresses
-    * postgis geom: obj:'str'
-        Postgis reference
-    * E: obj:'float'
-        Easting coordinate
-    * N: obj:'float'
-        Northing coordinate
-
-    """
-    premises_data = []
-
-    pathlist = glob.iglob(os.path.join(DATA_RAW, 'layer_5_premises', 'blds_with_functions_EO_2018_03_29') + '/*.csv', recursive=True)
-
-    for path in pathlist:
-        with open(os.path.join(path), 'r') as system_file:
-            reader = csv.reader(system_file)
-            next(reader)
-            for line in reader:
-                premises_data.append({
-                    'uid': line[0],
-                    'oa': line[1],
-                    'gor': line[2],
-                    'residential_address_count': line[3],
-                    'non_residential_address_count': line[4],
-                    'function': line[5],
-                    'postgis_geom': line[6],
-                    'N': line[7],
-                    'E':line[8],
-                })
-   
-    # remove 'None' and replace with '0'
-    for idx, row in enumerate(premises_data):
-        if row['residential_address_count'] == 'None':
-            premises_data[idx]['residential_address_count'] = '0'
-        if row['non_residential_address_count'] == 'None':
-            premises_data[idx]['non_residential_address_count'] = '0'
-
-    for row in premises_data:
-        row['residential_address_count']  = int(row['residential_address_count'])
-
-    return premises_data
-
-def expand_premises(pemises_data):
-    """
-    Take a single address with multiple units, and expand to get a dict for each unit.
-    """
-    processed_pemises_data = [] 
-
-    [processed_pemises_data.extend([entry]*entry['residential_address_count']) for entry in pemises_data]
-
-    return processed_pemises_data
-
-def merge_prems_and_housholds(premises_data, household_data):
-    """
-    Merges two aligned datasets, zipping row to row. 
-    Deals with premises_data having multiple repeated dict references due to expand function.
-    """
-    result = [a.copy() for a in premises_data]
-
-    [a.update(b) for a, b in zip(result, household_data)]
-
-    return result
-
 
 #####################################
 # WRITE LUTS/ASSETS/LINKS
@@ -1557,6 +1571,15 @@ if __name__ == "__main__":
 
     SYSTEM_INPUT = os.path.join('data', 'raw')
 
+    # Read LUTs
+    print('Process ' + sys.argv[1])
+    exchange_name = sys.argv[1]
+    exchange_abbr = sys.argv[1].replace('exchange_', '')
+
+    print('read exchange area')
+    exchange_area = read_exchange_area(exchange_name)
+
+    #####
     # Integrate WTP and WTA household data into premises
     print('Loading Willingness To Pay data')
     wtp_data = read_wtp_data()
@@ -1576,12 +1599,8 @@ if __name__ == "__main__":
     print('Aggregating WTP by household')
     household_wtp = aggregate_wtp_and_wta_by_household(final_data)
 
-    # print('Write WTP by household to .csv')
-    # wtp_fieldnames = ['HID','SES','wtp','wta','year']
-    # csv_writer(household_wtp, 'household_wtp.csv', wtp_fieldnames)
-
     print('Reading premises data')
-    premises = read_premises_data()
+    premises = read_premises_data(exchange_area)
 
     print('Expand premises entries')
     premises = expand_premises(premises)
@@ -1592,15 +1611,8 @@ if __name__ == "__main__":
     print('Write premises_multiple by household to .csv')
     premises_fieldnames = ['uid','oa','gor','residential_address_count','non_residential_address_count','function','postgis_geom','N','E', 'HID','SES','year','wtp','wta']
     csv_writer(premises, 'dummy_premises_data.csv', premises_fieldnames)  
+    ####
 
-    # Read LUTs
-    print('Process ' + sys.argv[1])
-    exchange_name = sys.argv[1]
-    exchange_abbr = sys.argv[1].replace('exchange_', '')
-
-    print('read exchange area')
-    exchange_area = read_exchange_area(exchange_name)
-    
     print('read_pcd_to_exchange_lut')
     lut_pcd_to_exchange = read_pcd_to_exchange_lut()
 
@@ -1623,134 +1635,134 @@ if __name__ == "__main__":
     print('read premises')
     geojson_layer5_premises = read_premises(exchange_area)
 
-    # print('read exchanges')
-    # geojson_layer2_exchanges = read_exchanges(exchange_area)
+    print('read exchanges')
+    geojson_layer2_exchanges = read_exchanges(exchange_area)
 
-    # # Process/Estimate network hierarchy
-    # print('add exchange id to postcode areas')
-    # geojson_postcode_areas = add_exchange_id_to_postcode_areas(geojson_layer2_exchanges, geojson_postcode_areas, lut_pcd_to_exchange)
+    # Process/Estimate network hierarchy
+    print('add exchange id to postcode areas')
+    geojson_postcode_areas = add_exchange_id_to_postcode_areas(geojson_layer2_exchanges, geojson_postcode_areas, lut_pcd_to_exchange)
 
-    # print('add cabinet id to postcode areas')
-    # geojson_postcode_areas = add_cabinet_id_to_postcode_areas(geojson_postcode_areas, lut_pcd_to_cabinet)
+    print('add cabinet id to postcode areas')
+    geojson_postcode_areas = add_cabinet_id_to_postcode_areas(geojson_postcode_areas, lut_pcd_to_cabinet)
 
-    # print('add postcode to premises')
-    # geojson_layer5_premises = add_postcode_to_premises(geojson_layer5_premises, geojson_postcode_areas)
+    print('add postcode to premises')
+    geojson_layer5_premises = add_postcode_to_premises(geojson_layer5_premises, geojson_postcode_areas)
 
-    # print('add LAD to premises')
-    # geojson_layer5_premises = add_lad_to_matching_area(geojson_layer5_premises, geojson_lad_areas)
+    print('add LAD to premises')
+    geojson_layer5_premises = add_lad_to_matching_area(geojson_layer5_premises, geojson_lad_areas)
 
-    # print('add LAD to exchanges')
-    # geojson_layer2_exchanges = add_lad_to_exchanges(geojson_layer2_exchanges, geojson_lad_areas)
+    print('add LAD to exchanges')
+    geojson_layer2_exchanges = add_lad_to_exchanges(geojson_layer2_exchanges, geojson_lad_areas)
 
-    # print('merge geotype info by LAD to exchanges')
-    # geojson_layer2_exchanges = add_urban_geotype_to_exchanges(geojson_layer2_exchanges, city_exchange_lad_lut)
+    print('merge geotype info by LAD to exchanges')
+    geojson_layer2_exchanges = add_urban_geotype_to_exchanges(geojson_layer2_exchanges, city_exchange_lad_lut)
 
-    # # Process/Estimate assets    
-    # print('complement cabinet locations as expected for this geotype')
-    # geojson_postcode_areas = complement_postcode_cabinets(geojson_postcode_areas, geojson_layer5_premises, geojson_layer2_exchanges, exchange_abbr)
+    # Process/Estimate assets    
+    print('complement cabinet locations as expected for this geotype')
+    geojson_postcode_areas = complement_postcode_cabinets(geojson_postcode_areas, geojson_layer5_premises, geojson_layer2_exchanges, exchange_abbr)
 
-    # print('estimate location of distribution points')
-    # geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises, exchange_abbr)
+    print('estimate location of distribution points')
+    geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises, exchange_abbr)
 
-    # print('estimate cabinet locations')
-    # geojson_layer3_cabinets = estimate_cabinet_locations(geojson_postcode_areas)
+    print('estimate cabinet locations')
+    geojson_layer3_cabinets = estimate_cabinet_locations(geojson_postcode_areas)
 
-    # # Process/Estimate boundaries
-    # print('generate cabinet areas')
-    # geojson_cabinet_areas = generate_voronoi_areas(geojson_layer3_cabinets, geojson_postcode_areas)
+    # Process/Estimate boundaries
+    print('generate cabinet areas')
+    geojson_cabinet_areas = generate_voronoi_areas(geojson_layer3_cabinets, geojson_postcode_areas)
 
-    # print('generate distribution areas')
-    # geojson_distribution_areas = generate_voronoi_areas(geojson_layer4_distributions, geojson_postcode_areas)
+    print('generate distribution areas')
+    geojson_distribution_areas = generate_voronoi_areas(geojson_layer4_distributions, geojson_postcode_areas)
 
-    # print('generate exchange areas')
-    # geojson_exchange_areas = generate_exchange_area(geojson_postcode_areas)
+    print('generate exchange areas')
+    geojson_exchange_areas = generate_exchange_area(geojson_postcode_areas)
 
-    # # Connect assets
-    # print('connect premises to distributions')
-    # geojson_layer5_premises = connect_points_to_area(geojson_layer5_premises, geojson_distribution_areas)
+    # Connect assets
+    print('connect premises to distributions')
+    geojson_layer5_premises = connect_points_to_area(geojson_layer5_premises, geojson_distribution_areas)
 
-    # print('connect distributions to cabinets')
-    # geojson_layer4_distributions = connect_points_to_area(geojson_layer4_distributions, geojson_cabinet_areas)
+    print('connect distributions to cabinets')
+    geojson_layer4_distributions = connect_points_to_area(geojson_layer4_distributions, geojson_cabinet_areas)
 
-    # print('connect cabinets to exchanges')
-    # geojson_layer3_cabinets = connect_points_to_area(geojson_layer3_cabinets, geojson_exchange_areas)
+    print('connect cabinets to exchanges')
+    geojson_layer3_cabinets = connect_points_to_area(geojson_layer3_cabinets, geojson_exchange_areas)
 
-    # # Process/Estimate links
-    # print('generate links layer 5')
-    # geojson_layer5_premises_links = generate_link_straight_line(geojson_layer5_premises, geojson_layer4_distributions)
+    # Process/Estimate links
+    print('generate links layer 5')
+    geojson_layer5_premises_links = generate_link_straight_line(geojson_layer5_premises, geojson_layer4_distributions)
 
-    # print('generate links layer 4')
-    # geojson_layer4_distributions_links = generate_link_shortest_path(geojson_layer4_distributions, geojson_layer3_cabinets, geojson_cabinet_areas)
+    print('generate links layer 4')
+    geojson_layer4_distributions_links = generate_link_shortest_path(geojson_layer4_distributions, geojson_layer3_cabinets, geojson_cabinet_areas)
 
-    # print('generate links layer 3')
-    # geojson_layer3_cabinets_links = generate_link_shortest_path(geojson_layer3_cabinets, geojson_layer2_exchanges, geojson_exchange_areas)
+    print('generate links layer 3')
+    geojson_layer3_cabinets_links = generate_link_shortest_path(geojson_layer3_cabinets, geojson_layer2_exchanges, geojson_exchange_areas)
 
-    # # Add technology to network and process this into the network hierachy
-    # print('add technology to postcode areas')
-    # geojson_postcode_areas = add_technology_to_postcode_areas(geojson_postcode_areas, lut_pcd_technology)
+    # Add technology to network and process this into the network hierachy
+    print('add technology to postcode areas')
+    geojson_postcode_areas = add_technology_to_postcode_areas(geojson_postcode_areas, lut_pcd_technology)
 
-    # print('add technology to premises')
-    # geojson_layer5_premises = add_technology_to_premises(geojson_layer5_premises, geojson_postcode_areas)
+    print('add technology to premises')
+    geojson_layer5_premises = add_technology_to_premises(geojson_layer5_premises, geojson_postcode_areas)
 
-    # print('add technology to premises links (finaldrop)')
-    # geojson_layer5_premises_links = add_technology_to_link(geojson_layer5_premises, geojson_layer5_premises_links)
+    print('add technology to premises links (finaldrop)')
+    geojson_layer5_premises_links = add_technology_to_link(geojson_layer5_premises, geojson_layer5_premises_links)
 
-    # print('add technology to distributions')
-    # geojson_layer4_distributions = add_technology_to_assets(geojson_layer4_distributions, geojson_layer5_premises)
+    print('add technology to distributions')
+    geojson_layer4_distributions = add_technology_to_assets(geojson_layer4_distributions, geojson_layer5_premises)
 
-    # print('add technology to distribution links')
-    # geojson_layer4_distributions_links = add_technology_to_link(geojson_layer4_distributions, geojson_layer4_distributions_links)
+    print('add technology to distribution links')
+    geojson_layer4_distributions_links = add_technology_to_link(geojson_layer4_distributions, geojson_layer4_distributions_links)
 
-    # print('add technology to cabinets')
-    # geojson_layer3_cabinets = add_technology_to_assets(geojson_layer3_cabinets, geojson_layer4_distributions)
+    print('add technology to cabinets')
+    geojson_layer3_cabinets = add_technology_to_assets(geojson_layer3_cabinets, geojson_layer4_distributions)
     
-    # print('add technology to cabinet links')
-    # geojson_layer3_cabinets_links = add_technology_to_link(geojson_layer3_cabinets, geojson_layer3_cabinets_links)
+    print('add technology to cabinet links')
+    geojson_layer3_cabinets_links = add_technology_to_link(geojson_layer3_cabinets, geojson_layer3_cabinets_links)
 
-    # print('add technology to exchanges')
-    # geojson_layer2_exchanges = add_technology_to_assets(geojson_layer2_exchanges, geojson_layer3_cabinets)
+    print('add technology to exchanges')
+    geojson_layer2_exchanges = add_technology_to_assets(geojson_layer2_exchanges, geojson_layer3_cabinets)
 
-    # # Copy id to name (required for smif outputs)
-    # print('copy id to name (distributions)')
-    # geojson_layer4_distributions = copy_id_to_name(geojson_layer4_distributions)
+    # Copy id to name (required for smif outputs)
+    print('copy id to name (distributions)')
+    geojson_layer4_distributions = copy_id_to_name(geojson_layer4_distributions)
 
-    # print('copy id to name (cabinets)')
-    # geojson_layer3_cabinets = copy_id_to_name(geojson_layer3_cabinets)
+    print('copy id to name (cabinets)')
+    geojson_layer3_cabinets = copy_id_to_name(geojson_layer3_cabinets)
 
-    # # Write lookups (for debug purposes)
-    # print('write postcode_areas')
-    # write_shapefile(geojson_postcode_areas,  exchange_name, '_postcode_areas.shp')
+    # Write lookups (for debug purposes)
+    print('write postcode_areas')
+    write_shapefile(geojson_postcode_areas,  exchange_name, '_postcode_areas.shp')
 
-    # print('write distribution_areas')
-    # write_shapefile(geojson_distribution_areas,  exchange_name, '_distribution_areas.shp')
+    print('write distribution_areas')
+    write_shapefile(geojson_distribution_areas,  exchange_name, '_distribution_areas.shp')
 
-    # print('write cabinet_areas')
-    # write_shapefile(geojson_cabinet_areas,  exchange_name, '_cabinet_areas.shp')
+    print('write cabinet_areas')
+    write_shapefile(geojson_cabinet_areas,  exchange_name, '_cabinet_areas.shp')
 
-    # print('write exchange_areas')
-    # write_shapefile(geojson_exchange_areas,  exchange_name, '_exchange_areas.shp')
+    print('write exchange_areas')
+    write_shapefile(geojson_exchange_areas,  exchange_name, '_exchange_areas.shp')
 
     # Write assets
     print('write premises')
     write_shapefile(geojson_layer5_premises,  exchange_name, 'assets_layer5_premises.shp')
 
-    # print('write distribution points')
-    # write_shapefile(geojson_layer4_distributions,  exchange_name, 'assets_layer4_distributions.shp')
+    print('write distribution points')
+    write_shapefile(geojson_layer4_distributions,  exchange_name, 'assets_layer4_distributions.shp')
 
-    # print('write cabinets')
-    # write_shapefile(geojson_layer3_cabinets,  exchange_name, 'assets_layer3_cabinets.shp')
+    print('write cabinets')
+    write_shapefile(geojson_layer3_cabinets,  exchange_name, 'assets_layer3_cabinets.shp')
 
-    # print('write exchanges')
-    # write_shapefile(geojson_layer2_exchanges,  exchange_name, 'assets_layer2_exchanges.shp')
+    print('write exchanges')
+    write_shapefile(geojson_layer2_exchanges,  exchange_name, 'assets_layer2_exchanges.shp')
 
-    # # Write links
-    # print('write links layer5')
-    # write_shapefile(geojson_layer5_premises_links,  exchange_name, 'links_layer5_premises.shp')
+    # Write links
+    print('write links layer5')
+    write_shapefile(geojson_layer5_premises_links,  exchange_name, 'links_layer5_premises.shp')
 
-    # print('write links layer4')
-    # write_shapefile(geojson_layer4_distributions_links,  exchange_name, 'links_layer4_distributions.shp')
+    print('write links layer4')
+    write_shapefile(geojson_layer4_distributions_links,  exchange_name, 'links_layer4_distributions.shp')
 
-    # print('write links layer3')
-    # write_shapefile(geojson_layer3_cabinets_links,  exchange_name, 'links_layer3_cabinets.shp')
+    print('write links layer3')
+    write_shapefile(geojson_layer3_cabinets_links,  exchange_name, 'links_layer3_cabinets.shp')
 
 
