@@ -3,7 +3,11 @@ description: The Cambridge Communications Assessment Model provides analytics fo
   decision-makers on (i) capacity-demand and (ii) risk, vulnerability and resilience.
   The fixed, wireless and satellite sectors are currently under development.
 initial_conditions: []
-inputs: []
+inputs:
+- name: adoption
+  units: meters
+  spatial_resolution: national
+  temporal_resolution: annual
 interventions: []
 name: digital_comms
 outputs:

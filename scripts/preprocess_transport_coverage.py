@@ -26,14 +26,14 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 #####################################
 
 SYSTEM_INPUT_PATH = os.path.join(BASE_PATH, 'raw')
-SYSTEM_OUTPUT_PATH = os.path.join(BASE_PATH, 'processed')
+SYSTEM_OUTPUT_PATH = os.path.join(BASE_PATH,'processed')
 
 #####################################
 # SETUP CODEPOINT FILE LOCATIONS
 #####################################
 
-CODEPOINT_INPUT_PATH = os.path.join(BASE_PATH, 'raw', 'codepoint')
-CODEPOINT_OUTPUT_PATH = os.path.join(BASE_PATH, 'raw', 'codepoint')
+CODEPOINT_INPUT_PATH = os.path.join(BASE_PATH,'raw', 'codepoint')
+CODEPOINT_OUTPUT_PATH = os.path.join(BASE_PATH,'raw', 'codepoint')
 
 #####################################
 # IMPORT CODEPOINT SHAPES
@@ -705,21 +705,21 @@ def csv_writer(data, output_fieldnames, filename):
 
 #####################################
 
-# print('read in road network')
-# #road_network = read_in_os_open_roads((os.path.join(SYSTEM_INPUT_PATH, 'os_open_roads', 'open-roads_2438901_cambridge')))
-# road_network = read_in_os_open_roads(os.path.join(SYSTEM_INPUT_PATH, 'os_open_roads', 'open-roads_2443825'))
+print('read in road network')
+#road_network = read_in_os_open_roads((os.path.join(SYSTEM_INPUT_PATH, 'os_open_roads', 'open-roads_2438901_cambridge')))
+road_network = read_in_os_open_roads(os.path.join(SYSTEM_INPUT_PATH, 'os_open_roads', 'open-roads_2443825'))
 
-# print('read in built up area polygons')
-# built_up_areas = read_in_built_up_areas()
+print('read in built up area polygons')
+built_up_areas = read_in_built_up_areas()
 
-# print('add built up area indicator to urban roads')
-# road_network = add_urban_rural_indicator_to_roads(road_network, built_up_areas)
+print('add built up area indicator to urban roads')
+road_network = add_urban_rural_indicator_to_roads(road_network, built_up_areas)
 
-# print('delaing with missing values')
-# road_network = deal_with_none_values(road_network)
+print('dealing with missing values')
+road_network = deal_with_none_values(road_network)
 
-# print("writing road network")
-# write_road_network_shapefile(road_network, 'road_network.shp')
+print("writing road network")
+write_road_network_shapefile(road_network, 'road_network.shp')
 
 #####################################
 

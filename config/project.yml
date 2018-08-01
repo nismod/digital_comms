@@ -1,15 +1,10 @@
 name: NISMOD v2.0.0
 # ------------------------------------------------
 scenario_sets:
-- name: population
-  description: UK population, total people
+- name: adoption
+  description: Adoption curves for FTTP
   facets:
-  - name: population
-    description: ''
-- name: gva
-  description: Gross value added
-  facets:
-  - name: gva
+  - name: adoption
     description: ''
 region_definitions:
 # shared understanding of regions within the modelled area (e.g. GB)
@@ -44,41 +39,32 @@ interval_definitions:
 units: units.txt
 # ------------------------------------------------
 scenarios:
-- name: pop_baseline
-  description: Baseline population for the UK
-  scenario_set: population
+- name: baseline_adoption
+  description: Baseline FTTP adoption for the UK
+  scenario_set: adoption
   facets:
-  - name: population
-    filename: uk_population_by_district_codes_Baseline.csv
-    spatial_resolution: lad_uk_2016
+  - name: adoption
+    filename: baseline_adoption.csv
+    spatial_resolution: national
     temporal_resolution: annual
-    units: people
-- name: pop_high
-  description: High population for the UK
-  scenario_set: population
+    units: meters
+- name: high_adoption
+  description: High FTTP adoption for the UK
+  scenario_set: adoption
   facets:
-  - name: population
-    filename: uk_population_by_district_codes_High.csv
-    spatial_resolution: lad_uk_2016
+  - name: adoption
+    filename: high_adoption.csv
+    spatial_resolution: national
     temporal_resolution: annual
-    units: people
-- name: pop_low
-  description: Low population for the UK
-  scenario_set: population
+    units: meters
+- name: low_adoption
+  description: Low FTTP adoption for the UK
+  scenario_set: adoption
   facets:
-  - name: population
-    filename: uk_population_by_district_codes_Low.csv
-    spatial_resolution: lad_uk_2016
+  - name: adoption
+    filename: low_adoption.csv
+    spatial_resolution: national
     temporal_resolution: annual
-    units: people
-- name: gva_baseline
-  description: Baseline gva for the UK
-  scenario_set: gva
-  facets:
-  - name: gva
-    filename: gva_sven.csv
-    spatial_resolution: lad_uk_2016
-    temporal_resolution: annual
-    units: GBP
+    units: meters
 narrative_sets: []
 narratives: []

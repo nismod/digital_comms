@@ -2,11 +2,14 @@ decision_module: ''
 description: ''
 name: digital_comms_test
 narratives: {}
-scenarios: {}
-strategies: []
+scenarios:
+  adoption: baseline_adoption
 sos_model: digital_comms_only
 stamp: '2018-05-01T12:36:34.374Z'
+strategies: []
 timesteps:
-- 2015
+- 2019
 - 2020
-- 2025
+- 2021
+- 2022
+- 2023

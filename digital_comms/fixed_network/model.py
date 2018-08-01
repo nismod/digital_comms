@@ -382,6 +382,9 @@ class Premise(object):
         self.fttc = data['FTTC']
         self.adsl = data['ADSL']
         self.lad = data['lad']
+        self.wta = data['wta']
+        self.wtp = data['wtp']
+        self.wanting_to_adopt = True
 
         self.parameters = parameters
 
@@ -420,10 +423,10 @@ class Premise(object):
 
         # Rollout benefits
         self.rollout_benefits = {}
-        self.rollout_benefits['fttp'] = self.parameters['benefits_assets_premise_fttp']
-        self.rollout_benefits['gfast'] = self.parameters['benefits_assets_premise_gfast']
-        self.rollout_benefits['fttc'] = self.parameters['benefits_assets_premise_fttc']
-        self.rollout_benefits['adsl'] = self.parameters['benefits_assets_premise_adsl']
+        self.rollout_benefits['fttp'] = self.parameters['benefits_assets_premise_fttp'] if self.wanting_to_adopt else 0
+        self.rollout_benefits['gfast'] = self.parameters['benefits_assets_premise_gfast'] if self.wanting_to_adopt else 0
+        self.rollout_benefits['fttc'] = self.parameters['benefits_assets_premise_fttc'] if self.wanting_to_adopt else 0
+        self.rollout_benefits['adsl'] = self.parameters['benefits_assets_premise_adsl'] if self.wanting_to_adopt else 0
 
         # Benefit-cost ratio
         self.rollout_bcr = {}

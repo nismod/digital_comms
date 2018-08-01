@@ -25,7 +25,6 @@ AVAILABLE_STRATEGY_INTERVENTIONS = {
     'FTTP_most_beneficial_cabinets': (),
 }
 
-
 def decide_interventions(strategy, budget, service_obligation_capacity,
                          system, timestep):
     """Given strategy parameters and a system return some next best intervention

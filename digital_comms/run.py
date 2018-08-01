@@ -67,6 +67,9 @@ class DigitalCommsWrapper(SectorModel):
         self.logger.info("DigitalCommsWrapper received inputs in %s",
                          now)
 
+        adoption = data_handle.get_data('adoption')
+        print('The adoption is ' + int(adoption))
+
         # -----------------------
         # Run fixed network model
         # -----------------------

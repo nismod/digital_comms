@@ -1,10 +1,15 @@
 convergence_absolute_tolerance: 1e-05
 convergence_relative_tolerance: 1e-05
-dependencies: []
+dependencies:
+- source_model: adoption
+  source_model_output: adoption
+  sink_model: digital_comms
+  sink_model_input: adoption
 description: Test model for digital_comms
 max_iterations: 1
 name: digital_comms_only
 narrative_sets: []
-scenario_sets: []
+scenario_sets:
+- adoption
 sector_models:
 - digital_comms
