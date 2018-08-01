@@ -8,6 +8,7 @@ np.set_printoptions(threshold=np.nan)
 
 from digital_comms.fixed_network.model import ICTManager
 from digital_comms.fixed_network.interventions import decide_interventions
+from digital_comms.fixed_network.adoption import update_adoption_desirability
 
 from smif.model.sector_model import SectorModel
 
@@ -67,12 +68,16 @@ class DigitalCommsWrapper(SectorModel):
         self.logger.info("DigitalCommsWrapper received inputs in %s",
                          now)
 
-        adoption = data_handle.get_data('adoption')
-        print('The adoption is ' + int(adoption))
+        print(data_handle.current_timestep)
+        annual_adoption_rate = data_handle.get_data('adoption')
+        print(annual_adoption_rate)
 
         # -----------------------
         # Run fixed network model
         # -----------------------
+        self.logger.info("DigitalCommsWrapper - Update adoption status on premises")
+        self.system.update_adoption_desirability = update_adoption_desirability(self.system, annual_adoption_rate)
+
         self.logger.info("DigitalCommsWrapper - Decide interventions")
         interventions, budget, spend = decide_interventions('rollout_fttp_per_distribution', data_handle.get_parameter('annual_budget'), data_handle.get_parameter('service_obligation_capacity'), self.system, now)
 

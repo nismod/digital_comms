@@ -40,6 +40,12 @@ class ICTManager(object):
                 cabinet = [cabinet for cabinet in self._cabinets if cabinet.id == asset_id][0]
                 cabinet.upgrade(action)
 
+    def update_adoption_desirability(self, adoption_desirability):
+
+        for premises_id, desirability_to_adopt in adoption_desirability:
+            premises = [premises for premises in self._premises if premises.id == premises_id[0]]
+            premises.uprade_desirability_to_adopt(desirability_to_adopt)
+
     def coverage(self):
         """
         define coverage
@@ -384,7 +390,7 @@ class Premise(object):
         self.lad = data['lad']
         self.wta = data['wta']
         self.wtp = data['wtp']
-        self.wanting_to_adopt = True
+        self.adoption_desirability = False
 
         self.parameters = parameters
 
@@ -423,10 +429,10 @@ class Premise(object):
 
         # Rollout benefits
         self.rollout_benefits = {}
-        self.rollout_benefits['fttp'] = self.parameters['benefits_assets_premise_fttp'] if self.wanting_to_adopt else 0
-        self.rollout_benefits['gfast'] = self.parameters['benefits_assets_premise_gfast'] if self.wanting_to_adopt else 0
-        self.rollout_benefits['fttc'] = self.parameters['benefits_assets_premise_fttc'] if self.wanting_to_adopt else 0
-        self.rollout_benefits['adsl'] = self.parameters['benefits_assets_premise_adsl'] if self.wanting_to_adopt else 0
+        self.rollout_benefits['fttp'] = self.parameters['benefits_assets_premise_fttp'] if self.adoption_desirability else 0
+        self.rollout_benefits['gfast'] = self.parameters['benefits_assets_premise_gfast'] if self.adoption_desirability else 0
+        self.rollout_benefits['fttc'] = self.parameters['benefits_assets_premise_fttc'] if self.adoption_desirability else 0
+        self.rollout_benefits['adsl'] = self.parameters['benefits_assets_premise_adsl'] if self.adoption_desirability else 0
 
         # Benefit-cost ratio
         self.rollout_bcr = {}
@@ -467,6 +473,11 @@ class Premise(object):
             self.gfast = 1
             
         self.compute()
+
+    def uprade_desirability_to_adopt(self, desirability_to_adopt):
+        
+        self.adoption_desirability = True
+
 
 class Link(object):
     """Links"""
