@@ -17,6 +17,7 @@ def decide_interventions(scenario, number_of_adopters, premises, timestep):
     premises - premises objects
     timestep - year
     """
+    
 
     return premises
 
