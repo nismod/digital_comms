@@ -47,6 +47,18 @@ def read_exchange_area(exchange_name):
     with fiona.open(os.path.join(DATA_INTERMEDIATE, '_exchange_areas.shp'), 'r') as source:
         return [exchange for exchange in source if exchange['properties']['id'] == exchange_name][0]
 
+def read_lads(exchange_area):
+    with fiona.open(os.path.join(DATA_RAW, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'), 'r') as source:
+        exchange_geom = shape(exchange_area['geometry'])
+        return [lad for lad in source if exchange_geom.intersection(shape(lad['geometry']))]
+
+def get_lad_area_ids(lad_areas):
+    lad_area_ids = []
+    for lad in lad_areas:
+        lad_area_ids.append(lad['properties']['name'])
+
+    return lad_area_ids
+        
 #####################################
 # INTEGRATE WTP AND WTA HOUSEHOLD DATA INTO PREMISES
 #####################################
@@ -95,14 +107,7 @@ def read_wtp_data():
 
         return wtp_data
 
-msoa_year_files = {
-     year: os.path.join(DATA_RAW,'demographic_scenario_data','msoa_2018','ass_E08000021_MSOA11_{}.csv'.format(year))
-     for year in TIMESTEPS
-}
-
-MSOA_data = []
-
-def read_msoa_data():
+def read_msoa_data(lad_ids):
     """
     MSOA data contains individual level demographic characteristics including:
         - PID - Person ID
@@ -113,9 +118,17 @@ def read_msoa_data():
         - HID - Household ID
         - year - year
     """
-    pathlist = glob.iglob(os.path.join(DATA_RAW, 'demographic_scenario_data','msoa_test_data') + '/*.csv', recursive=True)
+    
+    MSOA_data = []
 
-    for filename in msoa_year_files.values():
+    msoa_lad_id_files = {
+        lad: os.path.join(DATA_RAW,'demographic_scenario_data','msoa_2018','ass_{}_MSOA11_2018.csv'.format(lad))
+        for lad in lad_ids
+    }
+
+    pathlist = glob.iglob(os.path.join(DATA_RAW, 'demographic_scenario_data','msoa_2018') + '/*.csv', recursive=True)
+
+    for filename in msoa_lad_id_files.values():
         with open(os.path.join(filename), 'r') as system_file:
             year_reader = csv.reader(system_file)
             next(year_reader, None)
@@ -143,13 +156,6 @@ def add_wtp_to_MSOA_data(consumer_data, population_data):
 
     return population_data
 
-oa_year_files = {
-     year: os.path.join(DATA_RAW, 'demographic_scenario_data','oa_2018','ass_hh_E08000021_OA11_{}.csv'.format(year))
-     for year in TIMESTEPS
-}
-
-OA_data = []
-
 def read_oa_data():
     """
     MSOA data contains individual level demographic characteristics including:
@@ -159,7 +165,14 @@ def read_oa_data():
         - year - year
     """
     
-    for filename in oa_year_files.values():
+    OA_data = []
+
+    oa_lad_id_files = {
+        lad: os.path.join(DATA_RAW, 'demographic_scenario_data','oa_2018','ass_hh_{}_OA11_2018.csv'.format(lad))
+        for lad in lad_ids
+    }
+
+    for filename in oa_lad_id_files.values():
         # Open file
         with open(filename, 'r') as year_file:
             year_reader = csv.reader(year_file)
@@ -489,11 +502,6 @@ def read_postcode_technology_lut():
                 })
 
     return postcode_technology_lut
-
-def read_lads(exchange_area):
-    with fiona.open(os.path.join(DATA_RAW, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'), 'r') as source:
-        exchange_geom = shape(exchange_area['geometry'])
-        return [lad for lad in source if exchange_geom.intersection(shape(lad['geometry']))]
 
 def read_city_exchange_geotype_lut():
 
@@ -1579,13 +1587,19 @@ if __name__ == "__main__":
     print('read exchange area')
     exchange_area = read_exchange_area(exchange_name)
 
+    print('read lads')
+    geojson_lad_areas = read_lads(exchange_area)
+
+    print('get lad ids')
+    lad_ids = get_lad_area_ids(geojson_lad_areas)
+
     #####
     # Integrate WTP and WTA household data into premises
     print('Loading Willingness To Pay data')
     wtp_data = read_wtp_data()
 
     print('Loading MSOA data')
-    MSOA_data = read_msoa_data()
+    MSOA_data = read_msoa_data(lad_ids)
 
     print('Adding WTP data to MSOA data')
     MSOA_data = add_wtp_to_MSOA_data(wtp_data, MSOA_data)
@@ -1624,9 +1638,6 @@ if __name__ == "__main__":
 
     print('read pcd_technology_lut')
     lut_pcd_technology = read_postcode_technology_lut()
-
-    print('read lads')
-    geojson_lad_areas = read_lads(exchange_area)
 
     print('read city exchange geotypes lut')
     city_exchange_lad_lut = read_city_exchange_geotype_lut()
