@@ -76,10 +76,10 @@ class DigitalCommsWrapper(SectorModel):
         # Run fixed network model
         # -----------------------
         self.logger.info("DigitalCommsWrapper - Update adoption status on premises")
-        self.system.update_adoption_desirability = update_adoption_desirability(self.system, annual_adoption_rate)
+        premises_adoption_desirability_ids = self.system.update_adoption_desirability = update_adoption_desirability(self.system, annual_adoption_rate)
 
         self.logger.info("DigitalCommsWrapper - Decide interventions")
-        interventions, budget, spend = decide_interventions('rollout_fttp_per_distribution', data_handle.get_parameter('annual_budget'), data_handle.get_parameter('service_obligation_capacity'), self.system, now)
+        interventions, budget, spend = decide_interventions('rollout_fttdp_per_distribution', data_handle.get_parameter('annual_budget'), data_handle.get_parameter('service_obligation_capacity'), self.system, now)
 
         self.logger.info("DigitalCommsWrapper - Upgrading system")
         self.system.upgrade(interventions)
@@ -98,6 +98,10 @@ class DigitalCommsWrapper(SectorModel):
         for idx, distribution in enumerate(self.system.assets['distributions']):
             distribution_upgrade_costs_fttp[idx, 0] = distribution.upgrade_costs['fttp']
         data_handle.set_results('distribution_upgrade_costs_fttp', distribution_upgrade_costs_fttp)
+
+        premises_adopted = np.empty((1,1))
+        premises_adopted[0, 0] = len(premises_adoption_desirability_ids)
+        data_handle.set_results('premises_adoption_desirability', premises_adopted)
 
         # ----
         # Exit

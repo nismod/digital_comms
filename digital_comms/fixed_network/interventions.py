@@ -21,8 +21,14 @@ AVAILABLE_STRATEGY_INTERVENTIONS = {
     # Intervention Strategy 2
     'FTTP_most_beneficial_distributions': (),
 
-     # Intervention Strategy 3.
+    # Intervention Strategy 3.
     'FTTP_most_beneficial_cabinets': (),
+
+    # Intervention Strategy 2
+    'FTTDP_most_beneficial_distributions': (),
+
+    # Intervention Strategy 3.
+    'FTTDP_most_beneficial_cabinets': (),
 }
 
 def decide_interventions(strategy, budget, service_obligation_capacity,
@@ -66,6 +72,30 @@ def _suggest_interventions(budget, strategy, system, timestep, threshold=None):
                 budget -= cabinet.rollout_costs['fttp']
                 built_interventions.append((cabinet.id, 'rollout_fttp', cabinet.rollout_costs['fttp']))
                 spend.append((cabinet.id, strategy, cabinet.rollout_costs['fttp']))
+            else:
+                break
+
+    elif strategy == 'rollout_fttdp_per_distribution':
+        distributions = sorted(system._distributions, key=lambda item: item.rollout_bcr['fttdp'], reverse=True)
+
+        for distribution in distributions:
+
+            if distribution.rollout_costs['fttdp'] < budget:
+                budget -= distribution.rollout_costs['fttdp']
+                built_interventions.append((distribution.id, 'rollout_fttdp', distribution.rollout_costs['fttdp']))
+                spend.append((distribution.id, strategy, distribution.rollout_costs['fttdp']))
+            else:
+                break
+
+    elif strategy == 'rollout_fttdp_per_cabinet':
+        cabinets = sorted(system._cabinets, key=lambda item: item.rollout_bcr['fttdp'], reverse=True)
+
+        for cabinet in cabinets:
+
+            if cabinet.rollout_costs['fttdp'] < budget:
+                budget -= cabinet.rollout_costs['fttdp']
+                built_interventions.append((cabinet.id, 'rollout_fttdp', cabinet.rollout_costs['fttdp']))
+                spend.append((cabinet.id, strategy, cabinet.rollout_costs['fttdp']))
             else:
                 break
 
