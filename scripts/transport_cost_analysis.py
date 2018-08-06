@@ -8,7 +8,7 @@ from math import exp
 from itertools import groupby, product
 from operator import itemgetter
 
-from digital_comms.mobile_network.model import pairwise, interpolate
+#from digital_comms.mobile_network.model import pairwise, interpolate
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
@@ -989,14 +989,14 @@ DEPLOYMENT_PERIOD = 4
 print("reading in aggregated road geotype data")
 road_geotype_data = read_in_csv_road_geotype_data('aggregated_road_statistics.csv')
 
-print("reading in road by pcd_sector data")
-road_by_pcd_sectors = read_in_road_geotype_data('pcd_sector_road_length_by_type.csv')
+# print("reading in road by pcd_sector data")
+# road_by_pcd_sectors = read_in_road_geotype_data('pcd_sector_road_length_by_type.csv')
 
-print("reading in cell densities by pcd_sector data")
-cell_densities = read_in_cell_densities('pcd_sector_cell_densities.csv')
+# print("reading in cell densities by pcd_sector data")
+# cell_densities = read_in_cell_densities('pcd_sector_cell_densities.csv')
 
-print("reading in capacity lut")
-capacity_lut = read_in_capacity_lut('lookup_table_long.csv')
+# print("reading in capacity lut")
+# capacity_lut = read_in_capacity_lut('lookup_table_long.csv')
 
 print("calculating tco costs")
 small_cell_tco = calculate_tco_for_each_asset(2500, 350, 0.035, 2019, 2020, 10, 2029, 'no') 
@@ -1030,14 +1030,14 @@ for scenario, strategy, car_spacing in [
         print("-", year)
         
         road_geotype_data = calculate_potential_demand(road_geotype_data, 5, car_spacing)
+        print(road_geotype_data)
+        # road_geotype_data = calculate_yearly_CAV_take_up(road_geotype_data, year, scenario)
 
-        road_geotype_data = calculate_yearly_CAV_take_up(road_geotype_data, year, scenario)
+        # road_geotype_data = calculate_number_of_RAN_units_and_civil_works_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, scenario, strategy, small_cell_tco, small_cell_civil_works_tco, 2)
 
-        road_geotype_data = calculate_number_of_RAN_units_and_civil_works_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, scenario, strategy, small_cell_tco, small_cell_civil_works_tco, 2)
+        # road_geotype_data = calculate_backhaul_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, strategy, fibre_tco_per_km)
 
-        road_geotype_data = calculate_backhaul_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, strategy, fibre_tco_per_km)
-
-        write_spend(road_geotype_data, year, scenario, strategy, car_spacing)
+        # write_spend(road_geotype_data, year, scenario, strategy, car_spacing)
         
     # else:
         

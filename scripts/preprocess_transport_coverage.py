@@ -9,13 +9,9 @@ import numpy as np
 from itertools import groupby
 from operator import itemgetter
 
+from collections import OrderedDict, defaultdict
 from rtree import index
 from shapely.geometry import shape, Point, LineString, Polygon, mapping, MultiPolygon
-from shapely.ops import unary_union
-from collections import OrderedDict, defaultdict
-from functools import partial
-import pyproj
-from shapely.ops import transform
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
@@ -27,347 +23,20 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 
 SYSTEM_INPUT_PATH = os.path.join(BASE_PATH, 'raw')
 SYSTEM_OUTPUT_PATH = os.path.join(BASE_PATH,'processed')
+SYSTEM_RESULTS_PATH = os.path.join(BASE_PATH,'..', '..','results','digital_transport' )
 
 #####################################
-# SETUP CODEPOINT FILE LOCATIONS
+# setup yearly increments
 #####################################
 
-CODEPOINT_INPUT_PATH = os.path.join(BASE_PATH,'raw', 'codepoint')
-CODEPOINT_OUTPUT_PATH = os.path.join(BASE_PATH,'raw', 'codepoint')
+BASE_YEAR = 2020
+END_YEAR = 2029
+TIMESTEP_INCREMENT = 1
+TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
 
 #####################################
-# IMPORT CODEPOINT SHAPES
+# IMPORT SHAPES
 #####################################
-
-def import_postcodes(data):
-
-    my_postcode_data = []
-
-    # Initialze Rtree
-    idx = index.Index()
-
-    for dirpath, subdirs, files in os.walk(data):
-        for x in files:
-            if x.endswith(".shp"):
-                with fiona.open(os.path.join(dirpath, x), 'r') as source:
-
-                    # Store shapes in Rtree
-                    for src_shape in source:
-                        idx.insert(int(src_shape['id']), shape(src_shape['geometry']).bounds, src_shape)
-
-                    # Split list in regular and vertical postcodes
-                    postcodes = {}
-                    vertical_postcodes = {}
-
-                    for x in source:
-
-                        x['properties']['POSTCODE'] = x['properties']['POSTCODE'].replace(" ", "")
-                        if x['properties']['POSTCODE'].startswith('V'):
-                            vertical_postcodes[x['id']] = x
-                        else:
-                            postcodes[x['id']] = x
-
-                    for key, f in vertical_postcodes.items():
-
-                        vpost_geom = shape(f['geometry'])
-                        best_neighbour = {'id': 0, 'intersection': 0}
-
-                        # Find best neighbour
-                        for n in idx.intersection((vpost_geom.bounds), objects=True):
-                            if shape(n.object['geometry']).intersection(vpost_geom).length > best_neighbour['intersection'] and n.object['id'] != f['id']:
-                                best_neighbour['id'] = n.object['id']
-                                best_neighbour['intersection'] = shape(n.object['geometry']).intersection(vpost_geom).length
-
-                        # Merge with best neighbour
-                        neighbour = postcodes[best_neighbour['id']]
-                        merged_geom = unary_union([shape(neighbour['geometry']), vpost_geom])
-
-                        merged_postcode = {
-                            'id': neighbour['id'].replace(" ", ""),
-                            'properties': neighbour['properties'],
-                            'geometry': mapping(merged_geom)
-                        }
-
-                        try:
-                            postcodes[merged_postcode['id']] = merged_postcode
-                        except:
-                            raise Exception
-
-                    for key, p in postcodes.items():
-                        p.pop('id')
-                        my_postcode_data.append(p)
-
-    return my_postcode_data
-
-def add_postcode_sector_indicator(data):
-
-    my_postcode_data = []
-
-    for x in data:
-        x['properties']['pcd_sector'] = x['properties']['POSTCODE'][:-2]
-        my_postcode_data.append(x)
-
-    return my_postcode_data
-
-def write_shapefile(data, path, crs):
-
-    # Translate props to Fiona sink schema
-    prop_schema = []
-    for name, value in data[0]['properties'].items():
-        fiona_prop_type = next((fiona_type for fiona_type, python_type in fiona.FIELD_TYPES_MAP.items() if python_type == type(value)), None)
-        prop_schema.append((name, fiona_prop_type))
-
-    sink_driver = 'ESRI Shapefile'
-    sink_crs = {'init':crs}
-    sink_schema = {
-        'geometry': data[0]['geometry']['type'],
-        'properties': OrderedDict(prop_schema)
-    }
-
-    # Write all elements to output file
-    with fiona.open(path, 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
-        for feature in data:
-            sink.write(feature)
-
-def dissolve(input, output, fields):
-    with fiona.open(os.path.join(CODEPOINT_INPUT_PATH, input)) as input:
-        with fiona.open(os.path.join(SYSTEM_OUTPUT_PATH, output), 'w', **input.meta) as output:
-            grouper = itemgetter(*fields)
-            key = lambda k: grouper(k['properties'])
-            for k, group in groupby(sorted(input, key=key), key):
-                properties, geom = zip(*[(feature['properties'], shape(feature['geometry'])) for feature in group])
-                output.write({'geometry': mapping(unary_union(geom)), 'properties': properties[0]})
-
-def import_shapes(file_path):
-    with fiona.open(file_path, 'r') as source:
-        return [shape for shape in source]
-
-#####################################
-# CONVERT PROTECTIONS
-#####################################
-
-def convert_projection(data):
-
-    project = partial(
-        pyproj.transform,
-        pyproj.Proj(init='epsg:4326'),
-        pyproj.Proj(init='epsg:27700')
-    )
-
-    for feature in data:
-        feature['geometry'] = mapping(transform(project, shape(feature['geometry'])))
-
-    return data
-
-# def convert_projection(data):
-
-#     converted_data = []
-
-#     projOSGB1936 = pyproj.Proj(init='epsg:27700')
-#     projWGS84 = pyproj.Proj(init='epsg:4326')
-
-#     for feature in data:
-
-#         new_geom = []
-#         coords = feature['geometry']['coordinates']
-
-#         for coordList in coords:
-
-#             try:
-#                 coordList = list(pyproj.transform(projWGS84, projOSGB1936, coordList[0], coordList[1]))
-#                 new_geom.append(coordList)
-
-#             except:
-#                 print("Warning: Some loss of postcode sectors during projection conversion")
-                
-#         feature['geometry']['coordinates'] = new_geom
-
-#         converted_data.append(feature)
-        
-#     return converted_data
-
-#####################################
-# IMPORT SUPPLY SIDE DATA
-#####################################
-
-def import_unique_cell_data(data):
-
-    os_unique_cell_data = []
-
-    with open(data, 'r', encoding='utf8', errors='replace') as system_file:
-        reader = csv.reader(system_file)
-        next(reader)
-        for line in reader:
-            os_unique_cell_data.append({
-                'type': "Feature",
-                'geometry': {
-                    "type": "Point",
-                    "coordinates": [float(line[1]), float(line[0])]
-                },
-                'properties': {
-                    'lte_ci': line[2],
-                    'lte_pci': line[3],
-                }
-            })
-    
-    return os_unique_cell_data
-
-def add_polygon_id_to_point(points, polygons):
-
-    joined_data = []
-
-    # Initialze Rtree
-    idx = index.Index()
-
-    for rtree_idx, point in enumerate(points):
-        idx.insert(rtree_idx, shape(point['geometry']).bounds, point)
-
-    # Join the two
-    for polygon in polygons:
-        for n in idx.intersection((shape(polygon['geometry']).bounds), objects=True):
-            polygon_area_shape = shape(polygon['geometry'])
-            polygon_shape = shape(n.object['geometry'])
-            if polygon_area_shape.contains(polygon_shape):
-                n.object['properties']['pcd_sector'] = polygon['properties']['pcd_sector']
-                joined_data.append(n.object)
-            else:
-                n.object['properties']['pcd_sector'] = 'not in pcd_sector'
-                joined_data.append(n.object)
-
-    return joined_data
-
-def sum_cells_by_pcd_sectors(data):
-    
-    #group premises by lads
-    cells_per_pcd_sector = defaultdict(list)
-
-    for datum in data:
-        """
-        'pcd_sector': [
-            cell1,
-            cell2
-        ]
-        """
-        #print(postcode)
-        cells_per_pcd_sector[datum['properties']['pcd_sector']].append(datum['properties']['lte_ci'])       
-
-    # run statistics on each lad
-    cells_results = defaultdict(dict)
-    for cell in cells_per_pcd_sector.keys():
-
-        sum_of_cells = len(cells_per_pcd_sector[cell]) # contain  list of premises objects in the lad
-
-        if sum_of_cells > 0:
-            cells_results[cell] = {
-                'cells': sum_of_cells,
-                'pcd_sector': cell
-            }
-        else:
-            cells_results[cell] = {
-                'cells': 0,
-                'pcd_sector': cell
-            }
-
-    return cells_results
-
-def calculate_area_of_pcd_sectors(data):
-    
-    my_pcd_sectors = defaultdict(list)
-
-    for datum in data:
-        geom = shape(datum['geometry'])
-
-        # Transform polygon to projected equal area coordinates
-        geom_area = transform(
-            partial(
-                pyproj.transform,
-                pyproj.Proj(init='EPSG:27700'),
-                pyproj.Proj(
-                    proj='aea',
-                    lat1=geom.bounds[1],
-                    lat2=geom.bounds[3])),
-                    geom
-                )
-        polygon_area = round(geom_area.area / 1000000, 4)
-
-        if polygon_area > 0:
-            my_pcd_sectors[datum['properties']['pcd_sector']] = {
-                'area': polygon_area
-            } 
-        else:
-            my_pcd_sectors[datum['properties']['pcd_sector']] = {
-                'area': 'not available'
-            }             
-
-    return my_pcd_sectors
-
-def covert_data_into_list_of_dicts(data, metric):
-    my_data = []
-
-    # output and report results for this timestep
-    for datum in data:
-        my_data.append({
-        'pcd_sector': datum,
-         metric: data[datum][metric],
-        })
-
-    return my_data
-
-
-def deal_with_missing_values(data):
-
-    my_data = []
-
-    for datum in data:
-        
-        if 'area' in datum:
-            my_data.append({
-                'pcd_sector': datum['pcd_sector'],
-                'cells': datum['cells'],
-                'area': datum['area'],
-            })
-
-        else:
-            my_data.append({
-                'pcd_sector': datum['pcd_sector'],
-                'cells': datum['cells'],
-                'area': 'not available'
-            })
-
-    return my_data
-
-def calculate_cell_densities(data):
-
-    my_data = []
-
-    for datum in data:
-
-        if datum['area'] != 'not available':
-            if datum['cells'] > 0.01:
-                #print(datum)
-                cell_density = round(float(datum['cells']) / float(datum['area']), 3)
-                my_data.append({
-                    'pcd_sector': datum['pcd_sector'],
-                    'cells': datum['cells'],
-                    'area': datum['area'],
-                    'cell_density': cell_density
-                    })
-            else:
-                my_data.append({
-                    'pcd_sector': datum['pcd_sector'],
-                    'cells': 0,
-                    'area': datum['area'],
-                    'cell_density': 'not available'
-                    })     
-        else:
-            my_data.append({
-                'pcd_sector': datum['pcd_sector'],
-                'cells': datum['cells'],
-                'area': datum['area'],
-                'cell_density': 'not available'
-                })
-
-    return my_data
 
 def read_in_os_open_roads(data):
 
@@ -417,6 +86,35 @@ def read_in_os_open_roads(data):
                             pass 
 
     return open_roads_network
+
+def add_dense_motorway_geotype(data):
+
+    for road in data:
+        if road['properties']['function'] == 'Motorway': 
+            if road['properties']['roadNumber'] == 'M25':
+                road['properties']['function'] = 'Dense Motorway'
+            elif road['properties']['roadNumber'] == 'M42':
+                road['properties']['function'] = 'Dense Motorway'
+            elif road['properties']['roadNumber'] == 'M5':
+                road['properties']['function'] = 'Dense Motorway'
+            elif road['properties']['roadNumber'] == 'M6':
+                road['properties']['function'] = 'Dense Motorway'
+            elif road['properties']['roadNumber'] == 'M20':
+                road['properties']['function'] = 'Dense Motorway'
+            elif road['properties']['roadNumber'] == 'M23':
+                road['properties']['function'] = 'Dense Motorway'
+            elif road['properties']['roadNumber'] == 'M3':
+                road['properties']['function'] = 'Dense Motorway'
+            elif road['properties']['roadNumber'] == 'M4':
+                road['properties']['function'] = 'Dense Motorway'
+            elif road['properties']['roadNumber'] == 'M1':
+                road['properties']['function'] = 'Dense Motorway'
+            elif road['properties']['roadNumber'] == 'M60':
+                road['properties']['function'] = 'Dense Motorway'
+            elif road['properties']['roadNumber'] == 'M62':
+                road['properties']['function'] = 'Dense Motorway'
+
+    return data
 
 def read_in_built_up_areas():
 
@@ -496,24 +194,6 @@ def deal_with_none_values(data):
         
     return my_data
 
-def add_pcd_sector_indicator_to_roads(road_data, pcd_sector_polygons): 
-
-    # Initialze Rtree
-    idx = index.Index()
-
-    for rtree_idx, area in enumerate(pcd_sector_polygons):
-        idx.insert(rtree_idx, shape(area['geometry']).bounds, area)
-    
-    # Join the two
-    for road in road_data:
-        matches = [n for n in idx.intersection((shape(road['geometry']).bounds), objects=True)]
-        if len(matches) > 0:
-            road['properties']['pcd_sector'] = matches[0].object['properties']['pcd_sector']
-        else:
-            road['properties']['pcd_sector'] = 'undefined'
-
-    return road_data
-
 def write_road_network_shapefile(data, path):
 
     # Translate props to Fiona sink schema
@@ -535,6 +215,9 @@ def write_road_network_shapefile(data, path):
             #print(feature)
             sink.write(feature)
 
+def import_shapes(file_path):
+    with fiona.open(file_path, 'r') as source:
+        return [shape for shape in source]
 
 def extract_geojson_properties(data):
     
@@ -543,21 +226,6 @@ def extract_geojson_properties(data):
     for item in data:
         my_data.append({
             'road': item['properties']['road'],
-            'formofway': item['properties']['formofway'], 
-            'length': item['properties']['length'],
-            'function': item['properties']['function'], 
-            'urban_rural_indicator': item['properties']['urban_rura'],         
-        })
-
-    return my_data
-
-def extract_geojson_properties_inc_pcd_sectors(data):
-    
-    my_data = []
-
-    for item in data:
-        my_data.append({
-            'pcd_sector': item['properties']['pcd_sector'],
             'formofway': item['properties']['formofway'], 
             'length': item['properties']['length'],
             'function': item['properties']['function'], 
@@ -580,32 +248,6 @@ def grouper(data, aggregated_metric, group_item1, group_item2, group_item3, grou
     
     return result
 
-
-def aggregator(data, aggregated_metric, group_item1, group_item2, group_item3):
-
-    my_grouper = itemgetter(group_item1, group_item2, group_item3)
-    result = []
-    for key, grp in groupby(sorted(data, key = my_grouper), my_grouper):
-        try:
-            temp_dict = dict(zip([group_item1, group_item2, group_item3], key))
-            temp_dict[aggregated_metric] = sum(int(item[aggregated_metric]) for item in grp)
-            result.append(temp_dict)
-        except:
-            pass
-    
-    return result
-
-
-def merge_two_lists_of_dicts(msoa_list_of_dicts, oa_list_of_dicts, parameter1, parameter2):
-    """
-    Combine the msoa and oa dicts using the household indicator and year keys. 
-    """
-    d1 = {(d[parameter1], d[parameter2]):d for d in oa_list_of_dicts}
-
-    msoa_list_of_dicts = [dict(d, **d1.get((d[parameter1], d[parameter2]), {})) for d in msoa_list_of_dicts]	
-
-    return msoa_list_of_dicts
-
 #####################################
 # WRITE CSV DATA
 #####################################
@@ -620,157 +262,592 @@ def csv_writer(data, output_fieldnames, filename):
         writer.writeheader()
         writer.writerows(data)
 
+
+def write_shapefile(data, path, crs):
+
+    # Translate props to Fiona sink schema
+    prop_schema = []
+    for name, value in data[0]['properties'].items():
+        fiona_prop_type = next((fiona_type for fiona_type, python_type in fiona.FIELD_TYPES_MAP.items() if python_type == type(value)), None)
+        prop_schema.append((name, fiona_prop_type))
+
+    sink_driver = 'ESRI Shapefile'
+    sink_crs = {'init':crs}
+    sink_schema = {
+        'geometry': data[0]['geometry']['type'],
+        'properties': OrderedDict(prop_schema)
+    }
+
+    # Write all elements to output file
+    with fiona.open(path, 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
+        for feature in data:
+            sink.write(feature)
+
+#####################################
+# setup file locations and data files
+#####################################
+
+def read_in_csv_road_geotype_data(data):
+
+    road_type_data = []
+
+    with open(os.path.join(SYSTEM_OUTPUT_PATH, data), 'r',  encoding='utf8', errors='replace') as system_file:
+        reader = csv.reader(system_file)
+        next(reader)
+        for line in reader:
+            road_type_data.append({
+                'road': line[0],
+                'road_function': line[1],
+                'formofway': line[2],
+                'urban_rural': line[3],
+                'length_km': (int(line[4])/1000)
+            })   
+
+    return road_type_data
+
+#####################################
+# calculate supply side costings
+#####################################
+
+def calculate_tco_for_each_asset(capex, opex, discount_rate, current_year, year_deployed, asset_lifetime, end_year, repeating):
+    
+    repeating_capex_cost_year1 = capex / (1 + discount_rate) ** (year_deployed - current_year)
+
+    if repeating == 'yes':
+        repeating_capex_cost_year5 = capex / (1 + discount_rate) ** ((year_deployed - current_year) + asset_lifetime)
+    else:
+        repeating_capex_cost_year5 = 0
+    
+    total_capex = int(round(repeating_capex_cost_year1 + repeating_capex_cost_year5, 0))
+
+    my_opex = []
+
+    for i in range(10):
+        total_opex = int(round(opex / (1 + discount_rate) ** ((year_deployed - current_year) + (i+1)), 0)) 
+        my_opex.append(total_opex)
+
+    total_cost_of_ownership = total_capex + sum(my_opex)
+
+    return total_cost_of_ownership
+
+def calculate_number_of_RAN_units_and_civil_works_costs(data, deployment_period, year, scenario, strategy, cell_capex, cell_civil_works_capex, cells_per_mounting):
+
+    if BASE_YEAR <= year < (BASE_YEAR + deployment_period):  
+        for road in data:
+            cell_spacing = _get_scenario_cell_spacing_value(scenario, strategy, road['formofway'], road['urban_rural'])
+            road['RAN_units'] = int(round((int(road['length_km']) / cell_spacing) / deployment_period, 0))
+        for road in data:
+            road['RAN_cost'] = int(round((road['RAN_units'] * cell_capex) / deployment_period, 0))
+        for road in data:
+            road['small_cell_mounting_points'] = int(round((road['RAN_units'] / cells_per_mounting) / deployment_period, 0))
+        for road in data:
+            road['small_cell_mounting_cost'] = int(round((road['small_cell_mounting_points'] * cell_civil_works_capex) / deployment_period, 0))
+    else:
+        for road in data:
+            road['RAN_units'] = 0
+        for road in data:
+            road['RAN_cost'] = 0
+        for road in data:
+            road['small_cell_mounting_points'] = 0
+        for road in data:
+            road['small_cell_mounting_cost'] = 0
+
+    return data
+
+def _get_scenario_cell_spacing_value(scenario, strategy, road_type, urban_rural):
+    
+    if strategy == 'cellular_V2X':
+        if scenario == 'low':
+            if urban_rural == 'urban':
+                if road_type == 'Densest Motorway':
+                    spacing = 0.5
+                elif road_type == 'Motorway':
+                    spacing = 0.7
+                elif road_type == 'A Road':
+                    spacing = 0.9
+                else:
+                    spacing = 1
+            else:
+                if road_type == 'Densest Motorway':
+                    spacing = 0.5
+                elif road_type == 'Motorway':
+                    spacing = 0.7
+                elif road_type == 'A Road':
+                    spacing = 0.9
+                else:
+                    spacing = 1                
+        elif scenario == 'baseline':
+            if urban_rural == 'urban':
+                if road_type == 'Densest Motorway':
+                    spacing = 0.4
+                elif road_type == 'Motorway':
+                    spacing = 0.56
+                elif road_type == 'A Road':
+                    spacing = 0.72
+                else:
+                    spacing = 0.8
+            else:
+                if road_type == 'Densest Motorway':
+                    spacing = 0.4
+                elif road_type == 'Motorway':
+                    spacing = 0.56
+                elif road_type == 'A Road':
+                    spacing = 0.72
+                else:
+                    spacing = 0.8
+        elif scenario == 'high':
+            if urban_rural == 'urban':
+                if road_type == 'Densest Motorway':
+                    spacing = 0.3
+                elif road_type == 'Motorway':
+                    spacing = 0.42
+                else:
+                    spacing = 0.6
+            else:
+                if road_type == 'Densest Motorway':
+                    spacing = 0.3
+                elif road_type == 'Motorway':
+                    spacing = 0.42
+                elif road_type == 'A Road':
+                    spacing = 0.54
+                else:
+                    spacing = 0.6
+    
+    elif strategy == 'DSRC_full_greenfield' or strategy == 'DSRC_NRTS_greenfield':
+        if scenario == 'low':
+            if urban_rural == 'urban':
+                if road_type == 'Densest Motorway':
+                    spacing = 0.25
+                elif road_type == 'Motorway':
+                    spacing = 0.35
+                elif road_type == 'A Road':
+                    spacing = 0.45
+                else:
+                    spacing = 0.5
+            else:
+                if road_type == 'Densest Motorway':
+                    spacing = 0.25
+                elif road_type == 'Motorway':
+                    spacing = 0.35
+                elif road_type == 'A Road':
+                    spacing = 0.45
+                else:
+                    spacing = 0.5              
+        elif scenario == 'baseline':
+            if urban_rural == 'urban':
+                if road_type == 'Densest Motorway':
+                    spacing = 0.2
+                elif road_type == 'Motorway':
+                    spacing = 0.28
+                elif road_type == 'A Road':
+                    spacing = 0.36
+                else:
+                    spacing = 0.4
+            else:
+                if road_type == 'Densest Motorway':
+                    spacing = 0.2
+                elif road_type == 'Motorway':
+                    spacing = 0.28
+                elif road_type == 'A Road':
+                    spacing = 0.36
+                else:
+                    spacing = 0.4
+        elif scenario == 'high':
+            if urban_rural == 'urban':
+                if road_type == 'Densest Motorway':
+                    spacing = 0.15
+                elif road_type == 'Motorway':
+                    spacing = 0.21
+                elif road_type == 'A Road':
+                    spacing = 0.27
+                else:
+                    spacing = 0.3
+            else:
+                if road_type == 'Densest Motorway':
+                    spacing = 0.15
+                elif road_type == 'Motorway':
+                    spacing = 0.21
+                elif road_type == 'A Road':
+                    spacing = 0.27
+                else:
+                    spacing = 0.3
+
+    return spacing
+
+#####################################
+# demand estimation
+#####################################
+
+def calculate_potential_demand(data, car_length, car_spacing):
+
+    for road in data:
+        if road['road_function'] == 'Densest Motorway': 
+
+            cars_per_lane = _get_cars_per_lane('Densest Motorway', car_spacing)
+            road['cars_per_lane'] = int(round(int(road['length_km']) * cars_per_lane, 0))
+
+            if road['formofway'] == 'Collapsed Dual Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 6
+            elif road['formofway'] == 'Dual Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 6
+            elif road['formofway'] == 'Roundabout':
+                road['total_cars'] = road['cars_per_lane'] * 3
+            elif road['formofway'] == 'Single Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 2
+            elif road['formofway'] == 'Slip Road':
+                road['total_cars'] = road['cars_per_lane'] * 1
+
+        elif road['road_function'] == 'Motorway': 
+
+            cars_per_lane = _get_cars_per_lane('Motorway', car_spacing)
+            road['cars_per_lane'] = int(round(int(road['length_km']) * cars_per_lane, 0))
+
+            if road['formofway'] == 'Collapsed Dual Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 6
+            elif road['formofway'] == 'Dual Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 6
+            elif road['formofway'] == 'Roundabout':
+                road['total_cars'] = road['cars_per_lane'] * 3
+            elif road['formofway'] == 'Single Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 2
+            elif road['formofway'] == 'Slip Road':
+                road['total_cars'] = road['cars_per_lane'] * 1
+
+        elif road['road_function'] == 'A Road': 
+
+            cars_per_lane = _get_cars_per_lane('A Road', car_spacing)
+            road['cars_per_lane'] = int(round(int(road['length_km']) * cars_per_lane, 0))
+
+            if road['formofway'] == 'Collapsed Dual Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 4
+            elif road['formofway'] == 'Dual Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 4
+            elif road['formofway'] == 'Roundabout':
+                road['total_cars'] = road['cars_per_lane'] * 2
+            elif road['formofway'] == 'Single Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 2
+            elif road['formofway'] == 'Slip Road':
+                road['total_cars'] = road['cars_per_lane'] * 1
+
+        elif road['road_function'] == 'B Road': 
+
+            cars_per_lane = _get_cars_per_lane('B Road', car_spacing)
+            road['cars_per_lane'] = int(round(int(road['length_km']) * cars_per_lane, 0))
+
+            if road['formofway'] == 'Collapsed Dual Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 2
+            elif road['formofway'] == 'Dual Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 2
+            elif road['formofway'] == 'Roundabout':
+                road['total_cars'] = road['cars_per_lane'] * 2
+            elif road['formofway'] == 'Single Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 1
+            elif road['formofway'] == 'Slip Road':
+                road['total_cars'] = road['cars_per_lane'] * 1
+
+        elif road['road_function'] == 'Minor Road': 
+
+            cars_per_lane = _get_cars_per_lane('Minor Road', car_spacing)
+            road['cars_per_lane'] = int(round(int(road['length_km']) * cars_per_lane, 0))
+
+            if road['formofway'] == 'Collapsed Dual Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 2
+            elif road['formofway'] == 'Dual Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 2
+            elif road['formofway'] == 'Roundabout':
+                road['total_cars'] = road['cars_per_lane'] * 2
+            elif road['formofway'] == 'Single Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 2
+            elif road['formofway'] == 'Slip Road':
+                road['total_cars'] = road['cars_per_lane'] * 1
+
+        elif road['road_function'] == 'Local Road': 
+
+            cars_per_lane = _get_cars_per_lane('Local Road', car_spacing)
+            road['cars_per_lane'] = int(round(int(road['length_km']) * cars_per_lane, 0))
+
+            if road['formofway'] == 'Collapsed Dual Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 2
+            elif road['formofway'] == 'Dual Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 2
+            elif road['formofway'] == 'Roundabout':
+                road['total_cars'] = road['cars_per_lane'] * 2
+            elif road['formofway'] == 'Single Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 2
+            elif road['formofway'] == 'Slip Road':
+                road['total_cars'] = road['cars_per_lane'] * 1
+
+        else:
+
+            road['cars_per_lane'] = int(round(int(road['length_km']) * 0.005, 0))
+
+            if road['formofway'] == 'Collapsed Dual Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 2
+            elif road['formofway'] == 'Dual Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 2
+            elif road['formofway'] == 'Roundabout':
+                road['total_cars'] = road['cars_per_lane'] * 2
+            elif road['formofway'] == 'Single Carriageway':
+                road['total_cars'] = road['cars_per_lane'] * 2
+            elif road['formofway'] == 'Slip Road':
+                road['total_cars'] = road['cars_per_lane'] * 1
+
+    return data
+
+def _get_cars_per_lane(road_function, car_spacing):
+
+    if road_function == 'Denset Motorway' and car_spacing == 'high':
+        cars = 20
+    if road_function == 'Denset Motorway' and car_spacing == 'baseline':
+        cars = 15
+    if road_function == 'Denset Motorway' and car_spacing == 'low':
+        cars = 10
+    if road_function == 'Motorway' and car_spacing == 'high':
+        cars = 10
+    if road_function == 'Motorway' and car_spacing == 'baseline':
+        cars = 8
+    if road_function == 'Motorway' and car_spacing == 'low':
+        cars = 5
+    if road_function == 'A Road' and car_spacing == 'high':
+        cars = 8
+    if road_function == 'A Road' and car_spacing == 'baseline':
+        cars = 5
+    if road_function == 'A Road' and car_spacing == 'low':
+        cars = 3
+    if road_function == 'B Road' and car_spacing == 'high':
+        cars = 4
+    if road_function == 'B Road' and car_spacing == 'baseline':
+        cars = 3
+    if road_function == 'B Road' and car_spacing == 'low':
+        cars = 2
+    if road_function == 'Minor Road' and car_spacing == 'high':
+        cars = 4
+    if road_function == 'Minor Road' and car_spacing == 'baseline':
+        cars = 3
+    if road_function == 'Minor Road' and car_spacing == 'low':
+        cars = 2
+    if road_function == 'Local Road' and car_spacing == 'high':
+        cars = 3
+    if road_function == 'Local Road' and car_spacing == 'baseline':
+        cars = 2
+    if road_function == 'Local Road' and car_spacing == 'low':
+        cars = 1
+
+    return cars
+
+def road_spacing_value(car_spacing):
+
+    if car_spacing == 'high':
+        wtp_or_mbps = 10
+    elif car_spacing == 'baseline':
+        wtp_or_mbps = 4
+    elif car_spacing == 'low':
+        wtp_or_mbps = 1
+    
+    return wtp_or_mbps
+
+def s_curve_function(year, start, end, inflection, takeover, curviness):
+    
+    return start + (end - start) / (1 + curviness ** ((inflection + takeover / 2-(year-2019))/takeover))
+
+
+def calculate_yearly_CAV_take_up(data, year, scenario):
+
+    for road in data:
+        if road['total_cars'] > 0:  
+            road['annual_CAV_take_up'] = round(road['total_cars'] * s_curve_function(year, 0, 0.75, 3, 6, 500), 0)
+        else:
+            road['annual_CAV_take_up'] = 0
+
+    wtp_per_user = _get_scenario_wtp_and_data_value(scenario)
+
+    for road in data:
+        if road['annual_CAV_take_up'] > 0:
+            road['CAV_revenue'] = road['annual_CAV_take_up'] * (wtp_per_user * 12)
+        else:
+            road['CAV_revenue'] = 0
+
+    mbps_per_vehicle = _get_scenario_wtp_and_data_value(scenario)
+
+    for road in data:
+        
+        if road['annual_CAV_take_up'] > 0:
+            road['CAV_mbps_demand'] = road['annual_CAV_take_up'] * (mbps_per_vehicle)
+        else:
+            road['CAV_mbps_demand'] = 0
+
+    return data
+
+def _get_scenario_wtp_and_data_value(scenario):
+
+    """treat wtp and data demand as correlated.
+       so, 10 Mbps is £10 per month.
+    """
+
+    if scenario == 'high':
+        wtp_or_mbps = 10
+    elif scenario == 'baseline':
+        wtp_or_mbps = 4
+    elif scenario == 'low':
+        wtp_or_mbps = 1
+    
+    return wtp_or_mbps
+
+def calculate_backhaul_costs(data, deployment_period, year, strategy, fibre_tco):
+    """
+    cost of full deployment split over the length of the deployment_period
+    """   
+    if BASE_YEAR <= year < (BASE_YEAR + deployment_period):  
+        for road in data:
+            road['fibre_backhaul_km'] = road['length_km']  
+
+        if strategy == 'DSRC_NRTS_greenfield':
+            
+            backhaul_shortening_factor = 0.5
+
+            for road in data:
+                road['fibre_backhaul_cost'] = int(round((int(road['fibre_backhaul_km']) * backhaul_shortening_factor) *  int(fibre_tco) / deployment_period, 0))
+
+        else:
+            for road in data:
+                road['fibre_backhaul_cost'] = int(round(int(road['fibre_backhaul_km']) * int(fibre_tco) / deployment_period, 0))
+
+        for road in data:
+            road['total_tco'] = int(round(road['RAN_cost'] + road['small_cell_mounting_cost'] + int(road['fibre_backhaul_cost']), 0))
+    
+    else:
+        for road in data:
+            road['fibre_backhaul_km'] = 0
+
+        for road in data:
+            road['fibre_backhaul_cost'] = 0
+
+        for road in data:
+            road['total_tco'] = 0
+    
+    return data
+
+#####################################
+# write out 
+#####################################
+
+def write_spend(data, year, scenario, strategy, car_spacing):
+    suffix = _get_suffix(scenario, strategy, car_spacing)
+    filename = os.path.join(SYSTEM_RESULTS_PATH, 'spend_{}.csv'.format(suffix))
+
+    if year == BASE_YEAR:
+        spend_file = open(filename, 'w', newline='')
+        spend_writer = csv.writer(spend_file)
+        spend_writer.writerow(
+            ('year', 'scenario', 'strategy', 'car_spacing',
+             'road','road_function','formofway', 'length_km','urban_rural', 
+             'cars_per_lane', 'total_cars', 'annual_CAV_take_up','CAV_revenue', 'CAV_mbps_demand',
+             'RAN_units','RAN_cost','small_cell_mounting_points','small_cell_mounting_cost', 
+             'fibre_backhaul_km', 'fibre_backhaul_cost', 'total_tco'))
+    else:
+        spend_file = open(filename, 'a', newline='')
+        spend_writer = csv.writer(spend_file)
+
+    # output and report results for this timestep
+    for road in data:
+        spend_writer.writerow(
+            (year, scenario, strategy, car_spacing, 
+            road['road'], road['road_function'], road['formofway'], road['length_km'], road['urban_rural'], 
+            road['cars_per_lane'], road['total_cars'], road['annual_CAV_take_up'], road['CAV_revenue'], road['CAV_mbps_demand'],
+            road['RAN_units'], road['RAN_cost'], road['small_cell_mounting_points'],road['small_cell_mounting_cost'], 
+            road['fibre_backhaul_km'], road['fibre_backhaul_cost'], road['total_tco']))
+
+def _get_suffix(scenario, strategy, car_spacing):
+    suffix = 'scenario_{}_strategy_{}_car_spacing_{}'.format(scenario, strategy, car_spacing)
+    return suffix
+
 #####################################
 # RUN SCRIPTS
 #####################################
 
-# print("importing codepoint postcode data")
-# #postcodes = import_postcodes(os.path.join(CODEPOINT_INPUT_PATH,'subset'))
-# postcodes = import_postcodes(os.path.join(CODEPOINT_INPUT_PATH,'codepoint-poly_2429451'))
-
-# print("adding pcd_sector indicator")
-# postcodes = add_postcode_sector_indicator(postcodes)
-
-# print("writing postcodes")
-# write_shapefile(postcodes, os.path.join(CODEPOINT_OUTPUT_PATH, 'postcodes.shp'), 'epsg:27700')
-
-# print("dissolving on pcd_sector indicator")
-# dissolve('postcodes.shp', 'pcd_sectors.shp', ["pcd_sector"])
-
-# print("reading in pcd_sector data")
-# pcd_sectors = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'pcd_sectors.shp'))
-
-# ####print("converting pcd_sector data to WSG84")
-# ####pcd_sectors = convert_projection_pcd_sectors(pcd_sectors)
-
-# print("writing postcode sectors")
-# write_shapefile(pcd_sectors, os.path.join(SYSTEM_OUTPUT_PATH, 'pcd_sectors.shp'), 'epsg:27700')
-
-# #####################################
-
-# print("reading in pcd_sector data")
-# pcd_sectors = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'pcd_sectors.shp'))
-
-# print("reading in unique cell data")
-# #unique_cells = import_unique_cell_data(os.path.join(SYSTEM_INPUT_PATH, 'received_signal_data', 'os_unique_cells_GB_27700.csv'))
-# unique_cells = import_unique_cell_data(os.path.join(SYSTEM_INPUT_PATH, 'received_signal_data', 'os_unique_cells.csv'))
-
-# print("converting data to GB grid 27700")
-# unique_cells = convert_projection(unique_cells)
-
-# print("adding pcd sector id to cells")
-# unique_cells = add_polygon_id_to_point(unique_cells, pcd_sectors)
-
-# print("writing unique_cells to shapefile")
-# write_shapefile(unique_cells, os.path.join(SYSTEM_OUTPUT_PATH, 'unique_cells.shp'), 'epsg:27700')
-
-# print("summing unique_cells by pcd_sector")
-# summed_cells = sum_cells_by_pcd_sectors(unique_cells)
-
-# print("coverting data to list of dict structure")
-# summed_cells = covert_data_into_list_of_dicts(summed_cells, 'cells')
-
-# print("calculate area of pcd_sectors")
-# pcd_sector_area = calculate_area_of_pcd_sectors(pcd_sectors)
-
-# print("coverting data to list of dict structure")
-# pcd_sector_area = covert_data_into_list_of_dicts(pcd_sector_area, 'area')
-
-# print("merge two list of dicts")
-# pcd_sectors = merge_two_lists_of_dicts(summed_cells, pcd_sector_area, 'pcd_sector', 'pcd_sector')
-
-# print("dealing with missing values")
-# pcd_sectors = deal_with_missing_values(pcd_sectors)
-
-# print("calculate cell densities")
-# pcd_sectors = calculate_cell_densities (pcd_sectors)
-
-# print('write pcd_sector data')
-# summed_cells_fieldnames = ['pcd_sector', 'area', 'cells', 'cell_density']
-# csv_writer(pcd_sectors, summed_cells_fieldnames, 'pcd_sector_cell_densities.csv')
-
-#####################################
-
-# # print("read in traffic flow data")
-# # flow_data = read_in_traffic_counts()
-
-# # print("calculating average count per road")
-# # average_flow_data = find_average_count(flow_data)
-
-# # print("converting to list of dicts structure")
-# # average_flow_data = covert_data_into_list_of_dicts(average_flow_data, 'road', 'average_count', 'summed_count') 
-
-# # print("categorising flow data")
-# # # average_flow_data = apply_road_categories(average_flow_data)
-
-#####################################
-
-print('read in road network')
-#road_network = read_in_os_open_roads((os.path.join(SYSTEM_INPUT_PATH, 'os_open_roads', 'open-roads_2438901_cambridge')))
-road_network = read_in_os_open_roads(os.path.join(SYSTEM_INPUT_PATH, 'os_open_roads', 'open-roads_2443825'))
-
-print('read in built up area polygons')
-built_up_areas = read_in_built_up_areas()
-
-print('add built up area indicator to urban roads')
-road_network = add_urban_rural_indicator_to_roads(road_network, built_up_areas)
-
-print('dealing with missing values')
-road_network = deal_with_none_values(road_network)
-
-print("writing road network")
-write_road_network_shapefile(road_network, 'road_network.shp')
-
-#####################################
-
-print('read in road network')
-road_network = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'road_network.shp'))
-
-print("extracting geojson properties")
-aggegated_road_statistics = extract_geojson_properties(road_network)
-
-print("applying grouped aggregation")
-aggegated_road_statistics = grouper(aggegated_road_statistics, 'length', 'road', 'function', 'formofway', 'urban_rural_indicator')
-
-print('write all road statistics')
-road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
-csv_writer(aggegated_road_statistics, road_statistics_fieldnames, 'aggregated_road_statistics.csv')
-
-# print("applying aggregation to road types")
-# road_length_by_type = aggregator(aggegated_road_statistics, 'length', 'function', 'formofway', 'urban_rural_indicator')
-
-# print('write road lengths')
-# road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
-# csv_writer(road_length_by_type, road_statistics_fieldnames, 'road_length_by_type.csv')
-
-#####################################
-# get road lengths by type, by pcd sector
-#####################################
-
 # print('read in road network')
-# # road_network = read_in_os_open_roads((os.path.join(SYSTEM_INPUT_PATH, 'os_open_roads', 'open-roads_2438901_cambridge')))
-# # road_network = read_in_os_open_roads(os.path.join(SYSTEM_INPUT_PATH, 'os_open_roads', 'open-roads_2443825'))
-# road_network = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'road_network.shp'))
+# #road_network = read_in_os_open_roads((os.path.join(SYSTEM_INPUT_PATH, 'os_open_roads', 'open-roads_2438901_cambridge')))
+# road_network = read_in_os_open_roads(os.path.join(SYSTEM_INPUT_PATH, 'os_open_roads', 'open-roads_2443825'))
 
-# print("reading in pcd_sector data")
-# pcd_sectors = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'pcd_sectors.shp'))
+# print('adding dense motorway geotype')
+# road_network = add_dense_motorway_geotype(road_network)
 
-# print('add pcd sector id to roads')
-# road_network = add_pcd_sector_indicator_to_roads(road_network, pcd_sectors)
+# print('read in built up area polygons')
+# built_up_areas = read_in_built_up_areas()
+
+# print('add built up area indicator to urban roads')
+# road_network = add_urban_rural_indicator_to_roads(road_network, built_up_areas)
+
+# print('dealing with missing values')
+# road_network = deal_with_none_values(road_network)
 
 # print("writing road network")
-# write_road_network_shapefile(road_network, 'road_network_with_pcd_sectors.shp')
+# write_road_network_shapefile(road_network, 'road_network.shp')
+# write_shapefile(road_network, SYSTEM_OUTPUT_PATH, 'road_network.shp')
+# # #####################################
+
+# print('read in road network')
+# road_network = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'road_network.shp'))
 
 # print("extracting geojson properties")
-# road_stats_by_pcd_sector = extract_geojson_properties_inc_pcd_sectors(road_network)
+# aggegated_road_statistics = extract_geojson_properties(road_network)
 
 # print("applying grouped aggregation")
-# road_stats_by_pcd_sector = grouper(road_stats_by_pcd_sector, 'length', 'pcd_sector', 'function', 'formofway', 'urban_rural_indicator')
+# aggegated_road_statistics = grouper(aggegated_road_statistics, 'length', 'road', 'function', 'formofway', 'urban_rural_indicator')
 
-# print('write road lengths')
-# road_statistics_fieldnames = ['pcd_sector', 'function', 'formofway', 'length', 'urban_rural_indicator']
-# csv_writer(road_stats_by_pcd_sector, road_statistics_fieldnames, 'pcd_sector_road_length_by_type.csv')
+# print('write all road statistics')
+# road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
+# csv_writer(aggegated_road_statistics, road_statistics_fieldnames, 'aggregated_road_statistics.csv')
+
+#####################################
+# run functions
+# #####################################
+
+DEPLOYMENT_PERIOD = 4
+
+print("reading in aggregated road geotype data")
+road_geotype_data = read_in_csv_road_geotype_data('aggregated_road_statistics.csv')
+
+print("calculating tco costs")
+small_cell_tco = calculate_tco_for_each_asset(2500, 350, 0.035, 2019, 2020, 10, 2029, 'no') 
+small_cell_civil_works_tco = calculate_tco_for_each_asset(13300, 0, 0.035, 2019, 2020, 0, 2029, 'no')
+fibre_tco_per_km = calculate_tco_for_each_asset(20000, 20, 0.035, 2019, 2020, 0, 2029, 'no') 
+
+print('running scenarios')
+for scenario, strategy, car_spacing in [
+        ('high', 'DSRC_full_greenfield', 'high'),
+        ('baseline', 'DSRC_full_greenfield', 'baseline'),
+        ('low', 'DSRC_full_greenfield', 'low'),
+
+        ('high', 'DSRC_NRTS_greenfield', 'high'),
+        ('baseline', 'DSRC_NRTS_greenfield', 'baseline'),
+        ('low', 'DSRC_NRTS_greenfield', 'low'),
+
+        ('high', 'cellular_V2X', 'high'),
+        ('baseline', 'cellular_V2X', 'baseline'),
+        ('low', 'cellular_V2X', 'low'),
+    ]:
+
+    print("Running:", scenario, strategy, car_spacing)
+
+    #if strategy == 'DSRC_full_greenfield' or strategy == 'DSRC_NRTS_greenfield':
+        
+    for year in TIMESTEPS:
+
+        print("-", year)
+        
+        road_geotype_data = calculate_potential_demand(road_geotype_data, 5, car_spacing)
+        
+        road_geotype_data = calculate_yearly_CAV_take_up(road_geotype_data, year, scenario)
+        
+        road_geotype_data = calculate_number_of_RAN_units_and_civil_works_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, scenario, strategy, small_cell_tco, small_cell_civil_works_tco, 2)
+        
+        road_geotype_data = calculate_backhaul_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, strategy, fibre_tco_per_km)
+
+        write_spend(road_geotype_data, year, scenario, strategy, car_spacing)
+
 
 end = time.time()
 print("script finished")
 print("script took {} minutes to complete".format(round((end - start)/60, 0))) 
+
