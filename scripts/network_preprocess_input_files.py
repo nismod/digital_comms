@@ -96,7 +96,7 @@ def read_wtp_data():
         return wtp_data
 
 msoa_year_files = {
-     year: os.path.join(DATA_RAW,'demographic_scenario_data','msoa_test_data','ass_E07000008_MSOA11_{}.csv'.format(year))
+     year: os.path.join(DATA_RAW,'demographic_scenario_data','msoa_2018','ass_E08000021_MSOA11_{}.csv'.format(year))
      for year in TIMESTEPS
 }
 
@@ -144,7 +144,7 @@ def add_wtp_to_MSOA_data(consumer_data, population_data):
     return population_data
 
 oa_year_files = {
-     year: os.path.join(DATA_RAW, 'demographic_scenario_data','oa_test_data','ass_hh_E07000008_OA11_{}.csv'.format(year))
+     year: os.path.join(DATA_RAW, 'demographic_scenario_data','oa_2018','ass_hh_E08000021_OA11_{}.csv'.format(year))
      for year in TIMESTEPS
 }
 
