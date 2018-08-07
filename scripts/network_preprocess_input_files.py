@@ -55,10 +55,11 @@ def read_lads(exchange_area):
 def get_lad_area_ids(lad_areas):
     lad_area_ids = []
     for lad in lad_areas:
+        #print(lad['properties']['name'])
         lad_area_ids.append(lad['properties']['name'])
-
     return lad_area_ids
-        
+
+
 #####################################
 # INTEGRATE WTP AND WTA HOUSEHOLD DATA INTO PREMISES
 #####################################
@@ -137,6 +138,7 @@ def read_msoa_data(lad_ids):
                 MSOA_data.append({
                     'PID': line[0],
                     'MSOA': line[1],
+                    'lad': filename[-25:-16],
                     'gender': line[2],
                     'age': line[3],
                     'ethnicity': line[4],
@@ -182,6 +184,7 @@ def read_oa_data():
                 OA_data.append({
                     'HID': line[0],
                     'OA': line[1],
+                    'lad': filename[-23:-14],
                     'SES': line[12],
                     'year': int(filename[-8:-4]),
                 })     
@@ -200,11 +203,11 @@ def merge_two_lists_of_dicts(msoa_list_of_dicts, oa_list_of_dicts, parameter1, p
 
 def aggregate_wtp_and_wta_by_household(data):
     """
-    Aggregate wtp by household by Household ID (HID), Socio Economic Status (SES) and year.
+    Aggregate wtp by household by Household ID (HID), Local Authority District (lad) and year.
     """
     d = defaultdict(lambda: defaultdict(int))
 
-    group_keys = ['HID', 'SES', 'year']
+    group_keys = ['HID', 'lad', 'year']
     sum_keys = ['wtp', 'wta']
 
     for item in data:
@@ -521,7 +524,7 @@ def read_city_exchange_geotype_lut():
 # READ PREMISES/ASSETS
 #####################################
 
-def read_premises(exchange_area):
+def read_premises(exchange_area, exchange_abbr):
 
     """
     Reads in premises points from the OS AddressBase data (.csv).
@@ -557,7 +560,7 @@ def read_premises(exchange_area):
     exchange_bounds = shape(exchange_area['geometry']).bounds
 
     #for path in pathlist:
-    with open(os.path.join(DATA_INTERMEDIATE, 'dummy_premises_data.csv'), 'r') as system_file:
+    with open(os.path.join(DATA_INTERMEDIATE, '{}_premises_data.csv'.format(exchange_abbr)), 'r') as system_file:
         reader = csv.reader(system_file)
         next(reader) #skip header
         [premises_data.append(
@@ -575,7 +578,7 @@ def read_premises(exchange_area):
                     'function': line[5],
                     'postgis_geom': line[6],
                     'HID': line[9],
-                    'SES': line[10],
+                    'lad': line[10],
                     'year': line[11],
                     'wtp': line[12],
                     'wta': line[13]
@@ -811,7 +814,6 @@ def add_urban_geotype_to_exchanges(exchanges, exchange_geotype_lut):
     # Add properties
     for exchange in exchanges:
         if exchange['properties']['lad'] in exchange_geotypes:
-            print(exchange)
             exchange['properties'].update({
                 'geotype': exchange_geotypes[exchange['properties']['lad']]['geotype'],
 
@@ -1608,7 +1610,7 @@ if __name__ == "__main__":
     oa_data = read_oa_data()
 
     print('Adding MSOA data to OA data')
-    final_data = merge_two_lists_of_dicts(MSOA_data, oa_data, 'HID', 'year')
+    final_data = merge_two_lists_of_dicts(MSOA_data, oa_data, 'HID', 'lad')
 
     print('Aggregating WTP by household')
     household_wtp = aggregate_wtp_and_wta_by_household(final_data)
@@ -1623,8 +1625,8 @@ if __name__ == "__main__":
     premises = merge_prems_and_housholds(premises, household_wtp)
 
     print('Write premises_multiple by household to .csv')
-    premises_fieldnames = ['uid','oa','gor','residential_address_count','non_residential_address_count','function','postgis_geom','N','E', 'HID','SES','year','wtp','wta']
-    csv_writer(premises, 'dummy_premises_data.csv', premises_fieldnames)  
+    premises_fieldnames = ['uid','oa','gor','residential_address_count','non_residential_address_count','function','postgis_geom','N','E', 'HID','lad','year','wtp','wta']
+    csv_writer(premises, '{}_premises_data.csv'.format(exchange_abbr), premises_fieldnames)  
     ####
 
     print('read_pcd_to_exchange_lut')
@@ -1644,7 +1646,7 @@ if __name__ == "__main__":
 
     # Read Premises/Assets
     print('read premises')
-    geojson_layer5_premises = read_premises(exchange_area)
+    geojson_layer5_premises = read_premises(exchange_area, exchange_abbr)
 
     print('read exchanges')
     geojson_layer2_exchanges = read_exchanges(exchange_area)
