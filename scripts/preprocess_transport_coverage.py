@@ -598,11 +598,11 @@ def calculate_potential_demand(data, car_length, car_spacing):
 
 def _get_cars_per_lane(road_function, car_spacing):
 
-    if road_function == 'Denset Motorway' and car_spacing == 'high':
+    if road_function == 'Dense Motorway' and car_spacing == 'high':
         cars = 20
-    if road_function == 'Denset Motorway' and car_spacing == 'baseline':
+    if road_function == 'Dense Motorway' and car_spacing == 'baseline':
         cars = 15
-    if road_function == 'Denset Motorway' and car_spacing == 'low':
+    if road_function == 'Dense Motorway' and car_spacing == 'low':
         cars = 10
     if road_function == 'Motorway' and car_spacing == 'high':
         cars = 10
@@ -778,70 +778,70 @@ def _get_suffix(scenario, strategy, car_spacing):
 # print("writing road network")
 # write_road_network_shapefile(road_network, 'road_network.shp')
 # write_shapefile(road_network, SYSTEM_OUTPUT_PATH, 'road_network.shp')
-# # #####################################
+# # # #####################################
 
-print('read in road network')
-road_network = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'road_network.shp'))
+# print('read in road network')
+# road_network = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'road_network.shp'))
 
-print("extracting geojson properties")
-aggegated_road_statistics = extract_geojson_properties(road_network)
+# print("extracting geojson properties")
+# aggegated_road_statistics = extract_geojson_properties(road_network)
 
-print("applying grouped aggregation")
-aggegated_road_statistics = grouper(aggegated_road_statistics, 'length', 'road', 'function', 'formofway', 'urban_rural_indicator')
+# print("applying grouped aggregation")
+# aggegated_road_statistics = grouper(aggegated_road_statistics, 'length', 'road', 'function', 'formofway', 'urban_rural_indicator')
 
-print('write all road statistics')
-road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
-csv_writer(aggegated_road_statistics, road_statistics_fieldnames, 'aggregated_road_statistics.csv')
+# print('write all road statistics')
+# road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
+# csv_writer(aggegated_road_statistics, road_statistics_fieldnames, 'aggregated_road_statistics.csv')
 
 #####################################
 # run functions
-# #####################################
+#####################################
 
-# DEPLOYMENT_PERIOD = 4
+DEPLOYMENT_PERIOD = 4
 
-# print("reading in aggregated road geotype data")
-# road_geotype_data = read_in_csv_road_geotype_data('aggregated_road_statistics.csv')
+print("reading in aggregated road geotype data")
+road_geotype_data = read_in_csv_road_geotype_data('aggregated_road_statistics.csv')
 
-# print("calculating tco costs")
-# small_cell_tco = calculate_tco_for_each_asset(2500, 350, 0.035, 2019, 2020, 10, 2029, 'no') 
-# small_cell_civil_works_tco = calculate_tco_for_each_asset(13300, 0, 0.035, 2019, 2020, 0, 2029, 'no')
-# fibre_tco_per_km = calculate_tco_for_each_asset(20000, 20, 0.035, 2019, 2020, 0, 2029, 'no') 
+print("calculating tco costs")
+small_cell_tco = calculate_tco_for_each_asset(2500, 350, 0.035, 2019, 2020, 10, 2029, 'no') 
+small_cell_civil_works_tco = calculate_tco_for_each_asset(13300, 0, 0.035, 2019, 2020, 0, 2029, 'no')
+fibre_tco_per_km = calculate_tco_for_each_asset(20000, 20, 0.035, 2019, 2020, 0, 2029, 'no') 
 
-# print('running scenarios')
-# for scenario, strategy, car_spacing in [
-#         ('high', 'DSRC_full_greenfield', 'high'),
-#         ('baseline', 'DSRC_full_greenfield', 'baseline'),
-#         ('low', 'DSRC_full_greenfield', 'low'),
+print('running scenarios')
+for scenario, strategy, car_spacing in [
+        ('high', 'DSRC_full_greenfield', 'high'),
+        ('baseline', 'DSRC_full_greenfield', 'baseline'),
+        ('low', 'DSRC_full_greenfield', 'low'),
 
-#         ('high', 'DSRC_NRTS_greenfield', 'high'),
-#         ('baseline', 'DSRC_NRTS_greenfield', 'baseline'),
-#         ('low', 'DSRC_NRTS_greenfield', 'low'),
+        ('high', 'DSRC_NRTS_greenfield', 'high'),
+        ('baseline', 'DSRC_NRTS_greenfield', 'baseline'),
+        ('low', 'DSRC_NRTS_greenfield', 'low'),
 
-#         ('high', 'cellular_V2X', 'high'),
-#         ('baseline', 'cellular_V2X', 'baseline'),
-#         ('low', 'cellular_V2X', 'low'),
-#     ]:
+        ('high', 'cellular_V2X', 'high'),
+        ('baseline', 'cellular_V2X', 'baseline'),
+        ('low', 'cellular_V2X', 'low'),
+    ]:
 
-#     print("Running:", scenario, strategy, car_spacing)
+    print("Running:", scenario, strategy, car_spacing)
 
-#     #if strategy == 'DSRC_full_greenfield' or strategy == 'DSRC_NRTS_greenfield':
+    #if strategy == 'DSRC_full_greenfield' or strategy == 'DSRC_NRTS_greenfield':
         
-#     for year in TIMESTEPS:
+    for year in TIMESTEPS:
 
-#         print("-", year)
+        print("-", year)
         
-#         road_geotype_data = calculate_potential_demand(road_geotype_data, 5, car_spacing)
+        road_geotype_data = calculate_potential_demand(road_geotype_data, 5, car_spacing)
         
-#         road_geotype_data = calculate_yearly_CAV_take_up(road_geotype_data, year, scenario)
+        road_geotype_data = calculate_yearly_CAV_take_up(road_geotype_data, year, scenario)
         
-#         road_geotype_data = calculate_number_of_RAN_units_and_civil_works_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, scenario, strategy, small_cell_tco, small_cell_civil_works_tco, 2)
+        road_geotype_data = calculate_number_of_RAN_units_and_civil_works_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, scenario, strategy, small_cell_tco, small_cell_civil_works_tco, 2)
         
-#         road_geotype_data = calculate_backhaul_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, strategy, fibre_tco_per_km)
+        road_geotype_data = calculate_backhaul_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, strategy, fibre_tco_per_km)
 
-#         write_spend(road_geotype_data, year, scenario, strategy, car_spacing)
+        write_spend(road_geotype_data, year, scenario, strategy, car_spacing)
 
 
-# end = time.time()
-# print("script finished")
-# print("script took {} minutes to complete".format(round((end - start)/60, 0))) 
+end = time.time()
+print("script finished")
+print("script took {} minutes to complete".format(round((end - start)/60, 0))) 
 
