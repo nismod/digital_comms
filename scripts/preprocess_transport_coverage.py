@@ -113,6 +113,8 @@ def add_dense_motorway_geotype(data):
                 road['properties']['function'] = 'Dense Motorway'
             elif road['properties']['roadNumber'] == 'M62':
                 road['properties']['function'] = 'Dense Motorway'
+        else:
+            pass
 
     return data
 
@@ -359,7 +361,7 @@ def _get_scenario_cell_spacing_value(scenario, strategy, road_type, urban_rural)
     if strategy == 'cellular_V2X':
         if scenario == 'low':
             if urban_rural == 'urban':
-                if road_type == 'Densest Motorway':
+                if road_type == 'Dense Motorway':
                     spacing = 0.5
                 elif road_type == 'Motorway':
                     spacing = 0.7
@@ -368,7 +370,7 @@ def _get_scenario_cell_spacing_value(scenario, strategy, road_type, urban_rural)
                 else:
                     spacing = 1
             else:
-                if road_type == 'Densest Motorway':
+                if road_type == 'Dense Motorway':
                     spacing = 0.5
                 elif road_type == 'Motorway':
                     spacing = 0.7
@@ -378,7 +380,7 @@ def _get_scenario_cell_spacing_value(scenario, strategy, road_type, urban_rural)
                     spacing = 1                
         elif scenario == 'baseline':
             if urban_rural == 'urban':
-                if road_type == 'Densest Motorway':
+                if road_type == 'Dense Motorway':
                     spacing = 0.4
                 elif road_type == 'Motorway':
                     spacing = 0.56
@@ -387,7 +389,7 @@ def _get_scenario_cell_spacing_value(scenario, strategy, road_type, urban_rural)
                 else:
                     spacing = 0.8
             else:
-                if road_type == 'Densest Motorway':
+                if road_type == 'Dense Motorway':
                     spacing = 0.4
                 elif road_type == 'Motorway':
                     spacing = 0.56
@@ -397,14 +399,14 @@ def _get_scenario_cell_spacing_value(scenario, strategy, road_type, urban_rural)
                     spacing = 0.8
         elif scenario == 'high':
             if urban_rural == 'urban':
-                if road_type == 'Densest Motorway':
+                if road_type == 'Dense Motorway':
                     spacing = 0.3
                 elif road_type == 'Motorway':
                     spacing = 0.42
                 else:
                     spacing = 0.6
             else:
-                if road_type == 'Densest Motorway':
+                if road_type == 'Dense Motorway':
                     spacing = 0.3
                 elif road_type == 'Motorway':
                     spacing = 0.42
@@ -416,7 +418,7 @@ def _get_scenario_cell_spacing_value(scenario, strategy, road_type, urban_rural)
     elif strategy == 'DSRC_full_greenfield' or strategy == 'DSRC_NRTS_greenfield':
         if scenario == 'low':
             if urban_rural == 'urban':
-                if road_type == 'Densest Motorway':
+                if road_type == 'Dense Motorway':
                     spacing = 0.25
                 elif road_type == 'Motorway':
                     spacing = 0.35
@@ -425,7 +427,7 @@ def _get_scenario_cell_spacing_value(scenario, strategy, road_type, urban_rural)
                 else:
                     spacing = 0.5
             else:
-                if road_type == 'Densest Motorway':
+                if road_type == 'Dense Motorway':
                     spacing = 0.25
                 elif road_type == 'Motorway':
                     spacing = 0.35
@@ -435,7 +437,7 @@ def _get_scenario_cell_spacing_value(scenario, strategy, road_type, urban_rural)
                     spacing = 0.5              
         elif scenario == 'baseline':
             if urban_rural == 'urban':
-                if road_type == 'Densest Motorway':
+                if road_type == 'Dense Motorway':
                     spacing = 0.2
                 elif road_type == 'Motorway':
                     spacing = 0.28
@@ -444,7 +446,7 @@ def _get_scenario_cell_spacing_value(scenario, strategy, road_type, urban_rural)
                 else:
                     spacing = 0.4
             else:
-                if road_type == 'Densest Motorway':
+                if road_type == 'Dense Motorway':
                     spacing = 0.2
                 elif road_type == 'Motorway':
                     spacing = 0.28
@@ -454,7 +456,7 @@ def _get_scenario_cell_spacing_value(scenario, strategy, road_type, urban_rural)
                     spacing = 0.4
         elif scenario == 'high':
             if urban_rural == 'urban':
-                if road_type == 'Densest Motorway':
+                if road_type == 'Dense Motorway':
                     spacing = 0.15
                 elif road_type == 'Motorway':
                     spacing = 0.21
@@ -463,7 +465,7 @@ def _get_scenario_cell_spacing_value(scenario, strategy, road_type, urban_rural)
                 else:
                     spacing = 0.3
             else:
-                if road_type == 'Densest Motorway':
+                if road_type == 'Dense Motorway':
                     spacing = 0.15
                 elif road_type == 'Motorway':
                     spacing = 0.21
@@ -481,9 +483,9 @@ def _get_scenario_cell_spacing_value(scenario, strategy, road_type, urban_rural)
 def calculate_potential_demand(data, car_length, car_spacing):
 
     for road in data:
-        if road['road_function'] == 'Densest Motorway': 
+        if road['road_function'] == 'Dense Motorway': 
 
-            cars_per_lane = _get_cars_per_lane('Densest Motorway', car_spacing)
+            cars_per_lane = _get_cars_per_lane('Dense Motorway', car_spacing)
             road['cars_per_lane'] = int(round(int(road['length_km']) * cars_per_lane, 0))
 
             if road['formofway'] == 'Collapsed Dual Carriageway':
@@ -700,31 +702,23 @@ def calculate_backhaul_costs(data, deployment_period, year, strategy, fibre_tco)
     if BASE_YEAR <= year < (BASE_YEAR + deployment_period):  
         for road in data:
             road['fibre_backhaul_km'] = road['length_km']  
-
         if strategy == 'DSRC_NRTS_greenfield':
-            
             backhaul_shortening_factor = 0.5
-
             for road in data:
                 road['fibre_backhaul_cost'] = int(round((int(road['fibre_backhaul_km']) * backhaul_shortening_factor) *  int(fibre_tco) / deployment_period, 0))
-
         else:
             for road in data:
                 road['fibre_backhaul_cost'] = int(round(int(road['fibre_backhaul_km']) * int(fibre_tco) / deployment_period, 0))
-
         for road in data:
-            road['total_tco'] = int(round(road['RAN_cost'] + road['small_cell_mounting_cost'] + int(road['fibre_backhaul_cost']), 0))
-    
+            road['total_tco'] = int(round(road['RAN_cost'] + road['small_cell_mounting_cost'] + int(road['fibre_backhaul_cost']), 0)) 
     else:
         for road in data:
             road['fibre_backhaul_km'] = 0
-
         for road in data:
             road['fibre_backhaul_cost'] = 0
-
         for road in data:
             road['total_tco'] = 0
-    
+
     return data
 
 #####################################
@@ -786,68 +780,68 @@ def _get_suffix(scenario, strategy, car_spacing):
 # write_shapefile(road_network, SYSTEM_OUTPUT_PATH, 'road_network.shp')
 # # #####################################
 
-# print('read in road network')
-# road_network = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'road_network.shp'))
+print('read in road network')
+road_network = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'road_network.shp'))
 
-# print("extracting geojson properties")
-# aggegated_road_statistics = extract_geojson_properties(road_network)
+print("extracting geojson properties")
+aggegated_road_statistics = extract_geojson_properties(road_network)
 
-# print("applying grouped aggregation")
-# aggegated_road_statistics = grouper(aggegated_road_statistics, 'length', 'road', 'function', 'formofway', 'urban_rural_indicator')
+print("applying grouped aggregation")
+aggegated_road_statistics = grouper(aggegated_road_statistics, 'length', 'road', 'function', 'formofway', 'urban_rural_indicator')
 
-# print('write all road statistics')
-# road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
-# csv_writer(aggegated_road_statistics, road_statistics_fieldnames, 'aggregated_road_statistics.csv')
+print('write all road statistics')
+road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
+csv_writer(aggegated_road_statistics, road_statistics_fieldnames, 'aggregated_road_statistics.csv')
 
 #####################################
 # run functions
 # #####################################
 
-DEPLOYMENT_PERIOD = 4
+# DEPLOYMENT_PERIOD = 4
 
-print("reading in aggregated road geotype data")
-road_geotype_data = read_in_csv_road_geotype_data('aggregated_road_statistics.csv')
+# print("reading in aggregated road geotype data")
+# road_geotype_data = read_in_csv_road_geotype_data('aggregated_road_statistics.csv')
 
-print("calculating tco costs")
-small_cell_tco = calculate_tco_for_each_asset(2500, 350, 0.035, 2019, 2020, 10, 2029, 'no') 
-small_cell_civil_works_tco = calculate_tco_for_each_asset(13300, 0, 0.035, 2019, 2020, 0, 2029, 'no')
-fibre_tco_per_km = calculate_tco_for_each_asset(20000, 20, 0.035, 2019, 2020, 0, 2029, 'no') 
+# print("calculating tco costs")
+# small_cell_tco = calculate_tco_for_each_asset(2500, 350, 0.035, 2019, 2020, 10, 2029, 'no') 
+# small_cell_civil_works_tco = calculate_tco_for_each_asset(13300, 0, 0.035, 2019, 2020, 0, 2029, 'no')
+# fibre_tco_per_km = calculate_tco_for_each_asset(20000, 20, 0.035, 2019, 2020, 0, 2029, 'no') 
 
-print('running scenarios')
-for scenario, strategy, car_spacing in [
-        ('high', 'DSRC_full_greenfield', 'high'),
-        ('baseline', 'DSRC_full_greenfield', 'baseline'),
-        ('low', 'DSRC_full_greenfield', 'low'),
+# print('running scenarios')
+# for scenario, strategy, car_spacing in [
+#         ('high', 'DSRC_full_greenfield', 'high'),
+#         ('baseline', 'DSRC_full_greenfield', 'baseline'),
+#         ('low', 'DSRC_full_greenfield', 'low'),
 
-        ('high', 'DSRC_NRTS_greenfield', 'high'),
-        ('baseline', 'DSRC_NRTS_greenfield', 'baseline'),
-        ('low', 'DSRC_NRTS_greenfield', 'low'),
+#         ('high', 'DSRC_NRTS_greenfield', 'high'),
+#         ('baseline', 'DSRC_NRTS_greenfield', 'baseline'),
+#         ('low', 'DSRC_NRTS_greenfield', 'low'),
 
-        ('high', 'cellular_V2X', 'high'),
-        ('baseline', 'cellular_V2X', 'baseline'),
-        ('low', 'cellular_V2X', 'low'),
-    ]:
+#         ('high', 'cellular_V2X', 'high'),
+#         ('baseline', 'cellular_V2X', 'baseline'),
+#         ('low', 'cellular_V2X', 'low'),
+#     ]:
 
-    print("Running:", scenario, strategy, car_spacing)
+#     print("Running:", scenario, strategy, car_spacing)
 
-    #if strategy == 'DSRC_full_greenfield' or strategy == 'DSRC_NRTS_greenfield':
+#     #if strategy == 'DSRC_full_greenfield' or strategy == 'DSRC_NRTS_greenfield':
         
-    for year in TIMESTEPS:
+#     for year in TIMESTEPS:
 
-        print("-", year)
+#         print("-", year)
         
-        road_geotype_data = calculate_potential_demand(road_geotype_data, 5, car_spacing)
+#         road_geotype_data = calculate_potential_demand(road_geotype_data, 5, car_spacing)
         
-        road_geotype_data = calculate_yearly_CAV_take_up(road_geotype_data, year, scenario)
+#         road_geotype_data = calculate_yearly_CAV_take_up(road_geotype_data, year, scenario)
         
-        road_geotype_data = calculate_number_of_RAN_units_and_civil_works_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, scenario, strategy, small_cell_tco, small_cell_civil_works_tco, 2)
+#         road_geotype_data = calculate_number_of_RAN_units_and_civil_works_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, scenario, strategy, small_cell_tco, small_cell_civil_works_tco, 2)
         
-        road_geotype_data = calculate_backhaul_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, strategy, fibre_tco_per_km)
+#         road_geotype_data = calculate_backhaul_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, strategy, fibre_tco_per_km)
 
-        write_spend(road_geotype_data, year, scenario, strategy, car_spacing)
+#         write_spend(road_geotype_data, year, scenario, strategy, car_spacing)
 
 
-end = time.time()
-print("script finished")
-print("script took {} minutes to complete".format(round((end - start)/60, 0))) 
+# end = time.time()
+# print("script finished")
+# print("script took {} minutes to complete".format(round((end - start)/60, 0))) 
 
