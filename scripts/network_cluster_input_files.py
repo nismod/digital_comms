@@ -11,7 +11,6 @@ import glob
 from shapely.geometry import shape, Point, LineString, Polygon, MultiPolygon, mapping
 from shapely.ops import unary_union, cascaded_union
 from pyproj import Proj, transform
-from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
 from rtree import index
 
 from collections import OrderedDict, defaultdict
