@@ -14,8 +14,8 @@ files = list.files(pattern="*.csv")
 # First apply read.csv, then rbind
 all_scenarios = do.call(rbind, lapply(files, function(x) read.csv(x, stringsAsFactors = FALSE)))
 
-all_scenarios$road_type[all_scenarios$road_function == 'Densest Motorway' & all_scenarios$urban_rural == 'urban'] <- 'Densest Motorway (Urban)'
-all_scenarios$road_type[all_scenarios$road_function == 'Densest Motorway' & all_scenarios$urban_rural == 'rural'] <- 'Densest Motorway (Rural)'
+all_scenarios$road_type[all_scenarios$road_function == 'Dense Motorway' & all_scenarios$urban_rural == 'urban'] <- 'Dense Motorway (Urban)'
+all_scenarios$road_type[all_scenarios$road_function == 'Dense Motorway' & all_scenarios$urban_rural == 'rural'] <- 'Dense Motorway (Rural)'
 all_scenarios$road_type[all_scenarios$road_function == 'Motorway' & all_scenarios$urban_rural == 'urban'] <- 'Motorway (Urban)'
 all_scenarios$road_type[all_scenarios$road_function == 'Motorway' & all_scenarios$urban_rural == 'rural'] <- 'Motorway (Rural)'
 all_scenarios$road_type[all_scenarios$road_function == 'A Road' & all_scenarios$urban_rural == 'urban'] <- 'A Road (Urban)'
@@ -28,8 +28,8 @@ all_scenarios$road_type[all_scenarios$road_function == 'Local Road' & all_scenar
 all_scenarios$road_type[all_scenarios$road_function == 'Local Road' & all_scenarios$urban_rural == 'rural'] <- 'Local Road (Rural)'
 
 all_scenarios$road_type <- factor(all_scenarios$road_type,
-                                  levels = c("Densest Motorway (Urban)",
-                                             "Densest Motorway (Rural)",
+                                  levels = c("Dense Motorway (Urban)",
+                                             "Dense Motorway (Rural)",
                                              "Motorway (Urban)",
                                              "Motorway (Rural)",
                                              "A Road (Urban)",
@@ -190,7 +190,7 @@ dev.off()
 # COST BENEFIT METRICS MOTORWAYS & A Roads
 ##########################################
 
-SRN_CBA <- all_scenarios[which(all_scenarios$road_function == 'Densest Motorway' |
+SRN_CBA <- all_scenarios[which(all_scenarios$road_function == 'Dense Motorway' |
                                all_scenarios$road_function == 'Motorway' |
                                all_scenarios$road_function == 'A Road'),]
 
