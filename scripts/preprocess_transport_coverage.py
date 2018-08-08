@@ -217,6 +217,28 @@ def write_road_network_shapefile(data, path):
             #print(feature)
             sink.write(feature)
 
+def add_lad_to_road(road_network, lads):
+    
+    road_network_data = []
+
+    # Initialze Rtree
+    idx = index.Index()
+
+    for rtree_idx, road in enumerate(road_network):
+        idx.insert(rtree_idx, shape(road['geometry']).bounds, road)
+
+    # Join the two
+    for lad in lads:
+        for n in idx.intersection((shape(lad['geometry']).bounds), objects=True):
+            lad_shape = shape(lad['geometry'])
+            road_shape = shape(n.object['geometry'])
+            if lad_shape.contains(road_shape):
+                n.object['properties']['lad'] = lad['properties']['name']
+                road_network_data.append(n.object)
+
+    return road_network_data
+
+
 def import_shapes(file_path):
     with fiona.open(file_path, 'r') as source:
         return [shape for shape in source]
@@ -231,7 +253,8 @@ def extract_geojson_properties(data):
             'formofway': item['properties']['formofway'], 
             'length': item['properties']['length'],
             'function': item['properties']['function'], 
-            'urban_rural_indicator': item['properties']['urban_rura'],         
+            'urban_rural_indicator': item['properties']['urban_rura'],
+            'lad': item['properties']['lad'],         
         })
 
     return my_data
@@ -780,65 +803,71 @@ def _get_suffix(scenario, strategy, car_spacing):
 # write_shapefile(road_network, SYSTEM_OUTPUT_PATH, 'road_network.shp')
 # # # #####################################
 
-# print('read in road network')
-# road_network = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'road_network.shp'))
+print('read in road network')
+road_network = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'road_network.shp'))
 
-# print("extracting geojson properties")
-# aggegated_road_statistics = extract_geojson_properties(road_network)
+print('read lads')
+geojson_lad_areas = import_shapes(os.path.join(SYSTEM_INPUT_PATH, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'))
 
-# print("applying grouped aggregation")
-# aggegated_road_statistics = grouper(aggegated_road_statistics, 'length', 'road', 'function', 'formofway', 'urban_rural_indicator')
+print('intersect roads and lad boundaries')
+road_network = add_lad_to_road(road_network, geojson_lad_areas)
 
-# print('write all road statistics')
-# road_statistics_fieldnames = ['road', 'function', 'formofway', 'length', 'urban_rural_indicator']
-# csv_writer(aggegated_road_statistics, road_statistics_fieldnames, 'aggregated_road_statistics.csv')
+print("extracting geojson properties")
+aggegated_road_statistics = extract_geojson_properties(road_network)
+
+print("applying grouped aggregation")
+aggegated_road_statistics = grouper(aggegated_road_statistics, 'length', 'lad', 'function', 'formofway', 'urban_rural_indicator')
+
+print('write all road statistics')
+road_statistics_fieldnames = ['lad', 'function', 'formofway', 'length', 'urban_rural_indicator']
+csv_writer(aggegated_road_statistics, road_statistics_fieldnames, 'aggregated_road_statistics.csv')
 
 #####################################
 # run functions
 #####################################
 
-DEPLOYMENT_PERIOD = 4
+# DEPLOYMENT_PERIOD = 4
 
-print("reading in aggregated road geotype data")
-road_geotype_data = read_in_csv_road_geotype_data('aggregated_road_statistics.csv')
+# print("reading in aggregated road geotype data")
+# road_geotype_data = read_in_csv_road_geotype_data('aggregated_road_statistics.csv')
 
-print("calculating tco costs")
-small_cell_tco = calculate_tco_for_each_asset(2500, 350, 0.035, 2019, 2020, 10, 2029, 'no') 
-small_cell_civil_works_tco = calculate_tco_for_each_asset(13300, 0, 0.035, 2019, 2020, 0, 2029, 'no')
-fibre_tco_per_km = calculate_tco_for_each_asset(20000, 20, 0.035, 2019, 2020, 0, 2029, 'no') 
+# print("calculating tco costs")
+# small_cell_tco = calculate_tco_for_each_asset(2500, 350, 0.035, 2019, 2020, 10, 2029, 'no') 
+# small_cell_civil_works_tco = calculate_tco_for_each_asset(13300, 0, 0.035, 2019, 2020, 0, 2029, 'no')
+# fibre_tco_per_km = calculate_tco_for_each_asset(20000, 20, 0.035, 2019, 2020, 0, 2029, 'no') 
 
-print('running scenarios')
-for scenario, strategy, car_spacing in [
-        ('high', 'DSRC_full_greenfield', 'high'),
-        ('baseline', 'DSRC_full_greenfield', 'baseline'),
-        ('low', 'DSRC_full_greenfield', 'low'),
+# print('running scenarios')
+# for scenario, strategy, car_spacing in [
+#         ('high', 'DSRC_full_greenfield', 'high'),
+#         ('baseline', 'DSRC_full_greenfield', 'baseline'),
+#         ('low', 'DSRC_full_greenfield', 'low'),
 
-        ('high', 'DSRC_NRTS_greenfield', 'high'),
-        ('baseline', 'DSRC_NRTS_greenfield', 'baseline'),
-        ('low', 'DSRC_NRTS_greenfield', 'low'),
+#         ('high', 'DSRC_NRTS_greenfield', 'high'),
+#         ('baseline', 'DSRC_NRTS_greenfield', 'baseline'),
+#         ('low', 'DSRC_NRTS_greenfield', 'low'),
 
-        ('high', 'cellular_V2X', 'high'),
-        ('baseline', 'cellular_V2X', 'baseline'),
-        ('low', 'cellular_V2X', 'low'),
-    ]:
+#         ('high', 'cellular_V2X', 'high'),
+#         ('baseline', 'cellular_V2X', 'baseline'),
+#         ('low', 'cellular_V2X', 'low'),
+#     ]:
 
-    print("Running:", scenario, strategy, car_spacing)
+#     print("Running:", scenario, strategy, car_spacing)
 
-    #if strategy == 'DSRC_full_greenfield' or strategy == 'DSRC_NRTS_greenfield':
+#     #if strategy == 'DSRC_full_greenfield' or strategy == 'DSRC_NRTS_greenfield':
         
-    for year in TIMESTEPS:
+#     for year in TIMESTEPS:
 
-        print("-", year)
+#         print("-", year)
         
-        road_geotype_data = calculate_potential_demand(road_geotype_data, 5, car_spacing)
+#         road_geotype_data = calculate_potential_demand(road_geotype_data, 5, car_spacing)
         
-        road_geotype_data = calculate_yearly_CAV_take_up(road_geotype_data, year, scenario)
+#         road_geotype_data = calculate_yearly_CAV_take_up(road_geotype_data, year, scenario)
         
-        road_geotype_data = calculate_number_of_RAN_units_and_civil_works_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, scenario, strategy, small_cell_tco, small_cell_civil_works_tco, 2)
+#         road_geotype_data = calculate_number_of_RAN_units_and_civil_works_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, scenario, strategy, small_cell_tco, small_cell_civil_works_tco, 2)
         
-        road_geotype_data = calculate_backhaul_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, strategy, fibre_tco_per_km)
+#         road_geotype_data = calculate_backhaul_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, strategy, fibre_tco_per_km)
 
-        write_spend(road_geotype_data, year, scenario, strategy, car_spacing)
+#         write_spend(road_geotype_data, year, scenario, strategy, car_spacing)
 
 
 end = time.time()
