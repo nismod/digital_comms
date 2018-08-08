@@ -55,58 +55,13 @@ def read_lads(exchange_area):
 def get_lad_area_ids(lad_areas):
     lad_area_ids = []
     for lad in lad_areas:
-        #print(lad['properties']['name'])
         lad_area_ids.append(lad['properties']['name'])
     return lad_area_ids
 
 
 #####################################
-# INTEGRATE WTP AND WTA HOUSEHOLD DATA INTO PREMISES
+# INTEGRATE WTP AND WTA HOUSEHOLD DATA INTO PREMIses
 #####################################
-
-def read_wtp_data():
-    """
-    Contains data on wtp by age :
-        - Age 
-        - Willingness to Pay
-        - Willingness to Adopt
-    """
-    wtp_data = []
-
-    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'simple_willingness_to_pay_scenarios.csv'), 'r') as wtp_file:
-        reader = csv.reader(wtp_file)
-        next(reader, None)
-        # Put the values in the population dict
-        for row in reader:
-            wtp_data.append({
-                'age': row[0],
-                'wtp': int(row[1]),
-                'wta': float(row[2])
-            })
-
-        return wtp_data
-
-def read_wtp_data():
-    """
-    Contains data on wtp by age :
-        - Age 
-        - Willingness to Pay
-        - Willingness to Adopt
-    """
-    wtp_data = []
-
-    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'simple_willingness_to_pay_scenarios.csv'), 'r') as wtp_file:
-        reader = csv.reader(wtp_file)
-        next(reader, None)
-        # Put the values in the population dict
-        for row in reader:
-            wtp_data.append({
-                'age': row[0],
-                'wtp': int(row[1]),
-                'wta': float(row[2])
-            })
-
-        return wtp_data
 
 def read_msoa_data(lad_ids):
     """
@@ -148,13 +103,123 @@ def read_msoa_data(lad_ids):
 
     return MSOA_data
 
-def add_wtp_to_MSOA_data(consumer_data, population_data):
+def read_age_data():
+    """
+    Contains data on fixed broadband adoption by age :
+        - Age 
+        - % chance of adopt
+    """
+    my_data = []
+
+    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'age.csv'), 'r') as my_file:
+        reader = csv.reader(my_file)
+        next(reader, None)
+        for row in reader:
+            my_data.append({
+                'age': row[0],
+                'age_wta': int(row[1])
+            })
+
+        return my_data
+
+def read_gender_data():
+    """
+    Contains data on fixed broadband adoption by socio-economic status (ses):
+        - ses
+        - % chance of adopt
+    """
+    my_data = []
+
+    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'gender.csv'), 'r') as my_file:
+        reader = csv.reader(my_file)
+        next(reader, None)
+        for row in reader:
+            my_data.append({
+                'gender': row[0],
+                'gender_wta': int(row[1])
+            })
+
+        return my_data
+
+def read_nation_data():
+    """
+    Contains data on fixed broadband adoption by nation:
+        - nation
+        - % chance of adopt
+    """
+    my_data = []
+
+    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'nation.csv'), 'r') as my_file:
+        reader = csv.reader(my_file)
+        next(reader, None)
+        for row in reader:
+            my_data.append({
+                'nation': row[0],
+                'nation_wta': int(row[1])
+            })
+
+        return my_data
+
+def read_urban_rural_data():
+    """
+    Contains data on fixed broadband adoption by urban_rural:
+        - urban_rural
+        - % chance of adopt
+    """
+    my_data = []
+
+    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'urban_rural.csv'), 'r') as my_file:
+        reader = csv.reader(my_file)
+        next(reader, None)
+        for row in reader:
+            my_data.append({
+                'urban_rural': row[0],
+                'urban_rural_wta': int(row[1])
+            })
+
+        return my_data
+
+def add_country_indicator(data):
+
+    for person in data:
+
+        if person['lad'].startswith("E"):
+            person['nation'] = 'england'
+        if person['lad'].startswith("S"):
+            person['nation'] = 'scotland'
+        if person['lad'].startswith("w"):
+            person['nation'] = 'wales'
+        if person['lad'].startswith("N"):
+            person['nation'] = 'northern ireland'
+
+    return data
+
+def read_ses_data():
+    """
+    Contains data on fixed broadband adoption by socio-economic status (ses):
+        - ses
+        - % chance of adopt
+    """
+    my_data = []
+
+    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'ses.csv'), 'r') as my_file:
+        reader = csv.reader(my_file)
+        next(reader, None)
+        for row in reader:
+            my_data.append({
+                'ses': row[0],
+                'ses_wta': int(row[1])
+            })
+
+        return my_data
+
+def add_data_to_MSOA_data(consumer_data, population_data, variable):
     """
     Take the WTP lookup table for all ages. Add to the population data based on age.
     """
-    d1 = {d['age']:d for d in consumer_data}
+    d1 = {d[variable]:d for d in consumer_data}
 
-    population_data = [dict(d, **d1.get(d['age'], {})) for d in population_data]	
+    population_data = [dict(d, **d1.get(d[variable], {})) for d in population_data]	
 
     return population_data
 
@@ -163,7 +228,7 @@ def read_oa_data():
     MSOA data contains individual level demographic characteristics including:
         - HID - Household ID
         - OA - Output Area ID
-        - SES - Household Socio-Economic Status
+        - ses - Household Socio-Economic Status
         - year - year
     """
     
@@ -185,21 +250,108 @@ def read_oa_data():
                     'HID': line[0],
                     'OA': line[1],
                     'lad': filename[-23:-14],
-                    'SES': line[12],
+                    'ses': line[12],
                     'year': int(filename[-8:-4]),
                 })     
 
     return OA_data
 
-def merge_two_lists_of_dicts(msoa_list_of_dicts, oa_list_of_dicts, parameter1, parameter2):
+def convert_ses_grades(data):
+
+    for household in data:
+        if household['ses'] == '1':
+            household['ses'] = 'AB'
+        elif household['ses'] == '2':
+            household['ses'] = 'AB'
+        elif household['ses'] == '3':
+            household['ses'] = 'C1'
+        elif household['ses'] == '4':
+            household['ses'] = 'C1'
+        elif household['ses'] == '5':
+            household['ses'] = 'C2'
+        elif household['ses'] == '6':
+            household['ses'] = 'DE'
+        elif household['ses'] == '7':
+            household['ses'] = 'DE'
+        elif household['ses'] == '8':
+            household['ses'] = 'DE'
+        elif household['ses'] == '9':
+            household['ses'] = 'students'
+    
+    return data
+
+def merge_two_lists_of_dicts(msoa_list_of_dicts, oa_list_of_dicts, parameter1, parameter2, parameter3):
     """
     Combine the msoa and oa dicts using the household indicator and year keys. 
     """
-    d1 = {(d[parameter1], d[parameter2]):d for d in oa_list_of_dicts}
+    d1 = {(d[parameter1], d[parameter2], d[parameter3]):d for d in oa_list_of_dicts}
 
-    msoa_list_of_dicts = [dict(d, **d1.get((d[parameter1], d[parameter2]), {})) for d in msoa_list_of_dicts]	
+    msoa_list_of_dicts = [dict(d, **d1.get((d[parameter1], d[parameter2], d[parameter3]), {})) for d in msoa_list_of_dicts]	
 
     return msoa_list_of_dicts
+
+def get_missing_ses_key(data):
+
+    complete_data = []
+    missing_ses = []
+
+    for prem in data:
+        if 'ses' in prem and 'ses_wta' in prem:
+            complete_data.append({
+                'PID': prem['PID'],
+                'MSOA': prem['MSOA'],
+                'lad': prem['lad'],
+                'gender': prem['gender'],
+                'age': prem['age'],
+                'ethnicity': prem['ethnicity'],
+                'HID': prem['HID'],
+                'year': prem['year'],
+                'nation': prem['nation'],
+                'age_wta': prem['age_wta'],
+                'gender_wta': prem['gender_wta'],
+                'OA': prem['OA'],
+                'ses': prem['ses'],
+                'ses_wta': prem['ses_wta'],
+            })
+        else:
+            missing_ses.append({
+                'PID': prem['PID'],
+                'MSOA': prem['MSOA'],
+                'lad': prem['lad'],
+                'gender': prem['gender'],
+                'age': prem['age'],
+                'ethnicity': prem['ethnicity'],
+                'HID': prem['HID'],
+                'year': prem['year'],
+                'nation': prem['nation']
+            })
+
+    return complete_data, missing_ses
+
+def calculate_adoption_propensity(data):
+
+    for person in data:
+        person['wta'] = person['age_wta'] * person['gender_wta'] * person['ses_wta'] 
+
+    return data
+
+def calculate_wtp(data):
+
+    for person in data:
+        person['wta'] = person['age_wta'] * person['gender_wta'] * person['ses_wta'] 
+
+        if person['wta'] < 1800000:
+            person['wtp'] = 20
+        elif person['wta'] > 1800000 and  person['wta'] < 2200000:
+            person['wtp'] = 30
+        elif person['wta'] > 2200000 and  person['wta'] < 2600000:
+            person['wtp'] = 40
+        elif person['wta'] > 2600000 and  person['wta'] < 3000000:
+            person['wtp'] = 50
+        elif person['wta'] > 3000000:
+            person['wtp'] = 60
+    return data
+
 
 def aggregate_wtp_and_wta_by_household(data):
     """
@@ -207,8 +359,8 @@ def aggregate_wtp_and_wta_by_household(data):
     """
     d = defaultdict(lambda: defaultdict(int))
 
-    group_keys = ['HID', 'lad', 'year']
-    sum_keys = ['wtp', 'wta']
+    group_keys = ['HID','lad', 'year']
+    sum_keys = ['wta','wtp']
 
     for item in data:
         for key in sum_keys:
@@ -521,7 +673,7 @@ def read_city_exchange_geotype_lut():
     return exchange_geotypes
 
 #####################################
-# READ PREMISES/ASSETS
+# READ PREMIses/ASSETS
 #####################################
 
 def read_premises(exchange_area, exchange_abbr):
@@ -580,8 +732,8 @@ def read_premises(exchange_area, exchange_abbr):
                     'HID': line[9],
                     'lad': line[10],
                     'year': line[11],
-                    'wtp': line[12],
-                    'wta': line[13]
+                    'wta': line[12],
+                    'wtp': line[13],
                 }
             }) 
             for line in reader
@@ -1597,20 +1749,51 @@ if __name__ == "__main__":
 
     #####
     # Integrate WTP and WTA household data into premises
-    print('Loading Willingness To Pay data')
-    wtp_data = read_wtp_data()
-
     print('Loading MSOA data')
     MSOA_data = read_msoa_data(lad_ids)
 
-    print('Adding WTP data to MSOA data')
-    MSOA_data = add_wtp_to_MSOA_data(wtp_data, MSOA_data)
+    print('Loading age data')
+    age_data = read_age_data()
+
+    print('Loading gender data')
+    gender_data = read_gender_data()
+
+    print('Loading nation data')
+    nation_data = read_nation_data()
+    
+    print('Loading urban_rural data')
+    urban_rural_data = read_urban_rural_data()
+
+    print('Add country indicator')
+    MSOA_data = add_country_indicator(MSOA_data)
+
+    print('Adding adoption data to MSOA data')
+    MSOA_data = add_data_to_MSOA_data(age_data, MSOA_data, 'age')
+    MSOA_data = add_data_to_MSOA_data(gender_data, MSOA_data, 'gender')
 
     print('Loading OA data')
     oa_data = read_oa_data()
 
+    print('Match and convert social grades from NS-Sec to NRS')
+    oa_data = convert_ses_grades(oa_data)
+      
+    print('Loading ses data')
+    ses_data = read_ses_data()
+
+    print('Adding ses adoption data to OA data')
+    oa_data = add_data_to_MSOA_data(ses_data, oa_data, 'ses')
+
     print('Adding MSOA data to OA data')
-    final_data = merge_two_lists_of_dicts(MSOA_data, oa_data, 'HID', 'lad')
+    final_data = merge_two_lists_of_dicts(MSOA_data, oa_data, 'HID', 'lad', 'year')
+
+    print('Catching any missing data')    
+    final_data, missing_data = get_missing_ses_key(final_data)
+
+    print('Calculate product of adoption factors')
+    final_data = calculate_adoption_propensity(final_data)
+
+    print('Calculate willingness to pay')
+    final_data = calculate_wtp(final_data)
 
     print('Aggregating WTP by household')
     household_wtp = aggregate_wtp_and_wta_by_household(final_data)
@@ -1625,8 +1808,16 @@ if __name__ == "__main__":
     premises = merge_prems_and_housholds(premises, household_wtp)
 
     print('Write premises_multiple by household to .csv')
-    premises_fieldnames = ['uid','oa','gor','residential_address_count','non_residential_address_count','function','postgis_geom','N','E', 'HID','lad','year','wtp','wta']
+    premises_fieldnames = ['uid','oa','gor','residential_address_count','non_residential_address_count','function','postgis_geom','N','E', 'HID','lad','year','wta','wtp']
     csv_writer(premises, '{}_premises_data.csv'.format(exchange_abbr), premises_fieldnames)  
+
+    print('Writing wtp')
+    wta_data_fieldnames = ['HID','lad','year','wta','wtp']
+    csv_writer(household_wtp, '{}_wta_data.csv'.format(exchange_abbr), wta_data_fieldnames)  
+
+    print('Writing any missing data')
+    missing_data_fieldnames = ['PID','MSOA','lad','gender','age','ethnicity','HID','year', 'nation']
+    csv_writer(missing_data, '{}_missing_data.csv'.format(exchange_abbr), missing_data_fieldnames)  
     ####
 
     print('read_pcd_to_exchange_lut')
