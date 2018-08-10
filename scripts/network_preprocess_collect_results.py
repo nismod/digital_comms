@@ -4,11 +4,13 @@ import fiona
 import configparser
 from collections import OrderedDict, defaultdict
 import glob
+import csv
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
+DATA_RAW = os.path.join(BASE_PATH, 'raw')
 DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 DATA_PROCESSED = os.path.join(BASE_PATH, 'processed')
 
@@ -51,6 +53,29 @@ def write_shapefile(data, filename):
     # Write all elements to output file
     with fiona.open(os.path.join(directory, filename), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         [sink.write(feature) for feature in data]
+
+def get_exchange_ids(key, value):
+
+    exchange_data = []
+
+    with open(os.path.join(DATA_RAW, 'layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as my_file:
+        reader = csv.reader(my_file)
+        next(reader, None)
+        for row in reader:
+            exchange_data.append({
+                'id': row[1],
+                'region': row[3],
+                'county': row[4],
+                'country': row[7]
+            })
+    exchange_ids = []
+
+    for exchange in exchange_data:
+        if exchange[key] == value:
+            single_id = 'exchange_{}'.format(exchange['id'])
+            exchange_ids.append(single_id)
+
+    return exchange_ids
 
 if __name__ == "__main__":
 
@@ -273,6 +298,11 @@ if __name__ == "__main__":
             'exchange_NEWYL',
             'exchange_NENTW',
         ]
+    elif sys.argv[1] == 'Wales':
+        selection = get_exchange_ids('country', 'Wales')
+
+    elif sys.argv[1] == 'England':
+        selection = get_exchange_ids('country', 'England')
 
     links_layer3_cabinets = collect_results(selection, 'links_layer3_cabinets.shp')
     write_shapefile(links_layer3_cabinets, 'links_layer3_cabinets.shp')
