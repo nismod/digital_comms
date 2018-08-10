@@ -1,15 +1,18 @@
 library(tidyverse)
 library(RColorBrewer)
+library(rgeos)
+library(maptools)
 
 #set path
 path_inputs <- "C:\\Users\\edwar\\Desktop\\GitHub\\digital_comms\\results\\digital_transport"
+path_shapes <- "C:\\Users\\edwar\\Desktop\\GitHub\\digital_comms\\data\\digital_comms\\raw\\lad_uk_2016-12"
 path_figures <- "C:\\Users\\edwar\\Dropbox\\DfT ITS Project\\figures"
 
 #set working directory
 setwd(path_inputs)
 
 # Get the files names
-files = list.files(pattern="*.csv")
+files = list.files(pattern=glob2rx("spend*.csv"))
 
 # First apply read.csv, then rbind
 all_scenarios = do.call(rbind, lapply(files, function(x) read.csv(x, stringsAsFactors = FALSE)))
@@ -225,3 +228,95 @@ setwd(path_figures)
 tiff('SRN_CBA_figure.tiff', units="in", width=9, height=9, res=300)
 print(SRN_CBA_figure)
 dev.off()
+
+rm(SRN_CBA, SRN_CBA_figure, total_CBA, total_CBA_figure)
+
+#######################
+# IMPORT COST PER LAD
+#######################
+
+#set working directory
+setwd(path_inputs)
+
+# Get the files names
+files = list.files(pattern=glob2rx("lad*.csv"))
+
+# First apply read.csv, then rbind
+all_scenarios = do.call(rbind, lapply(files, function(x) read.csv(x, stringsAsFactors = FALSE)))
+
+all_scenarios$road_type[all_scenarios$road_function == 'Dense Motorway' & all_scenarios$urban_rural == 'urban'] <- 'Dense Motorway (Urban)'
+all_scenarios$road_type[all_scenarios$road_function == 'Dense Motorway' & all_scenarios$urban_rural == 'rural'] <- 'Dense Motorway (Rural)'
+all_scenarios$road_type[all_scenarios$road_function == 'Motorway' & all_scenarios$urban_rural == 'urban'] <- 'Motorway (Urban)'
+all_scenarios$road_type[all_scenarios$road_function == 'Motorway' & all_scenarios$urban_rural == 'rural'] <- 'Motorway (Rural)'
+all_scenarios$road_type[all_scenarios$road_function == 'A Road' & all_scenarios$urban_rural == 'urban'] <- 'A Road (Urban)'
+all_scenarios$road_type[all_scenarios$road_function == 'A Road' & all_scenarios$urban_rural == 'rural'] <- 'A Road (Rural)'
+all_scenarios$road_type[all_scenarios$road_function == 'B Road' & all_scenarios$urban_rural == 'urban'] <- 'B Road (Urban)'
+all_scenarios$road_type[all_scenarios$road_function == 'B Road' & all_scenarios$urban_rural == 'rural'] <- 'B Road (Rural)'
+all_scenarios$road_type[all_scenarios$road_function == 'Minor Road' & all_scenarios$urban_rural == 'urban'] <- 'Minor Road (Urban)'
+all_scenarios$road_type[all_scenarios$road_function == 'Minor Road' & all_scenarios$urban_rural == 'rural'] <- 'Minor Road (Rural)'
+all_scenarios$road_type[all_scenarios$road_function == 'Local Road' & all_scenarios$urban_rural == 'urban'] <- 'Local Road (Urban)'
+all_scenarios$road_type[all_scenarios$road_function == 'Local Road' & all_scenarios$urban_rural == 'rural'] <- 'Local Road (Rural)'
+
+all_scenarios$road_type <- factor(all_scenarios$road_type,
+                                  levels = c("Dense Motorway (Urban)",
+                                             "Dense Motorway (Rural)",
+                                             "Motorway (Urban)",
+                                             "Motorway (Rural)",
+                                             "A Road (Urban)",
+                                             "A Road (Rural)",
+                                             "B Road (Urban)",
+                                             "B Road (Rural)",
+                                             "Minor Road (Urban)",
+                                             "Minor Road (Rural)",
+                                             "Local Road (Urban)",
+                                             "Local Road (Rural)"))
+
+all_scenarios$year <- as.factor(all_scenarios$year) 
+
+#######################
+# COST PER LAD
+#######################
+
+aggregate_cost <- select(all_scenarios, lad, scenario, strategy, total_tco)
+
+aggregate_cost <- aggregate_cost %>%
+  group_by(lad, scenario, strategy) %>%
+  summarise(total_tco = sum(total_tco))
+
+scenario_labels <- c(`high` = "High (10 Mb/s)",
+                     `baseline` = "Baseline (4 Mb/s)",
+                     `low` = "Low (1 Mb/s)")
+
+aggregate_cost$scenario <- factor(aggregate_cost$scenario,
+                                  levels = c("high",
+                                             "baseline",
+                                             "low"))
+
+strategy_labels <- c(`cellular_V2X` = "Cellular V2X", 
+                     `DSRC_full_greenfield` = "Greenfield DSRC", 
+                     `DSRC_NRTS_greenfield` = "DSRC with NRTS")
+
+setwd(path_shapes)
+
+all.shp <- readShapeSpatial("lad_uk_2016-12.shp") 
+
+all.shp <- fortify(all.shp, region = "name")
+
+all.shp <- merge(all.shp, aggregate_cost, by.x="id", by.y="lad")
+
+all.shp <- all.shp[order(all.shp$order),]
+
+cost_by_lad <- ggplot() + geom_polygon(data = all.shp, aes(x = long, y = lat, group=group, 
+                                       fill = total_tco), color = "grey", size = 0.1) + 
+  coord_equal() +
+  guides(fill = guide_legend(reverse = FALSE)) + 
+  labs(title="Aggregate Cost by LAD", subtitle="Results reported by scenario, strategy and cost ") +
+  theme(legend.position="right", axis.text = element_blank(), axis.title=element_blank(), axis.ticks=element_blank()) +
+  facet_grid(scenario ~ strategy, labeller = labeller(scenario = scenario_labels, strategy = strategy_labels))
+
+### EXPORT TO FOLDER
+setwd(path_figures)
+tiff('cost_by_lad.tiff', units="in", width=9, height=9, res=300)
+print(cost_by_lad)
+dev.off()
+

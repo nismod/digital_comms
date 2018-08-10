@@ -212,7 +212,7 @@ def write_road_network_shapefile(data, path):
     }
 
     # Write all elements to output file
-    with fiona.open(os.path.join(SYSTEM_OUTPUT_PATH, path), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
+    with fiona.open(os.path.join(SYSTEM_RESULTS_PATH, path), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         for feature in data:
             #print(feature)
             sink.write(feature)
@@ -253,13 +253,42 @@ def extract_geojson_properties(data):
             'formofway': item['properties']['formofway'], 
             'length': item['properties']['length'],
             'function': item['properties']['function'], 
+            'urban_rural_indicator': item['properties']['urban_rura'],        
+        })
+
+    return my_data
+
+def extract_geojson_properties_with_lad(data):
+    
+    my_data = []
+
+    for item in data:
+        my_data.append({
+            'road': item['properties']['road'],
+            'formofway': item['properties']['formofway'], 
+            'length': item['properties']['length'],
+            'function': item['properties']['function'], 
             'urban_rural_indicator': item['properties']['urban_rura'],
             'lad': item['properties']['lad'],         
         })
 
     return my_data
 
-def grouper(data, aggregated_metric, group_item1, group_item2, group_item3, group_item4):
+def grouper(data, aggregated_metric, group_item1, group_item2, group_item3):
+
+    my_grouper = itemgetter(group_item1, group_item2, group_item3)
+    result = []
+    for key, grp in groupby(sorted(data, key = my_grouper), my_grouper):
+        try:
+            temp_dict = dict(zip([group_item1, group_item2, group_item3], key))
+            temp_dict[aggregated_metric] = sum(int(item[aggregated_metric]) for item in grp)
+            result.append(temp_dict)
+        except:
+            pass
+    
+    return result
+
+def grouper_with_lad(data, aggregated_metric, group_item1, group_item2, group_item3, group_item4):
 
     my_grouper = itemgetter(group_item1, group_item2, group_item3, group_item4)
     result = []
@@ -282,7 +311,7 @@ def csv_writer(data, output_fieldnames, filename):
     Write data to a CSV file path
     """
     fieldnames = data[0].keys()
-    with open(os.path.join(SYSTEM_OUTPUT_PATH, filename),'w') as csv_file:
+    with open(os.path.join(SYSTEM_RESULTS_PATH, filename),'w') as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
         writer.writeheader()
         writer.writerows(data)
@@ -312,21 +341,33 @@ def write_shapefile(data, path, crs):
 # setup file locations and data files
 #####################################
 
-def read_in_csv_road_geotype_data(data):
+def read_in_csv_road_geotype_data(data, lad_indicator):
 
     road_type_data = []
 
-    with open(os.path.join(SYSTEM_OUTPUT_PATH, data), 'r',  encoding='utf8', errors='replace') as system_file:
-        reader = csv.reader(system_file)
-        next(reader)
-        for line in reader:
-            road_type_data.append({
-                'road': line[0],
-                'road_function': line[1],
-                'formofway': line[2],
-                'urban_rural': line[3],
-                'length_km': (int(line[4])/1000)
-            })   
+    if lad_indicator == 0:
+        with open(os.path.join(SYSTEM_RESULTS_PATH, data), 'r',  encoding='utf8', errors='replace') as system_file:
+            reader = csv.reader(system_file)
+            next(reader)
+            for line in reader:
+                road_type_data.append({
+                    'road_function': line[0],
+                    'formofway': line[1],
+                    'urban_rural': line[2],
+                    'length_km': (int(line[3])/1000)
+                })   
+    else:
+        with open(os.path.join(SYSTEM_RESULTS_PATH, data), 'r',  encoding='utf8', errors='replace') as system_file:
+            reader = csv.reader(system_file)
+            next(reader)
+            for line in reader:
+                road_type_data.append({
+                    'lad': line[0],
+                    'road_function': line[1],
+                    'formofway': line[2],
+                    'urban_rural': line[3],
+                    'length_km': (int(line[4])/1000)
+                })   
 
     return road_type_data
 
@@ -745,11 +786,38 @@ def calculate_backhaul_costs(data, deployment_period, year, strategy, fibre_tco)
     return data
 
 #####################################
+# simulation
+#####################################
+
+def simulation(data, scenario, strategy, car_spacing, lad_indicator):
+
+    for year in TIMESTEPS:
+
+        print("-", year)
+        
+        road_geotype_data = calculate_potential_demand(data, 5, car_spacing)
+        
+        road_geotype_data = calculate_yearly_CAV_take_up(road_geotype_data, year, scenario)
+        
+        road_geotype_data = calculate_number_of_RAN_units_and_civil_works_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, scenario, strategy, small_cell_tco, small_cell_civil_works_tco, 2)
+        
+        road_geotype_data = calculate_backhaul_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, strategy, fibre_tco_per_km)
+        if lad_indicator == 0:
+
+            write_spend(road_geotype_data, year, scenario, strategy, car_spacing)
+        
+        else:
+
+            write_spend_lad(road_geotype_data, year, scenario, strategy, car_spacing)
+    
+    return print("simulation_complete")
+
+#####################################
 # write out 
 #####################################
 
 def write_spend(data, year, scenario, strategy, car_spacing):
-    suffix = _get_suffix(scenario, strategy, car_spacing)
+    suffix = _get_suffix(scenario, strategy)
     filename = os.path.join(SYSTEM_RESULTS_PATH, 'spend_{}.csv'.format(suffix))
 
     if year == BASE_YEAR:
@@ -757,7 +825,7 @@ def write_spend(data, year, scenario, strategy, car_spacing):
         spend_writer = csv.writer(spend_file)
         spend_writer.writerow(
             ('year', 'scenario', 'strategy', 'car_spacing',
-             'road','road_function','formofway', 'length_km','urban_rural', 
+             'road_function','formofway', 'length_km','urban_rural', 
              'cars_per_lane', 'total_cars', 'annual_CAV_take_up','CAV_revenue', 'CAV_mbps_demand',
              'RAN_units','RAN_cost','small_cell_mounting_points','small_cell_mounting_cost', 
              'fibre_backhaul_km', 'fibre_backhaul_cost', 'total_tco'))
@@ -769,13 +837,39 @@ def write_spend(data, year, scenario, strategy, car_spacing):
     for road in data:
         spend_writer.writerow(
             (year, scenario, strategy, car_spacing, 
-            road['road'], road['road_function'], road['formofway'], road['length_km'], road['urban_rural'], 
+            road['road_function'], road['formofway'], road['length_km'], road['urban_rural'], 
             road['cars_per_lane'], road['total_cars'], road['annual_CAV_take_up'], road['CAV_revenue'], road['CAV_mbps_demand'],
             road['RAN_units'], road['RAN_cost'], road['small_cell_mounting_points'],road['small_cell_mounting_cost'], 
             road['fibre_backhaul_km'], road['fibre_backhaul_cost'], road['total_tco']))
 
-def _get_suffix(scenario, strategy, car_spacing):
-    suffix = 'scenario_{}_strategy_{}_car_spacing_{}'.format(scenario, strategy, car_spacing)
+def write_spend_lad(data, year, scenario, strategy, car_spacing):
+    suffix = _get_suffix(scenario, strategy)
+    filename = os.path.join(SYSTEM_RESULTS_PATH, 'lad_spend_{}.csv'.format(suffix))
+
+    if year == BASE_YEAR:
+        spend_file = open(filename, 'w', newline='')
+        spend_writer = csv.writer(spend_file)
+        spend_writer.writerow(
+            ('lad','year', 'scenario', 'strategy', 'car_spacing',
+             'road_function','formofway', 'length_km','urban_rural', 
+             'cars_per_lane', 'total_cars', 'annual_CAV_take_up','CAV_revenue', 'CAV_mbps_demand',
+             'RAN_units','RAN_cost','small_cell_mounting_points','small_cell_mounting_cost', 
+             'fibre_backhaul_km', 'fibre_backhaul_cost', 'total_tco'))
+    else:
+        spend_file = open(filename, 'a', newline='')
+        spend_writer = csv.writer(spend_file)
+
+    # output and report results for this timestep
+    for road in data:
+        spend_writer.writerow(
+            (road['lad'], year, scenario, strategy, car_spacing, 
+            road['road_function'], road['formofway'], road['length_km'], road['urban_rural'], 
+            road['cars_per_lane'], road['total_cars'], road['annual_CAV_take_up'], road['CAV_revenue'], road['CAV_mbps_demand'],
+            road['RAN_units'], road['RAN_cost'], road['small_cell_mounting_points'],road['small_cell_mounting_cost'], 
+            road['fibre_backhaul_km'], road['fibre_backhaul_cost'], road['total_tco']))
+
+def _get_suffix(scenario, strategy):
+    suffix = 'scenario_{}_strategy_{}'.format(scenario, strategy)
     return suffix
 
 #####################################
@@ -800,74 +894,76 @@ def _get_suffix(scenario, strategy, car_spacing):
 
 # print("writing road network")
 # write_road_network_shapefile(road_network, 'road_network.shp')
-# write_shapefile(road_network, SYSTEM_OUTPUT_PATH, 'road_network.shp')
+# write_shapefile(road_network, SYSTEM_RESULTS_PATH, 'road_network.shp')
 # # # #####################################
 
-print('read in road network')
-road_network = import_shapes(os.path.join(SYSTEM_OUTPUT_PATH, 'road_network.shp'))
+# print('read in road network')
+# road_network = import_shapes(os.path.join(SYSTEM_RESULTS_PATH, 'road_network.shp'))
 
-print('read lads')
-geojson_lad_areas = import_shapes(os.path.join(SYSTEM_INPUT_PATH, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'))
+# print("extracting geojson properties")
+# aggegated_road_statistics = extract_geojson_properties(road_network)
 
-print('intersect roads and lad boundaries')
-road_network = add_lad_to_road(road_network, geojson_lad_areas)
+# print("applying grouped aggregation")
+# aggegated_statistics_by_road = grouper(aggegated_road_statistics, 'length', 'function', 'formofway', 'urban_rural_indicator')
 
-print("extracting geojson properties")
-aggegated_road_statistics = extract_geojson_properties(road_network)
+# print('write all road statistics')
+# road_statistics_fieldnames = ['function', 'formofway', 'length', 'urban_rural_indicator']
+# csv_writer(aggegated_statistics_by_road, road_statistics_fieldnames, 'aggregated_road_statistics.csv')
 
-print("applying grouped aggregation")
-aggegated_road_statistics = grouper(aggegated_road_statistics, 'length', 'lad', 'function', 'formofway', 'urban_rural_indicator')
+# # # #####################################
 
-print('write all road statistics')
-road_statistics_fieldnames = ['lad', 'function', 'formofway', 'length', 'urban_rural_indicator']
-csv_writer(aggegated_road_statistics, road_statistics_fieldnames, 'aggregated_road_statistics.csv')
+# print('read lads')
+# geojson_lad_areas = import_shapes(os.path.join(SYSTEM_INPUT_PATH, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'))
+
+# print('intersect roads and lad boundaries')
+# road_network = add_lad_to_road(road_network, geojson_lad_areas)
+
+# print("extracting geojson properties")
+# aggegated_road_statistics = extract_geojson_properties_with_lad(road_network)
+
+# print("applying grouped aggregation")
+# aggegated_road_statistics_by_lad = grouper_with_lad(aggegated_road_statistics, 'length', 'lad', 'function', 'formofway', 'urban_rural_indicator')
+
+# print('write all road statistics')
+# lad_road_statistics_fieldnames = ['lad', 'function', 'formofway', 'length', 'urban_rural_indicator']
+# csv_writer(aggegated_road_statistics_by_lad, lad_road_statistics_fieldnames, 'aggregated_road_statistics.csv')
 
 #####################################
 # run functions
 #####################################
 
-# DEPLOYMENT_PERIOD = 4
+DEPLOYMENT_PERIOD = 4
 
-# print("reading in aggregated road geotype data")
-# road_geotype_data = read_in_csv_road_geotype_data('aggregated_road_statistics.csv')
+print("reading in aggregated road geotype data")
+road_geotype_data = read_in_csv_road_geotype_data('aggregated_road_statistics.csv', 0)
 
-# print("calculating tco costs")
-# small_cell_tco = calculate_tco_for_each_asset(2500, 350, 0.035, 2019, 2020, 10, 2029, 'no') 
-# small_cell_civil_works_tco = calculate_tco_for_each_asset(13300, 0, 0.035, 2019, 2020, 0, 2029, 'no')
-# fibre_tco_per_km = calculate_tco_for_each_asset(20000, 20, 0.035, 2019, 2020, 0, 2029, 'no') 
+print("reading in aggregated road geotype data")
+lad_road_geotype_data = read_in_csv_road_geotype_data('aggregated_road_statistics_by_lad.csv', 1)
 
-# print('running scenarios')
-# for scenario, strategy, car_spacing in [
-#         ('high', 'DSRC_full_greenfield', 'high'),
-#         ('baseline', 'DSRC_full_greenfield', 'baseline'),
-#         ('low', 'DSRC_full_greenfield', 'low'),
+print("calculating tco costs")
+small_cell_tco = calculate_tco_for_each_asset(2500, 350, 0.035, 2019, 2020, 10, 2029, 'no') 
+small_cell_civil_works_tco = calculate_tco_for_each_asset(13300, 0, 0.035, 2019, 2020, 0, 2029, 'no')
+fibre_tco_per_km = calculate_tco_for_each_asset(20000, 20, 0.035, 2019, 2020, 0, 2029, 'no') 
 
-#         ('high', 'DSRC_NRTS_greenfield', 'high'),
-#         ('baseline', 'DSRC_NRTS_greenfield', 'baseline'),
-#         ('low', 'DSRC_NRTS_greenfield', 'low'),
+print('running scenarios')
 
-#         ('high', 'cellular_V2X', 'high'),
-#         ('baseline', 'cellular_V2X', 'baseline'),
-#         ('low', 'cellular_V2X', 'low'),
-#     ]:
+for scenario, strategy, car_spacing in [
+        ('high', 'DSRC_full_greenfield', 'high'),
+        ('baseline', 'DSRC_full_greenfield', 'baseline'),
+        ('low', 'DSRC_full_greenfield', 'low'),
 
-#     print("Running:", scenario, strategy, car_spacing)
+        ('high', 'DSRC_NRTS_greenfield', 'high'),
+        ('baseline', 'DSRC_NRTS_greenfield', 'baseline'),
+        ('low', 'DSRC_NRTS_greenfield', 'low'),
 
-#     #if strategy == 'DSRC_full_greenfield' or strategy == 'DSRC_NRTS_greenfield':
-        
-#     for year in TIMESTEPS:
+        ('high', 'cellular_V2X', 'high'),
+        ('baseline', 'cellular_V2X', 'baseline'),
+        ('low', 'cellular_V2X', 'low'),
+    ]:
 
-#         print("-", year)
-        
-#         road_geotype_data = calculate_potential_demand(road_geotype_data, 5, car_spacing)
-        
-#         road_geotype_data = calculate_yearly_CAV_take_up(road_geotype_data, year, scenario)
-        
-#         road_geotype_data = calculate_number_of_RAN_units_and_civil_works_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, scenario, strategy, small_cell_tco, small_cell_civil_works_tco, 2)
-        
-#         road_geotype_data = calculate_backhaul_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, strategy, fibre_tco_per_km)
-
-#         write_spend(road_geotype_data, year, scenario, strategy, car_spacing)
+    print("Running:", scenario, strategy, car_spacing)
+    run = simulation(road_geotype_data, scenario, strategy, car_spacing, 0)
+    run = simulation(lad_road_geotype_data, scenario, strategy, car_spacing, 1)
 
 
 end = time.time()
