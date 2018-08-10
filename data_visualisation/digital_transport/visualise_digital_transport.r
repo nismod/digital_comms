@@ -283,6 +283,8 @@ aggregate_cost <- aggregate_cost %>%
   group_by(lad, scenario, strategy) %>%
   summarise(total_tco = sum(total_tco))
 
+aggregate_cost$total_tco_binned <- cut(aggregate_cost$total_tco, 10)
+
 scenario_labels <- c(`high` = "High (10 Mb/s)",
                      `baseline` = "Baseline (4 Mb/s)",
                      `low` = "Low (1 Mb/s)")
@@ -307,10 +309,11 @@ all.shp <- merge(all.shp, aggregate_cost, by.x="id", by.y="lad")
 all.shp <- all.shp[order(all.shp$order),]
 
 cost_by_lad <- ggplot() + geom_polygon(data = all.shp, aes(x = long, y = lat, group=group, 
-                                       fill = total_tco), color = "grey", size = 0.1) + 
+                                       fill = total_tco_binned), color = "grey", size = 0.1) + 
   coord_equal() +
   guides(fill = guide_legend(reverse = FALSE)) + 
-  labs(title="Aggregate Cost by LAD", subtitle="Results reported by scenario, strategy and cost ") +
+  scale_fill_brewer(palette="Spectral", name = expression('Cost')) +
+  labs(title="Total Road Network Aggregate Cost by LAD", subtitle="Results reported by scenario, strategy and cost ") +
   theme(legend.position="right", axis.text = element_blank(), axis.title=element_blank(), axis.ticks=element_blank()) +
   facet_grid(scenario ~ strategy, labeller = labeller(scenario = scenario_labels, strategy = strategy_labels))
 
@@ -318,5 +321,59 @@ cost_by_lad <- ggplot() + geom_polygon(data = all.shp, aes(x = long, y = lat, gr
 setwd(path_figures)
 tiff('cost_by_lad.tiff', units="in", width=9, height=9, res=300)
 print(cost_by_lad)
+dev.off()
+
+#######################
+# COST PER LAD for SRN
+#######################
+
+aggregate_cost_SRN <- all_scenarios[which(all_scenarios$road_function == 'Dense Motorway' |
+                                          all_scenarios$road_function == 'Motorway' |
+                                          all_scenarios$road_function == 'A Road'),]
+
+aggregate_cost_SRN <- select(aggregate_cost_SRN, lad, scenario, strategy, total_tco)
+
+aggregate_cost_SRN <- aggregate_cost_SRN %>%
+                      group_by(lad, scenario, strategy) %>%
+                      summarise(total_tco = sum(total_tco))
+
+aggregate_cost_SRN$total_tco_binned <- cut(aggregate_cost_SRN$total_tco, 10)
+
+scenario_labels <- c(`high` = "High (10 Mb/s)",
+                     `baseline` = "Baseline (4 Mb/s)",
+                     `low` = "Low (1 Mb/s)")
+
+aggregate_cost_SRN$scenario <- factor(aggregate_cost_SRN$scenario,
+                                                levels = c("high",
+                                                           "baseline",
+                                                           "low"))
+
+strategy_labels <- c(`cellular_V2X` = "Cellular V2X", 
+                     `DSRC_full_greenfield` = "Greenfield DSRC", 
+                     `DSRC_NRTS_greenfield` = "DSRC with NRTS")
+
+setwd(path_shapes)
+
+all.shp <- readShapeSpatial("lad_uk_2016-12.shp") 
+
+all.shp <- fortify(all.shp, region = "name")
+
+all.shp <- merge(all.shp, aggregate_cost_SRN, by.x="id", by.y="lad")
+
+all.shp <- all.shp[order(all.shp$order),]
+
+SRN_cost_by_lad <- ggplot() + geom_polygon(data = all.shp, aes(x = long, y = lat, group=group, 
+                                                           fill = total_tco_binned), color = "grey", size = 0.1) + 
+  coord_equal() +
+  guides(fill = guide_legend(reverse = FALSE)) + 
+  scale_fill_brewer(palette="Spectral", name = expression('Cost')) +
+  labs(title="SRN Aggregate Cost by LAD", subtitle="Results reported by scenario, strategy and cost ") +
+  theme(legend.position="right", axis.text = element_blank(), axis.title=element_blank(), axis.ticks=element_blank()) +
+  facet_grid(scenario ~ strategy, labeller = labeller(scenario = scenario_labels, strategy = strategy_labels))
+
+### EXPORT TO FOLDER
+setwd(path_figures)
+tiff('SRN_cost_by_lad.tiff', units="in", width=9, height=9, res=300)
+print(SRN_cost_by_lad)
 dev.off()
 
