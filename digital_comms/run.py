@@ -123,25 +123,6 @@ class DigitalCommsWrapper(SectorModel):
             percentage_of_premises_with_fttc[0, 0] = item['percentage_of_premises_with_fttc']
         data_handle.set_results('percentage_of_premises_with_fttc', percentage_of_premises_with_fttc)
 
-        # perc_fttp = np.empty((len(self.system.lads), 1)) 
-        # perc_fttdp = np.empty((len(self.system.lads), 1))
-        # perc_fttc = np.empty((len(self.system.lads), 1))
-        # perc_adsl = np.empty((len(self.system.lads), 1))
-
-        # for i, lad in enumerate(self.system.lads):
-        #     coverage_data = self.system.coverage(lad)
-        #     for item in coverage_data:
-        #         perc_fttp[i, 0] = item['percentage_of_premises_with_fttp'] 
-        #         perc_fttdp[i, 0] = item['percentage_of_premises_with_fttdp']
-        #         perc_fttc[i, 0] = item['percentage_of_premises_with_fttc']
-        #         perc_adsl[i, 0] = item['percentage_of_premises_with_adsl']
-
-        # data_handle.set_results('percentage_of_premises_with_fttp', perc_fttp)
-        # data_handle.set_results('percentage_of_premises_with_fttdp', perc_fttdp)
-        # data_handle.set_results('percentage_of_premises_with_fttc', perc_fttc)
-        # data_handle.set_results('percentage_of_premises_with_adsl', perc_adsl)
-
-
         # ----
         # Exit
         # ----

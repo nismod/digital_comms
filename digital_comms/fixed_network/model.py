@@ -106,13 +106,11 @@ class ICTManager(object):
 
         coverage_results = []
         for lad in premises_per_lad.keys():
-            #if lad == return_specific_lad_results:
             sum_of_fttp = sum([premise.fttp for premise in premises_per_lad[lad]]) 
             sum_of_fttdp = sum([premise.fttdp for premise in premises_per_lad[lad]]) 
             sum_of_fttc = sum([premise.fttc for premise in premises_per_lad[lad]]) 
             sum_of_adsl = sum([premise.adsl for premise in premises_per_lad[lad]]) 
-
-            sum_of_premises = len(premises_per_lad[lad]) # contain  list of premises objects in the lad      
+            sum_of_premises = len(premises_per_lad[lad])   
             
             coverage_results.append({
                 'sum_of_fttp': sum_of_fttp,
