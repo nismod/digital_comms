@@ -94,7 +94,7 @@ def cut_out_unwanted_premises_data(data):
                     "coordinates": premises['geometry']['coordinates'],
                 },
                 'properties': {
-                    'id': premises['properties']['id'][8:],
+                    'id': premises['properties']['id'], #[8:],
                     'connection': premises['properties']['connection'],
                     'FTTP': premises['properties']['FTTP'],
                     'GFast': premises['properties']['GFast'],
@@ -114,6 +114,8 @@ if __name__ == "__main__":
 
     if sys.argv[1] not in sys.argv:
         selection = [item for item in os.listdir(DATA_INTERMEDIATE) if os.path.isdir(os.path.join(DATA_INTERMEDIATE, item))]
+    elif sys.argv[1] == 'exchange_EACAM':
+        selection = ['exchange_EACAM']
     elif sys.argv[1] == 'cambridge':
         selection = [
             'exchange_EAARR',
@@ -363,7 +365,7 @@ if __name__ == "__main__":
     write_shapefile(assets_layer4_distributions, 'assets_layer4_distributions.shp')
 
     assets_layer5_premises = collect_results(selection, 'assets_layer5_premises.shp')
-    #assets_layer5_premises = cut_out_unwanted_premises_data(assets_layer5_premises)
+    assets_layer5_premises = cut_out_unwanted_premises_data(assets_layer5_premises)
     write_shapefile(assets_layer5_premises, 'assets_layer5_premises.shp')
 
     

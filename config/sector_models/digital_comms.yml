@@ -23,6 +23,10 @@ outputs:
   spatial_resolution: broadband_distributions
   temporal_resolution: annual
   units: GBP
+- name: distribution_upgrade_costs_fttdp
+  spatial_resolution: broadband_distributions
+  temporal_resolution: annual
+  units: GBP
 - name: premises_adoption_desirability
   spatial_resolution: national
   temporal_resolution: annual
@@ -187,7 +191,7 @@ parameters:
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000000)
-  default_value: 1000000000
+  default_value: 1000000
   description: The yearly budget to spend on infrastructure
   name: annual_budget
   suggested_range: (0, 1000000)

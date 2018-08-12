@@ -71,7 +71,7 @@ class DigitalCommsWrapper(SectorModel):
 
         print(data_handle.current_timestep)
         annual_adoption_rate = data_handle.get_data('adoption')
-        print(annual_adoption_rate)
+        print("annual_adoption_rate is {}".format(annual_adoption_rate))
         
         # -----------------------
         # Run fixed network model
@@ -100,6 +100,11 @@ class DigitalCommsWrapper(SectorModel):
             distribution_upgrade_costs_fttp[idx, 0] = distribution.upgrade_costs['fttp']
         data_handle.set_results('distribution_upgrade_costs_fttp', distribution_upgrade_costs_fttp)
 
+        distribution_upgrade_costs_fttdp = np.empty((self.system.number_of_assets['distributions'],1))
+        for idx, distribution in enumerate(self.system.assets['distributions']):
+            distribution_upgrade_costs_fttdp[idx, 0] = distribution.upgrade_costs['fttdp']
+        data_handle.set_results('distribution_upgrade_costs_fttdp', distribution_upgrade_costs_fttdp)
+
         premises_wanting_to_adopt = np.empty((1,1))
         premises_wanting_to_adopt[0, 0] = len(premises_adoption_desirability_ids)
         data_handle.set_results('premises_adoption_desirability', premises_wanting_to_adopt)
@@ -107,7 +112,6 @@ class DigitalCommsWrapper(SectorModel):
         percentage_of_premises_with_fttp = np.empty((1,1))
         coverage_data = self.system.aggregate_coverage()
         for item in coverage_data:
-            print(item['percentage_of_premises_with_fttp'])
             percentage_of_premises_with_fttp[0, 0] = item['percentage_of_premises_with_fttp']
         data_handle.set_results('percentage_of_premises_with_fttp', percentage_of_premises_with_fttp)
 

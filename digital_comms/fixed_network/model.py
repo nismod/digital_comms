@@ -102,8 +102,8 @@ class ICTManager(object):
         premises_per_lad = defaultdict(list)
 
         for premise in self._premises:
-            premises_per_lad[premise.lad].append(premise)
-
+            premises_per_lad[premise.connection].append(premise)
+        #print(premises_per_lad.keys())
         coverage_results = []
         for lad in premises_per_lad.keys():
             sum_of_fttp = sum([premise.fttp for premise in premises_per_lad[lad]]) 
@@ -115,7 +115,7 @@ class ICTManager(object):
             coverage_results.append({
                 'sum_of_fttp': sum_of_fttp,
                 'sum_of_fttdp': sum_of_fttdp,
-                'sum_of_fttc': sum_of_fttc, 
+                'sum_of_fttc': sum_of_fttc,
                 'sum_of_adsl': sum_of_adsl, 
                 'sum_of_premises': sum_of_premises
             })
@@ -453,7 +453,7 @@ class Distribution(object):
                 self.link.upgrade('fiber')
             for client in self._clients:
                 client.upgrade(action)
-        
+
         if action == 'rollout_fttdp':
             self.fttdp = 1
             if self.link != None:
@@ -462,7 +462,6 @@ class Distribution(object):
                 client.upgrade(action)
 
         self.compute()
-
 
 class Premise(object):
     """Premise"""
@@ -554,7 +553,6 @@ class Premise(object):
         return "<Premise id:{}>".format(self.id)
 
     def upgrade(self, action):
-
         if action == 'rollout_fttp':
             self.fttp = 1
             self.link.upgrade('fiber')

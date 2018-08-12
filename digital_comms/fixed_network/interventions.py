@@ -55,7 +55,7 @@ def _suggest_interventions(budget, strategy, system, timestep, threshold=None):
         distributions = sorted(system._distributions, key=lambda item: item.rollout_bcr['fttp'], reverse=True)
 
         for distribution in distributions:
-
+            
             if distribution.rollout_costs['fttp'] < budget:
                 budget -= distribution.rollout_costs['fttp']
                 built_interventions.append((distribution.id, 'rollout_fttp', distribution.rollout_costs['fttp']))
