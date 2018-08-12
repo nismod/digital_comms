@@ -27,10 +27,26 @@ outputs:
   spatial_resolution: national
   temporal_resolution: annual
   units: premises
-- name: premises_speed
+- name: premises_connection_statistics
   spatial_resolution: national
   temporal_resolution: annual
-  units: mbps
+  units: premises
+- name: percentage_of_premises_with_fttp
+  spatial_resolution: national
+  temporal_resolution: annual
+  units: premises
+- name: percentage_of_premises_with_fttdp
+  spatial_resolution: national
+  temporal_resolution: annual
+  units: premises
+- name: percentage_of_premises_with_fttc
+  spatial_resolution: national
+  temporal_resolution: annual
+  units: premises
+- name: percentage_of_premises_with_adsl
+  spatial_resolution: national
+  temporal_resolution: annual
+  units: premises
 parameters:
 - absolute_range: (0, 1000)
   default_value: 20
@@ -45,73 +61,73 @@ parameters:
   suggested_range: (0, 100)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 50000
+  default_value: 5000
   description: The costs to enable an exchange to service FTTP
   name: costs_assets_exchange_fttp
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 40000
+  default_value: 4000
   description: The costs to enable an exchange to service GFast
   name: costs_assets_exchange_fttdp
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 30000
+  default_value: 3000
   description: The costs to enable an exchange to service FTTC
   name: costs_assets_exchange_fttc
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 20000
+  default_value: 2000
   description: The costs to enable an exchange to service ADSL
   name: costs_assets_exchange_adsl
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 5000
+  default_value: 500
   description: The costs to enable a cabinet to service FTTP
   name: costs_assets_cabinet_fttp_32_ports
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 4000
+  default_value: 400
   description: The costs to enable a cabinet to service GFast
   name: costs_assets_cabinet_fttdp
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 3000
+  default_value: 300
   description: The costs to enable a cabinet to service FTTC
   name: costs_assets_cabinet_fttc
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 2000
+  default_value: 200
   description: The costs to enable a cabinet to service ADSL
   name: costs_assets_cabinet_adsl
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 500
+  default_value: 50
   description: The costs to enable a distribution to service FTTP
   name: costs_assets_distribution_fttp_32_ports
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 400
+  default_value: 40
   description: The costs to enable a distribution to service GFast
   name: costs_assets_distribution_fttdp_4_ports
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 300
+  default_value: 30
   description: The costs to enable a distribution to service FTTC
   name: costs_assets_distribution_fttc
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 200
+  default_value: 20
   description: The costs to enable a distribution to service ADSL
   name: costs_assets_distribution_adsl
   suggested_range: (0, 100000)
@@ -153,25 +169,25 @@ parameters:
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 40
+  default_value: 10000
   description: The benefits to enable a premise to receive GFast
   name: benefits_assets_premise_fttdp
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 30
+  default_value: 300
   description: The benefits to enable a premise to receive FTTC
   name: benefits_assets_premise_fttc
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 20
+  default_value: 200
   description: The benefits to enable a premise to receive ADSL
   name: benefits_assets_premise_adsl
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000000)
-  default_value: 1000
+  default_value: 1000000000
   description: The yearly budget to spend on infrastructure
   name: annual_budget
   suggested_range: (0, 1000000)

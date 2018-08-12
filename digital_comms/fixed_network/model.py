@@ -5,6 +5,17 @@ from itertools import tee
 from pprint import pprint
 from math import ceil
 
+#####################
+# SET GLOBAL PARAMETERS
+#####################
+
+MONTHS = 12
+PAYBACK_PERIOD = 4
+
+#####################
+# MODEL
+#####################
+
 class ICTManager(object):
     """Model controller class."""
 
@@ -46,36 +57,89 @@ class ICTManager(object):
             premises = [premises for premises in self._premises if premises.id == premises_id[0]]
             premises.uprade_desirability_to_adopt(desirability_to_adopt)
 
-    def coverage(self):
+    def coverage(self, return_specific_lad_results):
         """
         define coverage
         """
         premises_per_lad = defaultdict(list)
 
         for premise in self._premises:
-
             premises_per_lad[premise.lad].append(premise)
 
-
         # run statistics on each lad
-        coverage_results = defaultdict(dict)
+        #coverage_results = defaultdict(dict)
+        coverage_results = []
         for lad in premises_per_lad.keys():
+            if lad == return_specific_lad_results:
+                sum_of_fttp = sum([premise.fttp for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
+                sum_of_fttdp = sum([premise.fttdp for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
+                sum_of_fttc = sum([premise.fttc for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
+                sum_of_adsl = sum([premise.adsl for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
 
-            sum_of_fttp = sum([premise.fttp for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
-            sum_of_fttdp = sum([premise.fttdp for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
-            sum_of_fttc = sum([premise.fttc for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
-            sum_of_adsl = sum([premise.adsl for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
-            
-            sum_of_premises = len(premises_per_lad[lad]) # contain  list of premises objects in the lad
+                sum_of_premises = len(premises_per_lad[lad]) # contain  list of premises objects in the lad
 
-            coverage_results[lad] = {
-                'percentage_of_premises_with_fttp': round(sum_of_fttp / sum_of_premises, 2),
-                'percentage_of_premises_with_fttdp': round(sum_of_fttdp / sum_of_premises, 2),
-                'percentage_of_premises_with_fttc': round(sum_of_fttc / sum_of_premises, 2),
-                'percentage_of_premises_with_adsl': round(sum_of_adsl / sum_of_premises, 2)
-            }
+                # coverage_results[lad] = {
+                #     'lad': lad,
+                #     'percentage_of_premises_with_fttp': round(sum_of_fttp / sum_of_premises, 2),
+                #     'percentage_of_premises_with_fttdp': round(sum_of_fttdp / sum_of_premises, 2),
+                #     'percentage_of_premises_with_fttc': round(sum_of_fttc / sum_of_premises, 2),
+                #     'percentage_of_premises_with_adsl': round(sum_of_adsl / sum_of_premises, 2)
+                # }          
+
+                coverage_results.append({
+                    'percentage_of_premises_with_fttp': sum_of_fttp,
+                    'percentage_of_premises_with_fttdp': sum_of_fttdp,
+                    'percentage_of_premises_with_fttc': sum_of_fttc, 
+                    'percentage_of_premises_with_adsl': sum_of_adsl, 
+                })
 
         return coverage_results
+
+    def aggregate_coverage(self):
+        """
+        define aggregate coverage
+        """
+        premises_per_lad = defaultdict(list)
+
+        for premise in self._premises:
+            premises_per_lad[premise.lad].append(premise)
+
+        coverage_results = []
+        for lad in premises_per_lad.keys():
+            #if lad == return_specific_lad_results:
+            sum_of_fttp = sum([premise.fttp for premise in premises_per_lad[lad]]) 
+            sum_of_fttdp = sum([premise.fttdp for premise in premises_per_lad[lad]]) 
+            sum_of_fttc = sum([premise.fttc for premise in premises_per_lad[lad]]) 
+            sum_of_adsl = sum([premise.adsl for premise in premises_per_lad[lad]]) 
+
+            sum_of_premises = len(premises_per_lad[lad]) # contain  list of premises objects in the lad      
+            
+            coverage_results.append({
+                'sum_of_fttp': sum_of_fttp,
+                'sum_of_fttdp': sum_of_fttdp,
+                'sum_of_fttc': sum_of_fttc, 
+                'sum_of_adsl': sum_of_adsl, 
+                'sum_of_premises': sum_of_premises
+            })
+
+        output = []
+
+        for item in coverage_results:
+            aggregate_fttp = sum(item['sum_of_fttp'] for item in coverage_results)
+            aggregate_fttdp = sum(item['sum_of_fttdp'] for item in coverage_results)
+            aggregate_fttc = sum(item['sum_of_fttc'] for item in coverage_results)
+            aggregate_adsl = sum(item['sum_of_adsl'] for item in coverage_results)
+            aggregate_premises = sum(item['sum_of_premises'] for item in coverage_results)
+
+            output.append({
+                'percentage_of_premises_with_fttp': aggregate_fttp,
+                'percentage_of_premises_with_fttdp': aggregate_fttdp,
+                'percentage_of_premises_with_fttc': aggregate_fttc, 
+                'percentage_of_premises_with_adsl': aggregate_adsl, 
+                'sum_of_premises': aggregate_premises
+            })
+
+        return output
 
     def capacity(self):
         """
@@ -161,7 +225,20 @@ class ICTManager(object):
             'distributions':    self.total_link_length['distributions'] / self.number_of_links['distributions'],
             'cabinets':         self.total_link_length['cabinets'] / self.number_of_links['cabinets']
         }        
+    
+    @property # shortcut for creating a read-only property
+    def lads(self):
+        """Returns a list of lads"""
+        premises_per_lad = defaultdict(list)
+        lad_data = []
 
+        for premise in self._premises:
+            premises_per_lad[premise.lad].append(premise)
+        
+        for lad in premises_per_lad.keys():
+            lad_data.append(lad)
+              
+        return lad_data    
 
 class Exchange(object):
     """Exchanges"""
@@ -403,7 +480,7 @@ class Premise(object):
         self.adsl = data['ADSL']
         self.lad = data['lad']
         self.wta = data['wta']
-        self.wtp = data['wtp']
+        self.wtp = data['wtp'] * MONTHS * PAYBACK_PERIOD
         self.adoption_desirability = False
 
         self.parameters = parameters
@@ -491,7 +568,6 @@ class Premise(object):
     def uprade_desirability_to_adopt(self, desirability_to_adopt):
         
         self.adoption_desirability = True
-
 
 class Link(object):
     """Links"""

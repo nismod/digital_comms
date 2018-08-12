@@ -77,11 +77,42 @@ def get_exchange_ids(key, value):
 
     return exchange_ids
 
-if __name__ == "__main__":
+def cut_out_unwanted_premises_data(data):
 
+#'properties': OrderedDict([('id', 'premise_osgb1000030280096'), ('oa', 'E00042139'), ('residentia', '1'), 
+# ('non_reside', '0'), ('function', '[12]'), ('postgis_ge', '0101000020346C000070975DE023181A41E2A9DD11D8372141'), 
+# ('HID', '8510'), ('lad', 'E08000021'), ('year', '2018'), ('wtp', '15'), ('wta', '80.0'), ('postcode', 'NE62DA'), 
+# ('connection', 'distribution_{NENTE}{1472}'), ('FTTP', 0), ('GFast', 0), ('FTTC', 1), ('DOCSIS3', 0), ('ADSL', 0)])
+    premises_data = []
+
+    for premises in data:
+        premises_data.append(
+            {
+                'type': "Feature",
+                'geometry': {
+                    "type": "Point",
+                    "coordinates": premises['geometry']['coordinates'],
+                },
+                'properties': {
+                    'id': premises['properties']['id'][8:],
+                    'connection': premises['properties']['connection'],
+                    'FTTP': premises['properties']['FTTP'],
+                    'GFast': premises['properties']['GFast'],
+                    'FTTC': premises['properties']['FTTC'],
+                    'DOCSIS3': premises['properties']['DOCSIS3'],
+                    'ADSL':  premises['properties']['ADSL'],
+                    'wtp': premises['properties']['wtp'],
+                    'wta': premises['properties']['wta'],
+                    'lad': premises['properties']['lad']
+                }
+            })
+
+    return premises_data
+
+if __name__ == "__main__":
     selection = []
 
-    if 1 not in sys.argv:
+    if sys.argv[1] not in sys.argv:
         selection = [item for item in os.listdir(DATA_INTERMEDIATE) if os.path.isdir(os.path.join(DATA_INTERMEDIATE, item))]
     elif sys.argv[1] == 'cambridge':
         selection = [
@@ -298,6 +329,15 @@ if __name__ == "__main__":
             'exchange_NEWYL',
             'exchange_NENTW',
         ]
+    elif sys.argv[1] == 'Cambridgeshire':
+        selection = get_exchange_ids('county', 'Cambridgeshire')
+
+    elif sys.argv[1] == 'London':
+        selection = get_exchange_ids('region', 'London')
+
+    elif sys.argv[1] == 'East':
+        selection = get_exchange_ids('region', 'East')
+
     elif sys.argv[1] == 'Wales':
         selection = get_exchange_ids('country', 'Wales')
 
@@ -323,6 +363,7 @@ if __name__ == "__main__":
     write_shapefile(assets_layer4_distributions, 'assets_layer4_distributions.shp')
 
     assets_layer5_premises = collect_results(selection, 'assets_layer5_premises.shp')
+    #assets_layer5_premises = cut_out_unwanted_premises_data(assets_layer5_premises)
     write_shapefile(assets_layer5_premises, 'assets_layer5_premises.shp')
 
     

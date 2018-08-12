@@ -1,43 +1,91 @@
 ###VISUALISE MODEL OUTPUTS###
-#library(ggplot2)
-#library(dplyr)
 library(tidyverse)
-#install.packages("maptools")
 library(maptools)
-#install.packages("rgeos")
-library(rgeos)
-#install.packages("Cairo")
-library(Cairo)
-#install.packages("ggmap")
 library(ggmap)
 library(scales)
 library(RColorBrewer)
-#library(ineq)
-#install.packages("ggpubr")
 library(ggpubr)       
 
-set.seed(8000)
-
 path <- "C:\\Users\\edwar\\Desktop\\GitHub\\digital_comms\\results\\digital_comms_test\\digital_comms\\decision_0"
+path_figures <- "C:\\Users\\edwar\\Desktop\\GitHub\\digital_comms\\data_visualisation\\digital_comms_test"
+
+#################################
+# desire to adopt
+#################################
 
 setwd(path)
-metric_files <- list.files(path, pattern = c("(national)"))
 
-#initialised empty dataframe
-empty_df <- data.frame(timestep=numeric(),
-                       region=character(), 
-                       interval=numeric(), 
-                       value=numeric()) 
+files <- list.files(pattern=glob2rx("output_premises_adoption_desirability*.csv"))
 
-import_function = lapply(metric_files, function(x) {
-  DF <- read.csv(x, header = T, sep = ",")
-  DF_Merge <- merge(empty_df, DF, all = T)
-  DF_Merge$file <- as.factor(x)
-  return(DF_Merge)})
+# First apply read.csv, then rbind
+all_scenarios = do.call(rbind, lapply(files, function(x) read.csv(x, stringsAsFactors = FALSE)))
 
-all_scenarios <- do.call(rbind, import_function)
+adoption_desireability <- ggplot(data=all_scenarios, aes(x=timestep, y=value)) + geom_line() +
+                          labs(y = "Number of households", x = "Year", title = "Total Adoption Desirability")
 
-ggplot(data=all_scenarios, aes(x=timestep, y=value)) +
-  geom_line()
+### EXPORT TO FOLDER
+setwd(path_figures)
+tiff('adoption_desireability.tiff', units="in", width=9, height=9, res=300)
+print(adoption_desireability)
+dev.off()
 
+#################################
+# % of premises with ftttp
+#################################
+
+setwd(path)
+
+files <- list.files(pattern=glob2rx("output_percentage_of_premises_with_fttp*.csv"))
+
+# First apply read.csv, then rbind
+all_scenarios = do.call(rbind, lapply(files, function(x) read.csv(x, stringsAsFactors = FALSE)))
+
+premises_with_fttp <- ggplot(data=all_scenarios, aes(x=timestep, y=value)) + geom_line() +
+                      labs(y = "Number of households", x = "Year", title = "Percentage of premises with FTTP")
+
+### EXPORT TO FOLDER
+setwd(path_figures)
+tiff('premises_with_fttp.tiff', units="in", width=9, height=9, res=300)
+print(premises_with_fttp)
+dev.off()
+
+#################################
+# cost of distribution upgrades
+#################################
+
+setwd(path)
+
+files <- list.files(pattern=glob2rx("output_distribution_upgrade_costs_fttp*.csv"))
+
+# First apply read.csv, then rbind
+all_scenarios = do.call(rbind, lapply(files, function(x) read.csv(x, stringsAsFactors = FALSE)))
+
+all_scenarios <- select(all_scenarios, timestep, value)
+
+all_scenarios <- all_scenarios %>%
+  group_by(timestep) %>%
+  summarise(value = sum(as.numeric(value)))
+
+distribution_upgrade_costs <- ggplot(data=all_scenarios, aes(x=timestep, y=(value/1000000))) + geom_line() +
+                              labs(y = "Upgrade costs (£ Millions)", x = "Year", title = "FTTP Upgrade Costs")
+
+### EXPORT TO FOLDER
+setwd(path_figures)
+tiff('distribution_upgrade_costs.tiff', units="in", width=9, height=9, res=300)
+print(distribution_upgrade_costs)
+dev.off()
+
+#################################
+# arrange outputs
+#################################
+
+multiplot <- ggarrange(adoption_desireability, premises_with_fttp, distribution_upgrade_costs, 
+                       labels = c("A", "B", "C"),
+                       ncol = 2, nrow = 2)
+
+### EXPORT TO FOLDER
+setwd(path_figures)
+tiff('multiplot.tiff', units="in", width=9, height=9, res=300)
+print(multiplot)
+dev.off()
 

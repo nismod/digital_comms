@@ -5,6 +5,7 @@ import fiona
 import configparser
 import numpy as np
 np.set_printoptions(threshold=np.nan)
+import csv
 
 from digital_comms.fixed_network.model import ICTManager
 from digital_comms.fixed_network.interventions import decide_interventions
@@ -71,7 +72,7 @@ class DigitalCommsWrapper(SectorModel):
         print(data_handle.current_timestep)
         annual_adoption_rate = data_handle.get_data('adoption')
         print(annual_adoption_rate)
-
+        
         # -----------------------
         # Run fixed network model
         # -----------------------
@@ -99,9 +100,47 @@ class DigitalCommsWrapper(SectorModel):
             distribution_upgrade_costs_fttp[idx, 0] = distribution.upgrade_costs['fttp']
         data_handle.set_results('distribution_upgrade_costs_fttp', distribution_upgrade_costs_fttp)
 
-        premises_adopted = np.empty((1,1))
-        premises_adopted[0, 0] = len(premises_adoption_desirability_ids)
-        data_handle.set_results('premises_adoption_desirability', premises_adopted)
+        premises_wanting_to_adopt = np.empty((1,1))
+        premises_wanting_to_adopt[0, 0] = len(premises_adoption_desirability_ids)
+        data_handle.set_results('premises_adoption_desirability', premises_wanting_to_adopt)
+
+        percentage_of_premises_with_fttp = np.empty((1,1))
+        coverage_data = self.system.aggregate_coverage()
+        for item in coverage_data:
+            print(item['percentage_of_premises_with_fttp'])
+            percentage_of_premises_with_fttp[0, 0] = item['percentage_of_premises_with_fttp']
+        data_handle.set_results('percentage_of_premises_with_fttp', percentage_of_premises_with_fttp)
+
+        percentage_of_premises_with_fttdp = np.empty((1,1))
+        coverage_data = self.system.aggregate_coverage()
+        for item in coverage_data:
+            percentage_of_premises_with_fttdp[0, 0] = item['percentage_of_premises_with_fttdp']
+        data_handle.set_results('percentage_of_premises_with_fttdp', percentage_of_premises_with_fttdp)
+
+        percentage_of_premises_with_fttc = np.empty((1,1))
+        coverage_data = self.system.aggregate_coverage()
+        for item in coverage_data:
+            percentage_of_premises_with_fttc[0, 0] = item['percentage_of_premises_with_fttc']
+        data_handle.set_results('percentage_of_premises_with_fttc', percentage_of_premises_with_fttc)
+
+        # perc_fttp = np.empty((len(self.system.lads), 1)) 
+        # perc_fttdp = np.empty((len(self.system.lads), 1))
+        # perc_fttc = np.empty((len(self.system.lads), 1))
+        # perc_adsl = np.empty((len(self.system.lads), 1))
+
+        # for i, lad in enumerate(self.system.lads):
+        #     coverage_data = self.system.coverage(lad)
+        #     for item in coverage_data:
+        #         perc_fttp[i, 0] = item['percentage_of_premises_with_fttp'] 
+        #         perc_fttdp[i, 0] = item['percentage_of_premises_with_fttdp']
+        #         perc_fttc[i, 0] = item['percentage_of_premises_with_fttc']
+        #         perc_adsl[i, 0] = item['percentage_of_premises_with_adsl']
+
+        # data_handle.set_results('percentage_of_premises_with_fttp', perc_fttp)
+        # data_handle.set_results('percentage_of_premises_with_fttdp', perc_fttdp)
+        # data_handle.set_results('percentage_of_premises_with_fttc', perc_fttc)
+        # data_handle.set_results('percentage_of_premises_with_adsl', perc_adsl)
+
 
         # ----
         # Exit
