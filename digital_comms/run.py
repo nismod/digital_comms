@@ -60,6 +60,9 @@ class DigitalCommsWrapper(SectorModel):
         self.logger.info("DigitalCommsWrapper - Intitialise system")
         self.system = ICTManager(assets, links, parameters)
 
+    print('only distribution points with a benefit cost ratio > 1 can be upgraded')
+    print('model rollout is constrained by the adoption desiability set by scenario')
+
     def simulate(self, data_handle):
         
         # -----
@@ -71,20 +74,22 @@ class DigitalCommsWrapper(SectorModel):
 
         print(data_handle.current_timestep)
         annual_adoption_rate = data_handle.get_data('adoption')
-        print("annual_adoption_rate is {}".format(annual_adoption_rate))
+        print("annual_adoption_rate is {} %".format(annual_adoption_rate))
         
         # -----------------------
         # Run fixed network model
         # -----------------------
         self.logger.info("DigitalCommsWrapper - Update adoption status on premises")
         premises_adoption_desirability_ids = self.system.update_adoption_desirability = update_adoption_desirability(self.system, annual_adoption_rate)
+        #print(len([premise.fttp for premise in self.system._premises if premise.fttp == 1]))
+        MAXIMUM_ADOPTION = len(premises_adoption_desirability_ids) - len([premise.fttp for premise in self.system._premises if premise.fttp == 1])
 
         self.logger.info("DigitalCommsWrapper - Decide interventions")
-        interventions, budget, spend = decide_interventions('rollout_fttdp_per_distribution', data_handle.get_parameter('annual_budget'), data_handle.get_parameter('service_obligation_capacity'), self.system, now)
-
+        interventions, budget, spend = decide_interventions('rollout_fttp_per_distribution', data_handle.get_parameter('annual_budget'), data_handle.get_parameter('service_obligation_capacity'), self.system, now, MAXIMUM_ADOPTION)
+        
         self.logger.info("DigitalCommsWrapper - Upgrading system")
         self.system.upgrade(interventions)
-
+        # print(self.system.premises.rollout_benefits)
         # -------------
         # Write outputs
         # -------------
@@ -105,27 +110,33 @@ class DigitalCommsWrapper(SectorModel):
             distribution_upgrade_costs_fttdp[idx, 0] = distribution.upgrade_costs['fttdp']
         data_handle.set_results('distribution_upgrade_costs_fttdp', distribution_upgrade_costs_fttdp)
 
+        print("premises adoption desirability is {}".format(len(premises_adoption_desirability_ids)))
         premises_wanting_to_adopt = np.empty((1,1))
         premises_wanting_to_adopt[0, 0] = len(premises_adoption_desirability_ids)
         data_handle.set_results('premises_adoption_desirability', premises_wanting_to_adopt)
 
-        percentage_of_premises_with_fttp = np.empty((1,1))
-        coverage_data = self.system.aggregate_coverage()
-        for item in coverage_data:
-            percentage_of_premises_with_fttp[0, 0] = item['percentage_of_premises_with_fttp']
-        data_handle.set_results('percentage_of_premises_with_fttp', percentage_of_premises_with_fttp)
+        print("fttp premises passed {}".format(len([premise.fttp for premise in self.system._premises if premise.fttp == 1])))
+        premises_with_fttp = np.empty((1,1))        
+        premises_with_fttp[0, 0] = len([premise.fttp for premise in self.system._premises if premise.fttp == 1])
+        data_handle.set_results('premises_with_fttp', premises_with_fttp)
 
-        percentage_of_premises_with_fttdp = np.empty((1,1))
-        coverage_data = self.system.aggregate_coverage()
-        for item in coverage_data:
-            percentage_of_premises_with_fttdp[0, 0] = item['percentage_of_premises_with_fttdp']
-        data_handle.set_results('percentage_of_premises_with_fttdp', percentage_of_premises_with_fttdp)
+        # percentage_of_premises_with_fttp = np.empty((1,1))
+        # coverage_data = self.system.aggregate_coverage()
+        # for item in coverage_data:
+        #     percentage_of_premises_with_fttp[0, 0] = item['percentage_of_premises_with_fttp']
+        # data_handle.set_results('percentage_of_premises_with_fttp', percentage_of_premises_with_fttp)
 
-        percentage_of_premises_with_fttc = np.empty((1,1))
-        coverage_data = self.system.aggregate_coverage()
-        for item in coverage_data:
-            percentage_of_premises_with_fttc[0, 0] = item['percentage_of_premises_with_fttc']
-        data_handle.set_results('percentage_of_premises_with_fttc', percentage_of_premises_with_fttc)
+        # percentage_of_premises_with_fttdp = np.empty((1,1))
+        # coverage_data = self.system.aggregate_coverage()
+        # for item in coverage_data:
+        #     percentage_of_premises_with_fttdp[0, 0] = item['percentage_of_premises_with_fttdp']
+        # data_handle.set_results('percentage_of_premises_with_fttdp', percentage_of_premises_with_fttdp)
+
+        # percentage_of_premises_with_fttc = np.empty((1,1))
+        # coverage_data = self.system.aggregate_coverage()
+        # for item in coverage_data:
+        #     percentage_of_premises_with_fttc[0, 0] = item['percentage_of_premises_with_fttc']
+        # data_handle.set_results('percentage_of_premises_with_fttc', percentage_of_premises_with_fttc)
 
         # ----
         # Exit

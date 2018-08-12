@@ -10,7 +10,7 @@ from math import ceil
 #####################
 
 MONTHS = 12
-PAYBACK_PERIOD = 4
+PAYBACK_PERIOD = 10
 
 #####################
 # MODEL
@@ -521,6 +521,10 @@ class Premise(object):
         self.rollout_benefits['fttdp'] = self.parameters['benefits_assets_premise_fttdp'] if self.adoption_desirability else 0
         self.rollout_benefits['fttc'] = self.parameters['benefits_assets_premise_fttc'] if self.adoption_desirability else 0
         self.rollout_benefits['adsl'] = self.parameters['benefits_assets_premise_adsl'] if self.adoption_desirability else 0
+        #self.rollout_benefits['fttp'] = (int(self.wtp) * MONTHS * PAYBACK_PERIOD) if self.adoption_desirability else 0
+        #self.rollout_benefits['fttdp'] = (int(self.wtp) * MONTHS * PAYBACK_PERIOD) if self.adoption_desirability else 0
+        #self.rollout_benefits['fttc'] = (int(self.wtp) * MONTHS * PAYBACK_PERIOD) if self.adoption_desirability else 0
+        #self.rollout_benefits['adsl'] = (int(self.wtp) * MONTHS * PAYBACK_PERIOD) if self.adoption_desirability else 0
 
         # Benefit-cost ratio
         self.rollout_bcr = {}
@@ -564,6 +568,14 @@ class Premise(object):
     def uprade_desirability_to_adopt(self, desirability_to_adopt):
         
         self.adoption_desirability = True
+
+    def fttp_connection(self):
+        if self.fttp == 1:
+            connection = 1
+        else:
+            connection = 0
+        
+        return connection
 
 class Link(object):
     """Links"""

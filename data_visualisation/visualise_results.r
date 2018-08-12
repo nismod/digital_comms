@@ -37,14 +37,14 @@ dev.off()
 
 setwd(path)
 
-files <- list.files(pattern=glob2rx("output_percentage_of_premises_with_fttp*.csv"))
+files <- list.files(pattern=glob2rx("output_premises_with_fttp*.csv"))
 
 # First apply read.csv, then rbind
 all_scenarios = do.call(rbind, lapply(files, function(x) read.csv(x, stringsAsFactors = FALSE)))
 
-all_scenarios <- all_scenarios %>%
-  ungroup() %>%
-  mutate(value = cumsum(value))
+# all_scenarios <- all_scenarios %>%
+#   ungroup() %>%
+#   mutate(value = cumsum(value))
 
 
 all_scenarios$timestep <- as.factor(all_scenarios$timestep)
@@ -62,28 +62,27 @@ dev.off()
 # % of premises with fttdp
 #################################
 
-setwd(path)
-
-files <- list.files(pattern=glob2rx("output_percentage_of_premises_with_fttdp*.csv"))
-
-# First apply read.csv, then rbind
-all_scenarios = do.call(rbind, lapply(files, function(x) read.csv(x, stringsAsFactors = FALSE)))
-
-all_scenarios <- all_scenarios %>%
-  ungroup() %>%
-  mutate(value = cumsum(value))
-
-
-all_scenarios$timestep <- as.factor(all_scenarios$timestep)
-
-premises_with_fttdp <- ggplot(data=all_scenarios, aes(x=timestep, y=value, group = 1)) + geom_line() +
-  labs(y = "Number of households", x = "Year", title = "Premises with FTTdp")
-
-### EXPORT TO FOLDER
-setwd(path_figures)
-tiff('premises_with_fttdp.tiff', units="in", width=9, height=9, res=300)
-print(premises_with_fttdp)
-dev.off()
+# setwd(path)
+# 
+# files <- list.files(pattern=glob2rx("output_percentage_of_premises_with_fttdp*.csv"))
+# 
+# # First apply read.csv, then rbind
+# all_scenarios = do.call(rbind, lapply(files, function(x) read.csv(x, stringsAsFactors = FALSE)))
+# 
+# # all_scenarios <- all_scenarios %>%
+# #   ungroup() %>%
+# #   mutate(value = cumsum(value))
+# 
+# all_scenarios$timestep <- as.factor(all_scenarios$timestep)
+# 
+# premises_with_fttdp <- ggplot(data=all_scenarios, aes(x=timestep, y=value, group = 1)) + geom_line() +
+#   labs(y = "Number of households", x = "Year", title = "Premises with FTTdp")
+# 
+# ### EXPORT TO FOLDER
+# setwd(path_figures)
+# tiff('premises_with_fttdp.tiff', units="in", width=9, height=9, res=300)
+# print(premises_with_fttdp)
+# dev.off()
 
 #################################
 # cost of distribution upgrades
@@ -121,7 +120,7 @@ dev.off()
 # arrange outputs
 #################################
 
-multiplot <- ggarrange(adoption_desireability, premises_with_fttp, premises_with_fttdp, distribution_upgrade_costs, 
+multiplot <- ggarrange(adoption_desireability, premises_with_fttp, distribution_upgrade_costs, 
                        labels = c("A", "B", "C"),
                        ncol = 2, nrow = 2)
 

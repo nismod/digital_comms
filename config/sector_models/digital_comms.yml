@@ -35,7 +35,7 @@ outputs:
   spatial_resolution: national
   temporal_resolution: annual
   units: premises
-- name: percentage_of_premises_with_fttp
+- name: premises_with_fttp
   spatial_resolution: national
   temporal_resolution: annual
   units: premises
@@ -119,7 +119,7 @@ parameters:
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 40
+  default_value: 100
   description: The costs to enable a distribution to service GFast
   name: costs_assets_distribution_fttdp_4_ports
   suggested_range: (0, 100000)
