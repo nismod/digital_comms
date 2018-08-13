@@ -517,14 +517,14 @@ class Premise(object):
 
         # Rollout benefits
         self.rollout_benefits = {}
-        self.rollout_benefits['fttp'] = self.parameters['benefits_assets_premise_fttp'] if self.adoption_desirability else 0
-        self.rollout_benefits['fttdp'] = self.parameters['benefits_assets_premise_fttdp'] if self.adoption_desirability else 0
+        self.rollout_benefits['fttp'] = self.parameters['benefits_assets_premise_fttp'] if self.adoption_desirability and self.parameters['benefits_assets_premise_fttp'] < 3000 else 0
+        self.rollout_benefits['fttdp'] = self.parameters['benefits_assets_premise_fttdp'] if self.adoption_desirability and self.parameters['benefits_assets_premise_fttp'] < 3000 else 0
         self.rollout_benefits['fttc'] = self.parameters['benefits_assets_premise_fttc'] if self.adoption_desirability else 0
         self.rollout_benefits['adsl'] = self.parameters['benefits_assets_premise_adsl'] if self.adoption_desirability else 0
-        #self.rollout_benefits['fttp'] = (int(self.wtp) * MONTHS * PAYBACK_PERIOD) if self.adoption_desirability else 0
-        #self.rollout_benefits['fttdp'] = (int(self.wtp) * MONTHS * PAYBACK_PERIOD) if self.adoption_desirability else 0
-        #self.rollout_benefits['fttc'] = (int(self.wtp) * MONTHS * PAYBACK_PERIOD) if self.adoption_desirability else 0
-        #self.rollout_benefits['adsl'] = (int(self.wtp) * MONTHS * PAYBACK_PERIOD) if self.adoption_desirability else 0
+        # self.rollout_benefits['fttp'] = (int(self.wtp) * MONTHS * PAYBACK_PERIOD) if self.adoption_desirability else 0
+        # self.rollout_benefits['fttdp'] = (int(self.wtp) * MONTHS * PAYBACK_PERIOD) if self.adoption_desirability else 0
+        # self.rollout_benefits['fttc'] = (int(self.wtp) * MONTHS * PAYBACK_PERIOD) if self.adoption_desirability else 0
+        # self.rollout_benefits['adsl'] = (int(self.wtp) * MONTHS * PAYBACK_PERIOD) if self.adoption_desirability else 0
 
         # Benefit-cost ratio
         self.rollout_bcr = {}

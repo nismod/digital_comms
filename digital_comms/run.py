@@ -81,8 +81,10 @@ class DigitalCommsWrapper(SectorModel):
         # -----------------------
         self.logger.info("DigitalCommsWrapper - Update adoption status on premises")
         premises_adoption_desirability_ids = self.system.update_adoption_desirability = update_adoption_desirability(self.system, annual_adoption_rate)
-        #print(len([premise.fttp for premise in self.system._premises if premise.fttp == 1]))
+
         MAXIMUM_ADOPTION = len(premises_adoption_desirability_ids) - len([premise.fttp for premise in self.system._premises if premise.fttp == 1])
+
+        SUBSIDY = 1000000000
 
         self.logger.info("DigitalCommsWrapper - Decide interventions")
         interventions, budget, spend = decide_interventions('rollout_fttp_per_distribution', data_handle.get_parameter('annual_budget'), data_handle.get_parameter('service_obligation_capacity'), self.system, now, MAXIMUM_ADOPTION)

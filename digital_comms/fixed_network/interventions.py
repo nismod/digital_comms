@@ -77,18 +77,20 @@ def _suggest_interventions(budget, strategy, system, timestep, adoption_cap, thr
     #         else:
     #             break
 
-    # elif strategy == 'rollout_fttdp_per_distribution':
-    #     distributions = sorted(system._distributions, key=lambda item: item.rollout_bcr['fttdp'], reverse=True)
-
-    #     for distribution in distributions:
-
-    #         if distribution.rollout_costs['fttdp'] < budget:
-    #             budget -= distribution.rollout_costs['fttdp']
-    #             built_interventions.append((distribution.id, 'rollout_fttdp', distribution.rollout_costs['fttdp']))
-    #             spend.append((distribution.id, strategy, distribution.rollout_costs['fttdp']))
-    #         else:
-    #             break
-
+    elif strategy == 'rollout_fttdp_per_distribution':
+        distributions = sorted(system._distributions, key=lambda item: True if item.rollout_bcr['fttdp'] > 1 == 0 else False, reverse=True)
+        for distribution in distributions:
+            if (premises_passed + len(distribution._clients)) < adoption_cap:
+                if distribution.rollout_costs['fttdp'] < budget:
+                    budget -= distribution.rollout_costs['fttdp']
+                    built_interventions.append((distribution.id, 'rollout_fttdp', distribution.rollout_costs['fttdp']))
+                    spend.append((distribution.id, strategy, distribution.rollout_costs['fttdp']))
+                    premises_passed += len(distribution._clients)
+                else:
+                    break
+            else:
+                break
+        
     # elif strategy == 'rollout_fttdp_per_cabinet':
     #     cabinets = sorted(system._cabinets, key=lambda item: item.rollout_bcr['fttdp'], reverse=True)
 
