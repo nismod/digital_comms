@@ -46,14 +46,15 @@ class DigitalCommsWrapper(SectorModel):
         
         # Load assets
         assets = {}
-        assets['premises'] = read_shapefile(os.path.join(data_path, 'assets_layer5_premises.shp'))
+        # assets['premises'] = read_shapefile(os.path.join(data_path, 'assets_layer5_premises.shp'))
+        assets['premises'] = []
         assets['distributions'] = read_shapefile(os.path.join(data_path, 'assets_layer4_distributions.shp'))
         assets['cabinets'] = read_shapefile(os.path.join(data_path, 'assets_layer3_cabinets.shp'))
         assets['exchanges'] = read_shapefile(os.path.join(data_path, 'assets_layer2_exchanges.shp'))
         
         # Load links
         links = []
-        links.extend(read_shapefile(os.path.join(data_path, 'links_layer5_premises.shp')))
+        # links.extend(read_shapefile(os.path.join(data_path, 'links_layer5_premises.shp')))
         links.extend(read_shapefile(os.path.join(data_path, 'links_layer4_distributions.shp')))
         links.extend(read_shapefile(os.path.join(data_path, 'links_layer3_cabinets.shp')))
 
