@@ -57,5 +57,23 @@ scenarios:
     spatial_resolution: national
     temporal_resolution: annual
     units: meters
-narrative_sets: []
-narratives: []
+narrative_sets:
+- description: Picks a technology to roll out
+  name: technology
+narratives:
+- name: fttp_rollout_per_distribution
+  description: ''
+  filename: fttp_rollout_per_distribution.yml
+  narrative_set: technology_strategy
+- name: fttp_subsidised_rollout_per_distribution
+  description: ''
+  filename: fttp_subsidised_rollout_per_distribution.yml
+  narrative_set: technology_strategy
+- name: fttdp_rollout_per_distribution
+  description: ''
+  filename: fttdp_rollout_per_distribution.yml
+  narrative_set: technology_strategy
+- name: fttdp_subsidised_rollout_per_distribution
+  description: ''
+  filename: fttdp_subsidised_rollout_per_distribution.yml
+  narrative_set: technology_strategy

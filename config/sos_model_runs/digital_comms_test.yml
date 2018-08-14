@@ -1,7 +1,9 @@
 decision_module: ''
 description: ''
 name: digital_comms_test
-narratives: {}
+narratives:
+  technology_strategy:
+  - fttp_rollout_per_distribution
 scenarios:
   adoption: baseline_adoption
 sos_model: digital_comms_only

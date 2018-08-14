@@ -68,6 +68,12 @@ outputs:
   temporal_resolution: annual
   units: premises
 parameters:
+- absolute_range: (0, 0)
+  suggested_range: (0, 0)
+  default_value: 'fttdp_subsidised_rollout_per_distribution'
+  description: Technology strategy
+  name: 'technology_strategy'
+  units: 'text'
 - absolute_range: (0, 1000)
   default_value: 10
   description: The cost of installing a fiber link

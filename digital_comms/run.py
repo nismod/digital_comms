@@ -113,19 +113,23 @@ class DigitalCommsWrapper(SectorModel):
         now = data_handle.current_timestep
         self.logger.info("DigitalCommsWrapper received inputs in %s", now)
 
-        # Set global paramters
-        #STRATEGY = 'fttp_rollout_per_distribution'
-        # STRATEGY = 'fttp_subsidised_rollout_per_distribution'
-        # STRATEGY = 'fttdp_rollout_per_distribution'
-        STRATEGY = 'fttdp_subsidised_rollout_per_distribution'
-        #TECH = 'fttp'
-        TECH = 'fttdp'
+        # Set global parameters
+        STRATEGY = data_handle.get_parameter('technology_strategy')
+        # STRATEGY is one of:
+        # fttp_rollout_per_distribution
+        # fttp_subsidised_rollout_per_distribution
+        # fttdp_rollout_per_distribution
+        # fttdp_subsidised_rollout_per_distribution
+
+        TECH = STRATEGY.split("_")[0]
+        # TECH is fttp or fttdp
+
         TELCO_MATCH_FUNDING = 1e6
         SUBSIDY = 1e6
 
-        print(data_handle.current_timestep)
+        print("Running", TECH, STRATEGY, data_handle.current_timestep)
         annual_adoption_rate = data_handle.get_data('adoption')
-        print("{} annual_adoption_rate is {} %".format(TECH, annual_adoption_rate))
+        print("* {} annual_adoption_rate is {} %".format(TECH, annual_adoption_rate))
 
         # -----------------------
         # Run fixed network model
@@ -154,7 +158,7 @@ class DigitalCommsWrapper(SectorModel):
             distribution_upgrades[idx, 0] = interventions_lut[distribution][2] if distribution in interventions_lut else 0
         data_handle.set_results('distribution_upgrades', distribution_upgrades)
 
-        print("{} premises adoption desirability is {}".format(TECH, len(premises_adoption_desirability_ids)))
+        print("* {} premises adoption desirability is {}".format(TECH, len(premises_adoption_desirability_ids)))
         premises_wanting_to_adopt = np.empty((1,1))
         premises_wanting_to_adopt[0, 0] = len(premises_adoption_desirability_ids)
         data_handle.set_results('premises_adoption_desirability', premises_wanting_to_adopt)
@@ -168,7 +172,7 @@ class DigitalCommsWrapper(SectorModel):
 
             premises_with_fttp = np.empty((1,1))
             premises_with_fttp[0, 0] = sum(premise.fttp for premise in self.system._premises)
-            print("fttp premises passed {}".format(premises_with_fttp))
+            print("* fttp premises passed {}".format(premises_with_fttp))
             data_handle.set_results('premises_with_fttp', premises_with_fttp)
 
         if TECH == 'fttdp':
@@ -180,7 +184,7 @@ class DigitalCommsWrapper(SectorModel):
 
             premises_with_fttdp = np.empty((1,1))
             premises_with_fttdp[0, 0] = sum(premise.fttdp for premise in self.system._premises)
-            print("fttdp premises passed {}".format(premises_with_fttdp))
+            print("* fttdp premises passed {}".format(premises_with_fttdp))
             data_handle.set_results('premises_with_fttdp', premises_with_fttdp)
 
         # Regional output
@@ -196,7 +200,6 @@ class DigitalCommsWrapper(SectorModel):
         for i, lad in enumerate(lad_names):
             if lad not in coverage:
                 continue
-            print("LAD", lad)
             stats = coverage[lad]
             num_fttp[i, 0] = stats['num_fttp']
             num_fttdp[i, 0] = stats['num_fttdp']
