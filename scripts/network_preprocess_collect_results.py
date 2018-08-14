@@ -19,7 +19,7 @@ def collect_results(selection, name):
     results = []
     for entry in selection:
         results.append(os.path.join(DATA_INTERMEDIATE, entry, name))
-    
+
     geojson_results = []
     for result_file in results:
         try:
@@ -79,9 +79,9 @@ def get_exchange_ids(key, value):
 
 def cut_out_unwanted_premises_data(data):
 
-#'properties': OrderedDict([('id', 'premise_osgb1000030280096'), ('oa', 'E00042139'), ('residentia', '1'), 
-# ('non_reside', '0'), ('function', '[12]'), ('postgis_ge', '0101000020346C000070975DE023181A41E2A9DD11D8372141'), 
-# ('HID', '8510'), ('lad', 'E08000021'), ('year', '2018'), ('wtp', '15'), ('wta', '80.0'), ('postcode', 'NE62DA'), 
+#'properties': OrderedDict([('id', 'premise_osgb1000030280096'), ('oa', 'E00042139'), ('residentia', '1'),
+# ('non_reside', '0'), ('function', '[12]'), ('postgis_ge', '0101000020346C000070975DE023181A41E2A9DD11D8372141'),
+# ('HID', '8510'), ('lad', 'E08000021'), ('year', '2018'), ('wtp', '15'), ('wta', '80.0'), ('postcode', 'NE62DA'),
 # ('connection', 'distribution_{NENTE}{1472}'), ('FTTP', 0), ('GFast', 0), ('FTTC', 1), ('DOCSIS3', 0), ('ADSL', 0)])
     premises_data = []
 
@@ -112,7 +112,7 @@ def cut_out_unwanted_premises_data(data):
 if __name__ == "__main__":
     selection = []
 
-    if sys.argv[1] not in sys.argv:
+    if len(sys.argv) < 2:
         selection = [item for item in os.listdir(DATA_INTERMEDIATE) if os.path.isdir(os.path.join(DATA_INTERMEDIATE, item))]
     elif sys.argv[1] == 'exchange_EACAM':
         selection = ['exchange_EACAM']
@@ -367,5 +367,3 @@ if __name__ == "__main__":
     assets_layer5_premises = collect_results(selection, 'assets_layer5_premises.shp')
     assets_layer5_premises = cut_out_unwanted_premises_data(assets_layer5_premises)
     write_shapefile(assets_layer5_premises, 'assets_layer5_premises.shp')
-
-    

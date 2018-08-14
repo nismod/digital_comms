@@ -1,17 +1,54 @@
 """Digital demand dummy model
 """
-import os
-import fiona
 import configparser
-import numpy as np
-np.set_printoptions(threshold=np.nan)
 import csv
+import os
+
+from memory_profiler import profile
+from pyinstrument import Profiler
+
+import fiona
+import numpy as np
 
 from digital_comms.fixed_network.model import ICTManager
 from digital_comms.fixed_network.interventions import decide_interventions
 from digital_comms.fixed_network.adoption import update_adoption_desirability
 
 from smif.model.sector_model import SectorModel
+
+# numpy options
+np.set_printoptions(threshold=np.nan)
+
+# configure profiling with environment variable
+PROFILE = False
+if 'PROFILE_DC' in os.environ and os.environ['PROFILE_DC'] == "1":
+    PROFILE = True
+
+
+def memprofile(func):
+    """Decorator - profile memory usage if profiling is enabled
+    """
+    def wrapper(*args, **kwargs):
+        if PROFILE:
+            profile(func, precision=1)(*args, **kwargs)
+        else:
+            func(*args, **kwargs)
+    return wrapper
+
+
+def cpuprofile(func):
+    """Decorator - profile cpu usage
+    """
+    def wrapper(*args, **kwargs):
+        if PROFILE:
+            profiler = Profiler()
+            profiler.start()
+        func(*args, **kwargs)
+        if PROFILE:
+            profiler.stop()
+            print(profiler.output_text(unicode=False, color=True))
+    return wrapper
+
 
 class DigitalCommsWrapper(SectorModel):
     """Digital model
@@ -24,6 +61,9 @@ class DigitalCommsWrapper(SectorModel):
     def initialise(self, initial_conditions):
         print('initialise')
 
+
+    @cpuprofile
+    @memprofile
     def before_model_run(self, data_handle):
         print('before model run')
         """Implement this method to conduct pre-model run tasks
@@ -43,14 +83,14 @@ class DigitalCommsWrapper(SectorModel):
 
         # Get modelrun configuration
         parameters = data_handle.get_parameters()
-        
+
         # Load assets
         assets = {}
         assets['premises'] = read_shapefile(os.path.join(data_path, 'assets_layer5_premises.shp'))
         assets['distributions'] = read_shapefile(os.path.join(data_path, 'assets_layer4_distributions.shp'))
         assets['cabinets'] = read_shapefile(os.path.join(data_path, 'assets_layer3_cabinets.shp'))
         assets['exchanges'] = read_shapefile(os.path.join(data_path, 'assets_layer2_exchanges.shp'))
-        
+
         # Load links
         links = []
         links.extend(read_shapefile(os.path.join(data_path, 'links_layer5_premises.shp')))
@@ -60,17 +100,18 @@ class DigitalCommsWrapper(SectorModel):
         self.logger.info("DigitalCommsWrapper - Intitialise system")
         self.system = ICTManager(assets, links, parameters)
 
-    print('only distribution points with a benefit cost ratio > 1 can be upgraded')
-    print('model rollout is constrained by the adoption desiability set by scenario')
+        print('only distribution points with a benefit cost ratio > 1 can be upgraded')
+        print('model rollout is constrained by the adoption desirability set by scenario')
 
+
+    @cpuprofile
+    @memprofile
     def simulate(self, data_handle):
-            
         # -----
         # Start
         # -----
         now = data_handle.current_timestep
-        self.logger.info("DigitalCommsWrapper received inputs in %s",
-                         now)
+        self.logger.info("DigitalCommsWrapper received inputs in %s", now)
 
         print(data_handle.current_timestep)
         annual_adoption_rate = data_handle.get_data('adoption')
@@ -83,7 +124,7 @@ class DigitalCommsWrapper(SectorModel):
         self.system.update_adoption_desirability = update_adoption_desirability(self.system, annual_adoption_rate)
         premises_adoption_desirability_ids = self.system.update_adoption_desirability
 
-        MAXIMUM_ADOPTION = len(premises_adoption_desirability_ids) - len([premise.fttp for premise in self.system._premises if premise.fttp == 1])
+        MAXIMUM_ADOPTION = len(premises_adoption_desirability_ids) - sum(premise.fttp for premise in self.system._premises)
 
         SUBSIDY = 1000
         
@@ -101,7 +142,7 @@ class DigitalCommsWrapper(SectorModel):
         # Write outputs
         # -------------
         interventions_lut = {intervention[0]:intervention for intervention in interventions}
-        
+
         distribution_upgrades = np.empty((self.system.number_of_assets['distributions'],1))
         for idx, distribution in enumerate(data_handle.get_region_names('broadband_distributions')):
             distribution_upgrades[idx, 0] = interventions_lut[distribution][2] if distribution in interventions_lut else 0
@@ -122,9 +163,9 @@ class DigitalCommsWrapper(SectorModel):
         premises_wanting_to_adopt[0, 0] = len(premises_adoption_desirability_ids)
         data_handle.set_results('premises_adoption_desirability', premises_wanting_to_adopt)
 
-        print("fttp premises passed {}".format(len([premise.fttp for premise in self.system._premises if premise.fttp == 1])))
-        premises_with_fttp = np.empty((1,1))        
-        premises_with_fttp[0, 0] = len([premise.fttp for premise in self.system._premises if premise.fttp == 1])
+        premises_with_fttp = np.empty((1,1))
+        premises_with_fttp[0, 0] = sum(premise.fttp for premise in self.system._premises)
+        print("fttp premises passed {}".format(premises_with_fttp))
         data_handle.set_results('premises_with_fttp', premises_with_fttp)
 
         # percentage_of_premises_with_fttp = np.empty((1,1))
@@ -150,7 +191,7 @@ class DigitalCommsWrapper(SectorModel):
         # ----
         self.logger.info("DigitalCommsWrapper produced outputs in %s",
                          now)
-    
+
     def extract_obj(self, results):
         return 0
 
