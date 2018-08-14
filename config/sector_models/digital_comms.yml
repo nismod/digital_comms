@@ -51,6 +51,22 @@ outputs:
   spatial_resolution: national
   temporal_resolution: annual
   units: premises
+- name: lad_premises_with_fttp
+  spatial_resolution: lad2016
+  temporal_resolution: annual
+  units: premises
+- name: lad_premises_with_fttdp
+  spatial_resolution: lad2016
+  temporal_resolution: annual
+  units: premises
+- name: lad_premises_with_fttc
+  spatial_resolution: lad2016
+  temporal_resolution: annual
+  units: premises
+- name: lad_premises_with_adsl
+  spatial_resolution: lad2016
+  temporal_resolution: annual
+  units: premises
 parameters:
 - absolute_range: (0, 1000)
   default_value: 10

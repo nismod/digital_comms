@@ -106,38 +106,30 @@ class ICTManager(object):
             premises = self._premises_by_id[premises_id]
             premises.uprade_desirability_to_adopt(desirability_to_adopt)
 
-    def coverage(self, return_specific_lad_results):
+    def coverage(self):
         """
         define coverage
         """
         premises_per_lad = self._premises_by_lad
 
         # run statistics on each lad
-        #coverage_results = defaultdict(dict)
-        coverage_results = []
-        for lad in premises_per_lad.keys():
-            if lad == return_specific_lad_results:
-                sum_of_fttp = sum(premise.fttp for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
-                sum_of_fttdp = sum(premise.fttdp for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
-                sum_of_fttc = sum(premise.fttc for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
-                sum_of_adsl = sum(premise.adsl for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
+        coverage_results = {}
 
-                sum_of_premises = len(premises_per_lad[lad]) # contain  list of premises objects in the lad
+        for lad in premises_per_lad:
+            sum_of_fttp = sum(premise.fttp for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
+            sum_of_fttdp = sum(premise.fttdp for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
+            sum_of_fttc = sum(premise.fttc for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
+            sum_of_adsl = sum(premise.adsl for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
 
-                # coverage_results[lad] = {
-                #     'lad': lad,
-                #     'percentage_of_premises_with_fttp': round(sum_of_fttp / sum_of_premises, 2),
-                #     'percentage_of_premises_with_fttdp': round(sum_of_fttdp / sum_of_premises, 2),
-                #     'percentage_of_premises_with_fttc': round(sum_of_fttc / sum_of_premises, 2),
-                #     'percentage_of_premises_with_adsl': round(sum_of_adsl / sum_of_premises, 2)
-                # }
+            num_premises = len(premises_per_lad[lad])
 
-                coverage_results.append({
-                    'percentage_of_premises_with_fttp': sum_of_fttp,
-                    'percentage_of_premises_with_fttdp': sum_of_fttdp,
-                    'percentage_of_premises_with_fttc': sum_of_fttc,
-                    'percentage_of_premises_with_adsl': sum_of_adsl,
-                })
+            coverage_results[lad] = {
+                'num_premises': num_premises,
+                'num_fttp': sum_of_fttp,
+                'num_fttdp': sum_of_fttdp,
+                'num_fttc': sum_of_fttc,
+                'num_adsl': sum_of_adsl
+            }
 
         return coverage_results
 
@@ -431,13 +423,13 @@ class Distribution(object):
         # Upgrade costs
         self.upgrade_costs = {}
         self.upgrade_costs['fttp'] = (
-            (self.parameters['costs_assets_premise_fttp_optical_connection_point'] * ceil(len(self._clients) / 32) 
+            (self.parameters['costs_assets_premise_fttp_optical_connection_point'] * ceil(len(self._clients) / 32)
              if self.fttp == 0 else 0)
             +
             (self.link.upgrade_costs['fiber'] if self.link != None else 0)
         )
         self.upgrade_costs['fttdp'] = (
-            (self.parameters['costs_assets_distribution_fttdp_8_ports'] * ceil(len(self._clients) / 8) 
+            (self.parameters['costs_assets_distribution_fttdp_8_ports'] * ceil(len(self._clients) / 8)
              if self.fttdp == 0 else 0)
             +
             (self.link.upgrade_costs['fiber'] if self.link != None else 0)
@@ -554,7 +546,7 @@ class Premise(object):
         # self.rollout_benefits['fttdp'] = self.parameters['benefits_assets_premise_fttdp'] if self.adoption_desirability and self.parameters['benefits_assets_premise_fttp'] < 3000 else 0
         # self.rollout_benefits['fttc'] = self.parameters['benefits_assets_premise_fttc'] if self.adoption_desirability else 0
         # self.rollout_benefits['adsl'] = self.parameters['benefits_assets_premise_adsl'] if self.adoption_desirability else 0
-        self.rollout_benefits['fttp'] = self.wtp if self.adoption_desirability == True  else 0
+        self.rollout_benefits['fttp'] = self.wtp if self.adoption_desirability else 0
         self.rollout_benefits['fttdp'] = self.wtp if self.adoption_desirability else 0
         self.rollout_benefits['fttc'] = self.wtp if self.adoption_desirability else 0
         self.rollout_benefits['adsl'] = self.wtp if self.adoption_desirability else 0
@@ -599,7 +591,7 @@ class Premise(object):
         self.compute()
 
     def update_desirability_to_adopt(self, desirability_to_adopt):
-        
+
         self.adoption_desirability = True
 
 class Link(object):

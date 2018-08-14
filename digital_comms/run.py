@@ -183,6 +183,32 @@ class DigitalCommsWrapper(SectorModel):
             print("fttdp premises passed {}".format(premises_with_fttdp))
             data_handle.set_results('premises_with_fttdp', premises_with_fttdp)
 
+        # Regional output
+
+        lad_names = self.get_region_names('lad2016')
+        num_lads = len(lad_names)
+        num_fttp = np.zeros((num_lads, 1))
+        num_fttdp = np.zeros((num_lads, 1))
+        num_fttc = np.zeros((num_lads, 1))
+        num_adsl = np.zeros((num_lads, 1))
+
+        coverage = self.system.coverage()
+        for i, lad in enumerate(lad_names):
+            if lad not in coverage:
+                continue
+            print("LAD", lad)
+            stats = coverage[lad]
+            num_fttp[i, 0] = stats['num_fttp']
+            num_fttdp[i, 0] = stats['num_fttdp']
+            num_fttc[i, 0] = stats['num_fttc']
+            num_adsl[i, 0] = stats['num_adsl']
+
+        data_handle.set_results('lad_premises_with_fttp', num_fttp)
+        data_handle.set_results('lad_premises_with_fttdp', num_fttdp)
+        data_handle.set_results('lad_premises_with_fttc', num_fttc)
+        data_handle.set_results('lad_premises_with_adsl', num_adsl)
+
+
         # ----
         # Exit
         # ----
