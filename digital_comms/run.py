@@ -127,7 +127,7 @@ class DigitalCommsWrapper(SectorModel):
         MAXIMUM_ADOPTION = len(premises_adoption_desirability_ids) - sum(premise.fttp for premise in self.system._premises)
 
         SUBSIDY = 1000
-        
+
         print(sum([round(distribution.rollout_costs['fttp'],0) for distribution in self.system._distributions]))
 
         #print(sum([round(distribution.rollout_costs['fttdp'],0) for distribution in self.system._distributions]))
@@ -185,6 +185,32 @@ class DigitalCommsWrapper(SectorModel):
         # for item in coverage_data:
         #     percentage_of_premises_with_fttc[0, 0] = item['percentage_of_premises_with_fttc']
         # data_handle.set_results('percentage_of_premises_with_fttc', percentage_of_premises_with_fttc)
+
+        # Regional output
+
+        lad_names = self.get_region_names('lad2016')
+        num_lads = len(lad_names)
+        num_fttp = np.zeros((num_lads, 1))
+        num_fttdp = np.zeros((num_lads, 1))
+        num_fttc = np.zeros((num_lads, 1))
+        num_adsl = np.zeros((num_lads, 1))
+
+        coverage = self.system.coverage()
+        for i, lad in enumerate(lad_names):
+            if lad not in coverage:
+                continue
+            print("LAD", lad)
+            stats = coverage[lad]
+            num_fttp[i, 0] = stats['num_fttp']
+            num_fttdp[i, 0] = stats['num_fttdp']
+            num_fttc[i, 0] = stats['num_fttc']
+            num_adsl[i, 0] = stats['num_adsl']
+
+        data_handle.set_results('lad_premises_with_fttp', num_fttp)
+        data_handle.set_results('lad_premises_with_fttdp', num_fttdp)
+        data_handle.set_results('lad_premises_with_fttc', num_fttc)
+        data_handle.set_results('lad_premises_with_adsl', num_adsl)
+
 
         # ----
         # Exit

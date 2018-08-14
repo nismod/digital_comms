@@ -17,6 +17,9 @@ region_definitions:
 - description: Boundary of Great Britain
   filename: national.shp
   name: national
+- description: Local Authority Districts
+  filename: lad_uk_2016-12/lad_uk_2016-12.shp
+  name: lad2016
 # ------------------------------------------------
 interval_definitions:
 # shared understanding of time intervals within a year

@@ -106,38 +106,30 @@ class ICTManager(object):
             premises = self._premises_by_id[premises_id]
             premises.uprade_desirability_to_adopt(desirability_to_adopt)
 
-    def coverage(self, return_specific_lad_results):
+    def coverage(self):
         """
         define coverage
         """
         premises_per_lad = self._premises_by_lad
 
         # run statistics on each lad
-        #coverage_results = defaultdict(dict)
-        coverage_results = []
-        for lad in premises_per_lad.keys():
-            if lad == return_specific_lad_results:
-                sum_of_fttp = sum(premise.fttp for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
-                sum_of_fttdp = sum(premise.fttdp for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
-                sum_of_fttc = sum(premise.fttc for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
-                sum_of_adsl = sum(premise.adsl for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
+        coverage_results = {}
 
-                sum_of_premises = len(premises_per_lad[lad]) # contain  list of premises objects in the lad
+        for lad in premises_per_lad:
+            sum_of_fttp = sum(premise.fttp for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
+            sum_of_fttdp = sum(premise.fttdp for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
+            sum_of_fttc = sum(premise.fttc for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
+            sum_of_adsl = sum(premise.adsl for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
 
-                # coverage_results[lad] = {
-                #     'lad': lad,
-                #     'percentage_of_premises_with_fttp': round(sum_of_fttp / sum_of_premises, 2),
-                #     'percentage_of_premises_with_fttdp': round(sum_of_fttdp / sum_of_premises, 2),
-                #     'percentage_of_premises_with_fttc': round(sum_of_fttc / sum_of_premises, 2),
-                #     'percentage_of_premises_with_adsl': round(sum_of_adsl / sum_of_premises, 2)
-                # }
+            num_premises = len(premises_per_lad[lad])
 
-                coverage_results.append({
-                    'percentage_of_premises_with_fttp': sum_of_fttp,
-                    'percentage_of_premises_with_fttdp': sum_of_fttdp,
-                    'percentage_of_premises_with_fttc': sum_of_fttc,
-                    'percentage_of_premises_with_adsl': sum_of_adsl,
-                })
+            coverage_results[lad] = {
+                'num_premises': num_premises,
+                'num_fttp': sum_of_fttp,
+                'num_fttdp': sum_of_fttdp,
+                'num_fttc': sum_of_fttc,
+                'num_adsl': sum_of_adsl
+            }
 
         return coverage_results
 
