@@ -431,13 +431,13 @@ class Distribution(object):
         # Upgrade costs
         self.upgrade_costs = {}
         self.upgrade_costs['fttp'] = (
-            (self.parameters['costs_assets_premise_fttp_optical_connection_point'] * ceil(len(self._clients) / 32) 
+            (self.parameters['costs_assets_premise_fttp_optical_connection_point'] * ceil(len(self._clients) / 32)
              if self.fttp == 0 else 0)
             +
             (self.link.upgrade_costs['fiber'] if self.link != None else 0)
         )
         self.upgrade_costs['fttdp'] = (
-            (self.parameters['costs_assets_distribution_fttdp_8_ports'] * ceil(len(self._clients) / 8) 
+            (self.parameters['costs_assets_distribution_fttdp_8_ports'] * ceil(len(self._clients) / 8)
              if self.fttdp == 0 else 0)
             +
             (self.link.upgrade_costs['fiber'] if self.link != None else 0)
@@ -553,10 +553,10 @@ class Premise(object):
         # self.rollout_benefits['fttdp'] = self.parameters['benefits_assets_premise_fttdp'] if self.adoption_desirability and self.parameters['benefits_assets_premise_fttp'] < 3000 else 0
         # self.rollout_benefits['fttc'] = self.parameters['benefits_assets_premise_fttc'] if self.adoption_desirability else 0
         # self.rollout_benefits['adsl'] = self.parameters['benefits_assets_premise_adsl'] if self.adoption_desirability else 0
-        self.rollout_benefits['fttp'] = self.wtp# if self.adoption_desirability == True else 0
-        self.rollout_benefits['fttdp'] = self.wtp# if self.adoption_desirability else 0
-        self.rollout_benefits['fttc'] = self.wtp# if self.adoption_desirability else 0
-        self.rollout_benefits['adsl'] = self.wtp# if self.adoption_desirability else 0
+        self.rollout_benefits['fttp'] = self.wtp if self.adoption_desirability else 0
+        self.rollout_benefits['fttdp'] = self.wtp if self.adoption_desirability else 0
+        self.rollout_benefits['fttc'] = self.wtp if self.adoption_desirability else 0
+        self.rollout_benefits['adsl'] = self.wtp if self.adoption_desirability else 0
 
         # Benefit-cost ratio
         self.rollout_bcr = {}
@@ -598,7 +598,7 @@ class Premise(object):
         self.compute()
 
     def update_desirability_to_adopt(self, desirability_to_adopt):
-        
+
         self.adoption_desirability = True
 
 class Link(object):
