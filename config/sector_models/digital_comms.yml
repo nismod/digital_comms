@@ -53,31 +53,31 @@ outputs:
   units: premises
 parameters:
 - absolute_range: (0, 1000)
-  default_value: 20
+  default_value: 10
   description: The cost of installing a fiber link
   name: costs_links_fiber_meter
   suggested_range: (0, 100)
   units: GBP
 - absolute_range: (0, 1000)
-  default_value: 10
+  default_value: 8
   description: The cost of installing a copper link
   name: costs_links_copper_meter
   suggested_range: (0, 100)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 5000
+  default_value: 70000
   description: The costs to enable an exchange to service FTTP
   name: costs_assets_exchange_fttp
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 4000
+  default_value: 20000
   description: The costs to enable an exchange to service GFast
   name: costs_assets_exchange_fttdp
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 3000
+  default_value: 0
   description: The costs to enable an exchange to service FTTC
   name: costs_assets_exchange_fttc
   suggested_range: (0, 100000)
@@ -91,17 +91,17 @@ parameters:
 - absolute_range: (0, 100000)
   default_value: 500
   description: The costs to enable a cabinet to service FTTP
-  name: costs_assets_cabinet_fttp_32_ports
+  name: costs_assets_upgrade_cabinet_fttp
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 400
+  default_value: 2000
   description: The costs to enable a cabinet to service GFast
   name: costs_assets_cabinet_fttdp
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 300
+  default_value: 0
   description: The costs to enable a cabinet to service FTTC
   name: costs_assets_cabinet_fttc
   suggested_range: (0, 100000)
@@ -113,15 +113,9 @@ parameters:
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 50
-  description: The costs to enable a distribution to service FTTP
-  name: costs_assets_distribution_fttp_32_ports
-  suggested_range: (0, 100000)
-  units: GBP
-- absolute_range: (0, 100000)
-  default_value: 100
+  default_value: 1500
   description: The costs to enable a distribution to service GFast
-  name: costs_assets_distribution_fttdp_4_ports
+  name: costs_assets_distribution_fttdp_8_ports
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
@@ -136,26 +130,32 @@ parameters:
   name: costs_assets_distribution_adsl
   suggested_range: (0, 100000)
   units: GBP
-- absolute_range: (0, 100000)
-  default_value: 50
+- absolute_range: (0, 100)
+  default_value: 37
   description: The costs to enable a premise to receive FTTP
   name: costs_assets_premise_fttp_modem
-  suggested_range: (0, 100000)
+  suggested_range: (0, 100)
   units: GBP
-- absolute_range: (0, 100000)
-  default_value: 50
+- absolute_range: (0, 100)
+  default_value: 37
   description: The costs to enable a premise to receive FTTP
   name: costs_assets_premise_fttp_optical_network_terminator
-  suggested_range: (0, 100000)
+  suggested_range: (0, 100)
+  units: GBP
+- absolute_range: (0, 100)
+  default_value: 45
+  description: The costs to enable a premise to receive FTTP
+  name: costs_assets_premise_fttp_optical_connection_point
+  suggested_range: (0, 100)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 40
+  default_value: 37
   description: The costs to enable a premise to receive GFast
   name: costs_assets_premise_fttdp_modem
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 30
+  default_value: 37
   description: The costs to enable a premise to receive FTTC
   name: costs_assets_premise_fttc_modem
   suggested_range: (0, 100000)
@@ -190,8 +190,8 @@ parameters:
   name: benefits_assets_premise_adsl
   suggested_range: (0, 100000)
   units: GBP
-- absolute_range: (0, 100000000)
-  default_value: 1000000
+- absolute_range: (0, 10000000000)
+  default_value: 2000000000
   description: The yearly budget to spend on infrastructure
   name: annual_budget
   suggested_range: (0, 1000000)

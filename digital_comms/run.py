@@ -64,7 +64,7 @@ class DigitalCommsWrapper(SectorModel):
     print('model rollout is constrained by the adoption desiability set by scenario')
 
     def simulate(self, data_handle):
-        
+            
         # -----
         # Start
         # -----
@@ -75,20 +75,25 @@ class DigitalCommsWrapper(SectorModel):
         print(data_handle.current_timestep)
         annual_adoption_rate = data_handle.get_data('adoption')
         print("annual_adoption_rate is {} %".format(annual_adoption_rate))
-        
+
         # -----------------------
         # Run fixed network model
         # -----------------------
         self.logger.info("DigitalCommsWrapper - Update adoption status on premises")
-        premises_adoption_desirability_ids = self.system.update_adoption_desirability = update_adoption_desirability(self.system, annual_adoption_rate)
+        self.system.update_adoption_desirability = update_adoption_desirability(self.system, annual_adoption_rate)
+        premises_adoption_desirability_ids = self.system.update_adoption_desirability
 
         MAXIMUM_ADOPTION = len(premises_adoption_desirability_ids) - len([premise.fttp for premise in self.system._premises if premise.fttp == 1])
 
-        SUBSIDY = 1000000000
+        SUBSIDY = 1000
+        
+        print(sum([round(distribution.rollout_costs['fttp'],0) for distribution in self.system._distributions]))
+
+        #print(sum([round(distribution.rollout_costs['fttdp'],0) for distribution in self.system._distributions]))
 
         self.logger.info("DigitalCommsWrapper - Decide interventions")
-        interventions, budget, spend = decide_interventions('rollout_fttp_per_distribution', data_handle.get_parameter('annual_budget'), data_handle.get_parameter('service_obligation_capacity'), self.system, now, MAXIMUM_ADOPTION)
-        
+        interventions, budget, spend, subsidised_spend = decide_interventions('rollout_fttp_per_distribution', data_handle.get_parameter('annual_budget'), data_handle.get_parameter('service_obligation_capacity'), self.system, now, MAXIMUM_ADOPTION, SUBSIDY)
+        #print(subsidised_spend)    #subsidised_rollout_fttp_per_distribution
         self.logger.info("DigitalCommsWrapper - Upgrading system")
         self.system.upgrade(interventions)
         # print(self.system.premises.rollout_benefits)

@@ -10,7 +10,7 @@ from math import ceil
 #####################
 
 MONTHS = 12
-PAYBACK_PERIOD = 10
+PAYBACK_PERIOD = 4
 
 #####################
 # MODEL
@@ -55,7 +55,7 @@ class ICTManager(object):
 
         for premises_id, desirability_to_adopt in adoption_desirability:
             premises = [premises for premises in self._premises if premises.id == premises_id[0]]
-            premises.uprade_desirability_to_adopt(desirability_to_adopt)
+            premises.upgrade_desirability_to_adopt(desirability_to_adopt)
 
     def coverage(self, return_specific_lad_results):
         """
@@ -313,7 +313,7 @@ class Cabinet(object):
         # Upgrade costs
         self.upgrade_costs = {}
         self.upgrade_costs['fttp'] = (
-            (self.parameters['costs_assets_cabinet_fttp_32_ports'] * ceil(len(self._clients) / 32)
+            (self.parameters['costs_assets_upgrade_cabinet_fttp'] * ceil(len(self._clients) / 32)
              if self.fttp == 0 else 0)
             + 
             (self.link.upgrade_costs['fiber'] if self.link != None else 0)
@@ -399,13 +399,13 @@ class Distribution(object):
         # Upgrade costs
         self.upgrade_costs = {}
         self.upgrade_costs['fttp'] = (
-            (self.parameters['costs_assets_distribution_fttp_32_ports'] * ceil(len(self._clients) / 32) 
+            (self.parameters['costs_assets_premise_fttp_optical_connection_point'] * ceil(len(self._clients) / 32) 
              if self.fttp == 0 else 0)
             + 
             (self.link.upgrade_costs['fiber'] if self.link != None else 0)
         )
         self.upgrade_costs['fttdp'] = (
-            (self.parameters['costs_assets_distribution_fttdp_4_ports'] * ceil(len(self._clients) / 4) 
+            (self.parameters['costs_assets_distribution_fttdp_8_ports'] * ceil(len(self._clients) / 8) 
              if self.fttdp == 0 else 0)
             +
             (self.link.upgrade_costs['fiber'] if self.link != None else 0)
@@ -477,7 +477,7 @@ class Premise(object):
         self.adsl = data['ADSL']
         self.lad = data['lad']
         self.wta = data['wta']
-        self.wtp = data['wtp'] * MONTHS * PAYBACK_PERIOD
+        self.wtp = int(data['wtp']) * MONTHS * PAYBACK_PERIOD
         self.adoption_desirability = False
 
         self.parameters = parameters
@@ -510,26 +510,26 @@ class Premise(object):
 
         # Rollout costs
         self.rollout_costs = {}
-        self.rollout_costs['fttp'] = self.upgrade_costs['fttp']
-        self.rollout_costs['fttdp'] = self.upgrade_costs['fttdp']
+        self.rollout_costs['fttp'] = int(round(self.upgrade_costs['fttp'],0))
+        self.rollout_costs['fttdp'] = int(round(self.upgrade_costs['fttdp'],0))
         self.rollout_costs['fttc'] = self.upgrade_costs['fttc']
         self.rollout_costs['adsl'] = self.upgrade_costs['adsl']
 
         # Rollout benefits
         self.rollout_benefits = {}
-        self.rollout_benefits['fttp'] = self.parameters['benefits_assets_premise_fttp'] if self.adoption_desirability and self.parameters['benefits_assets_premise_fttp'] < 3000 else 0
-        self.rollout_benefits['fttdp'] = self.parameters['benefits_assets_premise_fttdp'] if self.adoption_desirability and self.parameters['benefits_assets_premise_fttp'] < 3000 else 0
-        self.rollout_benefits['fttc'] = self.parameters['benefits_assets_premise_fttc'] if self.adoption_desirability else 0
-        self.rollout_benefits['adsl'] = self.parameters['benefits_assets_premise_adsl'] if self.adoption_desirability else 0
-        # self.rollout_benefits['fttp'] = (int(self.wtp) * MONTHS * PAYBACK_PERIOD) if self.adoption_desirability else 0
-        # self.rollout_benefits['fttdp'] = (int(self.wtp) * MONTHS * PAYBACK_PERIOD) if self.adoption_desirability else 0
-        # self.rollout_benefits['fttc'] = (int(self.wtp) * MONTHS * PAYBACK_PERIOD) if self.adoption_desirability else 0
-        # self.rollout_benefits['adsl'] = (int(self.wtp) * MONTHS * PAYBACK_PERIOD) if self.adoption_desirability else 0
+        # self.rollout_benefits['fttp'] = self.parameters['benefits_assets_premise_fttp'] if self.adoption_desirability and self.parameters['benefits_assets_premise_fttp'] < 3000 else 0
+        # self.rollout_benefits['fttdp'] = self.parameters['benefits_assets_premise_fttdp'] if self.adoption_desirability and self.parameters['benefits_assets_premise_fttp'] < 3000 else 0
+        # self.rollout_benefits['fttc'] = self.parameters['benefits_assets_premise_fttc'] if self.adoption_desirability else 0
+        # self.rollout_benefits['adsl'] = self.parameters['benefits_assets_premise_adsl'] if self.adoption_desirability else 0
+        self.rollout_benefits['fttp'] = self.wtp# if self.adoption_desirability == True else 0
+        self.rollout_benefits['fttdp'] = self.wtp# if self.adoption_desirability else 0
+        self.rollout_benefits['fttc'] = self.wtp# if self.adoption_desirability else 0
+        self.rollout_benefits['adsl'] = self.wtp# if self.adoption_desirability else 0
 
         # Benefit-cost ratio
         self.rollout_bcr = {}
-        self.rollout_bcr['fttp'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttp'], self.rollout_costs['fttp'])
-        self.rollout_bcr['fttdp'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttdp'], self.rollout_costs['fttdp'])
+        self.rollout_bcr['fttp'] = int(_calculate_benefit_cost_ratio(self.rollout_benefits['fttp'], self.rollout_costs['fttp']))
+        self.rollout_bcr['fttdp'] = int(_calculate_benefit_cost_ratio(self.rollout_benefits['fttdp'], self.rollout_costs['fttdp']))
         self.rollout_bcr['fttc'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttc'], self.rollout_costs['fttc'])
         self.rollout_bcr['adsl'] = _calculate_benefit_cost_ratio(self.rollout_benefits['adsl'], self.rollout_costs['adsl'])
 
@@ -565,17 +565,9 @@ class Premise(object):
             
         self.compute()
 
-    def uprade_desirability_to_adopt(self, desirability_to_adopt):
+    def update_desirability_to_adopt(self, desirability_to_adopt):
         
         self.adoption_desirability = True
-
-    def fttp_connection(self):
-        if self.fttp == 1:
-            connection = 1
-        else:
-            connection = 0
-        
-        return connection
 
 class Link(object):
     """Links"""
