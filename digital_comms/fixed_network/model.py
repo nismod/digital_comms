@@ -20,24 +20,73 @@ class ICTManager(object):
     """Model controller class."""
 
     def __init__(self, assets, links, parameters):
-        self._links = {link['origin']:Link(link, parameters) for link in links}
+        self._links = {
+        }
 
-        self._premises = [Premise(premise, self._links.get(premise['id'], None), parameters) for premise in assets['premises']]
-        premises = defaultdict(list)
-        for premise in self._premises:
-            premises[premise.connection].append(premise)
+        self._links_from_premises = []
+        self._links_from_distributions = []
+        self._links_from_cabinets = []
+        self._links_from_exchanges = []
+        for link_dict in links:
+            link = Link(link_dict, parameters)
+            origin = link.origin
+            self._links[origin] = link
+            if origin.startswith('premise'):
+                self._links_from_premises.append(link)
+            elif origin.startswith('distribution'):
+                self._links_from_distributions.append(link)
+            elif origin.startswith('cabinet'):
+                self._links_from_cabinets.append(link)
+            elif origin.startswith('exchange'):
+                self._links_from_exchanges.append(link)
 
-        self._distributions = [Distribution(distribution, premises[distribution['id']], self._links.get(distribution['id'], None), parameters) for distribution in assets['distributions']]
-        distributions = defaultdict(list)
-        for distribution in self._distributions:
-            distributions[distribution.connection].append(distribution)
+        self._premises = []
+        self._premises_by_id = {}
+        self._premises_by_lad = defaultdict(list)
+        self._premises_by_dist = defaultdict(list)
+        for premise in assets['premises']:
+            premise = Premise(
+                premise,
+                self._links.get(premise['id'], None),
+                parameters
+            )
+            self._premises.append(premise)
+            self._premises_by_id[premise.id] = premise
+            self._premises_by_lad[premise.lad].append(premise)
+            self._premises_by_dist[premise.connection].append(premise)
 
-        self._cabinets = [Cabinet(cabinet, distributions[cabinet['id']], self._links.get(cabinet['id'], None), parameters) for cabinet in assets['cabinets']]
-        cabinets = defaultdict(list)
-        for cabinet in self._cabinets:
-            cabinets[cabinet.connection].append(cabinet)
+        self._distributions = []
+        self._distributions_by_cab = defaultdict(list)
+        for distribution in assets['distributions']:
+            distribution = Distribution(
+                distribution,
+                self._premises_by_dist[distribution['id']],
+                self._links.get(distribution['id'], None),
+                parameters
+            )
+            self._distributions.append(distribution)
+            self._distributions_by_cab[distribution.connection].append(distribution)
 
-        self._exchanges = [Exchange(exchange, cabinets[exchange['id']], parameters) for exchange in assets['exchanges']]
+        self._cabinets = []
+        self._cabinets_by_exchange = defaultdict(list)
+        for cabinet in assets['cabinets']:
+            cabinet = Cabinet(
+                cabinet,
+                self._distributions_by_cab[cabinet['id']],
+                self._links.get(cabinet['id'], None),
+                parameters
+            )
+            self._cabinets.append(cabinet)
+            self._cabinets_by_exchange[cabinet.connection].append(cabinet)
+
+        self._exchanges = []
+        for exchange in assets['exchanges']:
+            exchange = Exchange(
+                exchange,
+                self._cabinets_by_exchange[exchange['id']],
+                parameters
+            )
+            self._exchanges.append(exchange)
 
     def upgrade(self, interventions):
 
@@ -46,7 +95,7 @@ class ICTManager(object):
             if asset_id.startswith('distribution'):
                 distribution = [distribution for distribution in self._distributions if distribution.id == asset_id][0]
                 distribution.upgrade(action)
-            
+
             if asset_id.startswith('cabinet'):
                 cabinet = [cabinet for cabinet in self._cabinets if cabinet.id == asset_id][0]
                 cabinet.upgrade(action)
@@ -54,27 +103,24 @@ class ICTManager(object):
     def update_adoption_desirability(self, adoption_desirability):
 
         for premises_id, desirability_to_adopt in adoption_desirability:
-            premises = [premises for premises in self._premises if premises.id == premises_id[0]]
+            premises = self._premises_by_id[premises_id]
             premises.uprade_desirability_to_adopt(desirability_to_adopt)
 
     def coverage(self, return_specific_lad_results):
         """
         define coverage
         """
-        premises_per_lad = defaultdict(list)
-
-        for premise in self._premises:
-            premises_per_lad[premise.lad].append(premise)
+        premises_per_lad = self._premises_by_lad
 
         # run statistics on each lad
         #coverage_results = defaultdict(dict)
         coverage_results = []
         for lad in premises_per_lad.keys():
             if lad == return_specific_lad_results:
-                sum_of_fttp = sum([premise.fttp for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
-                sum_of_fttdp = sum([premise.fttdp for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
-                sum_of_fttc = sum([premise.fttc for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
-                sum_of_adsl = sum([premise.adsl for premise in premises_per_lad[lad]]) # contain  list of premises objects in the lad
+                sum_of_fttp = sum(premise.fttp for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
+                sum_of_fttdp = sum(premise.fttdp for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
+                sum_of_fttc = sum(premise.fttc for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
+                sum_of_adsl = sum(premise.adsl for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
 
                 sum_of_premises = len(premises_per_lad[lad]) # contain  list of premises objects in the lad
 
@@ -84,13 +130,13 @@ class ICTManager(object):
                 #     'percentage_of_premises_with_fttdp': round(sum_of_fttdp / sum_of_premises, 2),
                 #     'percentage_of_premises_with_fttc': round(sum_of_fttc / sum_of_premises, 2),
                 #     'percentage_of_premises_with_adsl': round(sum_of_adsl / sum_of_premises, 2)
-                # }          
+                # }
 
                 coverage_results.append({
                     'percentage_of_premises_with_fttp': sum_of_fttp,
                     'percentage_of_premises_with_fttdp': sum_of_fttdp,
-                    'percentage_of_premises_with_fttc': sum_of_fttc, 
-                    'percentage_of_premises_with_adsl': sum_of_adsl, 
+                    'percentage_of_premises_with_fttc': sum_of_fttc,
+                    'percentage_of_premises_with_adsl': sum_of_adsl,
                 })
 
         return coverage_results
@@ -99,24 +145,22 @@ class ICTManager(object):
         """
         define aggregate coverage
         """
-        premises_per_lad = defaultdict(list)
+        premises_per_lad = self._premises_by_lad
 
-        for premise in self._premises:
-            premises_per_lad[premise.connection].append(premise)
         #print(premises_per_lad.keys())
         coverage_results = []
         for lad in premises_per_lad.keys():
-            sum_of_fttp = sum([premise.fttp for premise in premises_per_lad[lad]]) 
-            sum_of_fttdp = sum([premise.fttdp for premise in premises_per_lad[lad]]) 
-            sum_of_fttc = sum([premise.fttc for premise in premises_per_lad[lad]]) 
-            sum_of_adsl = sum([premise.adsl for premise in premises_per_lad[lad]]) 
-            sum_of_premises = len(premises_per_lad[lad])   
-            
+            sum_of_fttp = sum(premise.fttp for premise in premises_per_lad[lad])
+            sum_of_fttdp = sum(premise.fttdp for premise in premises_per_lad[lad])
+            sum_of_fttc = sum(premise.fttc for premise in premises_per_lad[lad])
+            sum_of_adsl = sum(premise.adsl for premise in premises_per_lad[lad])
+            sum_of_premises = len(premises_per_lad[lad])
+
             coverage_results.append({
                 'sum_of_fttp': sum_of_fttp,
                 'sum_of_fttdp': sum_of_fttdp,
                 'sum_of_fttc': sum_of_fttc,
-                'sum_of_adsl': sum_of_adsl, 
+                'sum_of_adsl': sum_of_adsl,
                 'sum_of_premises': sum_of_premises
             })
 
@@ -132,8 +176,8 @@ class ICTManager(object):
             output.append({
                 'percentage_of_premises_with_fttp': aggregate_fttp,
                 'percentage_of_premises_with_fttdp': aggregate_fttdp,
-                'percentage_of_premises_with_fttc': aggregate_fttc, 
-                'percentage_of_premises_with_adsl': aggregate_adsl, 
+                'percentage_of_premises_with_fttc': aggregate_fttc,
+                'percentage_of_premises_with_adsl': aggregate_adsl,
                 'sum_of_premises': aggregate_premises
             })
 
@@ -145,17 +189,13 @@ class ICTManager(object):
         """
 
         # group premises by lads
-        premises_per_lad = defaultdict(list)
-
-        for premise in self._premises:
-      
-            premises_per_lad[premise.lad].append(premise)
+        premises_per_lad = self._premises_by_lad
 
         capacity_results = defaultdict(dict)
 
         for lad in premises_per_lad.keys():
-            summed_capacity = sum([premise.connection_capacity for premise in premises_per_lad[lad]])
-            number_of_connections = len(premises_per_lad[lad]) 
+            summed_capacity = sum(premise.connection_capacity for premise in premises_per_lad[lad])
+            number_of_connections = len(premises_per_lad[lad])
 
             capacity_results[lad] = {
                 'average_capacity': round(summed_capacity / number_of_connections, 2),
@@ -174,17 +214,17 @@ class ICTManager(object):
             'exchanges':        self._exchanges
         }
 
-    @property # shortcut for creating a read-only property
+    @property
     def links(self):
         """Returns a certain subset of links"""
         return {
-            'premises':         [link for link in self._links.values() if link.origin.startswith('premise')],
-            'distributions':    [link for link in self._links.values() if link.origin.startswith('distribution')],
-            'cabinets':         [link for link in self._links.values() if link.origin.startswith('cabinet')],
-            'exchanges':        [link for link in self._links.values() if link.origin.startswith('exchange')]
+            'premises':         self._links_from_premises,
+            'distributions':    self._links_from_distributions,
+            'cabinets':         self._links_from_cabinets,
+            'exchanges':        self._links_from_exchanges
         }
 
-    @property # shortcut for creating a read-only property
+    @property
     def number_of_assets(self):
         """obj: Number of assets in the model
         """
@@ -195,7 +235,7 @@ class ICTManager(object):
             'exchanges':        len(self.assets['exchanges']),
         }
 
-    @property # shortcut for creating a read-only property
+    @property
     def number_of_links(self):
         """obj: Number of links in the model
         """
@@ -206,7 +246,7 @@ class ICTManager(object):
             'exchanges':        len(self.links['exchanges']),
         }
 
-    @property # shortcut for creating a read-only property
+    @property
     def total_link_length(self):
         """obj: Total link length in the model
         """
@@ -216,27 +256,19 @@ class ICTManager(object):
             'cabinets':         sum(link.length for link in self.links['cabinets'])
         }
 
-    @property # shortcut for creating a read-only property
+    @property
     def avg_link_length(self):
         return {
             'premises':         self.total_link_length['premises'] / self.number_of_links['premises'],
             'distributions':    self.total_link_length['distributions'] / self.number_of_links['distributions'],
             'cabinets':         self.total_link_length['cabinets'] / self.number_of_links['cabinets']
-        }        
-    
-    @property # shortcut for creating a read-only property
-    def lads(self):
-        """Returns a list of lads"""
-        premises_per_lad = defaultdict(list)
-        lad_data = []
+        }
 
-        for premise in self._premises:
-            premises_per_lad[premise.lad].append(premise)
-        
-        for lad in premises_per_lad.keys():
-            lad_data.append(lad)
-              
-        return lad_data    
+    @property
+    def lads(self):
+        """Returns a list of lads which have premises
+        """
+        return list(self._premises_by_lad.keys())
 
 class Exchange(object):
     """Exchanges"""
@@ -315,17 +347,17 @@ class Cabinet(object):
         self.upgrade_costs['fttp'] = (
             (self.parameters['costs_assets_cabinet_fttp_32_ports'] * ceil(len(self._clients) / 32)
              if self.fttp == 0 else 0)
-            + 
+            +
             (self.link.upgrade_costs['fiber'] if self.link != None else 0)
         )
         self.upgrade_costs['fttdp'] = (
             (self.parameters['costs_assets_cabinet_fttdp'] if self.fttdp == 0 else 0)
-            + 
+            +
             (self.link.upgrade_costs['fiber'] if self.link != None else 0)
         )
         self.upgrade_costs['fttc'] = (
             (self.parameters['costs_assets_cabinet_fttc'] if self.fttc == 0 else 0)
-            + 
+            +
             (self.link.upgrade_costs['fiber'] if self.link != None else 0)
         )
         self.upgrade_costs['adsl'] = (
@@ -399,13 +431,13 @@ class Distribution(object):
         # Upgrade costs
         self.upgrade_costs = {}
         self.upgrade_costs['fttp'] = (
-            (self.parameters['costs_assets_distribution_fttp_32_ports'] * ceil(len(self._clients) / 32) 
+            (self.parameters['costs_assets_distribution_fttp_32_ports'] * ceil(len(self._clients) / 32)
              if self.fttp == 0 else 0)
-            + 
+            +
             (self.link.upgrade_costs['fiber'] if self.link != None else 0)
         )
         self.upgrade_costs['fttdp'] = (
-            (self.parameters['costs_assets_distribution_fttdp_4_ports'] * ceil(len(self._clients) / 4) 
+            (self.parameters['costs_assets_distribution_fttdp_4_ports'] * ceil(len(self._clients) / 4)
              if self.fttdp == 0 else 0)
             +
             (self.link.upgrade_costs['fiber'] if self.link != None else 0)
@@ -535,24 +567,24 @@ class Premise(object):
 
         #determine best_connection:
         if self.fttp == 1:
-            self.best_connection = 'fttp' 
+            self.best_connection = 'fttp'
         elif self.fttdp == 1:
-            self.best_connection = 'fttdp' 
+            self.best_connection = 'fttdp'
         elif self.fttc == 1:
-            self.best_connection = 'fttc' 
+            self.best_connection = 'fttc'
         else:
-            self.best_connection = 'adsl'  
+            self.best_connection = 'adsl'
 
         #determine connection_capacity
         if self.best_connection == 'fttp' :
-            self.connection_capacity =  250
+            self.connection_capacity = 250
         elif self.best_connection == 'fttdp':
-            self.connection_capacity =  100
-        elif self.best_connection  == 'fttc':
-            self.connection_capacity =  50
+            self.connection_capacity = 100
+        elif self.best_connection == 'fttc':
+            self.connection_capacity = 50
         else:
-            self.connection_capacity =  10  
-        
+            self.connection_capacity = 10
+
     def __repr__(self):
         return "<Premise id:{}>".format(self.id)
 
@@ -560,13 +592,13 @@ class Premise(object):
         if action == 'rollout_fttp':
             self.fttp = 1
             self.link.upgrade('fiber')
-        if action == 'rollout_fttdp':            
+        if action == 'rollout_fttdp':
             self.fttdp = 1
-            
+
         self.compute()
 
     def uprade_desirability_to_adopt(self, desirability_to_adopt):
-        
+
         self.adoption_desirability = True
 
     def fttp_connection(self):
@@ -574,7 +606,7 @@ class Premise(object):
             connection = 1
         else:
             connection = 0
-        
+
         return connection
 
 class Link(object):
@@ -595,14 +627,14 @@ class Link(object):
         self.upgrade_costs = {}
         self.upgrade_costs['fiber'] = self.parameters['costs_links_fiber_meter'] * self.length if self.technology != 'fiber' else 0
         self.upgrade_costs['copper'] = self.parameters['costs_links_copper_meter'] * self.length if self.technology != 'copper' else 0
-        
+
     def __repr__(self):
         return "<Link origin:{} dest:{} length:{}>".format(self.origin, self.dest, self.length)
 
     def upgrade(self, technology):
         if technology == 'fiber':
             self.technology = 'fiber'
-        
+
         self.compute()
 
 
