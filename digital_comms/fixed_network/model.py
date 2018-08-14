@@ -479,7 +479,8 @@ class Distribution(object):
 
     def upgrade(self, action):
 
-        if action == 'rollout_fttp':
+        if action in ('rollout_fttp', 'subsidised_fttp'):
+            action = 'rollout_fttp'
             self.fttp = 1
             if self.link != None:
                 self.link.upgrade('fiber')
@@ -504,7 +505,7 @@ class Premise(object):
         self.id = data['id']
         self.connection = data['connection']
         self.fttp = data['FTTP']
-        self.fttdp = data['GFast']
+        self.fttdp = data['FTTP'] # FTTdp indicator is incorrect. Probably counting DOCSIS. Using FTTP for now. 
         self.fttc = data['FTTC']
         self.adsl = data['ADSL']
         self.lad = data['lad']
@@ -553,10 +554,10 @@ class Premise(object):
         # self.rollout_benefits['fttdp'] = self.parameters['benefits_assets_premise_fttdp'] if self.adoption_desirability and self.parameters['benefits_assets_premise_fttp'] < 3000 else 0
         # self.rollout_benefits['fttc'] = self.parameters['benefits_assets_premise_fttc'] if self.adoption_desirability else 0
         # self.rollout_benefits['adsl'] = self.parameters['benefits_assets_premise_adsl'] if self.adoption_desirability else 0
-        self.rollout_benefits['fttp'] = self.wtp# if self.adoption_desirability == True else 0
-        self.rollout_benefits['fttdp'] = self.wtp# if self.adoption_desirability else 0
-        self.rollout_benefits['fttc'] = self.wtp# if self.adoption_desirability else 0
-        self.rollout_benefits['adsl'] = self.wtp# if self.adoption_desirability else 0
+        self.rollout_benefits['fttp'] = self.wtp if self.adoption_desirability == True  else 0
+        self.rollout_benefits['fttdp'] = self.wtp if self.adoption_desirability else 0
+        self.rollout_benefits['fttc'] = self.wtp if self.adoption_desirability else 0
+        self.rollout_benefits['adsl'] = self.wtp if self.adoption_desirability else 0
 
         # Benefit-cost ratio
         self.rollout_bcr = {}

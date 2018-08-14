@@ -39,7 +39,7 @@ outputs:
   spatial_resolution: national
   temporal_resolution: annual
   units: premises
-- name: percentage_of_premises_with_fttdp
+- name: premises_with_fttdp
   spatial_resolution: national
   temporal_resolution: annual
   units: premises
