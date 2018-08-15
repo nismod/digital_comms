@@ -5,7 +5,7 @@ narratives:
   technology_strategy:
   - fttdp_rollout_per_distribution
 scenarios:
-  adoption: low_adoption
+  adoption: fttdp_low_adoption
 sos_model: digital_comms_only
 stamp: '2018-05-01T12:36:34.374Z'
 strategies: []

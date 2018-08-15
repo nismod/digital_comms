@@ -5,7 +5,7 @@ narratives:
   technology_strategy:
   - fttp_rollout_per_distribution
 scenarios:
-  adoption: high_adoption
+  adoption: fttp_high_adoption
 sos_model: digital_comms_only
 stamp: '2018-05-01T12:36:34.374Z'
 strategies: []

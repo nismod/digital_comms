@@ -17,7 +17,7 @@ narratives:
   technology_strategy:
   - {strategy}
 scenarios:
-  adoption: {scenario}
+  adoption: {technology}{scenario}
 sos_model: digital_comms_only
 stamp: '2018-05-01T12:36:34.374Z'
 strategies: []
@@ -52,9 +52,10 @@ timesteps:
         for strategy_abbr, strategy in strategies:
             name = "digital_comms_{}_{}".format(scenario_abbr, strategy_abbr)
             fname = os.path.join(base_path, name + ".yml")
+            technology = strategy_abbr[:-2] + '_'
             with open(fname, 'w') as fh:
                 fh.write(
-                    template.format(strategy=strategy, scenario=scenario, name=name)
+                    template.format(strategy=strategy, scenario=scenario, name=name, technology=technology)
                 )
             batchfile.write(name + "\n")
 
