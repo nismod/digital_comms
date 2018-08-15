@@ -118,8 +118,8 @@ class DigitalCommsWrapper(SectorModel):
 
         TECH = STRATEGY.split("_")[0]
 
-        TELCO_MATCH_FUNDING = 1e6 
-        SUBSIDY = 1e6 
+        TELCO_MATCH_FUNDING = 5e6 
+        SUBSIDY = 5e6 
 
         print("Running", TECH, STRATEGY, data_handle.current_timestep)
         annual_adoption_rate = data_handle.get_data('adoption')

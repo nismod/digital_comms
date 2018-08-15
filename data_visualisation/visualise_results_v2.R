@@ -47,13 +47,13 @@ read_in_data <- function(file_pattern) {
                                               "Low Take-up"))
   
   all_scenarios$strategy <- gsub(".*r.*", "Market Rollout", all_scenarios$strategy)
-  all_scenarios$strategy <- gsub(".*s.*", "Targetted Subsidy", all_scenarios$strategy)
+  all_scenarios$strategy <- gsub(".*s.*", "Targeted Subsidy", all_scenarios$strategy)
   
   all_scenarios$strategy <- factor(all_scenarios$strategy,
                                    levels = c("Market Rollout",
-                                              "Targetted Subsidy"),
+                                              "Targeted Subsidy"),
                                    labels = c("Market Rollout",
-                                              "Targetted Subsidy"))
+                                              "Targeted Subsidy"))
   
   all_scenarios$tech <- gsub(".*fttdp.*", "FTTdp", all_scenarios$tech)
   all_scenarios$tech <- gsub(".*fttp.*", "FTTP", all_scenarios$tech)
@@ -73,13 +73,13 @@ all_scenarios <- read_in_data("output_premises_with*.csv")
 
 
 scenario_results <- ggplot(data=all_scenarios, aes(x=timestep, y=(value*100), group = tech, colour = tech)) + geom_line() +
-                    labs(y = "Percentage of premises", x = "Year", colour = "Technology", 
-                    title = "Technology Rollout by Scenario and Strategy") +
-                    scale_y_continuous(expand = c(0, 0), limits=c(0,25)) + 
+                    labs(y = "Premises Connected (%)", x = "Year", colour = "Technology", 
+                    title = "Technology Rollout by Scenario and Strategy", subtitle = "Expected Return Period: 4 Years") +
+                    scale_y_continuous(expand = c(0, 0), limits=c(0,75)) +  
                     scale_x_discrete(expand = c(0, 0)) +
                     theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom") +
                     facet_grid(scenario~strategy)
-
+        
 ### EXPORT TO FOLDER
 setwd(path_figures)
 tiff('scenario_results.tiff', units="in", width=8, height=9, res=300)
@@ -117,7 +117,7 @@ total_cost_results_dp <- ggplot(data=all_scenarios, aes(all_scenarios$value)) +
                                      fill="green", 
                                      alpha = .2) + 
                       geom_density(col=3) + 
-                      labs(title="Histogram for Cost Per Distribution Point") +
+                      labs(title="Density Plot of Cost Per Distribution Point") +
                       labs(x="Technology Upgrade Cost per Distribution Point", y="Count") +
                       facet_grid(~tech) +
                       scale_y_continuous(expand = c(0, 0)) + 

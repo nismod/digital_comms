@@ -210,18 +210,18 @@ parameters:
   name: costs_assets_premise_adsl_modem
   suggested_range: (0, 100000)
   units: GBP
-- absolute_range: (0, 100000)
-  default_value: 50
-  description: The benefits to enable a premise to receive FTTP
-  name: benefits_assets_premise_fttp
-  suggested_range: (0, 100000)
-  units: GBP
-- absolute_range: (0, 100000)
-  default_value: 10000
-  description: The benefits to enable a premise to receive GFast
-  name: benefits_assets_premise_fttdp
-  suggested_range: (0, 100000)
-  units: GBP
+# - absolute_range: (0, 100000)
+#   default_value: 100
+#   description: The benefits to enable a premise to receive FTTP
+#   name: benefits_assets_premise_fttp
+#   suggested_range: (0, 100000)
+#   units: GBP
+# - absolute_range: (0, 100000)
+#   default_value: 10000
+#   description: The benefits to enable a premise to receive GFast
+#   name: benefits_assets_premise_fttdp
+#   suggested_range: (0, 100000)
+#   units: GBP
 - absolute_range: (0, 100000)
   default_value: 300
   description: The benefits to enable a premise to receive FTTC
@@ -235,7 +235,7 @@ parameters:
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 10000000000)
-  default_value: 2000000000
+  default_value: 10000000
   description: The yearly budget to spend on infrastructure
   name: annual_budget
   suggested_range: (0, 1000000)

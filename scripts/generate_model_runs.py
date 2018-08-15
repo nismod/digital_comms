@@ -41,6 +41,9 @@ timesteps:
         ('fttdp_r', 'fttdp_rollout_per_distribution'),
         ('fttdp_s', 'fttdp_subsidised_rollout_per_distribution'),
     ]
+    # scenarios = [
+    #     ('b', 'baseline_adoption'),
+    # ]
     scenarios = [
         ('b', 'baseline_adoption'),
         ('h', 'high_adoption'),

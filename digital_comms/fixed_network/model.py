@@ -504,7 +504,7 @@ class Premise(object):
         self.adsl = data['ADSL']
         self.lad = data['lad']
         self.wta = data['wta']
-        self.wtp = int(data['wtp']) * MONTHS * PAYBACK_PERIOD * PROFIT_MARGIN
+        self.wtp = int(data['wtp']) 
         self.adoption_desirability = False
 
         self.parameters = parameters
@@ -544,15 +544,11 @@ class Premise(object):
         self.rollout_costs['adsl'] = self.upgrade_costs['adsl']
 
         # Rollout benefits
-        self.rollout_benefits = {}
-        # self.rollout_benefits['fttp'] = self.parameters['benefits_assets_premise_fttp'] if self.adoption_desirability and self.parameters['benefits_assets_premise_fttp'] < 3000 else 0
-        # self.rollout_benefits['fttdp'] = self.parameters['benefits_assets_premise_fttdp'] if self.adoption_desirability and self.parameters['benefits_assets_premise_fttp'] < 3000 else 0
-        # self.rollout_benefits['fttc'] = self.parameters['benefits_assets_premise_fttc'] if self.adoption_desirability else 0
-        # self.rollout_benefits['adsl'] = self.parameters['benefits_assets_premise_adsl'] if self.adoption_desirability else 0
-        self.rollout_benefits['fttp'] = self.wtp if self.adoption_desirability else 0
-        self.rollout_benefits['fttdp'] = self.wtp if self.adoption_desirability else 0
-        self.rollout_benefits['fttc'] = self.wtp if self.adoption_desirability else 0
-        self.rollout_benefits['adsl'] = self.wtp if self.adoption_desirability else 0
+        self.rollout_benefits = {} 
+        self.rollout_benefits['fttp'] = (self.wtp * MONTHS * PAYBACK_PERIOD * PROFIT_MARGIN) if self.adoption_desirability else 0
+        self.rollout_benefits['fttdp'] = (self.wtp * MONTHS * PAYBACK_PERIOD * PROFIT_MARGIN) if self.adoption_desirability else 0
+        self.rollout_benefits['fttc'] = (self.wtp * MONTHS * PAYBACK_PERIOD * PROFIT_MARGIN) if self.adoption_desirability else 0
+        self.rollout_benefits['adsl'] = (self.wtp * MONTHS * PAYBACK_PERIOD * PROFIT_MARGIN) if self.adoption_desirability else 0
 
         # Benefit-cost ratio
         self.rollout_bcr = {}
