@@ -27,6 +27,18 @@ outputs:
   spatial_resolution: broadband_distributions
   temporal_resolution: annual
   units: GBP
+- name: premises_upgrade_costs_fttp
+  spatial_resolution: broadband_distributions
+  temporal_resolution: annual
+  units: GBP
+- name: premises_upgrade_costs_fttdp
+  spatial_resolution: broadband_distributions
+  temporal_resolution: annual
+  units: GBP
+- name: premises_by_distribution
+  spatial_resolution: broadband_distributions
+  temporal_resolution: annual
+  units: premises 
 - name: premises_adoption_desirability
   spatial_resolution: national
   temporal_resolution: annual
@@ -39,15 +51,19 @@ outputs:
   spatial_resolution: national
   temporal_resolution: annual
   units: premises
+- name: percentage_of_premises_with_fttp
+  spatial_resolution: national
+  temporal_resolution: annual
+  units: premises 
+- name: percentage_of_premises_with_fttdp
+  spatial_resolution: national
+  temporal_resolution: annual
+  units: premises 
 - name: premises_with_fttdp
   spatial_resolution: national
   temporal_resolution: annual
   units: premises
 - name: percentage_of_premises_with_fttc
-  spatial_resolution: national
-  temporal_resolution: annual
-  units: premises
-- name: percentage_of_premises_with_adsl
   spatial_resolution: national
   temporal_resolution: annual
   units: premises
@@ -81,7 +97,7 @@ parameters:
   suggested_range: (0, 100)
   units: GBP
 - absolute_range: (0, 1000)
-  default_value: 8
+  default_value: 0
   description: The cost of installing a copper link
   name: costs_links_copper_meter
   suggested_range: (0, 100)
@@ -135,7 +151,7 @@ parameters:
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
-  default_value: 1500
+  default_value: 400
   description: The costs to enable a distribution to service GFast
   name: costs_assets_distribution_fttdp_8_ports
   suggested_range: (0, 100000)
@@ -163,6 +179,12 @@ parameters:
   description: The costs to enable a premise to receive FTTP
   name: costs_assets_premise_fttp_optical_network_terminator
   suggested_range: (0, 100)
+  units: GBP
+- absolute_range: (0, 1000)
+  default_value: 200
+  description: The costs to enable a premise to receive FTTP
+  name: planning_administration_cost
+  suggested_range: (0, 500)
   units: GBP
 - absolute_range: (0, 100)
   default_value: 45

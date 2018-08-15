@@ -115,17 +115,11 @@ class DigitalCommsWrapper(SectorModel):
 
         # Set global parameters
         STRATEGY = data_handle.get_parameter('technology_strategy')
-        # STRATEGY is one of:
-        # fttp_rollout_per_distribution
-        # fttp_subsidised_rollout_per_distribution
-        # fttdp_rollout_per_distribution
-        # fttdp_subsidised_rollout_per_distribution
 
         TECH = STRATEGY.split("_")[0]
-        # TECH is fttp or fttdp
 
-        TELCO_MATCH_FUNDING = 1e6
-        SUBSIDY = 1e6
+        TELCO_MATCH_FUNDING = 1e6 
+        SUBSIDY = 1e6 
 
         print("Running", TECH, STRATEGY, data_handle.current_timestep)
         annual_adoption_rate = data_handle.get_data('adoption')
@@ -138,8 +132,6 @@ class DigitalCommsWrapper(SectorModel):
         self.system.update_adoption_desirability = update_adoption_desirability(self.system, annual_adoption_rate)
         premises_adoption_desirability_ids = self.system.update_adoption_desirability
 
-        #print(sum(premise.fttdp for premise in self.system._premises))
-
         MAXIMUM_ADOPTION = len(premises_adoption_desirability_ids) - sum(getattr(premise, TECH) for premise in self.system._premises)
 
         self.logger.info("DigitalCommsWrapper - Decide interventions")
@@ -147,7 +139,7 @@ class DigitalCommsWrapper(SectorModel):
 
         self.logger.info("DigitalCommsWrapper - Upgrading system")
         self.system.upgrade(interventions)
-        # print(self.system.premises.rollout_benefits)
+
         # -------------
         # Write outputs
         # -------------
@@ -157,6 +149,11 @@ class DigitalCommsWrapper(SectorModel):
         for idx, distribution in enumerate(data_handle.get_region_names('broadband_distributions')):
             distribution_upgrades[idx, 0] = interventions_lut[distribution][2] if distribution in interventions_lut else 0
         data_handle.set_results('distribution_upgrades', distribution_upgrades)
+
+        premises_by_distribution = np.empty((self.system.number_of_assets['distributions'],1))
+        for idx, distribution in enumerate(self.system.assets['distributions']):
+            premises_by_distribution[idx, 0] = len(distribution._clients)
+        data_handle.set_results('premises_by_distribution', premises_by_distribution)
 
         print("* {} premises adoption desirability is {}".format(TECH, len(premises_adoption_desirability_ids)))
         premises_wanting_to_adopt = np.empty((1,1))
@@ -170,10 +167,23 @@ class DigitalCommsWrapper(SectorModel):
                 distribution_upgrade_costs_fttp[idx, 0] = distribution.upgrade_costs['fttp']
             data_handle.set_results('distribution_upgrade_costs_fttp', distribution_upgrade_costs_fttp)
 
+            upgrade_cost_per_premises_fttp = np.empty((self.system.number_of_assets['distributions'],1))
+            for idx, distribution in enumerate(self.system.assets['distributions']):
+                if len(distribution._clients) > 0:
+                    upgrade_cost_per_premises_fttp[idx, 0] = distribution.upgrade_costs['fttp'] / len(distribution._clients)
+                else:
+                    upgrade_cost_per_premises_fttp[idx, 0] = 0
+            data_handle.set_results('premises_upgrade_costs_fttp', upgrade_cost_per_premises_fttp)
+
             premises_with_fttp = np.empty((1,1))
-            premises_with_fttp[0, 0] = sum(premise.fttp for premise in self.system._premises)
+            premises_with_fttp[0, 0] = sum(premise.fttp for premise in self.system._premises) 
             print("* fttp premises passed {}".format(premises_with_fttp))
             data_handle.set_results('premises_with_fttp', premises_with_fttp)
+
+            percentage_of_premises_with_fttp = np.empty((1,1))
+            percentage_of_premises_with_fttp[0, 0] = sum(premise.fttp for premise in self.system._premises) / len(self.system._premises)
+            print("* fttp % premises passed {}".format(percentage_of_premises_with_fttp))
+            data_handle.set_results('premises_with_fttp', percentage_of_premises_with_fttp)
 
         if TECH == 'fttdp':
 
@@ -182,10 +192,24 @@ class DigitalCommsWrapper(SectorModel):
                 distribution_upgrade_costs_fttdp[idx, 0] = distribution.upgrade_costs['fttdp']
             data_handle.set_results('distribution_upgrade_costs_fttdp', distribution_upgrade_costs_fttdp)
 
+            upgrade_cost_per_premises_fttdp = np.empty((self.system.number_of_assets['distributions'],1))
+            for idx, distribution in enumerate(self.system.assets['distributions']):
+                if len(distribution._clients) > 0:
+                    upgrade_cost_per_premises_fttdp[idx, 0] = distribution.upgrade_costs['fttdp'] / len(distribution._clients)
+                else:
+                    upgrade_cost_per_premises_fttdp[idx, 0] = 0
+            data_handle.set_results('premises_upgrade_costs_fttdp', upgrade_cost_per_premises_fttdp)
+
             premises_with_fttdp = np.empty((1,1))
             premises_with_fttdp[0, 0] = sum(premise.fttdp for premise in self.system._premises)
             print("* fttdp premises passed {}".format(premises_with_fttdp))
             data_handle.set_results('premises_with_fttdp', premises_with_fttdp)
+
+            percentage_of_premises_with_fttdp = np.empty((1,1))
+            percentage_of_premises_with_fttdp[0, 0] = sum(premise.fttdp for premise in self.system._premises) / len(self.system._premises)
+            print("* fttdp % premises passed {}".format(percentage_of_premises_with_fttdp))
+            data_handle.set_results('premises_with_fttdp', percentage_of_premises_with_fttdp)
+
 
         # Regional output
 
@@ -208,8 +232,8 @@ class DigitalCommsWrapper(SectorModel):
 
         data_handle.set_results('lad_premises_with_fttp', num_fttp)
         data_handle.set_results('lad_premises_with_fttdp', num_fttdp)
-        data_handle.set_results('lad_premises_with_fttc', num_fttc)
-        data_handle.set_results('lad_premises_with_adsl', num_adsl)
+        # data_handle.set_results('lad_premises_with_fttc', num_fttc)
+        # data_handle.set_results('lad_premises_with_adsl', num_adsl)
 
 
         # ----

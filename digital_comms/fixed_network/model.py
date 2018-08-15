@@ -11,6 +11,7 @@ from math import ceil
 
 MONTHS = 12
 PAYBACK_PERIOD = 4
+PROFIT_MARGIN = 0.8 
 
 #####################
 # MODEL
@@ -479,7 +480,8 @@ class Distribution(object):
             for client in self._clients:
                 client.upgrade(action)
 
-        if action == 'rollout_fttdp':
+        if action in ('rollout_fttdp', 'subsidised_fttdp'):
+            action = 'rollout_fttdp'
             self.fttdp = 1
             if self.link != None:
                 self.link.upgrade('fiber')
@@ -496,13 +498,13 @@ class Premise(object):
         # Parameters
         self.id = data['id']
         self.connection = data['connection']
-        self.fttp = data['FTTP']
-        self.fttdp = data['FTTP'] # FTTdp indicator is incorrect. Probably counting DOCSIS. Using FTTP for now. 
+        self.fttp = 0 #data['FTTP']
+        self.fttdp = 0 #data['FTTdp'] # FTTdp indicator is incorrect. Probably counting DOCSIS. Using FTTP for now. 
         self.fttc = data['FTTC']
         self.adsl = data['ADSL']
         self.lad = data['lad']
         self.wta = data['wta']
-        self.wtp = int(data['wtp']) * MONTHS * PAYBACK_PERIOD
+        self.wtp = int(data['wtp']) * MONTHS * PAYBACK_PERIOD * PROFIT_MARGIN
         self.adoption_desirability = False
 
         self.parameters = parameters
@@ -518,6 +520,7 @@ class Premise(object):
         self.upgrade_costs['fttp'] = (
               (self.parameters['costs_assets_premise_fttp_modem'] if self.fttp == 0 else 0)
             + (self.parameters['costs_assets_premise_fttp_optical_network_terminator'] if self.fttp == 0 else 0)
+            + (self.parameters['planning_administration_cost'] if self.fttp == 0 else 0)
             + self.link.upgrade_costs['fiber']
         )
         self.upgrade_costs['fttdp'] = (
@@ -582,10 +585,12 @@ class Premise(object):
         return "<Premise id:{}>".format(self.id)
 
     def upgrade(self, action):
-        if action == 'rollout_fttp':
+        if action in ('rollout_fttp', 'subsidised_fttp'):
+            action = 'rollout_fttp'
             self.fttp = 1
             self.link.upgrade('fiber')
-        if action == 'rollout_fttdp':
+        if action in ('rollout_fttdp', 'subsidised_fttdp'):
+            action = 'rollout_fttdp'
             self.fttdp = 1
 
         self.compute()
