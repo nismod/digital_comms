@@ -133,7 +133,7 @@ CAV_density <- gather(CAV_density, metric, value, total_car_density_km2, CAV_ena
 
 CAV_density_figure <- ggplot(data=CAV_density, aes(x=year, y=value, fill=metric)) +
   geom_bar(position="dodge", stat="identity")  +
-  scale_y_continuous(expand = c(0, 0), limits=c(0,225)) + 
+  scale_y_continuous(expand = c(0, 0), limits=c(0,250)) + 
   scale_fill_manual(values = c("orange2","green4", "light blue"),
                     name = "Type",
                     labels = c("Enabled CAVs", "Subscribers", "Total Registered Vehicles")) +
@@ -161,8 +161,18 @@ cost_per_km2 <- all_scenarios[(all_scenarios$scenario == 'baseline' |
 
 cost_per_km2 <- cost_per_km2[(cost_per_km2$year == '2020'),]
 
+# setwd(path_figures)
+# write.csv(cost_per_km2, 'cost_per_km2.csv')
+
 cost_per_km2 <- select(cost_per_km2, scenario, strategy, road_type, length_km,
                        RAN_cost, small_cell_mounting_cost, fibre_backhaul_cost)
+
+cost_per_km2 <- cost_per_km2 %>%
+  group_by(scenario, strategy, road_type) %>%
+  summarise(length_km = sum(length_km),
+            RAN_cost = sum(RAN_cost),
+            small_cell_mounting_cost = sum(small_cell_mounting_cost),
+            fibre_backhaul_cost = sum(as.numeric(fibre_backhaul_cost)))
 
 cost_per_km2 <- gather(cost_per_km2, metric, value, RAN_cost, small_cell_mounting_cost, fibre_backhaul_cost)
 
@@ -178,6 +188,21 @@ cost_per_km2$metric <- factor(cost_per_km2$metric,
                                          "Small Cell Civil Works",
                                          "Fibre Backhaul TCO"))
 
+
+cost_per_km2$road_type <- factor(cost_per_km2$road_type,
+                              levels = c("Local Road (Urban)",
+                                         "Local Road (Rural)",
+                                         "Minor Road (Urban)",
+                                         "Minor Road (Rural)",
+                                         "B Road (Urban)",
+                                         "B Road (Rural)",
+                                         "A Road (Urban)",
+                                         "A Road (Rural)",
+                                         "Motorway (Urban)",
+                                         "Motorway (Rural)",
+                                         "Dense Motorway (Urban)",
+                                         "Dense Motorway (Rural)"))
+
 cost_per_km2$scenario <- factor(cost_per_km2$scenario,
                                    levels = c("high",
                                               "baseline",
@@ -192,10 +217,10 @@ strategy_labels <- c(`cellular_V2X_full_greenfield` = "Greenfield Cellular V2X",
                      `DSRC_full_greenfield` = "Greenfield DSRC", 
                      `DSRC_NRTS` = "DSRC with NRTS")
 
-cost_per_km2_figure <- ggplot(data=cost_per_km2, aes(x=reorder(road_type, value_per_km), y=value_per_km)) + geom_bar(stat="identity", aes(fill=metric)) +
+cost_per_km2_figure <- ggplot(data=cost_per_km2, aes(x=road_type, y=value_per_km)) + geom_bar(stat="identity", aes(fill=metric)) +
   facet_grid(scenario~strategy, labeller = labeller(strategy = strategy_labels, scenario = scenario_labels)) +
   ylab("Investment Cost Per Kilometer (GBP)") +
-  scale_y_continuous(expand = c(0, 0), labels = comma, limits=c(0,55000)) +
+  scale_y_continuous(expand = c(0, 0), labels = comma, limits=c(0,22500)) +
   scale_fill_brewer(palette="Spectral", name = expression('Cost Type'), direction=-1) +
   theme(legend.position = "bottom", axis.title.x=element_blank(), axis.text.x = element_text(angle = 60, hjust = 1)) +
   guides(fill = guide_legend(reverse = FALSE)) +
@@ -249,7 +274,7 @@ aggregate_cost$metric <- factor(aggregate_cost$metric,
 aggregate_cost_figure <- ggplot(data=aggregate_cost, aes(x=reorder(road_type, value), y=(value/1000000000))) + 
   geom_bar(stat="identity", aes(fill=metric))  + 
   ylab("Investment Cost (Billions GBP)") + 
-  scale_y_continuous(expand = c(0, 0), limits=c(0,5.5)) + 
+  scale_y_continuous(expand = c(0, 0), limits=c(0,4.5)) + 
   scale_fill_brewer(palette="Spectral", name = expression('Cost Type'), direction=-1) +
   theme(legend.position = "bottom", axis.title.x=element_blank(), axis.text.x = element_text(angle = 70, hjust = 1)) + 
   guides(fill = guide_legend(reverse = FALSE)) + 
@@ -263,6 +288,23 @@ print(aggregate_cost_figure)
 dev.off()
 
 rm(aggregate_cost, aggregate_cost_figure)
+
+#######################
+# REQUIRED UNITS
+#######################
+
+units_per_km2 <- all_scenarios[(all_scenarios$year == '2020' |
+                                  all_scenarios$wtp_scenario == 'baseline'),]
+
+units_per_km2 <- select(units_per_km2, scenario, strategy, wtp_scenario, road_type, length_km,
+                       RAN_units, small_cell_mounting_points, fibre_backhaul_km)
+
+units_per_km2 <- units_per_km2 %>%
+  group_by(scenario, strategy, wtp_scenario, road_type) %>%
+  summarise(length_km = sum(as.numeric(length_km)),
+            RAN_units = sum(RAN_units),
+            small_cell_mounting_points = sum(small_cell_mounting_points),
+            fibre_backhaul_km = sum(as.numeric(fibre_backhaul_km)))
 
 #######################
 # COST BENEFIT METRICS 
@@ -304,9 +346,11 @@ dev.off()
 # COST BENEFIT METRICS MOTORWAYS & A Roads
 ##########################################
 
-SRN_CBA <- all_scenarios[which(all_scenarios$road_function == 'Dense Motorway' |
-                                 all_scenarios$road_function == 'Motorway' |
-                                 all_scenarios$road_function == 'A Road'),]
+SRN_CBA <- all_scenarios
+
+SRN_CBA$total_tco[SRN_CBA$road_function == 'B Road'] <- 0
+SRN_CBA$total_tco[SRN_CBA$road_function == 'Minor Road'] <- 0
+SRN_CBA$total_tco[SRN_CBA$road_function == 'Local Road'] <- 0
 
 SRN_CBA <- select(SRN_CBA, year, scenario, strategy, CAV_revenue, total_tco)
 
@@ -324,7 +368,7 @@ SRN_CBA <- gather(SRN_CBA, metric, value, CAV_revenue, total_tco)
 
 SRN_CBA_figure <- ggplot(data=SRN_CBA, aes(x=year, y=(value/1000000000), fill=metric)) + 
   geom_bar(position="dodge", stat="identity")  + 
-  scale_y_continuous(expand = c(0, 0), limits=c(0,0.6)) + 
+  scale_y_continuous(expand = c(0, 0), limits=c(0,0.7)) + 
   ylab("Investment Cost (Billions GBP)") + 
   scale_fill_manual(values = c("green4","orange2"),
                     name = "Type",
@@ -383,6 +427,11 @@ all_scenarios$road_type <- factor(all_scenarios$road_type,
                                              "Local Road (Rural)"))
 
 all_scenarios$year <- as.factor(all_scenarios$year) 
+
+all_scenarios$lad[all_scenarios$lad == 'E06000057'] <-'E06000048' 
+all_scenarios$lad[all_scenarios$lad == 'E07000242'] <-'E07000097' 
+all_scenarios$lad[all_scenarios$lad == 'E07000243'] <-'E07000101' 
+all_scenarios$lad[all_scenarios$lad == 'E08000037'] <-'E08000020' 
 
 #######################
 # COST PER LAD
