@@ -66,14 +66,14 @@ vehicle_rollout_and_take_up <- gather(vehicle_rollout_and_take_up, metric, value
 
 CAV_rollout_figure <- ggplot(data=vehicle_rollout_and_take_up, aes(x=year, y=(value/1000000), fill=metric)) + 
   geom_bar(position="dodge", stat="identity")  + 
-  scale_y_continuous(expand = c(0, 0), limits=c(0,40)) + 
+  scale_y_continuous(expand = c(0, 0), limits=c(0,45)) + 
   ylab("Vehicles (Millions)") + 
   scale_fill_manual(values = c("orange2","green4", "light blue"),
                     name = "Type",
                     labels = c("Enabled CAVs", "Subscribers", "Total Registered Vehicles")) +
   theme(legend.position = "bottom", axis.title.x=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1)) + 
   guides(fill = guide_legend(reverse = FALSE)) + 
-  labs(title="Enabled CAVs and Subscription Take-up ", subtitle="Total registered vehicles: 37 million ") 
+  labs(title="Enabled CAVs and Subscription Take-up ", subtitle="Vehicle registration annual growth rate: 0.09%") 
 
 ### EXPORT TO FOLDER
 setwd(path_figures)
