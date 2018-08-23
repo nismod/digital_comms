@@ -729,14 +729,14 @@ def calculate_yearly_CAV_take_up(data, year, scenario, wtp_scenario, discount_ra
     #estimate capable vehicles
     for road in data:
         if road['total_cars'] > 0:  
-            road['annual_CAV_capability'] = round(road['total_cars'] * s_curve_function(year, 0, 1, 3, 6, 500), 0)
+            road['annual_CAV_capability'] = round(road['total_cars'] * s_curve_function(year, 0, 0.8, 3, 8, 500), 0)
         else:
             road['annual_CAV_capability'] = 0
 
     #estimate tabke-up
     for road in data:
         if road['annual_CAV_capability'] > 0:  
-            road['annual_CAV_take_up'] = round(road['annual_CAV_capability'] * s_curve_function(year, 0, 0.80, 2, 4, 500), 0)
+            road['annual_CAV_take_up'] = round(road['annual_CAV_capability'] * s_curve_function(year, 0, 0.70, 2, 4, 500), 0)
         else:
             road['annual_CAV_take_up'] = 0
 
@@ -770,9 +770,9 @@ def _get_scenario_wtp_value(wtp_scenario):
     if scenario == 'high':
         wtp = 20
     elif scenario == 'baseline':
-        wtp = 10
+        wtp = 4
     elif scenario == 'low':
-        wtp = 5
+        wtp = 2
     
     return wtp
 

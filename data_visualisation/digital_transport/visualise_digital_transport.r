@@ -208,9 +208,9 @@ cost_per_km2$scenario <- factor(cost_per_km2$scenario,
                                               "baseline",
                                               "low"))
 
-scenario_labels <- c(`high` = "High (10 Mb/s)",
-                     `baseline` = "Baseline (4 Mb/s)",
-                     `low` = "Low (1 Mb/s)")
+scenario_labels <- c(`high` = "High (10 Mb/s, £20 ARPU)",
+                     `baseline` = "Baseline (4 Mb/s, £4 ARPU)",
+                     `low` = "Low (1 Mb/s, £2 ARPU)")
 
 strategy_labels <- c(`cellular_V2X_full_greenfield` = "Greenfield Cellular V2X", 
                      `cellular_V2X_NRTS` = "Cellular V2X with NRTS", 
@@ -249,9 +249,9 @@ aggregate_cost <- aggregate_cost %>%
 
 aggregate_cost <- gather(aggregate_cost, metric, value, RAN_cost, small_cell_mounting_cost, fibre_backhaul_cost)
 
-scenario_labels <- c(`high` = "High (10 Mb/s)",
-                     `baseline` = "Baseline (4 Mb/s)",
-                     `low` = "Low (1 Mb/s)")
+scenario_labels <- c(`high` = "High (10 Mb/s, £20 ARPU)",
+                     `baseline` = "Baseline (4 Mb/s, £4 ARPU)",
+                     `low` = "Low (1 Mb/s, £2 ARPU)")
 
 aggregate_cost$scenario <- factor(aggregate_cost$scenario,
                                   levels = c("high",
@@ -386,6 +386,51 @@ dev.off()
 
 rm(SRN_CBA, SRN_CBA_figure, total_CBA, total_CBA_figure)
 
+
+##########################################
+# COST BENEFIT METRICS MOTORWAYS 
+##########################################
+
+motorway_CBA <- all_scenarios
+
+motorway_CBA$total_tco[motorway_CBA$road_function == 'A Road'] <- 0
+motorway_CBA$total_tco[motorway_CBA$road_function == 'B Road'] <- 0
+motorway_CBA$total_tco[motorway_CBA$road_function == 'Minor Road'] <- 0
+motorway_CBA$total_tco[motorway_CBA$road_function == 'Local Road'] <- 0
+
+motorway_CBA <- select(motorway_CBA, year, scenario, strategy, CAV_revenue, total_tco)
+
+motorway_CBA <- motorway_CBA %>%
+  group_by(year, scenario, strategy) %>%
+  summarise(CAV_revenue = sum(as.numeric(CAV_revenue)),
+            total_tco = sum(as.numeric(total_tco)))
+
+motorway_CBA$scenario <- factor(motorway_CBA$scenario,
+                           levels = c("high",
+                                      "baseline",
+                                      "low"))
+
+motorway_CBA <- gather(motorway_CBA, metric, value, CAV_revenue, total_tco)
+
+motorway_CBA_figure <- ggplot(data=motorway_CBA, aes(x=year, y=(value/1000000000), fill=metric)) + 
+  geom_bar(position="dodge", stat="identity")  + 
+  scale_y_continuous(expand = c(0, 0), limits=c(0,0.7)) + 
+  ylab("Investment Cost (Billions GBP)") + 
+  scale_fill_manual(values = c("green4","orange2"),
+                    name = "Type",
+                    labels = c("Benefit", "Cost")) +
+  theme(legend.position = "bottom", axis.title.x=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  guides(fill = guide_legend(reverse = FALSE)) + 
+  labs(title="Strategy Performance by Scenario: Motorways", subtitle="Results reported by scenario, strategy and performance metric") +
+  facet_grid(scenario~strategy, labeller = labeller(strategy = strategy_labels, scenario = scenario_labels))
+
+### EXPORT TO FOLDER
+setwd(path_figures)
+tiff('SRN_CBA_figure.tiff', units="in", width=9, height=9, res=300)
+print(SRN_CBA_figure)
+dev.off()
+
+rm(SRN_CBA, SRN_CBA_figure, total_CBA, total_CBA_figure)
 #######################
 # IMPORT COST PER LAD
 #######################
@@ -474,9 +519,9 @@ aggregate_cost$total_tco_binned = factor(aggregate_cost$total_tco_binned,
 
 aggregate_cost$total_tco_binned = forcats::fct_rev(factor(aggregate_cost$total_tco_binned))
 
-scenario_labels <- c(`high` = "High (10 Mb/s)",
-                     `baseline` = "Baseline (4 Mb/s)",
-                     `low` = "Low (1 Mb/s)")
+scenario_labels <- c(`high` = "High (10 Mb/s, £20 ARPU)",
+                     `baseline` = "Baseline (4 Mb/s, £4 ARPU)",
+                     `low` = "Low (1 Mb/s, £2 ARPU)")
 
 aggregate_cost$scenario <- factor(aggregate_cost$scenario,
                                   levels = c("high",
@@ -501,7 +546,7 @@ cost_by_lad <- ggplot() + geom_polygon(data = all.shp, aes(x = long, y = lat, gr
                                                            fill = total_tco_binned)) + 
   coord_equal() +
   guides(fill = guide_legend(reverse = FALSE)) + 
-  scale_fill_brewer(palette=("Spectral"), name = expression('Cost\n(Millions)', direction=1)) +
+  scale_fill_brewer(palette=("Spectral"), name = expression('Cost\n(£ Millions)', direction=1)) +
   labs(title="Total Road Network Aggregate Cost by LAD", subtitle="Results reported by scenario, strategy and cost ") +
   theme(legend.position="right", axis.text = element_blank(), axis.title=element_blank(), axis.ticks=element_blank()) +
   facet_grid(scenario ~ strategy, labeller = labeller(scenario = scenario_labels, strategy = strategy_labels))
@@ -557,9 +602,9 @@ aggregate_cost_SRN$total_tco_binned = factor(aggregate_cost_SRN$total_tco_binned
 
 aggregate_cost_SRN$total_tco_binned = forcats::fct_rev(factor(aggregate_cost_SRN$total_tco_binned))
 
-scenario_labels <- c(`high` = "High (10 Mb/s)",
-                     `baseline` = "Baseline (4 Mb/s)",
-                     `low` = "Low (1 Mb/s)")
+scenario_labels <- c(`high` = "High (10 Mb/s, £20 ARPU)",
+                     `baseline` = "Baseline (4 Mb/s, £4 ARPU)",
+                     `low` = "Low (1 Mb/s, £2 ARPU)")
 
 aggregate_cost_SRN$scenario <- factor(aggregate_cost_SRN$scenario,
                                       levels = c("high",
@@ -585,7 +630,7 @@ SRN_cost_by_lad <- ggplot() + geom_polygon(data = all.shp, aes(x = long, y = lat
                                                                fill = total_tco_binned)) + 
   coord_equal() +
   guides(fill = guide_legend(reverse = FALSE)) + 
-  scale_fill_brewer(palette="Spectral", name = expression('Cost\n(Millions)')) +
+  scale_fill_brewer(palette="Spectral", name = expression('Cost\n(£ Millions)')) +
   labs(title="SRN Aggregate Cost by LAD", subtitle="Results reported by scenario, strategy and cost ") +
   theme(legend.position="right", axis.text = element_blank(), axis.title=element_blank(), axis.ticks=element_blank()) +
   facet_grid(scenario ~ strategy, labeller = labeller(scenario = scenario_labels, strategy = strategy_labels))
@@ -602,9 +647,10 @@ dev.off()
 
 total_cost <- select(all_scenarios, scenario, strategy, total_tco)
 
-total_cost %>%
+total_cost <- total_cost %>%
   group_by(scenario, strategy) %>%
-  summarise(total_tco = round(sum(as.numeric(total_tco)/1000000000),2))
+  summarise(annual_tco = round(sum(as.numeric(total_tco)/1000000000)/4,2),
+            total_tco = round(sum(as.numeric(total_tco)/1000000000),2))
 
 ##################################
 # TOTAL COST OUTPUT METRICS
@@ -631,5 +677,28 @@ aggregate_cost_by_road_type <- aggregate_cost_by_road_type %>%
 #   summarise(total_tco = sum(as.numeric(total_tco)),
 #             length_km = sum(as.numeric(length_km)))
 
+##################################
+# COMPONENT COST STRUCTURE 
+##################################
 
+cost_per_km2 <- all_scenarios[(all_scenarios$scenario == 'baseline' |
+                                 all_scenarios$scenario == 'low' |
+                                 all_scenarios$scenario == 'high'),]
 
+cost_per_km2 <- cost_per_km2[(cost_per_km2$year == '2020'),]
+
+cost_per_km2 <- select(cost_per_km2, scenario, strategy, 
+                       RAN_cost, small_cell_mounting_cost, fibre_backhaul_cost, total_tco)
+
+cost_per_km2 <- cost_per_km2 %>%
+  group_by(scenario, strategy) %>%
+  summarise(RAN_cost = sum(RAN_cost),
+            small_cell_mounting_cost = sum(small_cell_mounting_cost),
+            fibre_backhaul_cost = sum(as.numeric(fibre_backhaul_cost)),
+            total_tco = sum(total_tco))
+
+cost_per_km2 <- cost_per_km2 %>%
+  group_by(scenario, strategy) %>%
+  summarise(perc_RAN_cost = RAN_cost/total_tco*100,
+            perc_small_cell_mounting_cost = small_cell_mounting_cost/total_tco*100,
+            perc_fibre_backhaul_cost = as.numeric(fibre_backhaul_cost)/total_tco*100)
