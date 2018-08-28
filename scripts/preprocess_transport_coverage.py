@@ -354,7 +354,7 @@ def read_in_csv_road_geotype_data(data, lad_indicator):
                     'road_function': line[0],
                     'formofway': line[1],
                     'urban_rural': line[2],
-                    'length_km': (int(line[3])/1000)
+                    'length_m': (int(line[3]))
                 })   
     else:
         with open(os.path.join(SYSTEM_RESULTS_PATH, data), 'r',  encoding='utf8', errors='replace') as system_file:
@@ -366,7 +366,7 @@ def read_in_csv_road_geotype_data(data, lad_indicator):
                     'road_function': line[1],
                     'formofway': line[2],
                     'urban_rural': line[3],
-                    'length_km': (int(line[4])/1000)
+                    'length_m': (int(line[4]))
                 })   
 
     return road_type_data
@@ -406,18 +406,24 @@ def calculate_tco_for_each_asset(capex, opex, discount_rate, current_year, year_
 
     return total_cost_of_ownership
 
-def calculate_number_of_RAN_units_and_civil_works_costs(data, deployment_period, year, scenario, strategy, cell_capex, cell_civil_works_capex, cells_per_mounting):
+def calculate_number_of_RAN_units_and_civil_works_costs(data, deployment_period, year, scenario, strategy, cell_capex, cell_civil_works_capex, cells_per_mounting, spacing_factor):
 
     if BASE_YEAR <= year < (BASE_YEAR + deployment_period):  
         for road in data:
             cell_spacing = _get_scenario_cell_spacing_value(scenario, strategy, road['road_function'], road['urban_rural'])
-            road['RAN_units'] = round((float(road['length_km']) / float(cell_spacing)) / deployment_period, 2)
+            #print('1) cell spacing is {}'.format(cell_spacing))
+            #print('2) cell spacing factor is {}'.format(spacing_factor))
+            modified_cell_spacing = cell_spacing * spacing_factor
+            #print('3) modified cell spacing factor is {}'.format(modified_cell_spacing))
+            road['RAN_units'] = round((float(road['length_m']) / float(modified_cell_spacing)) / deployment_period, 5)
+            #print('4) road length is {}'.format(road['length_m']))
+            #print('5) RAN_units per km is {}'.format(road['RAN_units']))
         for road in data:
-            road['RAN_cost'] = round((road['RAN_units'] * cell_capex) , 2)
+            road['RAN_cost'] = round((road['RAN_units'] * cell_capex) , 5)
         for road in data:
-            road['small_cell_mounting_points'] = round((road['RAN_units'] / cells_per_mounting), 2)
+            road['small_cell_mounting_points'] = round((road['RAN_units'] / cells_per_mounting), 5)
         for road in data:
-            road['small_cell_mounting_cost'] = round((road['small_cell_mounting_points'] * cell_civil_works_capex), 0)
+            road['small_cell_mounting_cost'] = round((road['small_cell_mounting_points'] * cell_civil_works_capex), 5)
     else:
         for road in data:
             road['RAN_units'] = 0
@@ -548,7 +554,7 @@ def _get_scenario_cell_spacing_value(scenario, strategy, road_type, urban_rural)
                 else:
                     spacing = 0.3
 
-    return spacing
+    return spacing * 1000
 
 #####################################
 # demand estimation
@@ -560,7 +566,7 @@ def calculate_potential_demand(data, car_length, scenario, year, growth_rate):
         if road['road_function'] == 'Dense Motorway':
 
             cars_per_lane = _get_cars_per_lane('Dense Motorway', scenario, year, growth_rate)
-            road['cars_per_lane'] = (round(int(road['length_km']) * cars_per_lane, 0))
+            road['cars_per_lane'] = (round(int(road['length_m']) * cars_per_lane, 0))
 
             if road['formofway'] == 'Collapsed Dual Carriageway':
                 road['total_cars'] = road['cars_per_lane'] * 6
@@ -576,7 +582,7 @@ def calculate_potential_demand(data, car_length, scenario, year, growth_rate):
         elif road['road_function'] == 'Motorway': 
 
             cars_per_lane = _get_cars_per_lane('Motorway', scenario, year, growth_rate)
-            road['cars_per_lane'] = int(round(int(road['length_km']) * cars_per_lane, 0))
+            road['cars_per_lane'] = int(round(int(road['length_m']) * cars_per_lane, 0))
 
             if road['formofway'] == 'Collapsed Dual Carriageway':
                 road['total_cars'] = road['cars_per_lane'] * 6
@@ -592,7 +598,7 @@ def calculate_potential_demand(data, car_length, scenario, year, growth_rate):
         elif road['road_function'] == 'A Road': 
 
             cars_per_lane = _get_cars_per_lane('A Road', scenario, year, growth_rate)
-            road['cars_per_lane'] = int(round(int(road['length_km']) * cars_per_lane, 0))
+            road['cars_per_lane'] = int(round(int(road['length_m']) * cars_per_lane, 0))
 
             if road['formofway'] == 'Collapsed Dual Carriageway':
                 road['total_cars'] = road['cars_per_lane'] * 4
@@ -608,7 +614,7 @@ def calculate_potential_demand(data, car_length, scenario, year, growth_rate):
         elif road['road_function'] == 'B Road': 
 
             cars_per_lane = _get_cars_per_lane('B Road', scenario, year, growth_rate)
-            road['cars_per_lane'] = int(round(int(road['length_km']) * cars_per_lane, 0))
+            road['cars_per_lane'] = int(round(int(road['length_m']) * cars_per_lane, 0))
 
             if road['formofway'] == 'Collapsed Dual Carriageway':
                 road['total_cars'] = road['cars_per_lane'] * 2
@@ -624,7 +630,7 @@ def calculate_potential_demand(data, car_length, scenario, year, growth_rate):
         elif road['road_function'] == 'Minor Road': 
 
             cars_per_lane = _get_cars_per_lane('Minor Road', scenario, year, growth_rate)
-            road['cars_per_lane'] = int(round(int(road['length_km']) * cars_per_lane, 0))
+            road['cars_per_lane'] = int(round(int(road['length_m']) * cars_per_lane, 0))
 
             if road['formofway'] == 'Collapsed Dual Carriageway':
                 road['total_cars'] = road['cars_per_lane'] * 2
@@ -640,7 +646,7 @@ def calculate_potential_demand(data, car_length, scenario, year, growth_rate):
         elif road['road_function'] == 'Local Road': 
 
             cars_per_lane = _get_cars_per_lane('Local Road', scenario, year, growth_rate)
-            road['cars_per_lane'] = int(round(int(road['length_km']) * cars_per_lane, 0))
+            road['cars_per_lane'] = int(round(int(road['length_m']) * cars_per_lane, 0))
 
             if road['formofway'] == 'Collapsed Dual Carriageway':
                 road['total_cars'] = road['cars_per_lane'] * 2
@@ -655,7 +661,7 @@ def calculate_potential_demand(data, car_length, scenario, year, growth_rate):
 
         else:
 
-            road['cars_per_lane'] = int(round(int(road['length_km']) * 0.005, 0))
+            road['cars_per_lane'] = int(round(int(road['length_m']) * 0.000005, 0))
 
             if road['formofway'] == 'Collapsed Dual Carriageway':
                 road['total_cars'] = road['cars_per_lane'] * 2
@@ -717,14 +723,14 @@ def _vehicle_registration_increases(vehicles, timestep, registeration_growth_rat
         total_vehicles = vehicles
     else:
         total_vehicles = vehicles * (1 + (registeration_growth_rate * (timestep-BASE_YEAR))) #** ((year_deployed - current_year) + asset_lifetime)
-    return total_vehicles
-
-def s_curve_function(year, start, end, inflection, takeover, curviness):
     
-    return start + (end - start) / (1 + curviness ** ((inflection + takeover / 2-(year-2019))/takeover))
+    return total_vehicles/1000
 
+def s_curve_function(year, start, end, _year, takeover, curviness):
+    
+    return start + (end - start) / (1 + curviness ** ((_year + takeover / 2-(year-2019))/takeover))
 
-def calculate_yearly_CAV_take_up(data, year, scenario, wtp_scenario, discount_rate):
+def calculate_yearly_CAV_take_up(data, year, scenario, wtp_scenario, discount_rate, PENETRATION_year):
 
     #estimate capable vehicles
     for road in data:
@@ -736,7 +742,7 @@ def calculate_yearly_CAV_take_up(data, year, scenario, wtp_scenario, discount_ra
     #estimate tabke-up
     for road in data:
         if road['annual_CAV_capability'] > 0:  
-            road['annual_CAV_take_up'] = round(road['annual_CAV_capability'] * s_curve_function(year, 0, 0.70, 2, 4, 500), 0)
+            road['annual_CAV_take_up'] = round(road['annual_CAV_capability'] * s_curve_function(year, 0, 0.70, PENETRATION_year, 4, 500), 0)
         else:
             road['annual_CAV_take_up'] = 0
 
@@ -745,7 +751,7 @@ def calculate_yearly_CAV_take_up(data, year, scenario, wtp_scenario, discount_ra
     for road in data:
         if road['annual_CAV_take_up'] > 0:
             annual_amount = (wtp_per_user * 12)
-            discounted_annual_amount = round(discount_revenue(annual_amount, year, discount_rate),2)
+            discounted_annual_amount = round(discount_revenue(annual_amount, year, discount_rate),3)
             road['CAV_revenue'] = road['annual_CAV_take_up'] * discounted_annual_amount
         else:
             road['CAV_revenue'] = 0
@@ -763,10 +769,6 @@ def calculate_yearly_CAV_take_up(data, year, scenario, wtp_scenario, discount_ra
 
 def _get_scenario_wtp_value(wtp_scenario):
 
-    """treat wtp and data demand as correlated.
-       so, 10 Mbps is £10 per month.
-    """
-
     if scenario == 'high':
         wtp = 20
     elif scenario == 'baseline':
@@ -777,10 +779,6 @@ def _get_scenario_wtp_value(wtp_scenario):
     return wtp
 
 def _get_scenario_data_value(scenario):
-
-    """treat wtp and data demand as correlated.
-       so, 10 Mbps is £10 per month.
-    """
 
     if scenario == 'high':
         mbps = 10
@@ -807,30 +805,38 @@ def calculate_backhaul_costs(data, deployment_period, year, strategy, fibre_tco)
     backhaul_shortening_factor = 0.5
 
     if BASE_YEAR <= year < (BASE_YEAR + deployment_period):  
-        for road in data:
-            if road['formofway'] != 'Roundabout' or road['formofway'] != 'Slip Road':          
-                road['fibre_backhaul_km'] = round(road['length_km'] / deployment_period,2)
-            else:
-                road['fibre_backhaul_km'] = 0 
-
-        if strategy == 'cellular_V2X_NRTS' or strategy == 'DSRC_NRTS':
+        if strategy == 'cellular_V2X_full_greenfield' or strategy =='DSRC_full_greenfield':
             for road in data:
-                if road['road_function'] == 'Dense Motorway' or road['road_function'] == 'Motorway' or road['road_function'] == 'A Road':
-                    road['fibre_backhaul_cost'] = road['fibre_backhaul_km'] * backhaul_shortening_factor *  fibre_tco
+                if road['formofway'] == 'Collapsed Dual Carriageway' or road['formofway'] == 'Dual Carriageway' or road['formofway'] == 'Single Carriageway':          
+                    road['fibre_backhaul_m'] = round(road['length_m'] / deployment_period,2)
                 else:
-                    road['fibre_backhaul_cost'] = road['fibre_backhaul_km'] *  fibre_tco
-        else:
+                    road['fibre_backhaul_m'] = 0 
+
+        elif strategy == 'cellular_V2X_NRTS' or strategy == 'DSRC_NRTS':
             for road in data:
-                road['fibre_backhaul_cost'] = road['fibre_backhaul_km'] * fibre_tco
-        for road in data:
-            road['total_tco'] = road['RAN_cost'] + road['small_cell_mounting_cost'] + road['fibre_backhaul_cost']
+                if road['formofway'] == 'Collapsed Dual Carriageway' or road['formofway'] == 'Dual Carriageway' or road['formofway'] == 'Single Carriageway':   
+                    if road['road_function'] == 'Dense Motorway' or road['road_function'] == 'Motorway' or road['road_function'] == 'A Road':
+                        road['fibre_backhaul_m'] = round((road['length_m']* backhaul_shortening_factor) / deployment_period,2)       
+                    if road['road_function'] == 'B Road' or road['road_function'] == 'Minor Road' or road['road_function'] == 'Local Road':
+                        road['fibre_backhaul_m'] = round((road['length_m']) / deployment_period,2)   
+                else:
+                    road['fibre_backhaul_m'] = 0            
+        else:
+            pass
+        
     else:
         for road in data:
-            road['fibre_backhaul_km'] = 0
+            road['fibre_backhaul_m'] = 0
         for road in data:
             road['fibre_backhaul_cost'] = 0
         for road in data:
             road['total_tco'] = 0
+
+    for road in data:
+        road['fibre_backhaul_cost'] = road['fibre_backhaul_m'] * fibre_tco
+    
+    for road in data:
+        road['total_tco'] = road['RAN_cost'] + road['small_cell_mounting_cost'] + road['fibre_backhaul_cost']
 
     return data
 
@@ -839,18 +845,18 @@ def calculate_backhaul_costs(data, deployment_period, year, strategy, fibre_tco)
 #####################################
 
 def simulation(data, scenario, strategy, wtp_scenario, lad_indicator, VEHCILE_REGISTRATION_GROWTH_RATE):
-
+    SPACING_FACTOR = 1
     for year in TIMESTEPS:
 
         print("-", year)
         
         road_geotype_data = calculate_potential_demand(data, 5, scenario, year, VEHCILE_REGISTRATION_GROWTH_RATE)
         
-        road_geotype_data = calculate_yearly_CAV_take_up(road_geotype_data, year, scenario, wtp_scenario, DISCOUNT_RATE)
+        road_geotype_data = calculate_yearly_CAV_take_up(road_geotype_data, year, scenario, wtp_scenario, DISCOUNT_RATE, PENETRATION_year)
         
-        road_geotype_data = calculate_number_of_RAN_units_and_civil_works_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, scenario, strategy, small_cell_tco, small_cell_civil_works_tco, 2)
+        road_geotype_data = calculate_number_of_RAN_units_and_civil_works_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, scenario, strategy, small_cell_tco, small_cell_civil_works_tco, 2, SPACING_FACTOR)
         
-        road_geotype_data = calculate_backhaul_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, strategy, fibre_tco_per_km)
+        road_geotype_data = calculate_backhaul_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, strategy, fibre_tco_per_m)
         if lad_indicator == 0:
 
             write_spend(road_geotype_data, year, scenario, strategy, wtp_scenario)
@@ -858,8 +864,53 @@ def simulation(data, scenario, strategy, wtp_scenario, lad_indicator, VEHCILE_RE
         else:
 
             write_spend_lad(road_geotype_data, year, scenario, strategy, wtp_scenario)
-    
+            
     return print("simulation_complete")
+
+def sensitivity_simulation_isd(data, scenario, strategy, wtp_scenario, lad_indicator, VEHCILE_REGISTRATION_GROWTH_RATE):
+    DEPLOYMENT_PERIOD = 1
+    SPACING_FACTOR = 1
+    #if scenario == 'baseline':#: and strategy =='cellular_V2X_full_greenfield': # or strategy =='DSRC_full_greenfield':   
+    for i in range(10,125,5):
+        i = i / 10
+        for year in TIMESTEPS:
+            if year == BASE_YEAR:
+
+                print("-", year)
+                
+                road_geotype_data = calculate_potential_demand(data, 5, scenario, year, VEHCILE_REGISTRATION_GROWTH_RATE)
+                
+                road_geotype_data = calculate_yearly_CAV_take_up(road_geotype_data, year, scenario, wtp_scenario, DISCOUNT_RATE, PENETRATION_year)
+                
+                road_geotype_data = calculate_number_of_RAN_units_and_civil_works_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, scenario, strategy, small_cell_tco, small_cell_civil_works_tco, 2, i)
+                
+                road_geotype_data = calculate_backhaul_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, strategy, fibre_tco_per_m)
+
+                write_sensitivity_isd_spend(road_geotype_data, year, scenario, strategy, wtp_scenario, i)
+
+    return print("sensitivity_isd_simulation_complete")
+
+def sensitivity_simulation_penetration(data, scenario, strategy, wtp_scenario, lad_indicator, VEHCILE_REGISTRATION_GROWTH_RATE):
+    DEPLOYMENT_PERIOD = 1
+    SPACING_FACTOR = 1
+    for i in range(10,110,10):
+        i = i / 10
+        for year in TIMESTEPS:
+            if year == 2029:
+
+                print("-", year)
+                
+                road_geotype_data = calculate_potential_demand(data, 5, scenario, year, VEHCILE_REGISTRATION_GROWTH_RATE)
+                
+                road_geotype_data = calculate_yearly_CAV_take_up(road_geotype_data, year, scenario, wtp_scenario, DISCOUNT_RATE, i)
+                
+                road_geotype_data = calculate_number_of_RAN_units_and_civil_works_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, scenario, strategy, small_cell_tco, small_cell_civil_works_tco, 2, SPACING_FACTOR)
+                
+                road_geotype_data = calculate_backhaul_costs(road_geotype_data, DEPLOYMENT_PERIOD, year, strategy, fibre_tco_per_m)
+
+                write_sensitivity_penetration_spend(road_geotype_data, year, scenario, strategy, wtp_scenario, i)
+    
+    return print("sensitivity_penetration_simulation_complete")
 
 #####################################
 # write out 
@@ -874,10 +925,10 @@ def write_spend(data, year, scenario, strategy, wtp_scenario):
         spend_writer = csv.writer(spend_file)
         spend_writer.writerow(
             ('year', 'scenario', 'strategy', 'wtp_scenario',
-             'road_function','formofway', 'length_km','urban_rural', 
+             'road_function','formofway', 'length_m','urban_rural', 
              'cars_per_lane', 'total_cars', 'annual_CAV_capability','annual_CAV_take_up','CAV_revenue', 'CAV_mbps_demand',
              'RAN_units','RAN_cost','small_cell_mounting_points','small_cell_mounting_cost', 
-             'fibre_backhaul_km', 'fibre_backhaul_cost', 'total_tco'))
+             'fibre_backhaul_m', 'fibre_backhaul_cost', 'total_tco'))
     else:
         spend_file = open(filename, 'a', newline='')
         spend_writer = csv.writer(spend_file)
@@ -886,11 +937,11 @@ def write_spend(data, year, scenario, strategy, wtp_scenario):
     for road in data:
         spend_writer.writerow(
             (year, scenario, strategy, wtp_scenario, 
-            road['road_function'], road['formofway'], road['length_km'], road['urban_rural'], 
+            road['road_function'], road['formofway'], road['length_m'], road['urban_rural'], 
             road['cars_per_lane'], road['total_cars'], road['annual_CAV_capability'], road['annual_CAV_take_up'], 
             road['CAV_revenue'], road['CAV_mbps_demand'],
             road['RAN_units'], road['RAN_cost'], road['small_cell_mounting_points'],road['small_cell_mounting_cost'], 
-            road['fibre_backhaul_km'], road['fibre_backhaul_cost'], road['total_tco']))
+            road['fibre_backhaul_m'], road['fibre_backhaul_cost'], road['total_tco']))
 
 def write_spend_lad(data, year, scenario, strategy, wtp_scenario):
     suffix = _get_suffix(scenario, strategy, wtp_scenario)
@@ -901,10 +952,10 @@ def write_spend_lad(data, year, scenario, strategy, wtp_scenario):
         spend_writer = csv.writer(spend_file)
         spend_writer.writerow(
             ('lad','year', 'scenario', 'strategy', 'wtp_scenario',
-             'road_function','formofway', 'length_km','urban_rural', 
+             'road_function','formofway', 'length_m','urban_rural', 
              'cars_per_lane', 'total_cars', 'annual_CAV_capability','annual_CAV_take_up','CAV_revenue', 'CAV_mbps_demand',
              'RAN_units','RAN_cost','small_cell_mounting_points','small_cell_mounting_cost', 
-             'fibre_backhaul_km', 'fibre_backhaul_cost', 'total_tco'))
+             'fibre_backhaul_m', 'fibre_backhaul_cost', 'total_tco'))
     else:
         spend_file = open(filename, 'a', newline='')
         spend_writer = csv.writer(spend_file)
@@ -913,15 +964,53 @@ def write_spend_lad(data, year, scenario, strategy, wtp_scenario):
     for road in data:
         spend_writer.writerow(
             (road['lad'], year, scenario, strategy, wtp_scenario, 
-            road['road_function'], road['formofway'], road['length_km'], road['urban_rural'], 
+            road['road_function'], road['formofway'], road['length_m'], road['urban_rural'], 
             road['cars_per_lane'], road['total_cars'], road['annual_CAV_capability'], road['annual_CAV_take_up'], 
             road['CAV_revenue'], road['CAV_mbps_demand'],
             road['RAN_units'], road['RAN_cost'], road['small_cell_mounting_points'],road['small_cell_mounting_cost'], 
-            road['fibre_backhaul_km'], road['fibre_backhaul_cost'], road['total_tco']))
+            road['fibre_backhaul_m'], road['fibre_backhaul_cost'], road['total_tco']))
 
 def _get_suffix(scenario, strategy, wtp_scenario):
     suffix = 'scenario_{}_strategy_{}_wtp{}'.format(scenario, strategy, wtp_scenario)
     return suffix
+
+def write_sensitivity_isd_spend(data, year, scenario, strategy, wtp_scenario, i):
+    filename = os.path.join(SYSTEM_RESULTS_PATH, 'sensitivity_isd_spend_{}_{}_{}_{}.csv'.format(scenario, strategy, wtp_scenario, i))
+
+    if year == BASE_YEAR:
+        spend_file = open(filename, 'w', newline='')
+        spend_writer = csv.writer(spend_file)
+        spend_writer.writerow(
+            ('year', 'scenario', 'strategy', 'wtp_scenario', 'isd', 
+            'RAN_units','small_cell_mounting_points','fibre_backhaul_m','length_m', 'total_tco'))
+    else:
+        spend_file = open(filename, 'a', newline='')
+        spend_writer = csv.writer(spend_file)
+
+    # output and report results for this timestep
+    for road in data:
+        spend_writer.writerow(
+            (year, scenario, strategy, wtp_scenario, i, 
+            road['RAN_units'], road['small_cell_mounting_points'], road['fibre_backhaul_m'], road['length_m'], road['total_tco']))
+
+def write_sensitivity_penetration_spend(data, year, scenario, strategy, wtp_scenario, i):
+    filename = os.path.join(SYSTEM_RESULTS_PATH, 'sensitivity_penetration_spend_{}_{}_{}_{}.csv'.format(scenario, strategy, wtp_scenario, i))
+
+    if year == 2029:
+        spend_file = open(filename, 'w', newline='')
+        spend_writer = csv.writer(spend_file)
+        spend_writer.writerow(
+            ('year', 'scenario', 'strategy', 'wtp_scenario', 'inflection_year', 
+             'total_cars', 'annual_CAV_take_up', 'CAV_revenue')) 
+    else:
+        spend_file = open(filename, 'a', newline='')
+        spend_writer = csv.writer(spend_file)
+
+    # output and report results for this timestep
+    for road in data:
+        spend_writer.writerow(
+            (year, scenario, strategy, wtp_scenario, i, 
+            road['total_cars'], road['annual_CAV_take_up'], road['CAV_revenue']))
 
 #####################################
 # RUN SCRIPTS
@@ -986,6 +1075,8 @@ def _get_suffix(scenario, strategy, wtp_scenario):
 DEPLOYMENT_PERIOD = 4
 VEHCILE_REGISTRATION_GROWTH_RATE = 0.009 #0.9% growth per annum
 DISCOUNT_RATE = 0.035
+SENSITIVITY_ANALYSIS = 0
+PENETRATION_year = 3
 
 print("reading in aggregated road geotype data")
 road_geotype_data = read_in_csv_road_geotype_data('aggregated_road_statistics.csv', 0)
@@ -1001,8 +1092,8 @@ print("calculating tco costs")
 #### Analysys Mason COSTS ###
 #euro 3500:£3143 using 1EUR:£0.9, EUR285:256
 small_cell_tco = calculate_tco_for_each_asset(3150, 189, DISCOUNT_RATE, 2019, 2020, 10, 2029, 'no') 
-small_cell_civil_works_tco = calculate_tco_for_each_asset(900, 0, DISCOUNT_RATE, 2019, 2020, 0, 2029, 'no')
-fibre_tco_per_km = calculate_tco_for_each_asset(20000, 20, DISCOUNT_RATE, 2019, 2020, 0, 2029, 'no') 
+small_cell_civil_works_tco = calculate_tco_for_each_asset(10800, 0, DISCOUNT_RATE, 2019, 2020, 0, 2029, 'no')
+fibre_tco_per_m = (calculate_tco_for_each_asset(20000, 20, DISCOUNT_RATE, 2019, 2020, 0, 2029, 'no')/1000) 
 
 print('running scenarios')
 
@@ -1027,6 +1118,8 @@ for scenario, strategy, wtp_scenario in [
     print("Running:", scenario, strategy, wtp_scenario)
     run = simulation(road_geotype_data, scenario, strategy, wtp_scenario, 0, VEHCILE_REGISTRATION_GROWTH_RATE)
     run = simulation(lad_road_geotype_data, scenario, strategy, wtp_scenario, 1, VEHCILE_REGISTRATION_GROWTH_RATE)
+    run = sensitivity_simulation_isd(lad_road_geotype_data, scenario, strategy, wtp_scenario, 1, VEHCILE_REGISTRATION_GROWTH_RATE)
+    run = sensitivity_simulation_penetration(lad_road_geotype_data, scenario, strategy, wtp_scenario, 1, VEHCILE_REGISTRATION_GROWTH_RATE)
 
 
 end = time.time()
