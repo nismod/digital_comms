@@ -1,3 +1,5 @@
+import time
+start = time.time()
 import os
 import sys
 from pprint import pprint
@@ -35,8 +37,16 @@ TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
 # setup file locations and data files
 #####################################
 
-DATA_RAW = os.path.join(BASE_PATH, 'raw')
-DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
+# DATA_RAW = os.path.join(BASE_PATH, 'raw')
+# DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
+# SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'network_hierarchy_data')
+
+#####################################
+# setup test data file locations 
+#####################################
+
+DATA_RAW = os.path.join(BASE_PATH, 'network_generation_test_data_cambridgeshire', 'raw')
+DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'network_generation_test_data_cambridgeshire', 'intermediate')
 SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'network_hierarchy_data')
 
 #####################################
@@ -57,7 +67,6 @@ def get_lad_area_ids(lad_areas):
     for lad in lad_areas:
         lad_area_ids.append(lad['properties']['name'])
     return lad_area_ids
-
 
 #####################################
 # INTEGRATE WTP AND WTA HOUSEHOLD DATA INTO PREMIses
@@ -489,7 +498,7 @@ def read_pcd_to_exchange_lut():
                 'postcode': line[1].replace(" ", "")
             })
 
-    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part One.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part Two.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
@@ -1527,7 +1536,7 @@ def estimate_cabinet_locations(postcode_areas):
 
             cabinets.append({
                 'type': "Feature",
-                'geometry': mapping(cabinet_postcodes_geom.centroid),
+                'geometry': mapping(cabinet_postcodes_geom.representative_point()),
                 'properties': {
                     'id': 'cabinet_' + cabinet_id
                 }
@@ -1749,75 +1758,75 @@ if __name__ == "__main__":
 
     #####
     # Integrate WTP and WTA household data into premises
-    print('Loading MSOA data')
-    MSOA_data = read_msoa_data(lad_ids)
+    # print('Loading MSOA data')
+    # MSOA_data = read_msoa_data(lad_ids)
 
-    print('Loading age data')
-    age_data = read_age_data()
+    # print('Loading age data')
+    # age_data = read_age_data()
 
-    print('Loading gender data')
-    gender_data = read_gender_data()
+    # print('Loading gender data')
+    # gender_data = read_gender_data()
 
-    print('Loading nation data')
-    nation_data = read_nation_data()
+    # print('Loading nation data')
+    # nation_data = read_nation_data()
     
-    print('Loading urban_rural data')
-    urban_rural_data = read_urban_rural_data()
+    # print('Loading urban_rural data')
+    # urban_rural_data = read_urban_rural_data()
 
-    print('Add country indicator')
-    MSOA_data = add_country_indicator(MSOA_data)
+    # print('Add country indicator')
+    # MSOA_data = add_country_indicator(MSOA_data)
 
-    print('Adding adoption data to MSOA data')
-    MSOA_data = add_data_to_MSOA_data(age_data, MSOA_data, 'age')
-    MSOA_data = add_data_to_MSOA_data(gender_data, MSOA_data, 'gender')
+    # print('Adding adoption data to MSOA data')
+    # MSOA_data = add_data_to_MSOA_data(age_data, MSOA_data, 'age')
+    # MSOA_data = add_data_to_MSOA_data(gender_data, MSOA_data, 'gender')
 
-    print('Loading OA data')
-    oa_data = read_oa_data()
+    # print('Loading OA data')
+    # oa_data = read_oa_data()
 
-    print('Match and convert social grades from NS-Sec to NRS')
-    oa_data = convert_ses_grades(oa_data)
+    # print('Match and convert social grades from NS-Sec to NRS')
+    # oa_data = convert_ses_grades(oa_data)
       
-    print('Loading ses data')
-    ses_data = read_ses_data()
+    # print('Loading ses data')
+    # ses_data = read_ses_data()
 
-    print('Adding ses adoption data to OA data')
-    oa_data = add_data_to_MSOA_data(ses_data, oa_data, 'ses')
+    # print('Adding ses adoption data to OA data')
+    # oa_data = add_data_to_MSOA_data(ses_data, oa_data, 'ses')
 
-    print('Adding MSOA data to OA data')
-    final_data = merge_two_lists_of_dicts(MSOA_data, oa_data, 'HID', 'lad', 'year')
+    # print('Adding MSOA data to OA data')
+    # final_data = merge_two_lists_of_dicts(MSOA_data, oa_data, 'HID', 'lad', 'year')
 
-    print('Catching any missing data')    
-    final_data, missing_data = get_missing_ses_key(final_data)
+    # print('Catching any missing data')    
+    # final_data, missing_data = get_missing_ses_key(final_data)
 
-    print('Calculate product of adoption factors')
-    final_data = calculate_adoption_propensity(final_data)
+    # print('Calculate product of adoption factors')
+    # final_data = calculate_adoption_propensity(final_data)
 
-    print('Calculate willingness to pay')
-    final_data = calculate_wtp(final_data)
+    # print('Calculate willingness to pay')
+    # final_data = calculate_wtp(final_data)
 
-    print('Aggregating WTP by household')
-    household_wtp = aggregate_wtp_and_wta_by_household(final_data)
+    # print('Aggregating WTP by household')
+    # household_wtp = aggregate_wtp_and_wta_by_household(final_data)
 
-    print('Reading premises data')
-    premises = read_premises_data(exchange_area)
+    # print('Reading premises data')
+    # premises = read_premises_data(exchange_area)
 
-    print('Expand premises entries')
-    premises = expand_premises(premises)
+    # print('Expand premises entries')
+    # premises = expand_premises(premises)
 
-    print('Adding household data to premises')
-    premises = merge_prems_and_housholds(premises, household_wtp)
+    # print('Adding household data to premises')
+    # premises = merge_prems_and_housholds(premises, household_wtp)
 
-    print('Write premises_multiple by household to .csv')
-    premises_fieldnames = ['uid','oa','gor','residential_address_count','non_residential_address_count','function','postgis_geom','N','E', 'HID','lad','year','wta','wtp']
-    csv_writer(premises, '{}_premises_data.csv'.format(exchange_abbr), premises_fieldnames)  
+    # print('Write premises_multiple by household to .csv')
+    # premises_fieldnames = ['uid','oa','gor','residential_address_count','non_residential_address_count','function','postgis_geom','N','E', 'HID','lad','year','wta','wtp']
+    # csv_writer(premises, '{}_premises_data.csv'.format(exchange_abbr), premises_fieldnames)  
 
-    print('Writing wtp')
-    wta_data_fieldnames = ['HID','lad','year','wta','wtp']
-    csv_writer(household_wtp, '{}_wta_data.csv'.format(exchange_abbr), wta_data_fieldnames)  
+    # print('Writing wtp')
+    # wta_data_fieldnames = ['HID','lad','year','wta','wtp']
+    # csv_writer(household_wtp, '{}_wta_data.csv'.format(exchange_abbr), wta_data_fieldnames)  
 
-    print('Writing any missing data')
-    missing_data_fieldnames = ['PID','MSOA','lad','gender','age','ethnicity','HID','year', 'nation']
-    csv_writer(missing_data, '{}_missing_data.csv'.format(exchange_abbr), missing_data_fieldnames)  
+    # print('Writing any missing data')
+    # missing_data_fieldnames = ['PID','MSOA','lad','gender','age','ethnicity','HID','year', 'nation']
+    # csv_writer(missing_data, '{}_missing_data.csv'.format(exchange_abbr), missing_data_fieldnames)  
     ####
 
     print('read_pcd_to_exchange_lut')
@@ -1969,4 +1978,6 @@ if __name__ == "__main__":
     print('write links layer3')
     write_shapefile(geojson_layer3_cabinets_links,  exchange_name, 'links_layer3_cabinets.shp')
 
-
+    end = time.time()
+    print("script finished")
+    print("script took {} minutes to complete".format(round((end - start)/60, 2))) 
