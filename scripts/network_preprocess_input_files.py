@@ -9,7 +9,6 @@ import fiona
 import numpy as np
 import random
 import glob
-import networkx
 
 from shapely.geometry import shape, Point, LineString, Polygon, MultiPolygon, mapping, MultiPoint
 from shapely.ops import unary_union, cascaded_union
@@ -1051,18 +1050,6 @@ def complement_postcode_cabinets(postcode_areas, premises, exchanges, exchange_a
 
     return cabinets
 
-# # Connect postcode to nearest cabinet
-# cabinets_idx = index.Index()
-# [cabinets_idx.insert(0, shape(cabinet['geometry']).bounds, obj=cabinet['properties']['id']) for cabinet in cabinets]
-
-# for postcode_area in postcode_areas:
-#     if postcode_area['properties']['CAB_ID'] == '':
-#         postcode_area['properties']['CAB_ID'] = [n.object for n in cabinets_idx.nearest(shape(postcode_area['geometry']).bounds, objects=True)][0]
-
-# for postcode_area in postcode_areas:
-#     if postcode_area['properties']['CAB_ID'] == '':
-#         postcode_area['properties']['CAB_ID'] = [n.object for n in cabinets_idx.nearest(shape(postcode_area['geometry']).bounds, objects=True)][0]
-
 def allocate_to_cabinet(data, cabinets):
 
     cabinets_idx = index.Index()
@@ -1568,7 +1555,7 @@ def generate_exchange_area(exchanges, merge=True):
 # PLACE ASSETS ON ROADS
 #####################################
 
-def estimate_cabinet_locations_on_road_network(origin_points, matching_area, cachefile=None):
+def estimate_asset_locations_on_road_network(origin_points, matching_area, cachefile=None):
     '''
     Put a cabinet in the representative center of the set of premises served by it
     '''
@@ -1577,7 +1564,7 @@ def estimate_cabinet_locations_on_road_network(origin_points, matching_area, cac
     projUTM = Proj(init='epsg:27700')
     projWGS84 = Proj(init='epsg:4326')
 
-    new_cabinet_locations = []
+    new_asset_locations = []
 
     lookup = {}
     if cachefile != None:
@@ -1588,7 +1575,7 @@ def estimate_cabinet_locations_on_road_network(origin_points, matching_area, cac
                     lookup[f['geometry']['coordinates'][0]] = f['geometry']['coordinates']
 
     for area in matching_area:
-        #print(area)        
+     
         try:
             graph_loaded = False
 
@@ -1599,29 +1586,29 @@ def estimate_cabinet_locations_on_road_network(origin_points, matching_area, cac
 
             for origin in origins:
 
-                if tuple(origin['geometry']['coordinates']) not in lookup:
+                #if tuple(origin['geometry']['coordinates']) not in lookup:
 
-                    if graph_loaded == False:
-                        G = ox.graph_from_bbox(north, south, east, west, network_type='all', truncate_by_edge=True)
-                        graph_loaded = True
+                if graph_loaded == False:
+                    G = ox.graph_from_bbox(north, south, east, west, network_type='all', truncate_by_edge=True)
+                    graph_loaded = True
 
-                    origin_x = origin['geometry']['coordinates'][0]
-                    origin_y = origin['geometry']['coordinates'][1]
+                origin_x = origin['geometry']['coordinates'][0]
+                origin_y = origin['geometry']['coordinates'][1]
 
-                    # Find shortest path between the two
-                    point1_x, point1_y = transform(projUTM, projWGS84, origin_x, origin_y)
+                # Find shortest path between the two
+                point1_x, point1_y = transform(projUTM, projWGS84, origin_x, origin_y)
 
-                    point1 = (point1_y, point1_x)
-                    #print(point1)
-                    origin_node = ox.get_nearest_node(G, point1)
+                point1 = (point1_y, point1_x)
+                #print(point1)
+                origin_node = ox.get_nearest_node(G, point1)
 
-                    origin_coords = transform(projWGS84, projUTM, G.node[origin_node]['x'], G.node[origin_node]['y'])
+                origin_coords = transform(projWGS84, projUTM, G.node[origin_node]['x'], G.node[origin_node]['y'])
 
-                else:
-                    origin_coords = lookup[tuple(origin['geometry']['coordinates'])]
+                #else:
+                    #origin_coords = lookup[tuple(origin['geometry']['coordinates'])]
 
                 # Map to line
-                new_cabinet_locations.append({
+                new_asset_locations.append({
                     'type': "Feature",
                     'geometry': {
                         "type": "Point",
@@ -1632,10 +1619,10 @@ def estimate_cabinet_locations_on_road_network(origin_points, matching_area, cac
                     }
                 })
         except:
-            print('- Problem with shortest path generation for:')
+            print('- Problem with asset location for:')
             print(area['properties'])
 
-    return new_cabinet_locations
+    return new_asset_locations
 
 #####################################
 # PROCESS LINKS
@@ -1649,19 +1636,22 @@ def generate_link_straight_line(origin_points, dest_points):
 
     links = []
     for origin_point in origin_points:
+        try:
+            # Get length
+            geom = LineString([origin_point['geometry']['coordinates'], lut_dest_points[origin_point['properties']['connection']]])
 
-        # Get length
-        geom = LineString([origin_point['geometry']['coordinates'], lut_dest_points[origin_point['properties']['connection']]])
-
-        links.append({
-            'type': "Feature",
-            'geometry': mapping(geom),
-            'properties': {
-                "origin": origin_point['properties']['id'],
-                "dest": origin_point['properties']['connection'],
-                "length": geom.length
-            }
-        })
+            links.append({
+                'type': "Feature",
+                'geometry': mapping(geom),
+                'properties': {
+                    "origin": origin_point['properties']['id'],
+                    "dest": origin_point['properties']['connection'],
+                    "length": geom.length
+                }
+            })
+        except:
+            print('- Problem with straight line link for:')
+            print(origin_point['properties'])
         
     return links
 
@@ -1735,7 +1725,7 @@ def generate_link_shortest_path(origin_points, dest_points, matching_area, cache
                                 line = routeline
                             else:
                                 line = [(origin_x, origin_y), (dest_x, dest_y)]
-                        except networkx.exception.NetworkXNoPath:
+                        except nx.exception.NetworkXNoPath:
                             line = [(origin_x, origin_y), (dest_x, dest_y)]
                     else:
                         line = lookup[tuple(origin['geometry']['coordinates'])]
@@ -1755,7 +1745,7 @@ def generate_link_shortest_path(origin_points, dest_points, matching_area, cache
                     })
             except:
                 print('- Problem with shortest path generation for:')
-                print(area['properties'])
+                print(area['properties']['id'])
 
     return links
 
@@ -1991,7 +1981,10 @@ if __name__ == "__main__":
 
     #Place assets on roads     
     print('estimate cabinet locations on road network')
-    geojson_layer3_cabinets = estimate_cabinet_locations_on_road_network(geojson_layer3_cabinets, geojson_cabinet_areas)
+    geojson_layer3_cabinets = estimate_asset_locations_on_road_network(geojson_layer3_cabinets, geojson_cabinet_areas)
+   
+    print('estimate dist points on road network')
+    geojson_layer4_distributions = estimate_asset_locations_on_road_network(geojson_layer4_distributions, geojson_distribution_areas)
 
     # Connect assets
     print('connect premises to distributions')
