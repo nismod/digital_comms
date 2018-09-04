@@ -11,7 +11,7 @@ import random
 import glob
 import networkx
 
-from shapely.geometry import shape, Point, LineString, Polygon, MultiPolygon, mapping
+from shapely.geometry import shape, Point, LineString, Polygon, MultiPolygon, mapping, MultiPoint
 from shapely.ops import unary_union, cascaded_union
 from pyproj import Proj, transform
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
@@ -917,6 +917,7 @@ def add_postcode_to_premises(premises, postcode_areas):
             premise_shape = shape(n.object['geometry'])
             if postcode_area_shape.contains(premise_shape):
                 n.object['properties']['postcode'] = postcode_area['properties']['POSTCODE']
+                n.object['properties']['CAB_ID'] = postcode_area['properties']['CAB_ID']
                 joined_premises.append(n.object)
 
     return joined_premises
@@ -986,6 +987,10 @@ def add_urban_geotype_to_exchanges(exchanges, exchange_geotype_lut):
     
     return exchanges
 
+#####################################
+# PROCESS ASSETS
+#####################################
+
 def complement_postcode_cabinets(postcode_areas, premises, exchanges, exchange_abbr):
 
     for exchange in exchanges:
@@ -993,62 +998,156 @@ def complement_postcode_cabinets(postcode_areas, premises, exchanges, exchange_a
         # Count number of existing cabinets
         cabinets_in_data = [postcode_area['properties']['CAB_ID'] for postcode_area in postcode_areas]
         count_cabinets_in_data = len(set(cabinets_in_data))
-
+        
         # Calculate number of expected cabinets
         if exchange['properties']['geotype'] == 'large city': #>500k
-            expected_cabinets = int(round(len(premises) / 500))
+            local_cluster_radius = 500
+            minimum_samples = 500
         elif exchange['properties']['geotype'] == 'small city': #>200k
-            expected_cabinets = int(round(len(premises) / 500))
+            local_cluster_radius = 500
+            minimum_samples = 500
         elif exchange['properties']['geotype'] == '>20k lines':
-            expected_cabinets = int(round(len(premises) / 475))
+            local_cluster_radius = 475
+            minimum_samples = 200
         elif exchange['properties']['geotype'] == '>10k lines':
-            expected_cabinets = int(round(len(premises) / 400))
+            local_cluster_radius = 400
+            minimum_samples = 100
         elif exchange['properties']['geotype'] == '>3k lines':
-            expected_cabinets = int(round(len(premises) / 205))
+            local_cluster_radius = 205
+            minimum_samples = 75
         elif exchange['properties']['geotype'] == '>1k lines':
-            expected_cabinets = int(round(len(premises) / 185))
+            local_cluster_radius = 185
+            minimum_samples = 50
         elif exchange['properties']['geotype'] == '<1k lines' or 'other':
-            expected_cabinets = int(round(len(premises) / 100)) # TODO: according to table these premises geotypes have no internet access
+            local_cluster_radius = 100 # TODO: according to table these premises geotypes have no internet access
+            minimum_samples = 25
         else:
-            print('Geotype ' + exchange['properties']['geotype'] + ' is unknown')
+            print('Geotype ' + exchange['properties']['geotype'] + ' is unknown')   
             raise Exception()
 
-        # Cluster around premises
-        if expected_cabinets > count_cabinets_in_data:
+        points = np.vstack([[float(i) for i in premise['geometry']['coordinates']] for premise in premises])
 
-            # Remove premises that have cabinets defined
-            # incomplete_postcode_areas = MultiPolygon([shape(postcode_area['geometry']) for postcode_area in postcode_areas if postcode_area['properties']['CAB_ID'] == ''])
-            # cluster_premises = [premise for premise in premises if incomplete_postcode_areas.contains(shape(premise['geometry']))]
+        db = DBSCAN(eps=local_cluster_radius, min_samples=minimum_samples).fit(points)
+        core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
+        core_samples_mask[db.core_sample_indices_] = True
+        labels = db.labels_
+        n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+        clusters = [points[labels == i] for i in range(n_clusters_)]
+        
+        cabinets = []
+        for idx, cluster in enumerate(clusters):
+            cabinet_premises_geom = MultiPoint(cluster)
+            cabinet_rep_point = cabinet_premises_geom.representative_point()
+            cabinets.append({
+                    'type': "Feature",
+                    'geometry': {
+                        "type": "Point",
+                        "coordinates": [cabinet_rep_point.x, cabinet_rep_point.y]
+                    },
+                    'properties': {
+                        "id": "{" + exchange_abbr + "}{GEN" + str(idx) + '}'
+                    }
+                })
 
-            # Generate cabinets
-            generate_cabinets = expected_cabinets - count_cabinets_in_data
-            print(str(generate_cabinets) + ' missing cabinets')
+    return cabinets
 
-            points = np.vstack([[float(i) for i in premise['geometry']['coordinates']] for premise in premises])
-            kmeans = KMeans(n_clusters=generate_cabinets, n_init=1, max_iter=1, n_jobs=-1, random_state=0, ).fit(points)
+# # Connect postcode to nearest cabinet
+# cabinets_idx = index.Index()
+# [cabinets_idx.insert(0, shape(cabinet['geometry']).bounds, obj=cabinet['properties']['id']) for cabinet in cabinets]
 
-            cabinets = []
-            for idx, cab_point_location in enumerate(kmeans.cluster_centers_):
-                cabinets.append({
+# for postcode_area in postcode_areas:
+#     if postcode_area['properties']['CAB_ID'] == '':
+#         postcode_area['properties']['CAB_ID'] = [n.object for n in cabinets_idx.nearest(shape(postcode_area['geometry']).bounds, objects=True)][0]
+
+# for postcode_area in postcode_areas:
+#     if postcode_area['properties']['CAB_ID'] == '':
+#         postcode_area['properties']['CAB_ID'] = [n.object for n in cabinets_idx.nearest(shape(postcode_area['geometry']).bounds, objects=True)][0]
+
+def allocate_to_cabinet(data, cabinets):
+
+    cabinets_idx = index.Index()
+    [cabinets_idx.insert(0, shape(cabinet['geometry']).bounds, obj=cabinet['properties']['id']) for cabinet in cabinets]
+
+    for datum in data:
+        if datum['properties']['CAB_ID'] == '':
+            datum['properties']['CAB_ID'] = [n.object for n in cabinets_idx.nearest(shape(datum['geometry']).bounds, objects=True)][0]
+
+    return data
+
+def estimate_cabinet_locations(premises):
+    '''
+    Put a cabinet in the representative center of the set of premises served by it
+    '''
+    cabinet_by_id_lut = defaultdict(list)
+
+    for premise in premises:
+        cabinet_by_id_lut[premise['properties']['CAB_ID']].append(shape(premise['geometry']))
+    
+    cabinets = []
+    for cabinet_id in cabinet_by_id_lut:
+        if cabinet_id != "": 
+            cabinet_premises_geom = MultiPoint(cabinet_by_id_lut[cabinet_id])
+
+            cabinets.append({
+                'type': "Feature",
+                'geometry': mapping(cabinet_premises_geom.representative_point()),
+                'properties': {
+                    'id': 'cabinet_' + cabinet_id
+                }
+            })
+    
+    return cabinets
+
+def estimate_dist_points(premises, exchange_name, cachefile=None):
+    """Estimate distribution point locations.
+
+    Parameters
+    ----------
+    cabinets: list of dict
+        List of cabinets, each providing a dict with properties and location of the cabinet
+
+    Returns
+    -------
+    dist_point: list of dict
+                List of dist_points
+    """
+    dist_points = []
+
+    # Use previous file if specified
+    if cachefile != None:
+        cachefile = os.path.join(DATA_INTERMEDIATE, cachefile)
+        if os.path.isfile(cachefile):
+            with fiona.open(cachefile, 'r') as source:
+                for f in source:
+                    # Make sure additional properties are not copied
+                    dist_points.append({
                         'type': "Feature",
-                        'geometry': {
-                            "type": "Point",
-                            "coordinates": [cab_point_location[0], cab_point_location[1]]
-                        },
+                        'geometry': f['geometry'],
                         'properties': {
-                            "id": "{" + exchange_abbr + "}{GEN" + str(idx) + '}'
+                            "id": f['properties']['id']
                         }
-                    })     
+                    })       
+                return dist_points
 
-            # Connect postcode to nearest cabinet
-            cabinets_idx = index.Index()
-            [cabinets_idx.insert(0, shape(cabinet['geometry']).bounds, obj=cabinet['properties']['id']) for cabinet in cabinets]
+    # Generate points
+    points = np.vstack([[float(i) for i in premise['geometry']['coordinates']] for premise in premises])
+    number_of_clusters = int(points.shape[0] / 8)
 
-            for postcode_area in postcode_areas:
-                if postcode_area['properties']['CAB_ID'] == '':
-                    postcode_area['properties']['CAB_ID'] = [n.object for n in cabinets_idx.nearest(shape(postcode_area['geometry']).bounds, objects=True)][0]
+    kmeans = KMeans(n_clusters=number_of_clusters, n_init=1, max_iter=1, n_jobs=-1, random_state=0, ).fit(points)
 
-    return postcode_areas
+    for idx, dist_point_location in enumerate(kmeans.cluster_centers_):
+        dist_points.append({
+                'type': "Feature",
+                'geometry': {
+                    "type": "Point",
+                    "coordinates": [dist_point_location[0], dist_point_location[1]]
+                },
+                'properties': {
+                    "id": "distribution_{" + exchange_name + "}{" + str(idx) + "}"
+                }
+            })        
+
+    return dist_points
 
 def add_technology_to_postcode_areas(postcode_areas, technologies_lut):
 
@@ -1466,83 +1565,88 @@ def generate_exchange_area(exchanges, merge=True):
     return exchange_areas
 
 #####################################
-# PROCESS ASSETS
+# PLACE ASSETS ON ROADS
 #####################################
 
-def estimate_dist_points(premises, exchange_name, cachefile=None):
-    """Estimate distribution point locations.
+def estimate_cabinet_locations_on_road_network(origin_points, matching_area, cachefile=None):
+    '''
+    Put a cabinet in the representative center of the set of premises served by it
+    '''
+    ox.config(log_file=False, log_console=False, use_cache=True)
 
-    Parameters
-    ----------
-    cabinets: list of dict
-        List of cabinets, each providing a dict with properties and location of the cabinet
+    projUTM = Proj(init='epsg:27700')
+    projWGS84 = Proj(init='epsg:4326')
 
-    Returns
-    -------
-    dist_point: list of dict
-                List of dist_points
-    """
-    dist_points = []
+    new_cabinet_locations = []
 
-    # Use previous file if specified
+    lookup = {}
     if cachefile != None:
         cachefile = os.path.join(DATA_INTERMEDIATE, cachefile)
         if os.path.isfile(cachefile):
             with fiona.open(cachefile, 'r') as source:
                 for f in source:
-                    # Make sure additional properties are not copied
-                    dist_points.append({
-                        'type': "Feature",
-                        'geometry': f['geometry'],
-                        'properties': {
-                            "id": f['properties']['id']
-                        }
-                    })       
-                return dist_points
+                    lookup[f['geometry']['coordinates'][0]] = f['geometry']['coordinates']
 
-    # Generate points
-    points = np.vstack([[float(i) for i in premise['geometry']['coordinates']] for premise in premises])
-    number_of_clusters = int(points.shape[0] / 8)
+    for area in matching_area:
+        
+        #destinations = [point for point in dest_points if point['properties']['id'] == area['properties']['id']]
 
-    kmeans = KMeans(n_clusters=number_of_clusters, n_init=1, max_iter=1, n_jobs=-1, random_state=0, ).fit(points)
+        #{'geometry': {'type': 'Polygon', 'coordinates': (((537177.3727221909, 251754.8615304783), (538594.0509346287, 253897.69784499967), 
+        # (538862.109090592, 251525.95340534698), (538666.6908475872, 251525.4808352822), (538381.246832267, 251456.86047765525), 
+        # (538271.5627844392, 251427.63884226137), (538228.251478475, 251410.34379291773), (537912.3749426309, 251280.97082554444), 
+        # (537905.7459135056, 251277.40184715387), (537848.690090686, 251093.04461886152), (537583.9246886075, 251040.309714071), 
+        # (537475.1475975006, 251366.63630405627), (537387.4778628126, 251629.63102260118), (537177.3727221909, 251754.8615304783)),)}, 
+        # 'properties': {'id': 'cabinet_{EACOM}{GEN10}'}
 
-    for idx, dist_point_location in enumerate(kmeans.cluster_centers_):
-        dist_points.append({
-                'type': "Feature",
-                'geometry': {
-                    "type": "Point",
-                    "coordinates": [dist_point_location[0], dist_point_location[1]]
-                },
-                'properties': {
-                    "id": "distribution_{" + exchange_name + "}{" + str(idx) + "}"
-                }
-            })        
+        try:
+            graph_loaded = False
 
-    return dist_points
+            east, north = transform(projUTM, projWGS84, shape(area['geometry']).bounds[2], shape(area['geometry']).bounds[3])
+            west, south = transform(projUTM, projWGS84, shape(area['geometry']).bounds[0], shape(area['geometry']).bounds[1])
 
-def estimate_cabinet_locations(postcode_areas):
-    '''
-    Put a cabinet in the center of the set of postcode areas that is served
-    '''
-    cabinet_by_id_lut = defaultdict(list)
+            #destination = destinations[0]
 
-    for area in postcode_areas:
-        cabinet_by_id_lut[area['properties']['CAB_ID']].append(shape(area['geometry']))
-    
-    cabinets = []
-    for cabinet_id in cabinet_by_id_lut:
-        if cabinet_id != "": 
-            cabinet_postcodes_geom = MultiPolygon(cabinet_by_id_lut[cabinet_id])
+            origins = [point for point in origin_points] # if point['properties']['connection'] == area['properties']['id']]
 
-            cabinets.append({
-                'type': "Feature",
-                'geometry': mapping(cabinet_postcodes_geom.representative_point()),
-                'properties': {
-                    'id': 'cabinet_' + cabinet_id
-                }
-            })
+            for origin in origins:
 
-    return cabinets
+                if tuple(origin['geometry']['coordinates']) not in lookup:
+
+                    if graph_loaded == False:
+                        G = ox.graph_from_bbox(north, south, east, west, network_type='all', truncate_by_edge=True)
+                        graph_loaded = True
+
+                    origin_x = origin['geometry']['coordinates'][0]
+                    origin_y = origin['geometry']['coordinates'][1]
+
+                    # Find shortest path between the two
+                    point1_x, point1_y = transform(projUTM, projWGS84, origin_x, origin_y)
+
+                    point1 = (point1_y, point1_x)
+                    #print(point1)
+                    origin_node = ox.get_nearest_node(G, point1)
+
+                    origin_coords = transform(projWGS84, projUTM, G.node[origin_node]['x'], G.node[origin_node]['y'])
+
+                else:
+                    origin_coords = lookup[tuple(origin['geometry']['coordinates'])]
+
+                # Map to line
+                new_cabinet_locations.append({
+                    'type': "Feature",
+                    'geometry': {
+                        "type": "Point",
+                        "coordinates": origin_coords
+                    },
+                    'properties': {
+                        "id": origin['properties']['id']
+                    }
+                })
+        except:
+            print('- Problem with shortest path generation for:')
+            print(area['properties'])
+
+    return new_cabinet_locations
 
 #####################################
 # PROCESS LINKS
@@ -1872,13 +1976,19 @@ if __name__ == "__main__":
 
     # Process/Estimate assets    
     print('complement cabinet locations as expected for this geotype')
-    geojson_postcode_areas = complement_postcode_cabinets(geojson_postcode_areas, geojson_layer5_premises, geojson_layer2_exchanges, exchange_abbr)
+    geojson_layer3_cabinets = complement_postcode_cabinets(geojson_postcode_areas, geojson_layer5_premises, geojson_layer2_exchanges, exchange_abbr)
+
+    print('allocating cabinet to premises')
+    geojson_layer5_premises = allocate_to_cabinet(geojson_layer5_premises, geojson_layer3_cabinets)
+
+    print('allocating cabinet to pcd_areas')
+    geojson_postcode_areas = allocate_to_cabinet(geojson_postcode_areas, geojson_layer3_cabinets)
 
     print('estimate location of distribution points')
     geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises, exchange_abbr)
 
     print('estimate cabinet locations')
-    geojson_layer3_cabinets = estimate_cabinet_locations(geojson_postcode_areas)
+    geojson_layer3_cabinets = estimate_cabinet_locations(geojson_layer5_premises)
 
     # Process/Estimate boundaries
     print('generate cabinet areas')
@@ -1889,6 +1999,10 @@ if __name__ == "__main__":
 
     print('generate exchange areas')
     geojson_exchange_areas = generate_exchange_area(geojson_postcode_areas)
+
+    #Place assets on roads     
+    print('estimate cabinet locations on road network')
+    geojson_layer3_cabinets = estimate_cabinet_locations_on_road_network(geojson_layer3_cabinets, geojson_cabinet_areas)
 
     # Connect assets
     print('connect premises to distributions')
@@ -1981,3 +2095,5 @@ if __name__ == "__main__":
     end = time.time()
     print("script finished")
     print("script took {} minutes to complete".format(round((end - start)/60, 2))) 
+
+
