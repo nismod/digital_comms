@@ -1588,25 +1588,14 @@ def estimate_cabinet_locations_on_road_network(origin_points, matching_area, cac
                     lookup[f['geometry']['coordinates'][0]] = f['geometry']['coordinates']
 
     for area in matching_area:
-        
-        #destinations = [point for point in dest_points if point['properties']['id'] == area['properties']['id']]
-
-        #{'geometry': {'type': 'Polygon', 'coordinates': (((537177.3727221909, 251754.8615304783), (538594.0509346287, 253897.69784499967), 
-        # (538862.109090592, 251525.95340534698), (538666.6908475872, 251525.4808352822), (538381.246832267, 251456.86047765525), 
-        # (538271.5627844392, 251427.63884226137), (538228.251478475, 251410.34379291773), (537912.3749426309, 251280.97082554444), 
-        # (537905.7459135056, 251277.40184715387), (537848.690090686, 251093.04461886152), (537583.9246886075, 251040.309714071), 
-        # (537475.1475975006, 251366.63630405627), (537387.4778628126, 251629.63102260118), (537177.3727221909, 251754.8615304783)),)}, 
-        # 'properties': {'id': 'cabinet_{EACOM}{GEN10}'}
-
+        #print(area)        
         try:
             graph_loaded = False
 
             east, north = transform(projUTM, projWGS84, shape(area['geometry']).bounds[2], shape(area['geometry']).bounds[3])
             west, south = transform(projUTM, projWGS84, shape(area['geometry']).bounds[0], shape(area['geometry']).bounds[1])
 
-            #destination = destinations[0]
-
-            origins = [point for point in origin_points] # if point['properties']['connection'] == area['properties']['id']]
+            origins = [point for point in origin_points if point['properties']['id'] == area['properties']['id']]
 
             for origin in origins:
 
