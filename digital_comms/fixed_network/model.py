@@ -503,7 +503,7 @@ class Premise(object):
         self.fttc = data['FTTC']
         self.adsl = data['ADSL']
         self.lad = data['lad']
-        self.wta = data['wta']
+        self.wta = int(data['wta'])
         self.wtp = int(data['wtp']) 
         self.adoption_desirability = False
 

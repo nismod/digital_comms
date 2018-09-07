@@ -61,7 +61,6 @@ class DigitalCommsWrapper(SectorModel):
     def initialise(self, initial_conditions):
         print('initialise')
 
-
     @cpuprofile
     @memprofile
     def before_model_run(self, data_handle):
@@ -118,9 +117,6 @@ class DigitalCommsWrapper(SectorModel):
 
         TECH = STRATEGY.split("_")[0]
 
-        TELCO_MATCH_FUNDING = 5e6 
-        SUBSIDY = 5e6 
-
         print("Running", TECH, STRATEGY, data_handle.current_timestep)
         annual_adoption_rate = data_handle.get_data('adoption')
         print("* {} annual_adoption_rate is {} %".format(TECH, annual_adoption_rate))
@@ -135,7 +131,10 @@ class DigitalCommsWrapper(SectorModel):
         MAXIMUM_ADOPTION = len(premises_adoption_desirability_ids) - sum(getattr(premise, TECH) for premise in self.system._premises)
 
         self.logger.info("DigitalCommsWrapper - Decide interventions")
-        interventions, budget, spend, match_funding_spend, subsidised_spend = decide_interventions(STRATEGY, data_handle.get_parameter('annual_budget'), data_handle.get_parameter('service_obligation_capacity'), self.system, now, MAXIMUM_ADOPTION, TELCO_MATCH_FUNDING, SUBSIDY)
+        interventions, budget, spend, match_funding_spend, subsidised_spend = decide_interventions(
+            STRATEGY, data_handle.get_parameter('annual_budget'), data_handle.get_parameter('service_obligation_capacity'), 
+            self.system, now, MAXIMUM_ADOPTION, data_handle.get_parameter('telco_match_funding'), 
+            data_handle.get_parameter('subsidy'))
 
         self.logger.info("DigitalCommsWrapper - Upgrading system")
         self.system.upgrade(interventions)
@@ -181,7 +180,7 @@ class DigitalCommsWrapper(SectorModel):
             data_handle.set_results('premises_with_fttp', premises_with_fttp)
 
             percentage_of_premises_with_fttp = np.empty((1,1))
-            percentage_of_premises_with_fttp[0, 0] = sum(premise.fttp for premise in self.system._premises) / len(self.system._premises)
+            percentage_of_premises_with_fttp[0, 0] = round((sum(premise.fttp for premise in self.system._premises) / len(self.system._premises)*100),2)
             print("* fttp % premises passed {}".format(percentage_of_premises_with_fttp))
             data_handle.set_results('premises_with_fttp', percentage_of_premises_with_fttp)
 
