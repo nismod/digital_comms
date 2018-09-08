@@ -24,7 +24,11 @@ def update_adoption_desirability(system, annual_adoption_rate):
         premise for premise in system._premises
         if premise.adoption_desirability is not True
     ]
-    print("premises not yet connected {}".format(len(non_adopted_premises)))
+
+    adopted_premises = [
+        premise for premise in system._premises
+        if premise.adoption_desirability is True
+    ]
     #rank premises based on household wta
     non_adopted_premises = sorted(non_adopted_premises, key=lambda item: item.wta)
 
@@ -33,6 +37,10 @@ def update_adoption_desirability(system, annual_adoption_rate):
 
     #select number of premises ready to adopt
     premises_to_be_adopting = non_adopted_premises[1:int(to_adopt)]
+
+    print("-- premises not wanting to connect {}".format(len(non_adopted_premises)))
+    print("-- premises wanting to connect {}".format(len(premises_to_be_adopting)))
+    print("-- total premises {}".format((len(adopted_premises) + len(non_adopted_premises))))
 
     premises_adoption = []
 

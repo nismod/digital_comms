@@ -114,21 +114,33 @@ class DigitalCommsWrapper(SectorModel):
 
         # Set global parameters
         STRATEGY = data_handle.get_parameter('technology_strategy')
-
         TECH = STRATEGY.split("_")[0]
 
+        # -----------------------
+        # Get scenario adoption rate
+        # -----------------------
+        print("-------------------")
         print("Running", TECH, STRATEGY, data_handle.current_timestep)
+        print("-------------------")
         annual_adoption_rate = data_handle.get_data('adoption')
-        print("* {} annual_adoption_rate is {} %".format(TECH, annual_adoption_rate))
+        adoption_desirability = [premise for premise in self.system._premises if premise.adoption_desirability is True]
+        total_premises = [premise for premise in self.system._premises]
+        adoption_desirability_percentage = (len(adoption_desirability) / len(total_premises) * 100)
+        percentage_annual_increase = annual_adoption_rate - adoption_desirability_percentage
+        percentage_annual_increase = round(float(percentage_annual_increase), 1)
+        print("* {} annual_adoption_rate is {} %".format(TECH, percentage_annual_increase))
 
         # -----------------------
         # Run fixed network model
         # -----------------------
         self.logger.info("DigitalCommsWrapper - Update adoption status on premises")
-        self.system.update_adoption_desirability = update_adoption_desirability(self.system, annual_adoption_rate)
+        self.system.update_adoption_desirability = update_adoption_desirability(self.system, percentage_annual_increase)
         premises_adoption_desirability_ids = self.system.update_adoption_desirability
-
-        MAXIMUM_ADOPTION = len(premises_adoption_desirability_ids) - sum(getattr(premise, TECH) for premise in self.system._premises)
+        
+        MAXIMUM_ADOPTION = len(premises_adoption_desirability_ids) + sum(getattr(premise, TECH) for premise in self.system._premises)
+        # print("// length of premises_adoption_desirability_ids is {}".format(len(premises_adoption_desirability_ids)+1))
+        # print("// sum of premises by tech {}".format(sum(getattr(premise, TECH) for premise in self.system._premises)))
+        # print("// MAXIMUM_ADOPTION is {}".format(MAXIMUM_ADOPTION))
 
         self.logger.info("DigitalCommsWrapper - Decide interventions")
         interventions, budget, spend, match_funding_spend, subsidised_spend = decide_interventions(
@@ -154,7 +166,7 @@ class DigitalCommsWrapper(SectorModel):
             premises_by_distribution[idx, 0] = len(distribution._clients)
         data_handle.set_results('premises_by_distribution', premises_by_distribution)
 
-        print("* {} premises adoption desirability is {}".format(TECH, len(premises_adoption_desirability_ids)))
+        print("* {} premises adoption desirability is {}".format(TECH, (len(premises_adoption_desirability_ids))))
         premises_wanting_to_adopt = np.empty((1,1))
         premises_wanting_to_adopt[0, 0] = len(premises_adoption_desirability_ids)
         data_handle.set_results('premises_adoption_desirability', premises_wanting_to_adopt)
@@ -205,10 +217,9 @@ class DigitalCommsWrapper(SectorModel):
             data_handle.set_results('premises_with_fttdp', premises_with_fttdp)
 
             percentage_of_premises_with_fttdp = np.empty((1,1))
-            percentage_of_premises_with_fttdp[0, 0] = sum(premise.fttdp for premise in self.system._premises) / len(self.system._premises)
+            percentage_of_premises_with_fttdp[0, 0] = round((sum(premise.fttdp for premise in self.system._premises) / len(self.system._premises)*100),2)
             print("* fttdp % premises passed {}".format(percentage_of_premises_with_fttdp))
             data_handle.set_results('premises_with_fttdp', percentage_of_premises_with_fttdp)
-
 
         # Regional output
 
@@ -233,7 +244,6 @@ class DigitalCommsWrapper(SectorModel):
         data_handle.set_results('lad_premises_with_fttdp', num_fttdp)
         # data_handle.set_results('lad_premises_with_fttc', num_fttc)
         # data_handle.set_results('lad_premises_with_adsl', num_adsl)
-
 
         # ----
         # Exit

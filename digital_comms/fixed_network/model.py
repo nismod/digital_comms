@@ -10,7 +10,7 @@ from math import ceil
 #####################
 
 MONTHS = 12
-PAYBACK_PERIOD = 4
+PAYBACK_PERIOD = 20
 PROFIT_MARGIN = 0.8 
 
 #####################
