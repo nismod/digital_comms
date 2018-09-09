@@ -71,12 +71,13 @@ read_in_data <- function(file_pattern) {
 
 all_scenarios <- read_in_data("output_premises_with*.csv")
 
+all_scenarios <- all_scenarios[complete.cases(all_scenarios),]
 
-scenario_results <- ggplot(data=all_scenarios, aes(x=timestep, y=(value*100), group = tech, colour = tech)) + geom_line() +
+scenario_results <- ggplot(data=all_scenarios, aes(x=timestep, y=(value), group = tech, colour = tech)) + geom_line() +
                     labs(y = "Premises Connected (%)", x = "Year", colour = "Technology", 
                     title = "Technology Rollout by Scenario and Strategy", subtitle = "Expected Return Period: 4 Years") +
-                    scale_y_continuous(expand = c(0, 0), limits=c(0,75)) +  
-                    scale_x_discrete(expand = c(0, 0)) +
+                    scale_y_continuous(expand = c(0, 0), limits=c(0,70)) +  
+                    scale_x_discrete(expand = c(0, 0.15)) +
                     theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom") +
                     facet_grid(scenario~strategy)
         

@@ -235,19 +235,19 @@ parameters:
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 10000000000)
-  default_value: 1000000000
+  default_value: 5000000
   description: The yearly budget to spend on infrastructure
   name: annual_budget
   suggested_range: (0, 1000000000)
   units: GBP
 - absolute_range: (0, 10000000000)
-  default_value: 5000000
+  default_value: 1000000
   description: The yearly budget for a telco to match fund on infrastructure
   name: telco_match_funding
   suggested_range: (0, 1000000000)
   units: GBP
 - absolute_range: (0, 10000000000)
-  default_value: 5000000
+  default_value: 1000000
   description: The yearly government subsidy to spend on infrastructure
   name: subsidy
   suggested_range: (0, 1000000000)
@@ -258,4 +258,22 @@ parameters:
   name: service_obligation_capacity
   suggested_range: (0, 1000)
   units: mbps
+- absolute_range: (0, 12)
+  default_value: 12
+  description: Months per year
+  name: months_per_year
+  suggested_range: (0, 12)
+  units: months
+- absolute_range: (0, 30)
+  default_value: 4
+  description: Payback period
+  name: payback_period
+  suggested_range: (4, 10)
+  units: years
+- absolute_range: (0, 100)
+  default_value: 20
+  description: Profit margin
+  name: profit_margin
+  suggested_range: (15, 30)
+  units: percent
 path: digital_comms/run.py

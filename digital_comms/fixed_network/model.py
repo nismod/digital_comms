@@ -6,14 +6,6 @@ from pprint import pprint
 from math import ceil
 
 #####################
-# SET GLOBAL PARAMETERS
-#####################
-
-MONTHS = 12
-PAYBACK_PERIOD = 20
-PROFIT_MARGIN = 0.8 
-
-#####################
 # MODEL
 #####################
 
@@ -545,10 +537,10 @@ class Premise(object):
 
         # Rollout benefits
         self.rollout_benefits = {} 
-        self.rollout_benefits['fttp'] = (self.wtp * MONTHS * PAYBACK_PERIOD * PROFIT_MARGIN) if self.adoption_desirability else 0
-        self.rollout_benefits['fttdp'] = (self.wtp * MONTHS * PAYBACK_PERIOD * PROFIT_MARGIN) if self.adoption_desirability else 0
-        self.rollout_benefits['fttc'] = (self.wtp * MONTHS * PAYBACK_PERIOD * PROFIT_MARGIN) if self.adoption_desirability else 0
-        self.rollout_benefits['adsl'] = (self.wtp * MONTHS * PAYBACK_PERIOD * PROFIT_MARGIN) if self.adoption_desirability else 0
+        self.rollout_benefits['fttp'] = (self.wtp * self.parameters['months_per_year'] * self.parameters['payback_period'] * ((100-self.parameters['profit_margin'])/100)) if self.adoption_desirability else 0
+        self.rollout_benefits['fttdp'] = (self.wtp * self.parameters['months_per_year'] * self.parameters['payback_period'] * ((100-self.parameters['profit_margin'])/100)) if self.adoption_desirability else 0
+        self.rollout_benefits['fttc'] = (self.wtp * self.parameters['months_per_year'] * self.parameters['payback_period'] * ((100-self.parameters['profit_margin'])/100)) if self.adoption_desirability else 0
+        self.rollout_benefits['adsl'] = (self.wtp * self.parameters['months_per_year'] * self.parameters['payback_period'] * ((100-self.parameters['profit_margin'])/100)) if self.adoption_desirability else 0
 
         # Benefit-cost ratio
         self.rollout_bcr = {}
