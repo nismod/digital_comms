@@ -5,6 +5,8 @@ library(ggmap)
 library(scales)
 library(RColorBrewer)
 library(ggpubr)       
+#install.packages("wesanderson")
+library(wesanderson)
 
 path_figures <- "C:\\Users\\edwar\\Desktop\\GitHub\\digital_comms\\data_visualisation\\digital_comms_test"
 path_shapes <- "C:\\Users\\edwar\\Desktop\\GitHub\\digital_comms\\data\\digital_comms\\raw\\lad_uk_2016-12"
@@ -12,8 +14,9 @@ path_shapes <- "C:\\Users\\edwar\\Desktop\\GitHub\\digital_comms\\data\\digital_
 read_in_data <- function(file_pattern) {
 
   path <- "C:\\Users\\edwar\\Desktop\\GitHub\\digital_comms\\results"
-
+  
   myfiles <- list.files(path = path, pattern = glob2rx(file_pattern), recursive = TRUE)
+
   files <- myfiles[!grepl("digital_transport", myfiles)]
   
   setwd(path)
@@ -30,11 +33,12 @@ read_in_data <- function(file_pattern) {
     DF_Merge$scenario <- as.factor(substring(x, 15,15))
     DF_Merge$strategy <- as.factor(substring(x, 22,23))
     DF_Merge$tech <- as.factor(substring(x, 17,21))
+    DF_Merge$prem_type <- as.factor(substring(x, 70,90))
     return(DF_Merge)})
   
   all_scenarios <- do.call(rbind, import_function)
   
-  all_scenarios <- select(all_scenarios, timestep, value, scenario, strategy, tech, region)
+  all_scenarios <- select(all_scenarios, timestep, value, scenario, strategy, tech, region, prem_type)
   
   rm(empty_df, files, myfiles)
   
@@ -49,6 +53,9 @@ read_in_data <- function(file_pattern) {
   all_scenarios$strategy <- gsub(".*r.*", "Market Rollout", all_scenarios$strategy)
   all_scenarios$strategy <- gsub(".*s.*", "Targeted Subsidy", all_scenarios$strategy)
   
+  all_scenarios$prem_type <- gsub(".*passed.*", "Passed", all_scenarios$prem_type)
+  all_scenarios$prem_type <- gsub(".*connected.*", "Connected", all_scenarios$prem_type)  
+
   all_scenarios$strategy <- factor(all_scenarios$strategy,
                                    levels = c("Market Rollout",
                                               "Targeted Subsidy"),
@@ -64,23 +71,50 @@ read_in_data <- function(file_pattern) {
                                labels = c("FTTdp",
                                           "FTTP"))
   
+  all_scenarios$tech_connection_type <- paste(all_scenarios$tech, all_scenarios$prem_type)
+  
+  all_scenarios$tech_connection_type <- factor(all_scenarios$tech_connection_type,
+                                               levels = c("FTTdp Passed",
+                                                          "FTTdp Connected",
+                                                          "FTTP Passed",
+                                                          "FTTP Connected"),
+                                               labels = c("FTTdp Passed",
+                                                          "FTTdp Connected",
+                                                          "FTTP Passed",
+                                                          "FTTP Connected"))
+  
   all_scenarios$timestep <- as.factor(all_scenarios$timestep)
   
   return(all_scenarios)
 }
 
-all_scenarios <- read_in_data("output_premises_with*.csv")
+all_scenarios <- read_in_data("output_percentage_of_premises*.csv")
 
 all_scenarios <- all_scenarios[complete.cases(all_scenarios),]
 
-scenario_results <- ggplot(data=all_scenarios, aes(x=timestep, y=(value), group = tech, colour = tech)) + geom_line() +
-                    labs(y = "Premises Connected (%)", x = "Year", colour = "Technology", 
-                    title = "Technology Rollout by Scenario and Strategy", subtitle = "Expected Return Period: 4 Years") +
-                    scale_y_continuous(expand = c(0, 0), limits=c(0,70)) +  
-                    scale_x_discrete(expand = c(0, 0.15)) +
-                    theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom") +
-                    facet_grid(scenario~strategy)
+# ggplot(data=all_scenarios, 
+#                     aes(x=timestep, y=(value), group = tech_connection_type, colour= tech_connection_type)) + 
+#                     geom_line()  + 
+#                     labs(y = "Premises Connected (%)", x = "Year", colour = "Technology", 
+#                     title = "Technology Rollout by Scenario and Strategy", subtitle = "Expected Return Period: 4 Years") +
+#                     scale_y_continuous(expand = c(0, 0), limits=c(0,70)) +  
+#                     scale_x_discrete(expand = c(0, 0.15)) +
+#                     theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom") +
+#                     facet_grid(scenario~strategy)
         
+scenario_results <- ggplot(all_scenarios, aes(x=timestep, y=value, group=tech_connection_type)) +
+  geom_line(aes(linetype=tech_connection_type, color=tech_connection_type, size=tech_connection_type))+
+  geom_point()+
+  scale_linetype_manual(values=c("dashed", "solid", "dashed","solid"))+
+  scale_color_manual(values=wes_palette(n=4, name="Darjeeling")) +
+  scale_size_manual(values=c(1, 1,1,1))+
+  scale_y_continuous(expand = c(0, 0), limits=c(0,70)) +  
+  scale_x_discrete(expand = c(0, 0.15)) +
+  labs(y = "Premises Connected (%)", x = "Year", colour = "Technology", size = "Technology", linetype = "Technology",
+  title = "Technology Rollout by Scenario and Strategy", subtitle = "Expected Return Period: 4 Years") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom") +
+  facet_grid(scenario~strategy) 
+
 ### EXPORT TO FOLDER
 setwd(path_figures)
 tiff('scenario_results.tiff', units="in", width=8, height=9, res=300)

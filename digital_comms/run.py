@@ -186,15 +186,25 @@ class DigitalCommsWrapper(SectorModel):
                     upgrade_cost_per_premises_fttp[idx, 0] = 0
             data_handle.set_results('premises_upgrade_costs_fttp', upgrade_cost_per_premises_fttp)
 
-            premises_with_fttp = np.empty((1,1))
-            premises_with_fttp[0, 0] = sum(premise.fttp for premise in self.system._premises) 
-            print("* fttp premises passed {}".format(premises_with_fttp))
-            data_handle.set_results('premises_with_fttp', premises_with_fttp)
+            premises_passed_with_fttp = np.empty((1,1))
+            premises_passed_with_fttp[0, 0] = sum(premise.fttp for premise in self.system._premises) 
+            print("* fttp premises passed {}".format(premises_passed_with_fttp))
+            data_handle.set_results('premises_passed_with_fttp', premises_passed_with_fttp)
 
-            percentage_of_premises_with_fttp = np.empty((1,1))
-            percentage_of_premises_with_fttp[0, 0] = round((sum(premise.fttp for premise in self.system._premises) / len(self.system._premises)*100),2)
-            print("* fttp % premises passed {}".format(percentage_of_premises_with_fttp))
-            data_handle.set_results('premises_with_fttp', percentage_of_premises_with_fttp)
+            percentage_of_premises_passed_with_fttp = np.empty((1,1))
+            percentage_of_premises_passed_with_fttp[0, 0] = round((sum(premise.fttp for premise in self.system._premises) / len(self.system._premises)*100),2)
+            print("* fttp % premises passed {}".format(percentage_of_premises_passed_with_fttp))
+            data_handle.set_results('percentage_of_premises_passed_with_fttp', percentage_of_premises_passed_with_fttp)
+
+            premises_connected_with_fttp = np.empty((1,1))
+            premises_connected_with_fttp[0, 0] = sum(premise.fttp for premise in self.system._premises if premise.adoption_desirability == True) 
+            print("* fttp premises connected {}".format(premises_connected_with_fttp))
+            data_handle.set_results('premises_connected_with_fttp', premises_connected_with_fttp)
+
+            percentage_of_premises_connected_with_fttp = np.empty((1,1))
+            percentage_of_premises_connected_with_fttp[0, 0] = round((sum(premise.fttp for premise in self.system._premises if premise.adoption_desirability == True) / len(self.system._premises)*100),2)
+            print("* fttp % premises connected {}".format(percentage_of_premises_connected_with_fttp))
+            data_handle.set_results('percentage_of_premises_connected_with_fttp', percentage_of_premises_connected_with_fttp)
 
         if TECH == 'fttdp':
 
@@ -211,15 +221,35 @@ class DigitalCommsWrapper(SectorModel):
                     upgrade_cost_per_premises_fttdp[idx, 0] = 0
             data_handle.set_results('premises_upgrade_costs_fttdp', upgrade_cost_per_premises_fttdp)
 
-            premises_with_fttdp = np.empty((1,1))
-            premises_with_fttdp[0, 0] = sum(premise.fttdp for premise in self.system._premises)
-            print("* fttdp premises passed {}".format(premises_with_fttdp))
-            data_handle.set_results('premises_with_fttdp', premises_with_fttdp)
+            # premises_with_fttdp = np.empty((1,1))
+            # premises_with_fttdp[0, 0] = sum(premise.fttdp for premise in self.system._premises)
+            # print("* fttdp premises passed {}".format(premises_with_fttdp))
+            # data_handle.set_results('premises_with_fttdp', premises_with_fttdp)
 
-            percentage_of_premises_with_fttdp = np.empty((1,1))
-            percentage_of_premises_with_fttdp[0, 0] = round((sum(premise.fttdp for premise in self.system._premises) / len(self.system._premises)*100),2)
-            print("* fttdp % premises passed {}".format(percentage_of_premises_with_fttdp))
-            data_handle.set_results('premises_with_fttdp', percentage_of_premises_with_fttdp)
+            premises_passed_with_fttdp = np.empty((1,1))
+            premises_passed_with_fttdp[0, 0] = sum(premise.fttdp for premise in self.system._premises) 
+            print("* fttdp premises passed {}".format(premises_passed_with_fttdp))
+            data_handle.set_results('premises_passed_with_fttdp', premises_passed_with_fttdp)
+            
+            # percentage_of_premises_with_fttdp = np.empty((1,1))
+            # percentage_of_premises_with_fttdp[0, 0] = round((sum(premise.fttdp for premise in self.system._premises) / len(self.system._premises)*100),2)
+            # print("* fttdp % premises passed {}".format(percentage_of_premises_with_fttdp))
+            # data_handle.set_results('premises_with_fttdp', percentage_of_premises_with_fttdp)
+
+            percentage_of_premises_passed_with_fttdp = np.empty((1,1))
+            percentage_of_premises_passed_with_fttdp[0, 0] = round((sum(premise.fttdp for premise in self.system._premises) / len(self.system._premises)*100),2)
+            print("* fttdp % premises passed {}".format(percentage_of_premises_passed_with_fttdp))
+            data_handle.set_results('percentage_of_premises_passed_with_fttdp', percentage_of_premises_passed_with_fttdp)
+
+            premises_connected_with_fttdp = np.empty((1,1))
+            premises_connected_with_fttdp[0, 0] = sum(premise.fttdp for premise in self.system._premises if premise.adoption_desirability == True) 
+            print("* fttdp premises connected {}".format(premises_connected_with_fttdp))
+            data_handle.set_results('premises_connected_with_fttdp', premises_connected_with_fttdp)
+
+            percentage_of_premises_connected_with_fttdp = np.empty((1,1))
+            percentage_of_premises_connected_with_fttdp[0, 0] = round((sum(premise.fttdp for premise in self.system._premises if premise.adoption_desirability == True) / len(self.system._premises)*100),2)
+            print("* fttdp % premises connected {}".format(percentage_of_premises_connected_with_fttdp))
+            data_handle.set_results('percentage_of_premises_connected_with_fttdp', percentage_of_premises_connected_with_fttdp)
 
         # Regional output
 

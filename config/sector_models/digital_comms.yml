@@ -47,22 +47,38 @@ outputs:
   spatial_resolution: national
   temporal_resolution: annual
   units: premises
-- name: premises_with_fttp
+- name: premises_passed_with_fttp
   spatial_resolution: national
   temporal_resolution: annual
   units: premises
-- name: percentage_of_premises_with_fttp
+- name: percentage_of_premises_passed_with_fttp
   spatial_resolution: national
   temporal_resolution: annual
   units: premises 
-- name: percentage_of_premises_with_fttdp
-  spatial_resolution: national
-  temporal_resolution: annual
-  units: premises 
-- name: premises_with_fttdp
+- name: premises_connected_with_fttp
   spatial_resolution: national
   temporal_resolution: annual
   units: premises
+- name: percentage_of_premises_connected_with_fttp
+  spatial_resolution: national
+  temporal_resolution: annual
+  units: premises 
+- name: premises_passed_with_fttdp
+  spatial_resolution: national
+  temporal_resolution: annual
+  units: premises
+- name: percentage_of_premises_passed_with_fttdp
+  spatial_resolution: national
+  temporal_resolution: annual
+  units: premises 
+- name: premises_connected_with_fttdp
+  spatial_resolution: national
+  temporal_resolution: annual
+  units: premises
+- name: percentage_of_premises_connected_with_fttdp
+  spatial_resolution: national
+  temporal_resolution: annual
+  units: premises   
 - name: percentage_of_premises_with_fttc
   spatial_resolution: national
   temporal_resolution: annual
