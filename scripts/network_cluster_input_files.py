@@ -11,7 +11,6 @@ import glob
 from shapely.geometry import shape, Point, LineString, Polygon, MultiPolygon, mapping
 from shapely.ops import unary_union, cascaded_union
 from pyproj import Proj, transform
-from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
 from rtree import index
 
 from collections import OrderedDict, defaultdict
@@ -396,7 +395,7 @@ def generate_exchange_area(exchanges, merge=True):
     return exchange_areas
 
 def read_exchange_area():
-    with fiona.open(os.path.join(DATA_INTERMEDIATE, 'exchange_areas', '_exchange_areas.shp'), 'r') as source:
+    with fiona.open(os.path.join(DATA_INTERMEDIATE, '_exchange_areas.shp'), 'r') as source:
         return [exchange for exchange in source]
 
 def write_shapefile(data, path):
@@ -427,7 +426,7 @@ if __name__ == "__main__":
 
     SYSTEM_INPUT = os.path.join('data', 'digital_comms', 'raw')
 
-    if not os.path.isfile(os.path.join(DATA_INTERMEDIATE, 'exchange_areas', '_exchange_areas.shp')):
+    if not os.path.isfile(os.path.join(DATA_INTERMEDIATE, '_exchange_areas.shp')):
 
         # Read LUTs
         print('read_pcd_to_exchange_lut')

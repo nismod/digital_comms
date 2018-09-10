@@ -1,3 +1,5 @@
+import time
+start = time.time()
 import os
 import sys
 from pprint import pprint
@@ -7,14 +9,14 @@ import fiona
 import numpy as np
 import random
 import glob
-import networkx
 
-from shapely.geometry import shape, Point, LineString, Polygon, MultiPolygon, mapping
+from shapely.geometry import shape, Point, LineString, Polygon, MultiPolygon, mapping, MultiPoint
 from shapely.ops import unary_union, cascaded_union
 from pyproj import Proj, transform
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from rtree import index
+from operator import itemgetter
 
 from collections import OrderedDict, defaultdict
 
@@ -24,21 +26,442 @@ CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
+# set timesteps
+BASE_YEAR = 2018
+END_YEAR = 2018
+TIMESTEP_INCREMENT = 1
+TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
+
 #####################################
 # setup file locations and data files
 #####################################
 
-DATA_RAW = os.path.join(BASE_PATH, 'raw')
-DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
+# DATA_RAW = os.path.join(BASE_PATH, 'raw')
+# DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
+# SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'network_hierarchy_data')
+
+#####################################
+# setup test data file locations 
+#####################################
+
+DATA_RAW = os.path.join(BASE_PATH, 'network_generation_test_data_cambridgeshire', 'raw')
+DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'network_generation_test_data_cambridgeshire', 'intermediate')
 SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'network_hierarchy_data')
 
 #####################################
-# READ LOOK UP TABLE (LUT) DATA
+# READ EXCHANGE AREA
 #####################################
 
 def read_exchange_area(exchange_name):
     with fiona.open(os.path.join(DATA_INTERMEDIATE, '_exchange_areas.shp'), 'r') as source:
         return [exchange for exchange in source if exchange['properties']['id'] == exchange_name][0]
+
+def read_lads(exchange_area):
+    with fiona.open(os.path.join(DATA_RAW, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'), 'r') as source:
+        exchange_geom = shape(exchange_area['geometry'])
+        return [lad for lad in source if exchange_geom.intersection(shape(lad['geometry']))]
+
+def get_lad_area_ids(lad_areas):
+    lad_area_ids = []
+    for lad in lad_areas:
+        lad_area_ids.append(lad['properties']['name'])
+    return lad_area_ids
+
+#####################################
+# INTEGRATE WTP AND WTA HOUSEHOLD DATA INTO PREMIses
+#####################################
+
+def read_msoa_data(lad_ids):
+    """
+    MSOA data contains individual level demographic characteristics including:
+        - PID - Person ID
+        - MSOA - Area ID
+        - DC1117EW_C_SEX - Gender
+        - DC1117EW_C_AGE - Age
+        - DC2101EW_C_ETHPUK11 - Ethnicity
+        - HID - Household ID
+        - year - year
+    """
+    
+    MSOA_data = []
+
+    msoa_lad_id_files = {
+        lad: os.path.join(DATA_RAW,'demographic_scenario_data','msoa_2018','ass_{}_MSOA11_2018.csv'.format(lad))
+        for lad in lad_ids
+    }
+
+    pathlist = glob.iglob(os.path.join(DATA_RAW, 'demographic_scenario_data','msoa_2018') + '/*.csv', recursive=True)
+
+    for filename in msoa_lad_id_files.values():
+        with open(os.path.join(filename), 'r') as system_file:
+            year_reader = csv.reader(system_file)
+            next(year_reader, None)
+            # Put the values in the population dict
+            for line in year_reader:
+                MSOA_data.append({
+                    'PID': line[0],
+                    'MSOA': line[1],
+                    'lad': filename[-25:-16],
+                    'gender': line[2],
+                    'age': line[3],
+                    'ethnicity': line[4],
+                    'HID': line[5],
+                    'year': int(filename[-8:-4]),
+                })     
+
+    return MSOA_data
+
+def read_age_data():
+    """
+    Contains data on fixed broadband adoption by age :
+        - Age 
+        - % chance of adopt
+    """
+    my_data = []
+
+    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'age.csv'), 'r') as my_file:
+        reader = csv.reader(my_file)
+        next(reader, None)
+        for row in reader:
+            my_data.append({
+                'age': row[0],
+                'age_wta': int(row[1])
+            })
+
+        return my_data
+
+def read_gender_data():
+    """
+    Contains data on fixed broadband adoption by socio-economic status (ses):
+        - ses
+        - % chance of adopt
+    """
+    my_data = []
+
+    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'gender.csv'), 'r') as my_file:
+        reader = csv.reader(my_file)
+        next(reader, None)
+        for row in reader:
+            my_data.append({
+                'gender': row[0],
+                'gender_wta': int(row[1])
+            })
+
+        return my_data
+
+def read_nation_data():
+    """
+    Contains data on fixed broadband adoption by nation:
+        - nation
+        - % chance of adopt
+    """
+    my_data = []
+
+    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'nation.csv'), 'r') as my_file:
+        reader = csv.reader(my_file)
+        next(reader, None)
+        for row in reader:
+            my_data.append({
+                'nation': row[0],
+                'nation_wta': int(row[1])
+            })
+
+        return my_data
+
+def read_urban_rural_data():
+    """
+    Contains data on fixed broadband adoption by urban_rural:
+        - urban_rural
+        - % chance of adopt
+    """
+    my_data = []
+
+    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'urban_rural.csv'), 'r') as my_file:
+        reader = csv.reader(my_file)
+        next(reader, None)
+        for row in reader:
+            my_data.append({
+                'urban_rural': row[0],
+                'urban_rural_wta': int(row[1])
+            })
+
+        return my_data
+
+def add_country_indicator(data):
+
+    for person in data:
+
+        if person['lad'].startswith("E"):
+            person['nation'] = 'england'
+        if person['lad'].startswith("S"):
+            person['nation'] = 'scotland'
+        if person['lad'].startswith("w"):
+            person['nation'] = 'wales'
+        if person['lad'].startswith("N"):
+            person['nation'] = 'northern ireland'
+
+    return data
+
+def read_ses_data():
+    """
+    Contains data on fixed broadband adoption by socio-economic status (ses):
+        - ses
+        - % chance of adopt
+    """
+    my_data = []
+
+    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'ses.csv'), 'r') as my_file:
+        reader = csv.reader(my_file)
+        next(reader, None)
+        for row in reader:
+            my_data.append({
+                'ses': row[0],
+                'ses_wta': int(row[1])
+            })
+
+        return my_data
+
+def add_data_to_MSOA_data(consumer_data, population_data, variable):
+    """
+    Take the WTP lookup table for all ages. Add to the population data based on age.
+    """
+    d1 = {d[variable]:d for d in consumer_data}
+
+    population_data = [dict(d, **d1.get(d[variable], {})) for d in population_data]	
+
+    return population_data
+
+def read_oa_data():
+    """
+    MSOA data contains individual level demographic characteristics including:
+        - HID - Household ID
+        - OA - Output Area ID
+        - ses - Household Socio-Economic Status
+        - year - year
+    """
+    
+    OA_data = []
+
+    oa_lad_id_files = {
+        lad: os.path.join(DATA_RAW, 'demographic_scenario_data','oa_2018','ass_hh_{}_OA11_2018.csv'.format(lad))
+        for lad in lad_ids
+    }
+
+    for filename in oa_lad_id_files.values():
+        # Open file
+        with open(filename, 'r') as year_file:
+            year_reader = csv.reader(year_file)
+            next(year_reader, None)
+            # Put the values in the population dict
+            for line in year_reader:
+                OA_data.append({
+                    'HID': line[0],
+                    'OA': line[1],
+                    'lad': filename[-23:-14],
+                    'ses': line[12],
+                    'year': int(filename[-8:-4]),
+                })     
+
+    return OA_data
+
+def convert_ses_grades(data):
+
+    for household in data:
+        if household['ses'] == '1':
+            household['ses'] = 'AB'
+        elif household['ses'] == '2':
+            household['ses'] = 'AB'
+        elif household['ses'] == '3':
+            household['ses'] = 'C1'
+        elif household['ses'] == '4':
+            household['ses'] = 'C1'
+        elif household['ses'] == '5':
+            household['ses'] = 'C2'
+        elif household['ses'] == '6':
+            household['ses'] = 'DE'
+        elif household['ses'] == '7':
+            household['ses'] = 'DE'
+        elif household['ses'] == '8':
+            household['ses'] = 'DE'
+        elif household['ses'] == '9':
+            household['ses'] = 'students'
+    
+    return data
+
+def merge_two_lists_of_dicts(msoa_list_of_dicts, oa_list_of_dicts, parameter1, parameter2, parameter3):
+    """
+    Combine the msoa and oa dicts using the household indicator and year keys. 
+    """
+    d1 = {(d[parameter1], d[parameter2], d[parameter3]):d for d in oa_list_of_dicts}
+
+    msoa_list_of_dicts = [dict(d, **d1.get((d[parameter1], d[parameter2], d[parameter3]), {})) for d in msoa_list_of_dicts]	
+
+    return msoa_list_of_dicts
+
+def get_missing_ses_key(data):
+
+    complete_data = []
+    missing_ses = []
+
+    for prem in data:
+        if 'ses' in prem and 'ses_wta' in prem:
+            complete_data.append({
+                'PID': prem['PID'],
+                'MSOA': prem['MSOA'],
+                'lad': prem['lad'],
+                'gender': prem['gender'],
+                'age': prem['age'],
+                'ethnicity': prem['ethnicity'],
+                'HID': prem['HID'],
+                'year': prem['year'],
+                'nation': prem['nation'],
+                'age_wta': prem['age_wta'],
+                'gender_wta': prem['gender_wta'],
+                'OA': prem['OA'],
+                'ses': prem['ses'],
+                'ses_wta': prem['ses_wta'],
+            })
+        else:
+            missing_ses.append({
+                'PID': prem['PID'],
+                'MSOA': prem['MSOA'],
+                'lad': prem['lad'],
+                'gender': prem['gender'],
+                'age': prem['age'],
+                'ethnicity': prem['ethnicity'],
+                'HID': prem['HID'],
+                'year': prem['year'],
+                'nation': prem['nation']
+            })
+
+    return complete_data, missing_ses
+
+def calculate_adoption_propensity(data):
+
+    for person in data:
+        person['wta'] = person['age_wta'] * person['gender_wta'] * person['ses_wta'] 
+
+    return data
+
+def calculate_wtp(data):
+
+    for person in data:
+        person['wta'] = person['age_wta'] * person['gender_wta'] * person['ses_wta'] 
+
+        if person['wta'] < 1800000:
+            person['wtp'] = 20
+        elif person['wta'] > 1800000 and  person['wta'] < 2200000:
+            person['wtp'] = 30
+        elif person['wta'] > 2200000 and  person['wta'] < 2600000:
+            person['wtp'] = 40
+        elif person['wta'] > 2600000 and  person['wta'] < 3000000:
+            person['wtp'] = 50
+        elif person['wta'] > 3000000:
+            person['wtp'] = 60
+    return data
+
+
+def aggregate_wtp_and_wta_by_household(data):
+    """
+    Aggregate wtp by household by Household ID (HID), Local Authority District (lad) and year.
+    """
+    d = defaultdict(lambda: defaultdict(int))
+
+    group_keys = ['HID','lad', 'year']
+    sum_keys = ['wta','wtp']
+
+    for item in data:
+        for key in sum_keys:
+            d[itemgetter(*group_keys)(item)][key] += item[key]
+
+    results = [{**dict(zip(group_keys, k)), **v} for k, v in d.items()]
+
+    return results
+
+def read_premises_data(exchange_area):
+    """
+    Reads in premises points from the OS AddressBase data (.csv).
+
+    Data Schema
+    ----------
+    * id: :obj:`int`
+        Unique Premises ID
+    * oa: :obj:`str`
+        ONS output area code
+    * residential address count: obj:'str'
+        Number of residential addresses
+    * non-res address count: obj:'str'
+        Number of non-residential addresses
+    * postgis geom: obj:'str'
+        Postgis reference
+    * E: obj:'float'
+        Easting coordinate
+    * N: obj:'float'
+        Northing coordinate
+
+    """
+    premises_data = []
+
+    pathlist = glob.iglob(os.path.join(DATA_RAW, 'layer_5_premises', 'blds_with_functions_EO_2018_03_29') + '/*.csv', recursive=True)
+
+    exchange_geom = shape(exchange_area['geometry'])
+    exchange_bounds = shape(exchange_area['geometry']).bounds
+
+    for path in pathlist:
+        with open(os.path.join(path), 'r') as system_file:
+            reader = csv.reader(system_file)
+            next(reader)
+            [premises_data.append({
+                'uid': line[0],
+                'oa': line[1],
+                'gor': line[2],
+                'residential_address_count': line[3],
+                'non_residential_address_count': line[4],
+                'function': line[5],
+                'postgis_geom': line[6],
+                'N': line[7],
+                'E':line[8],
+            }) 
+                for line in reader
+                if (exchange_bounds[0] <= float(line[8]) and exchange_bounds[1] <= float(line[7]) and exchange_bounds[2] >= float(line[8]) and exchange_bounds[3] >= float(line[7]))
+            ]
+  
+    # remove 'None' and replace with '0'
+    for idx, row in enumerate(premises_data):
+        if row['residential_address_count'] == 'None':
+            premises_data[idx]['residential_address_count'] = '0'
+        if row['non_residential_address_count'] == 'None':
+            premises_data[idx]['non_residential_address_count'] = '0'
+
+    for row in premises_data:
+        row['residential_address_count']  = int(row['residential_address_count'])
+
+    return premises_data
+
+def expand_premises(pemises_data):
+    """
+    Take a single address with multiple units, and expand to get a dict for each unit.
+    """
+    processed_pemises_data = [] 
+
+    [processed_pemises_data.extend([entry]*entry['residential_address_count']) for entry in pemises_data]
+
+    return processed_pemises_data
+
+def merge_prems_and_housholds(premises_data, household_data):
+    """
+    Merges two aligned datasets, zipping row to row. 
+    Deals with premises_data having multiple repeated dict references due to expand function.
+    """
+    result = [a.copy() for a in premises_data]
+
+    [a.update(b) for a, b in zip(result, household_data)]
+
+    return result
+
+#####################################
+# READ LOOK UP TABLE (LUT) DATA
+#####################################
 
 def read_pcd_to_exchange_lut():
     """
@@ -74,7 +497,7 @@ def read_pcd_to_exchange_lut():
                 'postcode': line[1].replace(" ", "")
             })
 
-    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part One.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part Two.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
@@ -243,11 +666,6 @@ def read_postcode_technology_lut():
 
     return postcode_technology_lut
 
-def read_lads(exchange_area):
-    with fiona.open(os.path.join(DATA_RAW, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'), 'r') as source:
-        exchange_geom = shape(exchange_area['geometry'])
-        return [lad for lad in source if exchange_geom.intersection(shape(lad['geometry']))]
-
 def read_city_exchange_geotype_lut():
 
     exchange_geotypes = []
@@ -263,10 +681,10 @@ def read_city_exchange_geotype_lut():
     return exchange_geotypes
 
 #####################################
-# READ PREMISES/ASSETS
+# READ PREMIses/ASSETS
 #####################################
 
-def read_premises(exchange_area):
+def read_premises(exchange_area, exchange_abbr):
 
     """
     Reads in premises points from the OS AddressBase data (.csv).
@@ -296,33 +714,39 @@ def read_premises(exchange_area):
     premises_data = []
     idx = index.Index()
 
-    pathlist = glob.iglob(os.path.join(DATA_RAW, 'layer_5_premises', 'blds_with_functions_EO_2018_03_29') + '/*.csv', recursive=True)
+    #pathlist = glob.iglob(os.path.join(DATA_INTERMEDIATE) + '/*.csv', recursive=True)
 
     exchange_geom = shape(exchange_area['geometry'])
     exchange_bounds = shape(exchange_area['geometry']).bounds
 
-    for path in pathlist:
-        with open(os.path.join(path), 'r') as system_file:
-            reader = csv.reader(system_file)
-            next(reader) #skip header
-            [premises_data.append(
-                {
-                    'type': "Feature",
-                    'geometry': {
-                        "type": "Point",
-                        "coordinates": [float(line[8]), float(line[7])]
-                    },
-                    'properties': {
-                        'id': 'premise_' + line[0],
-                        'oa': line[1],
-                        'residential_address_count': line[3],
-                        'non_residential_address_count': line[4],
-                        'postgis_geom': line[6]
-                    }
-                }) 
-                for line in reader
-                if (exchange_bounds[0] <= float(line[8]) and exchange_bounds[1] <= float(line[7]) and exchange_bounds[2] >= float(line[8]) and exchange_bounds[3] >= float(line[7]))
-            ]
+    #for path in pathlist:
+    with open(os.path.join(DATA_INTERMEDIATE, '{}_premises_data.csv'.format(exchange_abbr)), 'r') as system_file:
+        reader = csv.reader(system_file)
+        next(reader) #skip header
+        [premises_data.append(
+            {
+                'type': "Feature",
+                'geometry': {
+                    "type": "Point",
+                    "coordinates": [float(line[8]), float(line[7])]
+                },
+                'properties': {
+                    'id': 'premise_' + line[0],
+                    'oa': line[1],
+                    'residential_address_count': line[3],
+                    'non_residential_address_count': line[4],
+                    'function': line[5],
+                    'postgis_geom': line[6],
+                    'HID': line[9],
+                    'lad': line[10],
+                    'year': line[11],
+                    'wta': line[12],
+                    'wtp': line[13],
+                }
+            }) 
+            for line in reader
+            if (exchange_bounds[0] <= float(line[8]) and exchange_bounds[1] <= float(line[7]) and exchange_bounds[2] >= float(line[8]) and exchange_bounds[3] >= float(line[7]))
+        ]
 
     premises_data = [premise for premise in premises_data if exchange_geom.contains(shape(premise['geometry']))]
 
@@ -492,6 +916,7 @@ def add_postcode_to_premises(premises, postcode_areas):
             premise_shape = shape(n.object['geometry'])
             if postcode_area_shape.contains(premise_shape):
                 n.object['properties']['postcode'] = postcode_area['properties']['POSTCODE']
+                n.object['properties']['CAB_ID'] = postcode_area['properties']['CAB_ID']
                 joined_premises.append(n.object)
 
     return joined_premises
@@ -550,7 +975,6 @@ def add_urban_geotype_to_exchanges(exchanges, exchange_geotype_lut):
     # Add properties
     for exchange in exchanges:
         if exchange['properties']['lad'] in exchange_geotypes:
-            print(exchange)
             exchange['properties'].update({
                 'geotype': exchange_geotypes[exchange['properties']['lad']]['geotype'],
 
@@ -562,6 +986,10 @@ def add_urban_geotype_to_exchanges(exchanges, exchange_geotype_lut):
     
     return exchanges
 
+#####################################
+# PROCESS ASSETS
+#####################################
+
 def complement_postcode_cabinets(postcode_areas, premises, exchanges, exchange_abbr):
 
     for exchange in exchanges:
@@ -569,62 +997,144 @@ def complement_postcode_cabinets(postcode_areas, premises, exchanges, exchange_a
         # Count number of existing cabinets
         cabinets_in_data = [postcode_area['properties']['CAB_ID'] for postcode_area in postcode_areas]
         count_cabinets_in_data = len(set(cabinets_in_data))
-
+        
         # Calculate number of expected cabinets
         if exchange['properties']['geotype'] == 'large city': #>500k
-            expected_cabinets = int(round(len(premises) / 500))
+            local_cluster_radius = 500
+            minimum_samples = 500
         elif exchange['properties']['geotype'] == 'small city': #>200k
-            expected_cabinets = int(round(len(premises) / 500))
+            local_cluster_radius = 500
+            minimum_samples = 500
         elif exchange['properties']['geotype'] == '>20k lines':
-            expected_cabinets = int(round(len(premises) / 475))
+            local_cluster_radius = 475
+            minimum_samples = 200
         elif exchange['properties']['geotype'] == '>10k lines':
-            expected_cabinets = int(round(len(premises) / 400))
+            local_cluster_radius = 400
+            minimum_samples = 100
         elif exchange['properties']['geotype'] == '>3k lines':
-            expected_cabinets = int(round(len(premises) / 205))
+            local_cluster_radius = 205
+            minimum_samples = 75
         elif exchange['properties']['geotype'] == '>1k lines':
-            expected_cabinets = int(round(len(premises) / 185))
+            local_cluster_radius = 185
+            minimum_samples = 50
         elif exchange['properties']['geotype'] == '<1k lines' or 'other':
-            expected_cabinets = int(round(len(premises) / 100)) # TODO: according to table these premises geotypes have no internet access
+            local_cluster_radius = 100 # TODO: according to table these premises geotypes have no internet access
+            minimum_samples = 25
         else:
-            print('Geotype ' + exchange['properties']['geotype'] + ' is unknown')
+            print('Geotype ' + exchange['properties']['geotype'] + ' is unknown')   
             raise Exception()
 
-        # Cluster around premises
-        if expected_cabinets > count_cabinets_in_data:
+        points = np.vstack([[float(i) for i in premise['geometry']['coordinates']] for premise in premises])
 
-            # Remove premises that have cabinets defined
-            # incomplete_postcode_areas = MultiPolygon([shape(postcode_area['geometry']) for postcode_area in postcode_areas if postcode_area['properties']['CAB_ID'] == ''])
-            # cluster_premises = [premise for premise in premises if incomplete_postcode_areas.contains(shape(premise['geometry']))]
+        db = DBSCAN(eps=local_cluster_radius, min_samples=minimum_samples).fit(points)
+        core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
+        core_samples_mask[db.core_sample_indices_] = True
+        labels = db.labels_
+        n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+        clusters = [points[labels == i] for i in range(n_clusters_)]
+        
+        cabinets = []
+        for idx, cluster in enumerate(clusters):
+            cabinet_premises_geom = MultiPoint(cluster)
+            cabinet_rep_point = cabinet_premises_geom.representative_point()
+            cabinets.append({
+                    'type': "Feature",
+                    'geometry': {
+                        "type": "Point",
+                        "coordinates": [cabinet_rep_point.x, cabinet_rep_point.y]
+                    },
+                    'properties': {
+                        "id": "{" + exchange_abbr + "}{GEN" + str(idx) + '}'
+                    }
+                })
 
-            # Generate cabinets
-            generate_cabinets = expected_cabinets - count_cabinets_in_data
-            print(str(generate_cabinets) + ' missing cabinets')
+    return cabinets
 
-            points = np.vstack([[float(i) for i in premise['geometry']['coordinates']] for premise in premises])
-            kmeans = KMeans(n_clusters=generate_cabinets, n_init=1, max_iter=1, n_jobs=-1, random_state=0, ).fit(points)
+def allocate_to_cabinet(data, cabinets):
 
-            cabinets = []
-            for idx, cab_point_location in enumerate(kmeans.cluster_centers_):
-                cabinets.append({
+    cabinets_idx = index.Index()
+    [cabinets_idx.insert(0, shape(cabinet['geometry']).bounds, obj=cabinet['properties']['id']) for cabinet in cabinets]
+
+    for datum in data:
+        if datum['properties']['CAB_ID'] == '':
+            datum['properties']['CAB_ID'] = [n.object for n in cabinets_idx.nearest(shape(datum['geometry']).bounds, objects=True)][0]
+
+    return data
+
+def estimate_cabinet_locations(premises):
+    '''
+    Put a cabinet in the representative center of the set of premises served by it
+    '''
+    cabinet_by_id_lut = defaultdict(list)
+
+    for premise in premises:
+        cabinet_by_id_lut[premise['properties']['CAB_ID']].append(shape(premise['geometry']))
+    
+    cabinets = []
+    for cabinet_id in cabinet_by_id_lut:
+        if cabinet_id != "": 
+            cabinet_premises_geom = MultiPoint(cabinet_by_id_lut[cabinet_id])
+
+            cabinets.append({
+                'type': "Feature",
+                'geometry': mapping(cabinet_premises_geom.representative_point()),
+                'properties': {
+                    'id': 'cabinet_' + cabinet_id
+                }
+            })
+    
+    return cabinets
+
+def estimate_dist_points(premises, exchange_name, cachefile=None):
+    """Estimate distribution point locations.
+
+    Parameters
+    ----------
+    cabinets: list of dict
+        List of cabinets, each providing a dict with properties and location of the cabinet
+
+    Returns
+    -------
+    dist_point: list of dict
+                List of dist_points
+    """
+    dist_points = []
+
+    # Use previous file if specified
+    if cachefile != None:
+        cachefile = os.path.join(DATA_INTERMEDIATE, cachefile)
+        if os.path.isfile(cachefile):
+            with fiona.open(cachefile, 'r') as source:
+                for f in source:
+                    # Make sure additional properties are not copied
+                    dist_points.append({
                         'type': "Feature",
-                        'geometry': {
-                            "type": "Point",
-                            "coordinates": [cab_point_location[0], cab_point_location[1]]
-                        },
+                        'geometry': f['geometry'],
                         'properties': {
-                            "id": "{" + exchange_abbr + "}{GEN" + str(idx) + '}'
+                            "id": f['properties']['id']
                         }
-                    })     
+                    })       
+                return dist_points
 
-            # Connect postcode to nearest cabinet
-            cabinets_idx = index.Index()
-            [cabinets_idx.insert(0, shape(cabinet['geometry']).bounds, obj=cabinet['properties']['id']) for cabinet in cabinets]
+    # Generate points
+    points = np.vstack([[float(i) for i in premise['geometry']['coordinates']] for premise in premises])
+    number_of_clusters = int(points.shape[0] / 8)
 
-            for postcode_area in postcode_areas:
-                if postcode_area['properties']['CAB_ID'] == '':
-                    postcode_area['properties']['CAB_ID'] = [n.object for n in cabinets_idx.nearest(shape(postcode_area['geometry']).bounds, objects=True)][0]
+    kmeans = KMeans(n_clusters=number_of_clusters, n_init=1, max_iter=1, n_jobs=-1, random_state=0, ).fit(points)
 
-    return postcode_areas
+    for idx, dist_point_location in enumerate(kmeans.cluster_centers_):
+        dist_points.append({
+                'type': "Feature",
+                'geometry': {
+                    "type": "Point",
+                    "coordinates": [dist_point_location[0], dist_point_location[1]]
+                },
+                'properties': {
+                    "id": "distribution_{" + exchange_name + "}{" + str(idx) + "}"
+                }
+            })        
+
+    return dist_points
 
 def add_technology_to_postcode_areas(postcode_areas, technologies_lut):
 
@@ -1042,83 +1552,77 @@ def generate_exchange_area(exchanges, merge=True):
     return exchange_areas
 
 #####################################
-# PROCESS ASSETS
+# PLACE ASSETS ON ROADS
 #####################################
 
-def estimate_dist_points(premises, exchange_name, cachefile=None):
-    """Estimate distribution point locations.
+def estimate_asset_locations_on_road_network(origin_points, matching_area, cachefile=None):
+    '''
+    Put a cabinet in the representative center of the set of premises served by it
+    '''
+    ox.config(log_file=False, log_console=False, use_cache=True)
 
-    Parameters
-    ----------
-    cabinets: list of dict
-        List of cabinets, each providing a dict with properties and location of the cabinet
+    projUTM = Proj(init='epsg:27700')
+    projWGS84 = Proj(init='epsg:4326')
 
-    Returns
-    -------
-    dist_point: list of dict
-                List of dist_points
-    """
-    dist_points = []
+    new_asset_locations = []
 
-    # Use previous file if specified
+    lookup = {}
     if cachefile != None:
         cachefile = os.path.join(DATA_INTERMEDIATE, cachefile)
         if os.path.isfile(cachefile):
             with fiona.open(cachefile, 'r') as source:
                 for f in source:
-                    # Make sure additional properties are not copied
-                    dist_points.append({
-                        'type': "Feature",
-                        'geometry': f['geometry'],
-                        'properties': {
-                            "id": f['properties']['id']
-                        }
-                    })       
-                return dist_points
+                    lookup[f['geometry']['coordinates'][0]] = f['geometry']['coordinates']
 
-    # Generate points
-    points = np.vstack([[float(i) for i in premise['geometry']['coordinates']] for premise in premises])
-    number_of_clusters = int(points.shape[0] / 8)
+    for area in matching_area:
+     
+        try:
+            graph_loaded = False
 
-    kmeans = KMeans(n_clusters=number_of_clusters, n_init=1, max_iter=1, n_jobs=-1, random_state=0, ).fit(points)
+            east, north = transform(projUTM, projWGS84, shape(area['geometry']).bounds[2], shape(area['geometry']).bounds[3])
+            west, south = transform(projUTM, projWGS84, shape(area['geometry']).bounds[0], shape(area['geometry']).bounds[1])
 
-    for idx, dist_point_location in enumerate(kmeans.cluster_centers_):
-        dist_points.append({
-                'type': "Feature",
-                'geometry': {
-                    "type": "Point",
-                    "coordinates": [dist_point_location[0], dist_point_location[1]]
-                },
-                'properties': {
-                    "id": "distribution_{" + exchange_name + "}{" + str(idx) + "}"
-                }
-            })        
+            origins = [point for point in origin_points if point['properties']['id'] == area['properties']['id']]
 
-    return dist_points
+            for origin in origins:
 
-def estimate_cabinet_locations(postcode_areas):
-    '''
-    Put a cabinet in the center of the set of postcode areas that is served
-    '''
-    cabinet_by_id_lut = defaultdict(list)
+                #if tuple(origin['geometry']['coordinates']) not in lookup:
 
-    for area in postcode_areas:
-        cabinet_by_id_lut[area['properties']['CAB_ID']].append(shape(area['geometry']))
-    
-    cabinets = []
-    for cabinet_id in cabinet_by_id_lut:
-        if cabinet_id != "": 
-            cabinet_postcodes_geom = MultiPolygon(cabinet_by_id_lut[cabinet_id])
+                if graph_loaded == False:
+                    G = ox.graph_from_bbox(north, south, east, west, network_type='all', truncate_by_edge=True)
+                    graph_loaded = True
 
-            cabinets.append({
-                'type': "Feature",
-                'geometry': mapping(cabinet_postcodes_geom.centroid),
-                'properties': {
-                    'id': 'cabinet_' + cabinet_id
-                }
-            })
+                origin_x = origin['geometry']['coordinates'][0]
+                origin_y = origin['geometry']['coordinates'][1]
 
-    return cabinets
+                # Find shortest path between the two
+                point1_x, point1_y = transform(projUTM, projWGS84, origin_x, origin_y)
+
+                point1 = (point1_y, point1_x)
+                #print(point1)
+                origin_node = ox.get_nearest_node(G, point1)
+
+                origin_coords = transform(projWGS84, projUTM, G.node[origin_node]['x'], G.node[origin_node]['y'])
+
+                #else:
+                    #origin_coords = lookup[tuple(origin['geometry']['coordinates'])]
+
+                # Map to line
+                new_asset_locations.append({
+                    'type': "Feature",
+                    'geometry': {
+                        "type": "Point",
+                        "coordinates": origin_coords
+                    },
+                    'properties': {
+                        "id": origin['properties']['id']
+                    }
+                })
+        except:
+            print('- Problem with asset location for:')
+            print(area['properties'])
+
+    return new_asset_locations
 
 #####################################
 # PROCESS LINKS
@@ -1132,19 +1636,22 @@ def generate_link_straight_line(origin_points, dest_points):
 
     links = []
     for origin_point in origin_points:
+        try:
+            # Get length
+            geom = LineString([origin_point['geometry']['coordinates'], lut_dest_points[origin_point['properties']['connection']]])
 
-        # Get length
-        geom = LineString([origin_point['geometry']['coordinates'], lut_dest_points[origin_point['properties']['connection']]])
-
-        links.append({
-            'type': "Feature",
-            'geometry': mapping(geom),
-            'properties': {
-                "origin": origin_point['properties']['id'],
-                "dest": origin_point['properties']['connection'],
-                "length": geom.length
-            }
-        })
+            links.append({
+                'type': "Feature",
+                'geometry': mapping(geom),
+                'properties': {
+                    "origin": origin_point['properties']['id'],
+                    "dest": origin_point['properties']['connection'],
+                    "length": geom.length
+                }
+            })
+        except:
+            print('- Problem with straight line link for:')
+            print(origin_point['properties'])
         
     return links
 
@@ -1218,7 +1725,7 @@ def generate_link_shortest_path(origin_points, dest_points, matching_area, cache
                                 line = routeline
                             else:
                                 line = [(origin_x, origin_y), (dest_x, dest_y)]
-                        except networkx.exception.NetworkXNoPath:
+                        except nx.exception.NetworkXNoPath:
                             line = [(origin_x, origin_y), (dest_x, dest_y)]
                     else:
                         line = lookup[tuple(origin['geometry']['coordinates'])]
@@ -1238,7 +1745,7 @@ def generate_link_shortest_path(origin_points, dest_points, matching_area, cache
                     })
             except:
                 print('- Problem with shortest path generation for:')
-                print(area['properties'])
+                print(area['properties']['id'])
 
     return links
 
@@ -1272,6 +1779,7 @@ def copy_id_to_name(data):
         entry['properties']['name'] = entry['properties']['id']
     return data
 
+
 #####################################
 # WRITE LUTS/ASSETS/LINKS
 #####################################
@@ -1300,6 +1808,14 @@ def write_shapefile(data, exchange_name, filename):
     with fiona.open(os.path.join(directory, filename), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         [sink.write(feature) for feature in data]
             
+def csv_writer(data, filename, fieldnames):
+    """
+    Write data to a CSV file path
+    """
+    with open(os.path.join(DATA_INTERMEDIATE, filename),'w') as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
+        writer.writeheader()
+        writer.writerows(data)
 
 #####################################
 # APPLY METHODS
@@ -1316,7 +1832,86 @@ if __name__ == "__main__":
 
     print('read exchange area')
     exchange_area = read_exchange_area(exchange_name)
+
+    print('read lads')
+    geojson_lad_areas = read_lads(exchange_area)
+
+    print('get lad ids')
+    lad_ids = get_lad_area_ids(geojson_lad_areas)
+
+    #####
+    # Integrate WTP and WTA household data into premises
+    # print('Loading MSOA data')
+    # MSOA_data = read_msoa_data(lad_ids)
+
+    # print('Loading age data')
+    # age_data = read_age_data()
+
+    # print('Loading gender data')
+    # gender_data = read_gender_data()
+
+    # print('Loading nation data')
+    # nation_data = read_nation_data()
     
+    # print('Loading urban_rural data')
+    # urban_rural_data = read_urban_rural_data()
+
+    # print('Add country indicator')
+    # MSOA_data = add_country_indicator(MSOA_data)
+
+    # print('Adding adoption data to MSOA data')
+    # MSOA_data = add_data_to_MSOA_data(age_data, MSOA_data, 'age')
+    # MSOA_data = add_data_to_MSOA_data(gender_data, MSOA_data, 'gender')
+
+    # print('Loading OA data')
+    # oa_data = read_oa_data()
+
+    # print('Match and convert social grades from NS-Sec to NRS')
+    # oa_data = convert_ses_grades(oa_data)
+      
+    # print('Loading ses data')
+    # ses_data = read_ses_data()
+
+    # print('Adding ses adoption data to OA data')
+    # oa_data = add_data_to_MSOA_data(ses_data, oa_data, 'ses')
+
+    # print('Adding MSOA data to OA data')
+    # final_data = merge_two_lists_of_dicts(MSOA_data, oa_data, 'HID', 'lad', 'year')
+
+    # print('Catching any missing data')    
+    # final_data, missing_data = get_missing_ses_key(final_data)
+
+    # print('Calculate product of adoption factors')
+    # final_data = calculate_adoption_propensity(final_data)
+
+    # print('Calculate willingness to pay')
+    # final_data = calculate_wtp(final_data)
+
+    # print('Aggregating WTP by household')
+    # household_wtp = aggregate_wtp_and_wta_by_household(final_data)
+
+    # print('Reading premises data')
+    # premises = read_premises_data(exchange_area)
+
+    # print('Expand premises entries')
+    # premises = expand_premises(premises)
+
+    # print('Adding household data to premises')
+    # premises = merge_prems_and_housholds(premises, household_wtp)
+
+    # print('Write premises_multiple by household to .csv')
+    # premises_fieldnames = ['uid','oa','gor','residential_address_count','non_residential_address_count','function','postgis_geom','N','E', 'HID','lad','year','wta','wtp']
+    # csv_writer(premises, '{}_premises_data.csv'.format(exchange_abbr), premises_fieldnames)  
+
+    # print('Writing wtp')
+    # wta_data_fieldnames = ['HID','lad','year','wta','wtp']
+    # csv_writer(household_wtp, '{}_wta_data.csv'.format(exchange_abbr), wta_data_fieldnames)  
+
+    # print('Writing any missing data')
+    # missing_data_fieldnames = ['PID','MSOA','lad','gender','age','ethnicity','HID','year', 'nation']
+    # csv_writer(missing_data, '{}_missing_data.csv'.format(exchange_abbr), missing_data_fieldnames)  
+    ####
+
     print('read_pcd_to_exchange_lut')
     lut_pcd_to_exchange = read_pcd_to_exchange_lut()
 
@@ -1329,15 +1924,12 @@ if __name__ == "__main__":
     print('read pcd_technology_lut')
     lut_pcd_technology = read_postcode_technology_lut()
 
-    print('read lads')
-    geojson_lad_areas = read_lads(exchange_area)
-
     print('read city exchange geotypes lut')
     city_exchange_lad_lut = read_city_exchange_geotype_lut()
 
     # Read Premises/Assets
     print('read premises')
-    geojson_layer5_premises = read_premises(exchange_area)
+    geojson_layer5_premises = read_premises(exchange_area, exchange_abbr)
 
     print('read exchanges')
     geojson_layer2_exchanges = read_exchanges(exchange_area)
@@ -1363,13 +1955,19 @@ if __name__ == "__main__":
 
     # Process/Estimate assets    
     print('complement cabinet locations as expected for this geotype')
-    geojson_postcode_areas = complement_postcode_cabinets(geojson_postcode_areas, geojson_layer5_premises, geojson_layer2_exchanges, exchange_abbr)
+    geojson_layer3_cabinets = complement_postcode_cabinets(geojson_postcode_areas, geojson_layer5_premises, geojson_layer2_exchanges, exchange_abbr)
+
+    print('allocating cabinet to premises')
+    geojson_layer5_premises = allocate_to_cabinet(geojson_layer5_premises, geojson_layer3_cabinets)
+
+    print('allocating cabinet to pcd_areas')
+    geojson_postcode_areas = allocate_to_cabinet(geojson_postcode_areas, geojson_layer3_cabinets)
 
     print('estimate location of distribution points')
     geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises, exchange_abbr)
 
     print('estimate cabinet locations')
-    geojson_layer3_cabinets = estimate_cabinet_locations(geojson_postcode_areas)
+    geojson_layer3_cabinets = estimate_cabinet_locations(geojson_layer5_premises)
 
     # Process/Estimate boundaries
     print('generate cabinet areas')
@@ -1380,6 +1978,13 @@ if __name__ == "__main__":
 
     print('generate exchange areas')
     geojson_exchange_areas = generate_exchange_area(geojson_postcode_areas)
+
+    #Place assets on roads     
+    print('estimate cabinet locations on road network')
+    geojson_layer3_cabinets = estimate_asset_locations_on_road_network(geojson_layer3_cabinets, geojson_cabinet_areas)
+   
+    print('estimate dist points on road network')
+    geojson_layer4_distributions = estimate_asset_locations_on_road_network(geojson_layer4_distributions, geojson_distribution_areas)
 
     # Connect assets
     print('connect premises to distributions')
@@ -1468,5 +2073,9 @@ if __name__ == "__main__":
 
     print('write links layer3')
     write_shapefile(geojson_layer3_cabinets_links,  exchange_name, 'links_layer3_cabinets.shp')
+
+    end = time.time()
+    print("script finished")
+    print("script took {} minutes to complete".format(round((end - start)/60, 2))) 
 
 

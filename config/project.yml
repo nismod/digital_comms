@@ -1,15 +1,10 @@
 name: NISMOD v2.0.0
 # ------------------------------------------------
 scenario_sets:
-- name: population
-  description: UK population, total people
+- name: adoption
+  description: Adoption curves for FTTP
   facets:
-  - name: population
-    description: ''
-- name: gva
-  description: Gross value added
-  facets:
-  - name: gva
+  - name: adoption
     description: ''
 region_definitions:
 # shared understanding of regions within the modelled area (e.g. GB)
@@ -22,63 +17,90 @@ region_definitions:
 - description: Boundary of Great Britain
   filename: national.shp
   name: national
+- description: Local Authority Districts
+  filename: lad_uk_2016-12/lad_uk_2016-12.shp
+  name: lad2016
 # ------------------------------------------------
 interval_definitions:
 # shared understanding of time intervals within a year
-- name: hourly
-  description: Every hour in a year
-  filename: hourly_intervals.csv
 - description: One annual interval of 8760 hours
   filename: annual_intervals.csv
   name: annual
-- description: One representative day
-  filename: annual_day.csv
-  name: annual_day
-- description: One week in each season mapped to all other weeks in the season
-  filename: seasonal_week.csv
-  name: seasonal_week
-- description: The seasons covered by the model
-  filename: seasons.csv
-  name: seasons
 # ------------------------------------------------
 units: units.txt
 # ------------------------------------------------
 scenarios:
-- name: pop_baseline
-  description: Baseline population for the UK
-  scenario_set: population
+- name: fttp_baseline_adoption
+  description: Baseline FTTP adoption for the UK
+  scenario_set: adoption
   facets:
-  - name: population
-    filename: uk_population_by_district_codes_Baseline.csv
-    spatial_resolution: lad_uk_2016
+  - name: adoption
+    filename: fttp_baseline_adoption.csv
+    spatial_resolution: national
     temporal_resolution: annual
-    units: people
-- name: pop_high
-  description: High population for the UK
-  scenario_set: population
+    units: meters
+- name: fttp_high_adoption
+  description: High FTTP adoption for the UK
+  scenario_set: adoption
   facets:
-  - name: population
-    filename: uk_population_by_district_codes_High.csv
-    spatial_resolution: lad_uk_2016
+  - name: adoption
+    filename: fttp_high_adoption.csv
+    spatial_resolution: national
     temporal_resolution: annual
-    units: people
-- name: pop_low
-  description: Low population for the UK
-  scenario_set: population
+    units: meters
+- name: fttp_low_adoption
+  description: Low FTTP adoption for the UK
+  scenario_set: adoption
   facets:
-  - name: population
-    filename: uk_population_by_district_codes_Low.csv
-    spatial_resolution: lad_uk_2016
+  - name: adoption
+    filename: fttp_low_adoption.csv
+    spatial_resolution: national
     temporal_resolution: annual
-    units: people
-- name: gva_baseline
-  description: Baseline gva for the UK
-  scenario_set: gva
+    units: meters
+- name: fttdp_baseline_adoption
+  description: Baseline FTTDP adoption for the UK
+  scenario_set: adoption
   facets:
-  - name: gva
-    filename: gva_sven.csv
-    spatial_resolution: lad_uk_2016
+  - name: adoption
+    filename: fttdp_baseline_adoption.csv
+    spatial_resolution: national
     temporal_resolution: annual
-    units: GBP
-narrative_sets: []
-narratives: []
+    units: meters
+- name: fttdp_high_adoption
+  description: High FTTDP adoption for the UK
+  scenario_set: adoption
+  facets:
+  - name: adoption
+    filename: fttdp_high_adoption.csv
+    spatial_resolution: national
+    temporal_resolution: annual
+    units: meters
+- name: fttdp_low_adoption
+  description: Low FTTDP adoption for the UK
+  scenario_set: adoption
+  facets:
+  - name: adoption
+    filename: fttdp_low_adoption.csv
+    spatial_resolution: national
+    temporal_resolution: annual
+    units: meters
+narrative_sets:
+- description: Picks a technology to roll out
+  name: technology
+narratives:
+- name: fttp_rollout_per_distribution
+  description: ''
+  filename: fttp_rollout_per_distribution.yml
+  narrative_set: technology_strategy
+- name: fttp_subsidised_rollout_per_distribution
+  description: ''
+  filename: fttp_subsidised_rollout_per_distribution.yml
+  narrative_set: technology_strategy
+- name: fttdp_rollout_per_distribution
+  description: ''
+  filename: fttdp_rollout_per_distribution.yml
+  narrative_set: technology_strategy
+- name: fttdp_subsidised_rollout_per_distribution
+  description: ''
+  filename: fttdp_subsidised_rollout_per_distribution.yml
+  narrative_set: technology_strategy

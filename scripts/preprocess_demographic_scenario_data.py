@@ -1,10 +1,10 @@
-
 import configparser
 import csv
 import os
 import statistics
 from itertools import groupby
 from operator import itemgetter
+from collections import defaultdict
 from copy import deepcopy
 import pprint
 
@@ -12,7 +12,7 @@ CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
-BASE_YEAR = 2017
+BASE_YEAR = 2018
 END_YEAR = 2018
 TIMESTEP_INCREMENT = 1
 TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
@@ -32,7 +32,8 @@ def read_wtp_data():
     """
     Contains data on wtp by age :
         - Age 
-        - WTP
+        - Willingness to Pay
+        - Willingness to Adopt
     """
     wtp_data = []
 
@@ -43,7 +44,8 @@ def read_wtp_data():
         for row in reader:
             wtp_data.append({
                 'age': row[0],
-                'wtp': int(row[1])
+                'wtp': int(row[1]),
+                'wta': float(row[2])
             })
 
         return wtp_data
@@ -63,11 +65,12 @@ def read_msoa_data():
     """
     MSOA data contains individual level demographic characteristics including:
         - PID - Person ID
-        - Area ID
+        - MSOA - Area ID
         - DC1117EW_C_SEX - Gender
         - DC1117EW_C_AGE - Age
         - DC2101EW_C_ETHPUK11 - Ethnicity
         - HID - Household ID
+        - year - year
     """
 
     for filename in msoa_year_files.values():
@@ -84,7 +87,7 @@ def read_msoa_data():
                     'age': line[3],
                     'ethnicity': line[4],
                     'HID': line[5],
-                    'year': filename[56:-4],
+                    'year': int(filename[-8:-4]),
                 })     
 
     return MSOA_data
@@ -118,8 +121,9 @@ def read_oa_data():
     """
     MSOA data contains individual level demographic characteristics including:
         - HID - Household ID
-        - Area ID
-        - HID - Household ID
+        - OA - Output Area ID
+        - SES - Household Socio-Economic Status
+        - year - year
     """
     
     for filename in oa_year_files.values():
@@ -133,7 +137,7 @@ def read_oa_data():
                     'HID': line[0],
                     'OA': line[1],
                     'SES': line[12],
-                    'year': filename[-8:-4],
+                    'year': int(filename[-8:-4]),
                 })     
 
     return OA_data
@@ -156,19 +160,23 @@ def merge_two_lists_of_dicts(msoa_list_of_dicts, oa_list_of_dicts, parameter1, p
 # AGGREGATE WTP DATA
 #####################################
 
-def aggregate_wtp_by_household(per_person_wtp_data):
-    """
-    """
-    wtp_by_household = []
-    grouper = itemgetter("HID", "SES", "year")
-    for key, grp in groupby(sorted(per_person_wtp_data, key = grouper), grouper):
-        temp_dict = dict(zip(["HID", "SES", "year"], key))
-        temp_dict["wtp"] = sum(item["wtp"] for item in grp)
-        wtp_by_household.append(temp_dict)
 
-    wtp_by_household = [{**i, **{'my_residential_id':i['HID']}} for i in wtp_by_household]
+def aggregate_wtp_and_wta_by_household(data):
+    """
+    Aggregate wtp by household by Household ID (HID), Socio Economic Status (SES) and year.
+    """
+    d = defaultdict(lambda: defaultdict(int))
 
-    return wtp_by_household
+    group_keys = ['HID', 'SES', 'year']
+    sum_keys = ['wtp', 'wta']
+
+    for item in data:
+        for key in sum_keys:
+            d[itemgetter(*group_keys)(item)][key] += item[key]
+
+    results = [{**dict(zip(group_keys, k)), **v} for k, v in d.items()]
+
+    return results
 
 #####################################
 # IMPORT PREMISES DATA
@@ -198,19 +206,22 @@ def read_premises_data():
     """
     premises_data = []
 
-    with open(os.path.join(BASE_PATH,'raw','layer_5_premises','cambridge_points.csv'), 'r') as system_file:
-        reader = csv.reader(system_file)
-        next(reader)
-        for line in reader:
-            premises_data.append({
-                'id': line[0],
-                'oa': line[1],
-                'residential_address_count': line[2],
-                'non_residential_address_count': line[3],
-                'postgis_geom': line[4],
-                'E': line[5],
-                'N':line[6],
-            })
+    pathlist = glob.iglob(os.path.join(DATA_RAW, 'layer_5_premises', 'blds_with_functions_EO_2018_03_29') + '/*.csv', recursive=True)
+
+    for path in pathlist:
+        with open(os.path.join(path), 'r') as system_file:
+            reader = csv.reader(system_file)
+            next(reader)
+            for line in reader:
+                premises_data.append({
+                    'id': line[0],
+                    'oa': line[1],
+                    'residential_address_count': line[3],
+                    'non_residential_address_count': line[4],
+                    'postgis_geom': line[6],
+                    'E': line[7],
+                    'N':line[8],
+                })
     
     # remove 'None' and replace with '0'
     for idx, row in enumerate(premises_data):
@@ -219,46 +230,31 @@ def read_premises_data():
         if row['non_residential_address_count'] == 'None':
             premises_data[idx]['non_residential_address_count'] = '0'
 
+    for row in premises_data:
+        row['residential_address_count']  = int(row['residential_address_count'])
+
     return premises_data
 
-#####################################
-# SUBSET RESIDENTIAL DATA
-#####################################
-
-residential_data = []
-
-def subset_residential_data(premise_data):
+def expand_premises(pemises_data):
     """
+    Take a single address with multiple units, and expand to get a dict for each unit.
     """
-    i = 0
-    for line in premise_data:
-        if int(line['residential_address_count']) > 0:
-            residential_data.append({
-                'id': line['id'],
-                'oa': line['oa'],
-                'residential_address_count': line['residential_address_count'],
-                'non_residential_address_count': line['non_residential_address_count'],
-                'postgis_geom': line['postgis_geom'],
-                'E': line['E'],
-                'N':line['N'],
-                'my_residential_id': i, 
-                #'year': '2017'               
-                })
+    processed_pemises_data = [] 
 
-            i += 1
-    
-    return residential_data
+    [processed_pemises_data.extend([entry]*entry['residential_address_count']) for entry in pemises_data]
 
-#####################################
-# MERGE PREMISES AND HOUSEHOLD WTP
-#####################################
+    return processed_pemises_data
 
 def merge_prems_and_housholds(premises_data, household_data):
-    
-    for premise, household in zip(premises_data, household_data):
-        premise.update(household)
-    
-    return premises_data
+    """
+    Merges two aligned datasets, zipping row to row. 
+    Deals with premises_data having multiple repeated dict references due to expand function.
+    """
+    result = [a.copy() for a in premises_data]
+
+    [a.update(b) for a, b in zip(result, household_data)]
+
+    return result
 
 #####################################
 # WRITE DATA
@@ -268,7 +264,6 @@ def csv_writer(data, filename, fieldnames):
     """
     Write data to a CSV file path
     """
-
     with open(os.path.join(DEMOGRAPHICS_OUTPUT_FIXED, filename),'w') as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
         writer.writeheader()
@@ -278,11 +273,11 @@ def csv_writer(data, filename, fieldnames):
 # EXECUTE FUNCTIONS
 #####################################
 
-print('Loading MSOA data')
-MSOA_data = read_msoa_data()
-
 print('Loading Willingness To Pay data')
 wtp_data = read_wtp_data()
+
+print('Loading MSOA data')
+MSOA_data = read_msoa_data()
 
 print('Adding WTP data to MSOA data')
 MSOA_data = add_wtp_to_MSOA_data(wtp_data, MSOA_data)
@@ -294,54 +289,23 @@ print('Adding MSOA data to OA data')
 final_data = merge_two_lists_of_dicts(MSOA_data, oa_data, 'HID', 'year')
 
 print('Aggregating WTP by household')
-household_wtp = aggregate_wtp_by_household(final_data)
+household_wtp = aggregate_wtp_and_wta_by_household(final_data)
 
 print('Write WTP by household to .csv')
-wtp_fieldnames = ['HID','SES','wtp','year','my_residential_id']
+wtp_fieldnames = ['HID','SES','wtp','wta','year','my_residential_id']
 csv_writer(household_wtp, 'household_wtp.csv', wtp_fieldnames)
 
 print('Reading premises data')
 premises = read_premises_data()
 
-i = 0
-print('Subset residential data')
-premises = subset_residential_data(premises)
+print('Expand premises entries')
+premises = expand_premises(premises)
 
 print('Adding household data to premises')
 premises = merge_prems_and_housholds(premises, household_wtp)
 
-print('Combine premises and household data, and write out per year')
-for year in TIMESTEPS:
-
-    output_name_year_files = {
-        year: os.path.join(DEMOGRAPHICS_OUTPUT_FIXED, 'premises_{}.csv'.format(year))
-    }
-
-    annual_wtp_data = []
-
-    for row in household_wtp:
-        if row['year'] == str(year):
-            annual_wtp_data.append({
-            'HID': row['HID'],
-            'SES': row['SES'],
-            'my_residential_id': row['my_residential_id'],
-            'wtp': row['wtp'],
-            'year': row['year'],
-            })
-
-    premises_annually = deepcopy(premises)
-
-    for premise, household in zip(premises_annually, annual_wtp_data):
-        premise.update(household)
-
-    output_data_fieldnames = ['id','my_residential_id','residential_address_count',
-                    'non_residential_address_count','postgis_geom','E','N',
-                    'oa', 'year', 'wtp', 'HID', 'SES']
-
-    for filename in output_name_year_files.values():
-        with open(filename, 'w') as csv_file:
-            writer = csv.DictWriter(csv_file, output_data_fieldnames, lineterminator = '\n')
-            writer.writeheader()   
-            writer.writerows(premises_annually)   
+print('Write premises_multiple by household to .csv')
+premises_fieldnames = ['id','oa','residential_address_count','non_residential_address_count','postgis_geom','E','N','my_residential_id', 'HID','SES','year','wtp','wta']
+csv_writer(premises, 'dummy_premises_data.csv', premises_fieldnames)
 
 print('Script complete')

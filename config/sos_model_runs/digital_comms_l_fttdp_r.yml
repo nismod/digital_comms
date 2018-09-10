@@ -1,0 +1,24 @@
+decision_module: ''
+description: ''
+name: digital_comms_l_fttdp_r
+narratives:
+  technology_strategy:
+  - fttdp_rollout_per_distribution
+scenarios:
+  adoption: fttdp_low_adoption
+sos_model: digital_comms_only
+stamp: '2018-05-01T12:36:34.374Z'
+strategies: []
+timesteps:
+- 2019
+- 2020
+- 2021
+- 2022
+- 2023
+- 2024
+- 2025
+- 2026
+- 2027
+- 2028
+- 2029
+- 2030

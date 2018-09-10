@@ -4,11 +4,13 @@ import fiona
 import configparser
 from collections import OrderedDict, defaultdict
 import glob
+import csv
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
+DATA_RAW = os.path.join(BASE_PATH, 'raw')
 DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 DATA_PROCESSED = os.path.join(BASE_PATH, 'processed')
 
@@ -17,7 +19,7 @@ def collect_results(selection, name):
     results = []
     for entry in selection:
         results.append(os.path.join(DATA_INTERMEDIATE, entry, name))
-    
+
     geojson_results = []
     for result_file in results:
         try:
@@ -52,12 +54,68 @@ def write_shapefile(data, filename):
     with fiona.open(os.path.join(directory, filename), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         [sink.write(feature) for feature in data]
 
-if __name__ == "__main__":
+def get_exchange_ids(key, value):
 
+    exchange_data = []
+
+    with open(os.path.join(DATA_RAW, 'layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as my_file:
+        reader = csv.reader(my_file)
+        next(reader, None)
+        for row in reader:
+            exchange_data.append({
+                'id': row[1],
+                'region': row[3],
+                'county': row[4],
+                'country': row[7]
+            })
+    exchange_ids = []
+
+    for exchange in exchange_data:
+        if exchange[key] == value:
+            single_id = 'exchange_{}'.format(exchange['id'])
+            exchange_ids.append(single_id)
+
+    return exchange_ids
+
+def cut_out_unwanted_premises_data(data):
+
+#'properties': OrderedDict([('id', 'premise_osgb1000030280096'), ('oa', 'E00042139'), ('residentia', '1'),
+# ('non_reside', '0'), ('function', '[12]'), ('postgis_ge', '0101000020346C000070975DE023181A41E2A9DD11D8372141'),
+# ('HID', '8510'), ('lad', 'E08000021'), ('year', '2018'), ('wtp', '15'), ('wta', '80.0'), ('postcode', 'NE62DA'),
+# ('connection', 'distribution_{NENTE}{1472}'), ('FTTP', 0), ('GFast', 0), ('FTTC', 1), ('DOCSIS3', 0), ('ADSL', 0)])
+    premises_data = []
+
+    for premises in data:
+        premises_data.append(
+            {
+                'type': "Feature",
+                'geometry': {
+                    "type": "Point",
+                    "coordinates": premises['geometry']['coordinates'],
+                },
+                'properties': {
+                    'id': premises['properties']['id'], #[8:],
+                    'connection': premises['properties']['connection'],
+                    'FTTP': premises['properties']['FTTP'],
+                    'GFast': premises['properties']['GFast'],
+                    'FTTC': premises['properties']['FTTC'],
+                    'DOCSIS3': premises['properties']['DOCSIS3'],
+                    'ADSL':  premises['properties']['ADSL'],
+                    'wtp': premises['properties']['wtp'],
+                    'wta': premises['properties']['wta'],
+                    'lad': premises['properties']['lad']
+                }
+            })
+
+    return premises_data
+
+if __name__ == "__main__":
     selection = []
 
-    if 1 not in sys.argv:
+    if len(sys.argv) < 2:
         selection = [item for item in os.listdir(DATA_INTERMEDIATE) if os.path.isdir(os.path.join(DATA_INTERMEDIATE, item))]
+    elif sys.argv[1] == 'exchange_EACAM':
+        selection = ['exchange_EACAM']
     elif sys.argv[1] == 'cambridge':
         selection = [
             'exchange_EAARR',
@@ -273,6 +331,20 @@ if __name__ == "__main__":
             'exchange_NEWYL',
             'exchange_NENTW',
         ]
+    elif sys.argv[1] == 'Cambridgeshire':
+        selection = get_exchange_ids('county', 'Cambridgeshire')
+
+    elif sys.argv[1] == 'London':
+        selection = get_exchange_ids('region', 'London')
+
+    elif sys.argv[1] == 'East':
+        selection = get_exchange_ids('region', 'East')
+
+    elif sys.argv[1] == 'Wales':
+        selection = get_exchange_ids('country', 'Wales')
+
+    elif sys.argv[1] == 'England':
+        selection = get_exchange_ids('country', 'England')
 
     links_layer3_cabinets = collect_results(selection, 'links_layer3_cabinets.shp')
     write_shapefile(links_layer3_cabinets, 'links_layer3_cabinets.shp')
@@ -293,6 +365,5 @@ if __name__ == "__main__":
     write_shapefile(assets_layer4_distributions, 'assets_layer4_distributions.shp')
 
     assets_layer5_premises = collect_results(selection, 'assets_layer5_premises.shp')
+    assets_layer5_premises = cut_out_unwanted_premises_data(assets_layer5_premises)
     write_shapefile(assets_layer5_premises, 'assets_layer5_premises.shp')
-
-    
