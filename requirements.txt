@@ -2,6 +2,7 @@
 fiona>=1.7
 matplotlib
 networkx>=2.1
+osmnx
 pyproj
 pysftp
 Rtree>=0.8.3
