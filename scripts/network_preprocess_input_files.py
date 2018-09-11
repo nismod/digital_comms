@@ -783,37 +783,45 @@ def read_exchanges(exchange_area):
     """
 
     idx = index.Index()
+    postcodes_path = os.path.join(DATA_RAW, 'layer_2_exchanges', 'final_exchange_pcds.csv')
 
-    with open(os.path.join(DATA_RAW, 'layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
+    with open(postcodes_path, 'r') as system_file:
         reader = csv.reader(system_file)
         next(reader)
 
-        [idx.insert(0,
-            (
-                float(line[5]),
-                float(line[6]),
-                float(line[5]),
-                float(line[6]),
-            ),
-            {
-                'type': "Feature",
-                'geometry': {
-                    "type": "Point",
-                    "coordinates": [float(line[5]), float(line[6])]
-                },
-                'properties': {
-                    'id': 'exchange_' + line[1],
-                    'Name': line[2],
-                    'pcd': line[0],
-                    'Region': line[3],
-                    'County': line[4]
+        [
+            idx.insert(
+                0,
+                (
+                    float(line[5]),
+                    float(line[6]),
+                    float(line[5]),
+                    float(line[6]),
+                ),
+                {
+                    'type': "Feature",
+                    'geometry': {
+                        "type": "Point",
+                        "coordinates": [float(line[5]), float(line[6])]
+                    },
+                    'properties': {
+                        'id': 'exchange_' + line[1],
+                        'Name': line[2],
+                        'pcd': line[0],
+                        'Region': line[3],
+                        'County': line[4]
+                    }
                 }
-            })
+            )
             for line in reader
         ]
 
     exchange_geom = shape(exchange_area['geometry'])
-    return [n.object for n in idx.intersection(shape(exchange_area['geometry']).bounds, objects=True) if exchange_geom.intersection(shape(n.object['geometry']))]
+    return [
+        n
+        for n in idx.intersection(shape(exchange_area['geometry']).bounds, objects='raw')
+        if exchange_geom.intersection(shape(n['geometry']))
+    ]
 
 #####################################
 # PROCESS NETWORK HIERARCHY
@@ -873,16 +881,19 @@ def add_exchange_id_to_postcode_areas(exchanges, postcode_areas, exchange_to_pos
         else:
 
             # Find nearest exchange
-            nearest = [n.object for n in idx_exchanges.nearest((shape(postcode_area['geometry']).bounds), 1, objects=True)]
+            nearest = list(
+                idx_exchanges.nearest(
+                    shape(postcode_area['geometry']).bounds, 1, objects='raw'))
             postcode_area['properties']['EX_ID'] = nearest[0]
             postcode_area['properties']['EX_SRC'] = 'ESTIMATED NEAREST'
 
         # Match the exchange ID with remaining exchange info
         if postcode_area['properties']['EX_ID'] in lut_exchanges:
-            postcode_area['properties']['EX_NAME'] = lut_exchanges[postcode_area['properties']['EX_ID']]['Name']
-            postcode_area['properties']['EX_PCD'] = lut_exchanges[postcode_area['properties']['EX_ID']]['pcd']
-            postcode_area['properties']['EX_REGION'] = lut_exchanges[postcode_area['properties']['EX_ID']]['Region']
-            postcode_area['properties']['EX_COUNTY'] = lut_exchanges[postcode_area['properties']['EX_ID']]['County']
+            ex_id = postcode_area['properties']['EX_ID']
+            postcode_area['properties']['EX_NAME'] = lut_exchanges[ex_id]['Name']
+            postcode_area['properties']['EX_PCD'] = lut_exchanges[ex_id]['pcd']
+            postcode_area['properties']['EX_REGION'] = lut_exchanges[ex_id]['Region']
+            postcode_area['properties']['EX_COUNTY'] = lut_exchanges[ex_id]['County']
         else:
             postcode_area['properties']['EX_NAME'] = ""
             postcode_area['properties']['EX_PCD'] = ""
@@ -895,7 +906,8 @@ def add_cabinet_id_to_postcode_areas(postcode_areas, pcd_to_cabinet):
 
     for postcode_area in postcode_areas:
         if postcode_area['properties']['POSTCODE'] in pcd_to_cabinet:
-            postcode_area['properties']['CAB_ID'] = pcd_to_cabinet[postcode_area['properties']['POSTCODE']]['cabinet_id']
+            pcd = postcode_area['properties']['POSTCODE']
+            postcode_area['properties']['CAB_ID'] = pcd_to_cabinet[pcd]['cabinet_id']
         else:
             postcode_area['properties']['CAB_ID'] = ""
 
@@ -926,20 +938,21 @@ def add_lad_to_matching_area(premises, lads):
 
     joined_premises = []
 
-    # Initialze Rtree
-    idx = index.Index()
+    def generator():
+        for rtree_idx, premise in enumerate(premises):
+            yield (rtree_idx, shape(premise['geometry']).bounds, premise)
 
-    for rtree_idx, premise in enumerate(premises):
-        idx.insert(rtree_idx, shape(premise['geometry']).bounds, premise)
+    # Initialze Rtree
+    idx = index.Index(generator())
 
     # Join the two
     for lad in lads:
-        for n in idx.intersection((shape(lad['geometry']).bounds), objects=True):
+        for n in idx.intersection((shape(lad['geometry']).bounds), objects='raw'):
             lad_shape = shape(lad['geometry'])
-            premise_shape = shape(n.object['geometry'])
+            premise_shape = shape(n['geometry'])
             if lad_shape.contains(premise_shape):
-                n.object['properties']['lad'] = lad['properties']['name']
-                joined_premises.append(n.object)
+                n['properties']['lad'] = lad['properties']['name']
+                joined_premises.append(n)
 
     return joined_premises
 
@@ -955,12 +968,12 @@ def add_lad_to_exchanges(exchanges, lads):
 
     # Join the two
     for lad in lads:
-        for n in idx.intersection((shape(lad['geometry']).bounds), objects=True):
+        for n in idx.intersection((shape(lad['geometry']).bounds), objects='raw'):
             lad_shape = shape(lad['geometry'])
-            premise_shape = shape(n.object['geometry'])
+            premise_shape = shape(n['geometry'])
             if lad_shape.contains(premise_shape):
-                n.object['properties']['lad'] = lad['properties']['name']
-                joined_exchanges.append(n.object)
+                n['properties']['lad'] = lad['properties']['name']
+                joined_exchanges.append(n)
 
     return joined_exchanges
 
@@ -1057,7 +1070,7 @@ def allocate_to_cabinet(data, cabinets):
 
     for datum in data:
         if datum['properties']['CAB_ID'] == '':
-            datum['properties']['CAB_ID'] = [n.object for n in cabinets_idx.nearest(shape(datum['geometry']).bounds, objects=True)][0]
+            datum['properties']['CAB_ID'] = [n for n in cabinets_idx.nearest(shape(datum['geometry']).bounds, objects='raw')][0]
 
     return data
 
@@ -1316,15 +1329,15 @@ def connect_points_to_area(points, areas):
     linked_points = []
     for point in points:
         point_shape = shape(point['geometry'])
-        possible_matches = list(idx_areas.intersection(point_shape.bounds, objects=True))
+        possible_matches = list(idx_areas.intersection(point_shape.bounds, objects='raw'))
         match = []
         for pm in possible_matches:
-            area_shape = shape(pm.object['geometry'])
+            area_shape = shape(pm['geometry'])
             if area_shape.intersects(point_shape):
                 match.append(pm)
 
         if len(match) > 0:
-            point['properties']['connection'] = match[0].object['properties']['id']
+            point['properties']['connection'] = match[0]['properties']['id']
             linked_points.append(point)
         else:
             print(point['properties'])
@@ -1443,15 +1456,15 @@ def generate_voronoi_areas(asset_points, clip_region):
         polygon = vertices[region]
         geom = Polygon(polygon)
 
-        asset_points = list(idx_asset_areas.nearest(geom.bounds, 1, objects=True))
+        asset_points = list(idx_asset_areas.nearest(geom.bounds, 1, objects='raw'))
         for point in asset_points:
-            if geom.contains(shape(point.object['geometry'])):
+            if geom.contains(shape(point['geometry'])):
                 asset_point = point
 
         asset_areas.append({
             'geometry': mapping(geom),
             'properties': {
-                'id': asset_point.object['properties']['id']
+                'id': asset_point['properties']['id']
             }
         })
 
@@ -1539,21 +1552,21 @@ def generate_exchange_area(exchanges, merge=True):
         for idx, exchange_area in enumerate(exchange_areas):
             idx_exchange_areas.insert(idx, shape(exchange_area['geometry']).bounds, exchange_area)
         for island in removed_islands:
-            intersections = [n for n in idx_exchange_areas.intersection((island.bounds), objects=True)]
+            intersections = [n for n in idx_exchange_areas.intersection((island.bounds), objects='raw')]
 
             if len(intersections) > 0:
                 for idx, intersection in enumerate(intersections):
                     if idx == 0:
                         merge_with = intersection
-                    elif shape(intersection.object['geometry']).intersection(island).length > shape(merge_with.object['geometry']).intersection(island).length:
+                    elif shape(intersection['geometry']).intersection(island).length > shape(merge_with['geometry']).intersection(island).length:
                         merge_with = intersection
 
-                merged_geom = merge_with.object
+                merged_geom = merge_with
                 merged_geom['geometry'] = mapping(shape(merged_geom['geometry']).union(island))
                 idx_exchange_areas.delete(merge_with.id, shape(merge_with.object['geometry']).bounds)
                 idx_exchange_areas.insert(merge_with.id, shape(merged_geom['geometry']).bounds, merged_geom)
 
-        exchange_areas = [n.object for n in idx_exchange_areas.intersection(idx_exchange_areas.bounds, objects=True)]
+        exchange_areas = list(idx_exchange_areas.intersection(idx_exchange_areas.bounds, objects='raw'))
 
     return exchange_areas
 
@@ -1779,18 +1792,18 @@ def generate_link_with_nearest(origin_points, dest_points):
 
     links = []
     for origin_point in origin_points:
-        nearest = list(idx_dest_points.nearest(shape(origin_point['geometry']).bounds, objects=True))[0]
+        nearest = list(idx_dest_points.nearest(shape(origin_point['geometry']).bounds, objects='raw'))[0]
 
         links.append({
             'type': "Feature",
             'geometry': {
                 "type": "LineString",
-                "coordinates": [origin_point['geometry']['coordinates'], nearest.object['geometry']['coordinates']]
+                "coordinates": [origin_point['geometry']['coordinates'], nearest['geometry']['coordinates']]
             },
             'properties': {
                 "origin": origin_point['properties']['id'],
-                "dest": nearest.object['properties']['id'],
-                "length": LineString([origin_point['geometry']['coordinates'], nearest.object['geometry']['coordinates']]).length
+                "dest": nearest['properties']['id'],
+                "length": LineString([origin_point['geometry']['coordinates'], nearest['geometry']['coordinates']]).length
             }
         })
     return links
