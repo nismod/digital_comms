@@ -1315,7 +1315,13 @@ def connect_points_to_area(points, areas):
 
     linked_points = []
     for point in points:
-        match = list(idx_areas.intersection(shape(point['geometry']).bounds, objects=True))
+        point_shape = shape(point['geometry'])
+        possible_matches = list(idx_areas.intersection(point_shape.bounds, objects=True))
+        match = []
+        for pm in possible_matches:
+            area_shape = shape(pm.object['geometry'])
+            if area_shape.intersects(point_shape):
+                match.append(pm)
 
         if len(match) > 0:
             point['properties']['connection'] = match[0].object['properties']['id']
