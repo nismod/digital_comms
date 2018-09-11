@@ -20,7 +20,7 @@ from operator import itemgetter
 
 from collections import OrderedDict, defaultdict
 
-import osmnx as ox, networkx as nx
+import osmnx as ox, networkx as nx, geopandas as gpd
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
@@ -1566,63 +1566,82 @@ def estimate_asset_locations_on_road_network(origin_points, matching_area, cache
 
     new_asset_locations = []
 
-    lookup = {}
-    if cachefile != None:
-        cachefile = os.path.join(DATA_INTERMEDIATE, cachefile)
-        if os.path.isfile(cachefile):
-            with fiona.open(cachefile, 'r') as source:
-                for f in source:
-                    lookup[f['geometry']['coordinates'][0]] = f['geometry']['coordinates']
-
     for area in matching_area:
+        origins = [point for point in origin_points if point['properties']['id'] == area['properties']['id']]
 
         try:
-            graph_loaded = False
-
             east, north = transform(projUTM, projWGS84, shape(area['geometry']).bounds[2], shape(area['geometry']).bounds[3])
             west, south = transform(projUTM, projWGS84, shape(area['geometry']).bounds[0], shape(area['geometry']).bounds[1])
-
-            origins = [point for point in origin_points if point['properties']['id'] == area['properties']['id']]
-
+            G = ox.graph_from_bbox(north, south, east, west, network_type='all', truncate_by_edge=True, retain_all=True)
             for origin in origins:
-
-                #if tuple(origin['geometry']['coordinates']) not in lookup:
-
-                if graph_loaded == False:
-                    G = ox.graph_from_bbox(north, south, east, west, network_type='all', truncate_by_edge=True)
-                    graph_loaded = True
-
-                origin_x = origin['geometry']['coordinates'][0]
-                origin_y = origin['geometry']['coordinates'][1]
-
-                # Find shortest path between the two
-                point1_x, point1_y = transform(projUTM, projWGS84, origin_x, origin_y)
-
-                point1 = (point1_y, point1_x)
-                #print(point1)
-                origin_node = ox.get_nearest_node(G, point1)
-
-                origin_coords = transform(projWGS84, projUTM, G.node[origin_node]['x'], G.node[origin_node]['y'])
-
-                #else:
-                    #origin_coords = lookup[tuple(origin['geometry']['coordinates'])]
-
-                # Map to line
+                x_utm, y_utm = tuple(origin['geometry']['coordinates'])
+                x_wgs, y_wgs = transform(projUTM, projWGS84, x_utm, y_utm)
+                snapped_x_wgs, snapped_y_wgs = snap_point_to_graph(x_wgs, y_wgs, G)
+                snapped_coords = transform(projWGS84, projUTM, snapped_x_wgs, snapped_y_wgs)
                 new_asset_locations.append({
                     'type': "Feature",
                     'geometry': {
                         "type": "Point",
-                        "coordinates": origin_coords
+                        "coordinates": snapped_coords
                     },
                     'properties': {
                         "id": origin['properties']['id']
                     }
                 })
-        except:
-            print('- Problem with asset location for:')
-            print(area['properties'])
+        except (nx.exception.NetworkXPointlessConcept, ValueError):
+            # got empty graph around bbox
+            new_asset_locations.extend(origins)
 
     return new_asset_locations
+
+
+def snap_point_to_graph_node(point_x, point_y, G):
+    # osmnx nearest node method
+    node_id = ox.get_nearest_node(G, (point_x, point_y))
+    return (G.node[node_id]['x'], G.node[node_id]['y'])
+
+
+def snap_point_to_graph(point_x, point_y, G):
+    edge = get_nearest_edge(point_x, point_y, G)
+    point = Point((point_x, point_y))
+    snap = nearest_point_on_line(point, edge)
+    return (snap.x, snap.y)
+
+
+def get_nearest_edge(point_x, point_y, G):
+    try:
+        G.edge_gdf
+    except AttributeError:
+        G.edge_gdf = make_edge_gdf(G)
+    query = (point_x, point_y, point_x, point_y)
+    matches_idx = list(G.edge_gdf.sindex.nearest(query))
+    for m in matches_idx:
+        match = G.edge_gdf.iloc[m]
+    return match.geometry
+
+
+def nearest_point_on_line(point, line):
+    return line.interpolate(line.project(point))
+
+
+def make_edge_gdf(G):
+    edges = []
+    for u, v, key, data in G.edges(keys=True, data=True):
+        edge_details = {'key': key}
+        # if edge doesn't already have a geometry attribute, create one now
+        if 'geometry' not in data:
+            point_u = Point((G.nodes[u]['x'], G.nodes[u]['y']))
+            point_v = Point((G.nodes[v]['x'], G.nodes[v]['y']))
+            edge_details['geometry'] = LineString([point_u, point_v])
+        else:
+            edge_details['geometry'] = data['geometry']
+
+        edges.append(edge_details)
+    if not edges:
+        raise ValueError("No edges found")
+    # create a geodataframe from the list of edges and set the CRS
+    gdf_edges = gpd.GeoDataFrame(edges)
+    return gdf_edges
 
 #####################################
 # PROCESS LINKS
@@ -1804,6 +1823,7 @@ def write_shapefile(data, exchange_name, filename):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
+    print(os.path.join(directory, filename))
     # Write all elements to output file
     with fiona.open(os.path.join(directory, filename), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         [sink.write(feature) for feature in data]
