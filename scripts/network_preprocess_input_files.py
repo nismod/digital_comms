@@ -1555,7 +1555,7 @@ def generate_exchange_area(exchanges, merge=True):
 # PLACE ASSETS ON ROADS
 #####################################
 
-def estimate_asset_locations_on_road_network(origin_points, matching_area, cachefile=None):
+def estimate_asset_locations_on_road_network(origins, area):
     '''
     Put a cabinet in the representative center of the set of premises served by it
     '''
@@ -1566,31 +1566,28 @@ def estimate_asset_locations_on_road_network(origin_points, matching_area, cache
 
     new_asset_locations = []
 
-    for area in matching_area:
-        origins = [point for point in origin_points if point['properties']['id'] == area['properties']['id']]
-
-        try:
-            east, north = transform(projUTM, projWGS84, shape(area['geometry']).bounds[2], shape(area['geometry']).bounds[3])
-            west, south = transform(projUTM, projWGS84, shape(area['geometry']).bounds[0], shape(area['geometry']).bounds[1])
-            G = ox.graph_from_bbox(north, south, east, west, network_type='all', truncate_by_edge=True, retain_all=True)
-            for origin in origins:
-                x_utm, y_utm = tuple(origin['geometry']['coordinates'])
-                x_wgs, y_wgs = transform(projUTM, projWGS84, x_utm, y_utm)
-                snapped_x_wgs, snapped_y_wgs = snap_point_to_graph(x_wgs, y_wgs, G)
-                snapped_coords = transform(projWGS84, projUTM, snapped_x_wgs, snapped_y_wgs)
-                new_asset_locations.append({
-                    'type': "Feature",
-                    'geometry': {
-                        "type": "Point",
-                        "coordinates": snapped_coords
-                    },
-                    'properties': {
-                        "id": origin['properties']['id']
-                    }
-                })
-        except (nx.exception.NetworkXPointlessConcept, ValueError):
-            # got empty graph around bbox
-            new_asset_locations.extend(origins)
+    try:
+        east, north = transform(projUTM, projWGS84, shape(area['geometry']).bounds[2], shape(area['geometry']).bounds[3])
+        west, south = transform(projUTM, projWGS84, shape(area['geometry']).bounds[0], shape(area['geometry']).bounds[1])
+        G = ox.graph_from_bbox(north, south, east, west, network_type='all', truncate_by_edge=True, retain_all=True)
+        for origin in origins:
+            x_utm, y_utm = tuple(origin['geometry']['coordinates'])
+            x_wgs, y_wgs = transform(projUTM, projWGS84, x_utm, y_utm)
+            snapped_x_wgs, snapped_y_wgs = snap_point_to_graph(x_wgs, y_wgs, G)
+            snapped_coords = transform(projWGS84, projUTM, snapped_x_wgs, snapped_y_wgs)
+            new_asset_locations.append({
+                'type': "Feature",
+                'geometry': {
+                    "type": "Point",
+                    "coordinates": snapped_coords
+                },
+                'properties': {
+                    "id": origin['properties']['id']
+                }
+            })
+    except (nx.exception.NetworkXPointlessConcept, ValueError):
+        # got empty graph around bbox
+        new_asset_locations.extend(origins)
 
     return new_asset_locations
 
@@ -1994,6 +1991,13 @@ if __name__ == "__main__":
     print('estimate cabinet locations')
     geojson_layer3_cabinets = estimate_cabinet_locations(geojson_layer5_premises)
 
+    #Place assets on roads
+    print('estimate cabinet locations on road network')
+    geojson_layer3_cabinets = estimate_asset_locations_on_road_network(geojson_layer3_cabinets, exchange_area)
+
+    print('estimate dist points on road network')
+    geojson_layer4_distributions = estimate_asset_locations_on_road_network(geojson_layer4_distributions, exchange_area)
+
     # Process/Estimate boundaries
     print('generate cabinet areas')
     geojson_cabinet_areas = generate_voronoi_areas(geojson_layer3_cabinets, geojson_postcode_areas)
@@ -2003,13 +2007,6 @@ if __name__ == "__main__":
 
     print('generate exchange areas')
     geojson_exchange_areas = generate_exchange_area(geojson_postcode_areas)
-
-    #Place assets on roads
-    print('estimate cabinet locations on road network')
-    geojson_layer3_cabinets = estimate_asset_locations_on_road_network(geojson_layer3_cabinets, geojson_cabinet_areas)
-
-    print('estimate dist points on road network')
-    geojson_layer4_distributions = estimate_asset_locations_on_road_network(geojson_layer4_distributions, geojson_distribution_areas)
 
     # Connect assets
     print('connect premises to distributions')
