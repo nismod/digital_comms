@@ -1690,97 +1690,73 @@ def generate_link_straight_line(origin_points, dest_points):
 
     return links
 
-def generate_link_shortest_path(origin_points, dest_points, matching_area, cachefile=None):
-
+def generate_link_shortest_path(origin_points, dest_points, area):
     ox.config(log_file=False, log_console=False, use_cache=True)
 
     projUTM = Proj(init='epsg:27700')
     projWGS84 = Proj(init='epsg:4326')
 
+    east, north = transform(projUTM, projWGS84, shape(area['geometry']).bounds[2], shape(area['geometry']).bounds[3])
+    west, south = transform(projUTM, projWGS84, shape(area['geometry']).bounds[0], shape(area['geometry']).bounds[1])
+    G = ox.graph_from_bbox(north, south, east, west, network_type='all', truncate_by_edge=True)
+
     links = []
 
-    lookup = {}
-    if cachefile != None:
-        cachefile = os.path.join(DATA_INTERMEDIATE, cachefile)
-        if os.path.isfile(cachefile):
-            with fiona.open(cachefile, 'r') as source:
-                for f in source:
-                    lookup[f['geometry']['coordinates'][0]] = f['geometry']['coordinates']
+    for destination in dest_points:
+        origins = [
+            point
+            for point in origin_points
+            if point['properties']['connection'] == destination['properties']['id']
+        ]
 
-    for area in matching_area:
+        for origin in origins:
+            origin_x = origin['geometry']['coordinates'][0]
+            origin_y = origin['geometry']['coordinates'][1]
+            dest_x = destination['geometry']['coordinates'][0]
+            dest_y = destination['geometry']['coordinates'][1]
 
-        destinations = [point for point in dest_points if point['properties']['id'] == area['properties']['id']]
+            # Find shortest path between the two
+            point1_x, point1_y = transform(projUTM, projWGS84, origin_x, origin_y)
+            point2_x, point2_y = transform(projUTM, projWGS84, dest_x, dest_y)
 
-        if len(destinations) > 0:
+            # gotcha: osmnx needs (lng, lat)
+            point1 = (point1_y, point1_x)
+            point2 = (point2_y, point2_x)
+
+            # TODO improve by finding nearest edge, routing to/from node at either end
+            origin_node = ox.get_nearest_node(G, point1)
+            destination_node = ox.get_nearest_node(G, point2)
 
             try:
-                graph_loaded = False
+                if origin_node != destination_node:
+                    # Find the shortest path over the network between these nodes
+                    route = nx.shortest_path(G, origin_node, destination_node, weight='length')
 
-                east, north = transform(projUTM, projWGS84, shape(area['geometry']).bounds[2], shape(area['geometry']).bounds[3])
-                west, south = transform(projUTM, projWGS84, shape(area['geometry']).bounds[0], shape(area['geometry']).bounds[1])
+                    # Retrieve route nodes and lookup geographical location
+                    routeline = []
+                    routeline.append((origin_x, origin_y))
+                    for node in route:
+                        routeline.append((transform(projWGS84, projUTM, G.nodes[node]['x'], G.nodes[node]['y'])))
+                    routeline.append((dest_x, dest_y))
+                    line = routeline
+                else:
+                    line = [(origin_x, origin_y), (dest_x, dest_y)]
+            except nx.exception.NetworkXNoPath:
+                line = [(origin_x, origin_y), (dest_x, dest_y)]
 
-                destination = destinations[0]
-
-                origins = [point for point in origin_points if point['properties']['connection'] == area['properties']['id']]
-
-                for origin in origins:
-
-                    if tuple(origin['geometry']['coordinates']) not in lookup:
-
-                        if graph_loaded == False:
-                            G = ox.graph_from_bbox(north, south, east, west, network_type='all', truncate_by_edge=True)
-                            graph_loaded = True
-
-                        origin_x = origin['geometry']['coordinates'][0]
-                        origin_y = origin['geometry']['coordinates'][1]
-                        dest_x = destination['geometry']['coordinates'][0]
-                        dest_y = destination['geometry']['coordinates'][1]
-
-                        # Find shortest path between the two
-                        point1_x, point1_y = transform(projUTM, projWGS84, origin_x, origin_y)
-                        point2_x, point2_y = transform(projUTM, projWGS84, dest_x, dest_y)
-
-                        point1 = (point1_y, point1_x)
-                        point2 = (point2_y, point2_x)
-
-                        origin_node = ox.get_nearest_node(G, point1)
-                        destination_node = ox.get_nearest_node(G, point2)
-
-                        try:
-                            if origin_node != destination_node:
-                                # Find the shortest path over the network between these nodes
-                                route = nx.shortest_path(G, origin_node, destination_node)
-
-                                # Retrieve route nodes and lookup geographical location
-                                routeline = []
-                                routeline.append((origin_x, origin_y))
-                                for node in route:
-                                    routeline.append((transform(projWGS84, projUTM, G.nodes[node]['x'], G.nodes[node]['y'])))
-                                routeline.append((dest_x, dest_y))
-                                line = routeline
-                            else:
-                                line = [(origin_x, origin_y), (dest_x, dest_y)]
-                        except nx.exception.NetworkXNoPath:
-                            line = [(origin_x, origin_y), (dest_x, dest_y)]
-                    else:
-                        line = lookup[tuple(origin['geometry']['coordinates'])]
-
-                    # Map to line
-                    links.append({
-                        'type': "Feature",
-                        'geometry': {
-                            "type": "LineString",
-                            "coordinates": line
-                        },
-                        'properties': {
-                            "origin": origin['properties']['id'],
-                            "dest": destination['properties']['id'],
-                            "length": LineString(line).length
-                        }
-                    })
-            except:
-                print('- Problem with shortest path generation for:')
-                print(area['properties']['id'])
+            # Map to line
+            links.append({
+                'type': "Feature",
+                'geometry': {
+                    "type": "LineString",
+                    "coordinates": line
+                },
+                'properties': {
+                    "origin": origin['properties']['id'],
+                    "dest": destination['properties']['id'],
+                    "length": LineString(line).length
+                }
+            })
 
     return links
 
@@ -2042,10 +2018,10 @@ if __name__ == "__main__":
     geojson_layer5_premises_links = generate_link_straight_line(geojson_layer5_premises, geojson_layer4_distributions)
 
     print('generate links layer 4')
-    geojson_layer4_distributions_links = generate_link_shortest_path(geojson_layer4_distributions, geojson_layer3_cabinets, geojson_cabinet_areas)
+    geojson_layer4_distributions_links = generate_link_shortest_path(geojson_layer4_distributions, geojson_layer3_cabinets, exchange_area)
 
     print('generate links layer 3')
-    geojson_layer3_cabinets_links = generate_link_shortest_path(geojson_layer3_cabinets, geojson_layer2_exchanges, geojson_exchange_areas)
+    geojson_layer3_cabinets_links = generate_link_shortest_path(geojson_layer3_cabinets, geojson_layer2_exchanges, exchange_area)
 
     # Add technology to network and process this into the network hierachy
     print('add technology to postcode areas')
