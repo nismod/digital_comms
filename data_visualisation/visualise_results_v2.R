@@ -39,7 +39,7 @@ read_in_data <- function(file_pattern) {
   all_scenarios <- do.call(rbind, import_function)
   
   all_scenarios <- select(all_scenarios, timestep, value, scenario, strategy, tech, region, prem_type)
-  
+  print(all_scenarios$prem_type)
   rm(empty_df, files, myfiles)
   
   all_scenarios$scenario <- factor(all_scenarios$scenario,
