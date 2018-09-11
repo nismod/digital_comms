@@ -49,7 +49,6 @@ def cpuprofile(func):
             print(profiler.output_text(unicode=False, color=True))
     return wrapper
 
-
 class DigitalCommsWrapper(SectorModel):
     """Digital model
     """
@@ -187,7 +186,6 @@ class DigitalCommsWrapper(SectorModel):
         data_handle.set_results(('premises_upgrade_costs_' + str(TECH)), upgrade_cost_per_premises)
 
         #premises passed
-        
         premises_passed = ('premises_passed_with_' + str(TECH))
         premises_passed = np.empty((1,1))
         premises_passed[0, 0] = sum(getattr(premise, TECH) for premise in self.system._premises) 
@@ -201,7 +199,6 @@ class DigitalCommsWrapper(SectorModel):
         data_handle.set_results(('percentage_of_premises_passed_with_' + str(TECH)), percentage_of_premises_passed)
 
         #premises connected
-
         premises_connected = ('premises_connected_with_' + str(TECH))
         premises_connected = np.empty((1,1))
         premises_connected[0, 0] = sum(getattr(premise, TECH) for premise in self.system._premises if premise.adoption_desirability == True) 
@@ -215,7 +212,6 @@ class DigitalCommsWrapper(SectorModel):
         data_handle.set_results(('percentage_of_premises_connected_with_' + str(TECH)), percentage_of_premises_connected)
 
         # Regional output
-
         lad_names = self.get_region_names('lad2016')
         num_lads = len(lad_names)
         num_fttp = np.zeros((num_lads, 1))
@@ -235,8 +231,60 @@ class DigitalCommsWrapper(SectorModel):
 
         data_handle.set_results('lad_premises_with_fttp', num_fttp)
         data_handle.set_results('lad_premises_with_fttdp', num_fttdp)
-        # data_handle.set_results('lad_premises_with_fttc', num_fttc)
-        # data_handle.set_results('lad_premises_with_adsl', num_adsl)
+
+        #get cambridge exchange data
+        if STRATEGY == 'fttp_rollout_per_distribution' and TECH == 'fttp':
+
+            path_main = os.path.dirname(os.path.abspath(__file__))
+            config = configparser.ConfigParser()
+            config.read(os.path.join(path_main, 'wrapperconfig.ini'))
+            BASE_PATH = config['PATHS']['path_export_data']
+        
+            def csv_writer(data, filename, fieldnames):
+                with open(os.path.join(BASE_PATH, filename),'w') as csv_file:
+                    writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
+                    writer.writeheader()
+                    writer.writerows(data)
+        
+            def write_out_upgrades(data):
+                export_data = []
+                for datum in data:
+                    export_data.append({
+                        'id': datum.id,
+                        'upgrade': datum.fttp,
+                        'year': now
+                    })  
+                return export_data
+
+            exchange = [exchange for exchange in self.system._exchanges if exchange.id == 'exchange_EACAM'][0]
+
+            cabinets = exchange._clients
+
+            distributions = []
+            [distributions.extend(cabinet._clients) for cabinet in cabinets]
+
+            cabinet_export_data = write_out_upgrades(cabinets)
+            distribution_export_data = write_out_upgrades(distributions)
+
+            generic_fieldnames = ['id','upgrade','year']
+
+            csv_writer(cabinet_export_data, ('cabinet_data{}.csv'.format(now)), generic_fieldnames)  
+            csv_writer(distribution_export_data, ('distribution_data{}.csv'.format(now)), generic_fieldnames)  
+
+            premises = []
+            [premises.extend(distribution._clients) for distribution in distributions]
+
+            premises_export_data = []
+            for premise in premises:
+                premises_export_data.append({
+                    'id': premise.id,
+                    'adoption_desirability': premise.adoption_desirability,
+                    'premises_passed': premise.fttp,
+                    'year': now
+                })  
+
+            premises_fieldnames = ['id','adoption_desirability','premises_passed','year']
+            csv_writer(premises_export_data, ('premises_data{}.csv'.format(now)), premises_fieldnames)  
 
         # ----
         # Exit
