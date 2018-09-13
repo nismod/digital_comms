@@ -256,21 +256,19 @@ class DigitalCommsWrapper(SectorModel):
                     })  
                 return export_data
 
+            #get exchanges
             exchange = [exchange for exchange in self.system._exchanges if exchange.id == 'exchange_EACAM'][0]
 
+            #get cabinets
             cabinets = exchange._clients
+            cabinet_export_data = write_out_upgrades(cabinets)
 
+            #get distributions
             distributions = []
             [distributions.extend(cabinet._clients) for cabinet in cabinets]
-
-            cabinet_export_data = write_out_upgrades(cabinets)
             distribution_export_data = write_out_upgrades(distributions)
 
-            generic_fieldnames = ['id','upgrade','year']
-
-            csv_writer(cabinet_export_data, ('cabinet_data{}.csv'.format(now)), generic_fieldnames)  
-            csv_writer(distribution_export_data, ('distribution_data{}.csv'.format(now)), generic_fieldnames)  
-
+            #get premises
             premises = []
             [premises.extend(distribution._clients) for distribution in distributions]
 
@@ -283,7 +281,24 @@ class DigitalCommsWrapper(SectorModel):
                     'year': now
                 })  
 
+            #get exchange to cabinet links
+            exchange_to_cabinet_links = [link for link in self.system._links_from_cabinets if link.dest == 'exchange_EACAM']
+
+            #get cabinet to dist point links
+            cab_to_dist_point_links = exchange_to_cabinet_links.origin
+
+            #get distributions
+            cab_to_dist_point_links = []
+            [cab_to_dist_point_links.extend(link.origin) for link in cab_to_dist_point_links]
+            print(cab_to_dist_point_links)
+
+            #set fieldnames
+            generic_fieldnames = ['id','upgrade','year']
             premises_fieldnames = ['id','adoption_desirability','premises_passed','year']
+
+            #write out
+            csv_writer(cabinet_export_data, ('cabinet_data{}.csv'.format(now)), generic_fieldnames)  
+            csv_writer(distribution_export_data, ('distribution_data{}.csv'.format(now)), generic_fieldnames)  
             csv_writer(premises_export_data, ('premises_data{}.csv'.format(now)), premises_fieldnames)  
 
         # ----
