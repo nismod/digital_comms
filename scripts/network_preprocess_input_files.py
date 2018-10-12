@@ -44,8 +44,8 @@ TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
 # setup test data file locations
 #####################################
 
-DATA_RAW = os.path.join(BASE_PATH, 'network_generation_test_data_cambridgeshire', 'raw')
-DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'network_generation_test_data_cambridgeshire', 'intermediate')
+DATA_RAW = os.path.join(BASE_PATH, 'raw')
+DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'network_hierarchy_data')
 
 #####################################
@@ -1468,17 +1468,6 @@ def generate_voronoi_areas(asset_points, clip_region):
             }
         })
 
-    # Get region set
-    regions = []
-    for region in clip_region:
-        regions.append(shape(region['geometry']))
-
-    # Merge regions
-    u = cascaded_union(regions)
-
-    for asset_area in asset_areas:
-        asset_area['geometry'] = mapping(shape(asset_area['geometry']).intersection(u))
-
     return asset_areas
 
 def generate_exchange_area(exchanges, merge=True):
@@ -1547,26 +1536,26 @@ def generate_exchange_area(exchanges, merge=True):
         # Add islands that were removed because they were not
         # connected to the main polygon and were not recovered
         # because they were on the edge of the map or inbetween
-        # exchanges :-). Merge to largest intersecting exchange area.
+        # exchanges. Merge to largest intersecting exchange area.
         idx_exchange_areas = index.Index()
         for idx, exchange_area in enumerate(exchange_areas):
             idx_exchange_areas.insert(idx, shape(exchange_area['geometry']).bounds, exchange_area)
         for island in removed_islands:
-            intersections = [n for n in idx_exchange_areas.intersection((island.bounds), objects='raw')]
+            intersections = [n for n in idx_exchange_areas.intersection((island.bounds), objects=True)]
 
             if len(intersections) > 0:
                 for idx, intersection in enumerate(intersections):
                     if idx == 0:
                         merge_with = intersection
-                    elif shape(intersection['geometry']).intersection(island).length > shape(merge_with['geometry']).intersection(island).length:
+                    elif shape(intersection.object['geometry']).intersection(island).length > shape(merge_with.object['geometry']).intersection(island).length:
                         merge_with = intersection
 
-                merged_geom = merge_with
+                merged_geom = merge_with.object
                 merged_geom['geometry'] = mapping(shape(merged_geom['geometry']).union(island))
                 idx_exchange_areas.delete(merge_with.id, shape(merge_with.object['geometry']).bounds)
                 idx_exchange_areas.insert(merge_with.id, shape(merged_geom['geometry']).bounds, merged_geom)
 
-        exchange_areas = list(idx_exchange_areas.intersection(idx_exchange_areas.bounds, objects='raw'))
+        exchange_areas = [n.object for n in idx_exchange_areas.intersection(idx_exchange_areas.bounds, objects=True)]
 
     return exchange_areas
 
@@ -1858,75 +1847,75 @@ if __name__ == "__main__":
 
     #####
     # Integrate WTP and WTA household data into premises
-    # print('Loading MSOA data')
-    # MSOA_data = read_msoa_data(lad_ids)
+    print('Loading MSOA data')
+    MSOA_data = read_msoa_data(lad_ids)
 
-    # print('Loading age data')
-    # age_data = read_age_data()
+    print('Loading age data')
+    age_data = read_age_data()
 
-    # print('Loading gender data')
-    # gender_data = read_gender_data()
+    print('Loading gender data')
+    gender_data = read_gender_data()
 
-    # print('Loading nation data')
-    # nation_data = read_nation_data()
+    print('Loading nation data')
+    nation_data = read_nation_data()
 
-    # print('Loading urban_rural data')
-    # urban_rural_data = read_urban_rural_data()
+    print('Loading urban_rural data')
+    urban_rural_data = read_urban_rural_data()
 
-    # print('Add country indicator')
-    # MSOA_data = add_country_indicator(MSOA_data)
+    print('Add country indicator')
+    MSOA_data = add_country_indicator(MSOA_data)
 
-    # print('Adding adoption data to MSOA data')
-    # MSOA_data = add_data_to_MSOA_data(age_data, MSOA_data, 'age')
-    # MSOA_data = add_data_to_MSOA_data(gender_data, MSOA_data, 'gender')
+    print('Adding adoption data to MSOA data')
+    MSOA_data = add_data_to_MSOA_data(age_data, MSOA_data, 'age')
+    MSOA_data = add_data_to_MSOA_data(gender_data, MSOA_data, 'gender')
 
-    # print('Loading OA data')
-    # oa_data = read_oa_data()
+    print('Loading OA data')
+    oa_data = read_oa_data()
 
-    # print('Match and convert social grades from NS-Sec to NRS')
-    # oa_data = convert_ses_grades(oa_data)
+    print('Match and convert social grades from NS-Sec to NRS')
+    oa_data = convert_ses_grades(oa_data)
 
-    # print('Loading ses data')
-    # ses_data = read_ses_data()
+    print('Loading ses data')
+    ses_data = read_ses_data()
 
-    # print('Adding ses adoption data to OA data')
-    # oa_data = add_data_to_MSOA_data(ses_data, oa_data, 'ses')
+    print('Adding ses adoption data to OA data')
+    oa_data = add_data_to_MSOA_data(ses_data, oa_data, 'ses')
 
-    # print('Adding MSOA data to OA data')
-    # final_data = merge_two_lists_of_dicts(MSOA_data, oa_data, 'HID', 'lad', 'year')
+    print('Adding MSOA data to OA data')
+    final_data = merge_two_lists_of_dicts(MSOA_data, oa_data, 'HID', 'lad', 'year')
 
-    # print('Catching any missing data')
-    # final_data, missing_data = get_missing_ses_key(final_data)
+    print('Catching any missing data')
+    final_data, missing_data = get_missing_ses_key(final_data)
 
-    # print('Calculate product of adoption factors')
-    # final_data = calculate_adoption_propensity(final_data)
+    print('Calculate product of adoption factors')
+    final_data = calculate_adoption_propensity(final_data)
 
-    # print('Calculate willingness to pay')
-    # final_data = calculate_wtp(final_data)
+    print('Calculate willingness to pay')
+    final_data = calculate_wtp(final_data)
 
-    # print('Aggregating WTP by household')
-    # household_wtp = aggregate_wtp_and_wta_by_household(final_data)
+    print('Aggregating WTP by household')
+    household_wtp = aggregate_wtp_and_wta_by_household(final_data)
 
-    # print('Reading premises data')
-    # premises = read_premises_data(exchange_area)
+    print('Reading premises data')
+    premises = read_premises_data(exchange_area)
 
-    # print('Expand premises entries')
-    # premises = expand_premises(premises)
+    print('Expand premises entries')
+    premises = expand_premises(premises)
 
-    # print('Adding household data to premises')
-    # premises = merge_prems_and_housholds(premises, household_wtp)
+    print('Adding household data to premises')
+    premises = merge_prems_and_housholds(premises, household_wtp)
 
-    # print('Write premises_multiple by household to .csv')
-    # premises_fieldnames = ['uid','oa','gor','residential_address_count','non_residential_address_count','function','postgis_geom','N','E', 'HID','lad','year','wta','wtp']
-    # csv_writer(premises, '{}_premises_data.csv'.format(exchange_abbr), premises_fieldnames)
+    print('Write premises_multiple by household to .csv')
+    premises_fieldnames = ['uid','oa','gor','residential_address_count','non_residential_address_count','function','postgis_geom','N','E', 'HID','lad','year','wta','wtp']
+    csv_writer(premises, '{}_premises_data.csv'.format(exchange_abbr), premises_fieldnames)
 
-    # print('Writing wtp')
-    # wta_data_fieldnames = ['HID','lad','year','wta','wtp']
-    # csv_writer(household_wtp, '{}_wta_data.csv'.format(exchange_abbr), wta_data_fieldnames)
+    print('Writing wtp')
+    wta_data_fieldnames = ['HID','lad','year','wta','wtp']
+    csv_writer(household_wtp, '{}_wta_data.csv'.format(exchange_abbr), wta_data_fieldnames)
 
-    # print('Writing any missing data')
-    # missing_data_fieldnames = ['PID','MSOA','lad','gender','age','ethnicity','HID','year', 'nation']
-    # csv_writer(missing_data, '{}_missing_data.csv'.format(exchange_abbr), missing_data_fieldnames)
+    print('Writing any missing data')
+    missing_data_fieldnames = ['PID','MSOA','lad','gender','age','ethnicity','HID','year', 'nation']
+    csv_writer(missing_data, '{}_missing_data.csv'.format(exchange_abbr), missing_data_fieldnames)
     ####
 
     print('read_pcd_to_exchange_lut')
