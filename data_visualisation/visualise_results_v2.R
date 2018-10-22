@@ -9,9 +9,54 @@ library(ggpubr)
 library(wesanderson)
 
 path_figures <- "C:\\Users\\edwar\\Desktop\\GitHub\\digital_comms\\data_visualisation\\digital_comms_test"
+path_adoption <- "C:\\Users\\edwar\\Desktop\\GitHub\\digital_comms\\data\\scenarios"
 path_shapes <- "C:\\Users\\edwar\\Desktop\\GitHub\\digital_comms\\data\\digital_comms\\raw\\lad_uk_2016-12"
 
-read_in_data <- function(file_pattern) {
+read_in_adoption <- function(file_pattern) {
+  
+  files <- list.files(path = path_adoption, pattern = glob2rx(file_pattern), recursive = TRUE)
+  print(files)
+  setwd(path_adoption)
+  
+  #initialised empty dataframe
+  empty_df <- data.frame(year=numeric(),
+                         region=character(), 
+                         interval=numeric(), 
+                         value=numeric())
+  
+  import_function = lapply(files, function(x) {
+    DF <- read.csv(x, header = T, sep = ",")
+    DF_Merge <- merge(empty_df, DF, all = T)
+    DF_Merge$scenario <- as.factor(substring(x, 6,14))
+    DF_Merge$tech <- as.factor(substring(x, 1,5))
+    return(DF_Merge)})
+  
+  all_scenarios <- do.call(rbind, import_function)
+  
+  all_scenarios <- select(all_scenarios, year, value, scenario, tech)
+  
+  all_scenarios$scenario <- gsub(".*low.*", "Low Adoption", all_scenarios$scenario)
+  all_scenarios$scenario <- gsub(".*baseline.*", "Baseline Adoption", all_scenarios$scenario)
+  all_scenarios$scenario <- gsub(".*high.*", "High Adoption", all_scenarios$scenario)
+  
+  all_scenarios$tech <- gsub(".*fttdp.*", "FTTdp", all_scenarios$tech)
+  all_scenarios$tech <- gsub(".*fttp.*", "FTTP", all_scenarios$tech)
+  
+  all_scenarios$tech <- factor(all_scenarios$tech,
+                               levels = c("FTTdp",
+                                          "FTTP"),
+                               labels = c("FTTdp",
+                                          "FTTP"))
+  
+  names(all_scenarios)[names(all_scenarios) == 'year'] <- 'timestep'
+  
+  all_scenarios$category <- 'Adoption Desirability'
+  
+  return(all_scenarios)
+}
+
+
+read_in_data <- function(file_pattern, adoption_data) {
 
   path <- "C:\\Users\\edwar\\Desktop\\GitHub\\digital_comms\\results"
   
@@ -39,16 +84,16 @@ read_in_data <- function(file_pattern) {
   all_scenarios <- do.call(rbind, import_function)
   
   all_scenarios <- select(all_scenarios, timestep, value, scenario, strategy, tech, region, prem_type)
-  print(all_scenarios$prem_type)
+
   rm(empty_df, files, myfiles)
   
   all_scenarios$scenario <- factor(all_scenarios$scenario,
                                    levels = c("h",
                                               "b",
                                               "l"),
-                                   labels = c("High Take-up",
-                                              "Baseline Take-up",
-                                              "Low Take-up"))
+                                   labels = c("High Adoption",
+                                              "Baseline Adoption",
+                                              "Low Adoption"))
   
   all_scenarios$strategy <- gsub(".*r.*", "Market Rollout", all_scenarios$strategy)
   all_scenarios$strategy <- gsub(".*s.*", "Targeted Subsidy", all_scenarios$strategy)
@@ -70,10 +115,10 @@ read_in_data <- function(file_pattern) {
                                           "FTTP"),
                                labels = c("FTTdp",
                                           "FTTP"))
+  print(head(all_scenarios, n=5))
+  all_scenarios$category <- paste(all_scenarios$tech, all_scenarios$prem_type)
   
-  all_scenarios$tech_connection_type <- paste(all_scenarios$tech, all_scenarios$prem_type)
-  
-  all_scenarios$tech_connection_type <- factor(all_scenarios$tech_connection_type,
+  all_scenarios$category <- factor(all_scenarios$category,
                                                levels = c("FTTdp Passed",
                                                           "FTTdp Connected",
                                                           "FTTP Passed",
@@ -82,36 +127,46 @@ read_in_data <- function(file_pattern) {
                                                           "FTTdp Connected",
                                                           "FTTP Passed",
                                                           "FTTP Connected"))
+  print(head(all_scenarios, n=5))
+  all_scenarios <- select(all_scenarios, timestep, value, scenario, strategy, tech, category)
+  
+  all_scenarios <-rbind(all_scenarios, adoption_data)
   
   all_scenarios$timestep <- as.factor(all_scenarios$timestep)
+  
+  all_scenarios$category <- factor(all_scenarios$category,
+                                   levels = c("Adoption Desirability",
+                                              "FTTdp Passed",
+                                              "FTTdp Connected",
+                                              "FTTP Passed",
+                                              "FTTP Connected"),
+                                   labels = c("Adoption Desirability",
+                                              "FTTdp Passed",
+                                              "FTTdp Connected",
+                                              "FTTP Passed",
+                                              "FTTP Connected"))
   
   return(all_scenarios)
 }
 
-all_scenarios <- read_in_data("output_percentage_of_premises*.csv")
+adoption_scenarios_market <- read_in_adoption("*adoption.csv")
+adoption_scenarios_market$strategy <- "Market Rollout"
+adoption_scenarios_subsidy <- read_in_adoption("*adoption.csv")
+adoption_scenarios_subsidy$strategy <- "Targeted Subsidy"
+all_adoption_scenarios <- rbind(adoption_scenarios_market, adoption_scenarios_subsidy)
+rm(adoption_scenarios_market, adoption_scenarios_subsidy)
 
-all_scenarios <- all_scenarios[complete.cases(all_scenarios),]
+all_scenarios <- read_in_data("output_percentage_of_premises*.csv", all_adoption_scenarios)
 
-# ggplot(data=all_scenarios, 
-#                     aes(x=timestep, y=(value), group = tech_connection_type, colour= tech_connection_type)) + 
-#                     geom_line()  + 
-#                     labs(y = "Premises Connected (%)", x = "Year", colour = "Technology", 
-#                     title = "Technology Rollout by Scenario and Strategy", subtitle = "Expected Return Period: 4 Years") +
-#                     scale_y_continuous(expand = c(0, 0), limits=c(0,70)) +  
-#                     scale_x_discrete(expand = c(0, 0.15)) +
-#                     theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom") +
-#                     facet_grid(scenario~strategy)
-        
-scenario_results <- ggplot(all_scenarios, aes(x=timestep, y=value, group=tech_connection_type)) +
-  geom_line(aes(linetype=tech_connection_type, color=tech_connection_type, size=tech_connection_type))+
-  geom_point()+
-  scale_linetype_manual(values=c("dashed", "solid", "dashed","solid"))+
-  scale_color_manual(values=wes_palette(n=4, name="Darjeeling")) +
-  scale_size_manual(values=c(1, 1,1,1))+
-  scale_y_continuous(expand = c(0, 0), limits=c(0,70)) +  
+scenario_results <- ggplot(all_scenarios, aes(x=timestep, y=value, group=category)) +
+  geom_line(aes(linetype=category, color=category, size=category)) +
+  scale_linetype_manual(values=c("dotted", "twodash", "solid", "twodash", "solid"))+
+  scale_color_manual(values=rev(wes_palette(n=5, name="Darjeeling"))) +
+  scale_size_manual(values=c(1,1,1,1,1))+
+  scale_y_continuous(expand = c(0, 0), limits=c(0,102)) +  
   scale_x_discrete(expand = c(0, 0.15)) +
-  labs(y = "Premises Connected (%)", x = "Year", colour = "Technology", size = "Technology", linetype = "Technology",
-  title = "Technology Rollout by Scenario and Strategy", subtitle = "Expected Return Period: 4 Years") +
+  labs(y = "Percentage of Premises (%)", x = "Year", colour = "", size = "", linetype = "",
+  title = "Technology Rollout by Scenario and Strategy", subtitle = "Expected Investment Return Period: 4 Years") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom") +
   facet_grid(scenario~strategy) 
 
@@ -121,6 +176,39 @@ tiff('scenario_results.tiff', units="in", width=8, height=9, res=300)
 print(scenario_results)
 dev.off()
 
+##############################
+# PRESENTATION SLIDE BUILD
+##############################
+
+all_scenarios$scenario <- factor(all_scenarios$scenario,
+                                 levels = c("Low Adoption", 
+                                            "Baseline Adoption",
+                                            "High Adoption"))
+
+scenario_results_horizontal <- ggplot(all_scenarios, aes(x=timestep, y=value, group=category)) +
+  geom_line(aes(linetype=category, color=category, size=category)) +
+  scale_linetype_manual(values=c("dotted", "twodash", "solid", "twodash", "solid"))+
+  scale_color_manual(values=rev(wes_palette(n=5, name="Darjeeling"))) +
+  scale_size_manual(values=c(1,1,1,1,1))+
+  scale_y_continuous(expand = c(0, 0), limits=c(0,102)) +  
+  scale_x_discrete(expand = c(0, 0.19)) +
+  labs(y = "Percentage of Premises (%)", x = "Year", colour = "", size = "", linetype = "",
+       title = "Technology Rollout by Scenario and Strategy", subtitle = "Expected Investment Return Period: 4 Years") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom") +
+  facet_grid(strategy~scenario) 
+
+### EXPORT TO FOLDER
+setwd(path_figures)
+tiff('scenario_results_horizontal.tiff', units="in", width=9, height=7, res=300)
+print(scenario_results_horizontal)
+dev.off()
+
+#################################
+# 2030
+#################################
+
+final_year <- all_scenarios[which(all_scenarios$timestep==2030),] 
+
 #################################
 # Total cost 
 #################################
@@ -129,13 +217,13 @@ all_scenarios <- read_in_data("output_distribution_upgrade_costs_*.csv")
 
 all_scenarios <- all_scenarios[which(all_scenarios$timestep==2019),] 
 
-all_scenarios <- all_scenarios[which(all_scenarios$scenario=='Baseline Take-up'),] 
+all_scenarios <- all_scenarios[which(all_scenarios$scenario=='Baseline Adoption'),] 
 
 premises_by_dp <- read_in_data("output_premises_by_distribution_*.csv")
 
 premises_by_dp <- premises_by_dp[which(premises_by_dp$timestep==2019),] 
 
-premises_by_dp <- premises_by_dp[which(premises_by_dp$scenario=='Baseline Take-up'),] 
+premises_by_dp <- premises_by_dp[which(premises_by_dp$scenario=='Baseline Adoption'),] 
 
 premises_by_dp$premises <- premises_by_dp$value
 
@@ -222,7 +310,7 @@ dev.off()
 
 all_scenarios <- read_in_data("*regions_lad2016_intervals_annual.csv")
 
-all_scenarios <- all_scenarios[which(all_scenarios$scenario=='Baseline Take-up'),] 
+all_scenarios <- all_scenarios[which(all_scenarios$scenario=='Baseline Adoption'),] 
 
 all_scenarios <- all_scenarios[which(all_scenarios$timestep== 2020 |
                                       all_scenarios$timestep== 2022 |

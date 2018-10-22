@@ -36,17 +36,17 @@ TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
 # setup file locations and data files
 #####################################
 
-# DATA_RAW = os.path.join(BASE_PATH, 'raw')
-# DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
-# SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'network_hierarchy_data')
+DATA_RAW = os.path.join(BASE_PATH, 'raw')
+DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
+SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'network_hierarchy_data')
 
 #####################################
 # setup test data file locations 
 #####################################
 
-DATA_RAW = os.path.join(BASE_PATH, 'network_generation_test_data_cambridgeshire', 'raw')
-DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'network_generation_test_data_cambridgeshire', 'intermediate')
-SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'network_hierarchy_data')
+# DATA_RAW = os.path.join(BASE_PATH, 'network_generation_test_data_cambridgeshire', 'raw')
+# DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'network_generation_test_data_cambridgeshire', 'intermediate')
+# SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'network_hierarchy_data')
 
 #####################################
 # READ EXCHANGE AREA
@@ -1839,8 +1839,8 @@ if __name__ == "__main__":
     print('get lad ids')
     lad_ids = get_lad_area_ids(geojson_lad_areas)
 
-    #####
-    # Integrate WTP and WTA household data into premises
+    # ####
+    # #Integrate WTP and WTA household data into premises
     # print('Loading MSOA data')
     # MSOA_data = read_msoa_data(lad_ids)
 
@@ -1910,7 +1910,7 @@ if __name__ == "__main__":
     # print('Writing any missing data')
     # missing_data_fieldnames = ['PID','MSOA','lad','gender','age','ethnicity','HID','year', 'nation']
     # csv_writer(missing_data, '{}_missing_data.csv'.format(exchange_abbr), missing_data_fieldnames)  
-    ####
+    # ###
 
     print('read_pcd_to_exchange_lut')
     lut_pcd_to_exchange = read_pcd_to_exchange_lut()
