@@ -4,9 +4,7 @@ The Cambridge Communications Assessment Model
 [![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg)](http://ccam.readthedocs.io/en/latest/?badge=latest)
 [![Build Status](https://travis-ci.org/nismod/digital_comms.svg?branch=master)](https://travis-ci.org/nismod/digital_comms)
 [![Coverage Status](https://coveralls.io/repos/github/nismod/digital_comms/badge.svg?branch=master)](https://coveralls.io/github/nismod/digital_comms?branch=master)
-
-.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.1468787.svg
-   :target: https://doi.org/10.5281/zenodo.1468787
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1468787.svg)](https://doi.org/10.5281/zenodo.1468787)
 
 *(click on the 'docs' button to get directed to the full model documentation)*
 
