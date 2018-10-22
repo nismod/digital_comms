@@ -5,11 +5,14 @@ The Cambridge Communications Assessment Model
 [![Build Status](https://travis-ci.org/nismod/digital_comms.svg?branch=master)](https://travis-ci.org/nismod/digital_comms)
 [![Coverage Status](https://coveralls.io/repos/github/nismod/digital_comms/badge.svg?branch=master)](https://coveralls.io/github/nismod/digital_comms?branch=master)
 
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.1468787.svg
+   :target: https://doi.org/10.5281/zenodo.1468787
+
 *(click on the 'docs' button to get directed to the full model documentation)*
 
 Description
 ===========
-**The Cambridge Communications Assessment Model** is a decision support tool which can quantify the performance of digital infrastructure strategies across capacity, coverage and cost metrics. 
+The **Cambridge Communications Assessment Model** is a decision support tool to quantify the performance of national digital infrastructure strategies. 
 
 ## Citation:
 ```
