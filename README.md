@@ -26,7 +26,7 @@ See requirements.txt for a full list.
 Using conda
 -----------
 
-The recommended installation method is to use `conda<http://conda.pydata.org/miniconda.html>`_, 
+The recommended installation method is to use `conda<http://www.conda.pydata.org/miniconda.html>`_, 
 which handles packages and virtual environments, along with the conda-forge channel which has 
 a host of pre-built libraries and packages.
 
@@ -71,7 +71,7 @@ The run the tests:
 Background and funding 
 ==========================
 
-The **Cambridge Communications Assessment Model** has been collaboratively developed between the [Networks and Operating Systems Group (NetOS)](http://cl.cam.ac.uk/research/srg/netos) at the [Cambridge Computer Laboratory](http://cl.cam.ac.uk), the [Environmental Change Institute](http://www.eci.ox.ac.uk/) at the [University of Oxford](https://www.ox.ac.uk/), and the UK's [Digital Catapult](http://www.digtalcatapult.org.uk). Research activity between 2017-2018 also partially took place at the [Cambridge Judge Business School](http://www.jbs.cam.ac.uk/home/) at the [University of Cambridge](http://www.cam.ac.uk/). 
+The **Cambridge Communications Assessment Model** has been collaboratively developed between the [Networks and Operating Systems Group (NetOS)](http://www.cl.cam.ac.uk/research/srg/netos) at the [Cambridge Computer Laboratory](http://www.cl.cam.ac.uk), the [Environmental Change Institute](http://www.eci.ox.ac.uk/) at the [University of Oxford](https://www.ox.ac.uk/), and the UK's [Digital Catapult](http://www.digtalcatapult.org.uk). Research activity between 2017-2018 also partially took place at the [Cambridge Judge Business School](http://www.jbs.cam.ac.uk/home/) at the [University of Cambridge](http://www.cam.ac.uk/). 
 
 Development has been funded by the EPSRC via (i) the [Infrastructure Transitions Research Consortium](http://www.itrc.org.uk/) (EP/N017064/1) and (ii) the UK's [Digital Catapult](http://www.digtalcatapult.org.uk)
 
