@@ -257,13 +257,13 @@ parameters:
   suggested_range: (0, 1000000000)
   units: GBP
 - absolute_range: (0, 10000000000)
-  default_value: 1000000
+  default_value: 2500000
   description: The yearly budget for a telco to match fund on infrastructure
   name: telco_match_funding
   suggested_range: (0, 1000000000)
   units: GBP
 - absolute_range: (0, 10000000000)
-  default_value: 1000000
+  default_value: 2500000
   description: The yearly government subsidy to spend on infrastructure
   name: subsidy
   suggested_range: (0, 1000000000)

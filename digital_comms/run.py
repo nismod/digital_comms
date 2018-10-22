@@ -49,7 +49,6 @@ def cpuprofile(func):
             print(profiler.output_text(unicode=False, color=True))
     return wrapper
 
-
 class DigitalCommsWrapper(SectorModel):
     """Digital model
     """
@@ -171,88 +170,48 @@ class DigitalCommsWrapper(SectorModel):
         premises_wanting_to_adopt[0, 0] = len(premises_adoption_desirability_ids)
         data_handle.set_results('premises_adoption_desirability', premises_wanting_to_adopt)
 
-        if TECH == 'fttp':
+        distribution_upgrade_costs = ('distribution_upgrade_costs_' + str(TECH))
+        distribution_upgrade_costs = np.empty((self.system.number_of_assets['distributions'],1))
+        for idx, distribution in enumerate(self.system.assets['distributions']):
+            distribution_upgrade_costs[idx, 0] = distribution.upgrade_costs[TECH]
+        data_handle.set_results(('distribution_upgrade_costs_' + str(TECH)), distribution_upgrade_costs)
 
-            distribution_upgrade_costs_fttp = np.empty((self.system.number_of_assets['distributions'],1))
-            for idx, distribution in enumerate(self.system.assets['distributions']):
-                distribution_upgrade_costs_fttp[idx, 0] = distribution.upgrade_costs['fttp']
-            data_handle.set_results('distribution_upgrade_costs_fttp', distribution_upgrade_costs_fttp)
+        upgrade_cost_per_premises = ('upgrade_cost_per_premises_' + str(TECH))
+        upgrade_cost_per_premises = np.empty((self.system.number_of_assets['distributions'],1))
+        for idx, distribution in enumerate(self.system.assets['distributions']):
+            if len(distribution._clients) > 0:
+                upgrade_cost_per_premises[idx, 0] = distribution.upgrade_costs[TECH] / len(distribution._clients)
+            else:
+                upgrade_cost_per_premises[idx, 0] = 0
+        data_handle.set_results(('premises_upgrade_costs_' + str(TECH)), upgrade_cost_per_premises)
 
-            upgrade_cost_per_premises_fttp = np.empty((self.system.number_of_assets['distributions'],1))
-            for idx, distribution in enumerate(self.system.assets['distributions']):
-                if len(distribution._clients) > 0:
-                    upgrade_cost_per_premises_fttp[idx, 0] = distribution.upgrade_costs['fttp'] / len(distribution._clients)
-                else:
-                    upgrade_cost_per_premises_fttp[idx, 0] = 0
-            data_handle.set_results('premises_upgrade_costs_fttp', upgrade_cost_per_premises_fttp)
+        #premises passed
+        premises_passed = ('premises_passed_with_' + str(TECH))
+        premises_passed = np.empty((1,1))
+        premises_passed[0, 0] = sum(getattr(premise, TECH) for premise in self.system._premises) 
+        print("* {} premises passed {}".format(TECH, premises_passed))
+        data_handle.set_results(('premises_passed_with_' + str(TECH)), premises_passed)
 
-            premises_passed_with_fttp = np.empty((1,1))
-            premises_passed_with_fttp[0, 0] = sum(premise.fttp for premise in self.system._premises) 
-            print("* fttp premises passed {}".format(premises_passed_with_fttp))
-            data_handle.set_results('premises_passed_with_fttp', premises_passed_with_fttp)
+        percentage_of_premises_passed = ('percentage_of_premises_passed_with_' + str(TECH))
+        percentage_of_premises_passed = np.empty((1,1))
+        percentage_of_premises_passed[0, 0] = round((sum(getattr(premise, TECH) for premise in self.system._premises) / len(self.system._premises)*100),2)
+        print("* {} percentage of premises passed {}".format(TECH, percentage_of_premises_passed))
+        data_handle.set_results(('percentage_of_premises_passed_with_' + str(TECH)), percentage_of_premises_passed)
 
-            percentage_of_premises_passed_with_fttp = np.empty((1,1))
-            percentage_of_premises_passed_with_fttp[0, 0] = round((sum(premise.fttp for premise in self.system._premises) / len(self.system._premises)*100),2)
-            print("* fttp % premises passed {}".format(percentage_of_premises_passed_with_fttp))
-            data_handle.set_results('percentage_of_premises_passed_with_fttp', percentage_of_premises_passed_with_fttp)
+        #premises connected
+        premises_connected = ('premises_connected_with_' + str(TECH))
+        premises_connected = np.empty((1,1))
+        premises_connected[0, 0] = sum(getattr(premise, TECH) for premise in self.system._premises if premise.adoption_desirability == True) 
+        print("* {} premises connected {}".format(TECH, premises_connected))
+        data_handle.set_results(('premises_connected_with_' + str(TECH)), premises_connected)
 
-            premises_connected_with_fttp = np.empty((1,1))
-            premises_connected_with_fttp[0, 0] = sum(premise.fttp for premise in self.system._premises if premise.adoption_desirability == True) 
-            print("* fttp premises connected {}".format(premises_connected_with_fttp))
-            data_handle.set_results('premises_connected_with_fttp', premises_connected_with_fttp)
-
-            percentage_of_premises_connected_with_fttp = np.empty((1,1))
-            percentage_of_premises_connected_with_fttp[0, 0] = round((sum(premise.fttp for premise in self.system._premises if premise.adoption_desirability == True) / len(self.system._premises)*100),2)
-            print("* fttp % premises connected {}".format(percentage_of_premises_connected_with_fttp))
-            data_handle.set_results('percentage_of_premises_connected_with_fttp', percentage_of_premises_connected_with_fttp)
-
-        if TECH == 'fttdp':
-
-            distribution_upgrade_costs_fttdp = np.empty((self.system.number_of_assets['distributions'],1))
-            for idx, distribution in enumerate(self.system.assets['distributions']):
-                distribution_upgrade_costs_fttdp[idx, 0] = distribution.upgrade_costs['fttdp']
-            data_handle.set_results('distribution_upgrade_costs_fttdp', distribution_upgrade_costs_fttdp)
-
-            upgrade_cost_per_premises_fttdp = np.empty((self.system.number_of_assets['distributions'],1))
-            for idx, distribution in enumerate(self.system.assets['distributions']):
-                if len(distribution._clients) > 0:
-                    upgrade_cost_per_premises_fttdp[idx, 0] = distribution.upgrade_costs['fttdp'] / len(distribution._clients)
-                else:
-                    upgrade_cost_per_premises_fttdp[idx, 0] = 0
-            data_handle.set_results('premises_upgrade_costs_fttdp', upgrade_cost_per_premises_fttdp)
-
-            # premises_with_fttdp = np.empty((1,1))
-            # premises_with_fttdp[0, 0] = sum(premise.fttdp for premise in self.system._premises)
-            # print("* fttdp premises passed {}".format(premises_with_fttdp))
-            # data_handle.set_results('premises_with_fttdp', premises_with_fttdp)
-
-            premises_passed_with_fttdp = np.empty((1,1))
-            premises_passed_with_fttdp[0, 0] = sum(premise.fttdp for premise in self.system._premises) 
-            print("* fttdp premises passed {}".format(premises_passed_with_fttdp))
-            data_handle.set_results('premises_passed_with_fttdp', premises_passed_with_fttdp)
-            
-            # percentage_of_premises_with_fttdp = np.empty((1,1))
-            # percentage_of_premises_with_fttdp[0, 0] = round((sum(premise.fttdp for premise in self.system._premises) / len(self.system._premises)*100),2)
-            # print("* fttdp % premises passed {}".format(percentage_of_premises_with_fttdp))
-            # data_handle.set_results('premises_with_fttdp', percentage_of_premises_with_fttdp)
-
-            percentage_of_premises_passed_with_fttdp = np.empty((1,1))
-            percentage_of_premises_passed_with_fttdp[0, 0] = round((sum(premise.fttdp for premise in self.system._premises) / len(self.system._premises)*100),2)
-            print("* fttdp % premises passed {}".format(percentage_of_premises_passed_with_fttdp))
-            data_handle.set_results('percentage_of_premises_passed_with_fttdp', percentage_of_premises_passed_with_fttdp)
-
-            premises_connected_with_fttdp = np.empty((1,1))
-            premises_connected_with_fttdp[0, 0] = sum(premise.fttdp for premise in self.system._premises if premise.adoption_desirability == True) 
-            print("* fttdp premises connected {}".format(premises_connected_with_fttdp))
-            data_handle.set_results('premises_connected_with_fttdp', premises_connected_with_fttdp)
-
-            percentage_of_premises_connected_with_fttdp = np.empty((1,1))
-            percentage_of_premises_connected_with_fttdp[0, 0] = round((sum(premise.fttdp for premise in self.system._premises if premise.adoption_desirability == True) / len(self.system._premises)*100),2)
-            print("* fttdp % premises connected {}".format(percentage_of_premises_connected_with_fttdp))
-            data_handle.set_results('percentage_of_premises_connected_with_fttdp', percentage_of_premises_connected_with_fttdp)
+        percentage_of_premises_connected = ('percentage_of_premises_connected_with_' + str(TECH))
+        percentage_of_premises_connected = np.empty((1,1))
+        percentage_of_premises_connected[0, 0] = round((sum(getattr(premise, TECH) for premise in self.system._premises if premise.adoption_desirability == True) / len(self.system._premises)*100),2)
+        print("* {} percentage of premises connected {}".format(TECH, percentage_of_premises_connected))
+        data_handle.set_results(('percentage_of_premises_connected_with_' + str(TECH)), percentage_of_premises_connected)
 
         # Regional output
-
         lad_names = self.get_region_names('lad2016')
         num_lads = len(lad_names)
         num_fttp = np.zeros((num_lads, 1))
@@ -272,8 +231,75 @@ class DigitalCommsWrapper(SectorModel):
 
         data_handle.set_results('lad_premises_with_fttp', num_fttp)
         data_handle.set_results('lad_premises_with_fttdp', num_fttdp)
-        # data_handle.set_results('lad_premises_with_fttc', num_fttc)
-        # data_handle.set_results('lad_premises_with_adsl', num_adsl)
+
+        #get cambridge exchange data
+        if STRATEGY == 'fttp_rollout_per_distribution' and TECH == 'fttp':
+
+            path_main = os.path.dirname(os.path.abspath(__file__))
+            config = configparser.ConfigParser()
+            config.read(os.path.join(path_main, 'wrapperconfig.ini'))
+            BASE_PATH = config['PATHS']['path_export_data']
+        
+            def csv_writer(data, filename, fieldnames):
+                with open(os.path.join(BASE_PATH, filename),'w') as csv_file:
+                    writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
+                    writer.writeheader()
+                    writer.writerows(data)
+        
+            def write_out_upgrades(data):
+                export_data = []
+                for datum in data:
+                    export_data.append({
+                        'id': datum.id,
+                        'upgrade': datum.fttp,
+                        'year': now
+                    })  
+                return export_data
+
+            #get exchanges
+            exchange = [exchange for exchange in self.system._exchanges if exchange.id == 'exchange_EACAM'][0]
+
+            #get cabinets
+            cabinets = exchange._clients
+            cabinet_export_data = write_out_upgrades(cabinets)
+
+            #get distributions
+            distributions = []
+            [distributions.extend(cabinet._clients) for cabinet in cabinets]
+            distribution_export_data = write_out_upgrades(distributions)
+
+            #get premises
+            premises = []
+            [premises.extend(distribution._clients) for distribution in distributions]
+
+            premises_export_data = []
+            for premise in premises:
+                premises_export_data.append({
+                    'id': premise.id,
+                    'adoption_desirability': premise.adoption_desirability,
+                    'premises_passed': premise.fttp,
+                    'year': now
+                })  
+
+            #get exchange to cabinet links
+            exchange_to_cabinet_links = [link for link in self.system._links_from_cabinets if link.dest == 'exchange_EACAM']
+
+            #get cabinet to dist point links
+            cab_to_dist_point_links = exchange_to_cabinet_links.origin
+
+            #get distributions
+            cab_to_dist_point_links = []
+            [cab_to_dist_point_links.extend(link.origin) for link in cab_to_dist_point_links]
+            print(cab_to_dist_point_links)
+
+            #set fieldnames
+            generic_fieldnames = ['id','upgrade','year']
+            premises_fieldnames = ['id','adoption_desirability','premises_passed','year']
+
+            #write out
+            csv_writer(cabinet_export_data, ('cabinet_data{}.csv'.format(now)), generic_fieldnames)  
+            csv_writer(distribution_export_data, ('distribution_data{}.csv'.format(now)), generic_fieldnames)  
+            csv_writer(premises_export_data, ('premises_data{}.csv'.format(now)), premises_fieldnames)  
 
         # ----
         # Exit

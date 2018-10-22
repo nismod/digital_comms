@@ -24,35 +24,35 @@ strategies: []
 timesteps:
 - 2019
 - 2020
-- 2021
-- 2022
-- 2023
-- 2024
-- 2025
-- 2026
-- 2027
-- 2028
-- 2029
-- 2030
+# - 2021
+# - 2022
+# - 2023
+# - 2024
+# - 2025
+# - 2026
+# - 2027
+# - 2028
+# - 2029
+# - 2030
 """
-    strategies = [
-        ('fttp_r', 'fttp_rollout_per_distribution'),
-        ('fttp_s', 'fttp_subsidised_rollout_per_distribution'),
-        ('fttdp_r', 'fttdp_rollout_per_distribution'),
-        ('fttdp_s', 'fttdp_subsidised_rollout_per_distribution'),
-    ]
-    scenarios = [
-        ('b', 'baseline_adoption'),
-        ('h', 'high_adoption'),
-        ('l', 'low_adoption'),
-    ]
-
     # strategies = [
-    #     ('fttp_r', 'fttp_rollout_per_distribution')
+    #     ('fttp_r', 'fttp_rollout_per_distribution'),
+    #     ('fttp_s', 'fttp_subsidised_rollout_per_distribution'),
+    #     ('fttdp_r', 'fttdp_rollout_per_distribution'),
+    #     ('fttdp_s', 'fttdp_subsidised_rollout_per_distribution'),
     # ]
     # scenarios = [
     #     ('b', 'baseline_adoption'),
+    #     ('h', 'high_adoption'),
+    #     ('l', 'low_adoption'),
     # ]
+
+    strategies = [
+        ('fttp_r', 'fttp_rollout_per_distribution')
+    ]
+    scenarios = [
+        ('b', 'baseline_adoption'),
+    ]
 
     batchfile = open(os.path.join(base_path, 'batchfile'), 'w')
 

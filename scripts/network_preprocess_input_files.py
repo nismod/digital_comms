@@ -36,17 +36,17 @@ TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
 # setup file locations and data files
 #####################################
 
-# DATA_RAW = os.path.join(BASE_PATH, 'raw')
-# DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
-# SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'network_hierarchy_data')
+DATA_RAW = os.path.join(BASE_PATH, 'raw')
+DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
+SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'network_hierarchy_data')
 
 #####################################
 # setup test data file locations
 #####################################
 
-DATA_RAW = os.path.join(BASE_PATH, 'raw')
-DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
-SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'network_hierarchy_data')
+# DATA_RAW = os.path.join(BASE_PATH, 'network_generation_test_data_cambridgeshire', 'raw')
+# DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'network_generation_test_data_cambridgeshire', 'intermediate')
+# SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'network_hierarchy_data')
 
 #####################################
 # READ EXCHANGE AREA

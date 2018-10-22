@@ -615,7 +615,6 @@ class Link(object):
 
         self.compute()
 
-
 def _calculate_benefit_cost_ratio(benefits, costs):
     try:
         return benefits / costs
