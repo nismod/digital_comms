@@ -9,9 +9,7 @@ The Cambridge Communications Assessment Model
 
 Description
 ===========
-**The Cambridge Communications Assessment Model** provides analytics for 
-decision-makers on (i) capacity-demand and (ii) risk, vulnerability and 
-resilience. The fixed, wireless and satellite sectors are currently under development. 
+**The Cambridge Communications Assessment Model** is a decision support tool which can quantify the performance of digital infrastructure strategies across capacity, coverage and cost metrics. 
 
 ## Citation:
 ```
@@ -23,7 +21,7 @@ Setup and configuration
 =======================
 
 All code for **The Cambridge Communications Assessment Model** is written in 
-Python (Python>=3.5) and has a number of dependencies. 
+Python (Python>=3.6) and has a number of dependencies. 
 See requirements.txt for a full list.
 
 Using conda
@@ -47,6 +45,10 @@ Run this command once per machine:
 
     python setup.py develop
 
+Windows users may need to additionally install Shapely as follows:
+
+    conda install shapely
+
 To install permanently:
 
     python setup.py install
@@ -54,6 +56,14 @@ To install permanently:
 To build the documentation:
 
     python setup.py docs
+
+Users may need to additionally install Sphinx as follows:
+
+    conda install sphinx
+
+And potentially recommonmark: 
+
+    pip install recommonmark
 
 The run the tests:
 
