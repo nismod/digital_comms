@@ -1814,7 +1814,7 @@ def csv_writer(data, filename, fieldnames):
     Write data to a CSV file path
     """
     # Create path
-    directory = os.path.join(BASE_PATH)
+    directory = os.path.join(DATA_INTERMEDIATE)
     if not os.path.exists(directory):
         os.makedirs(directory)
 
