@@ -79,10 +79,6 @@ def get_exchange_ids(key, value):
 
 def cut_out_unwanted_premises_data(data):
 
-#'properties': OrderedDict([('id', 'premise_osgb1000030280096'), ('oa', 'E00042139'), ('residentia', '1'),
-# ('non_reside', '0'), ('function', '[12]'), ('postgis_ge', '0101000020346C000070975DE023181A41E2A9DD11D8372141'),
-# ('HID', '8510'), ('lad', 'E08000021'), ('year', '2018'), ('wtp', '15'), ('wta', '80.0'), ('postcode', 'NE62DA'),
-# ('connection', 'distribution_{NENTE}{1472}'), ('FTTP', 0), ('GFast', 0), ('FTTC', 1), ('DOCSIS3', 0), ('ADSL', 0)])
     premises_data = []
 
     for premises in data:
@@ -94,7 +90,7 @@ def cut_out_unwanted_premises_data(data):
                     "coordinates": premises['geometry']['coordinates'],
                 },
                 'properties': {
-                    'id': premises['properties']['id'], #[8:],
+                    'id': premises['properties']['id'], 
                     'connection': premises['properties']['connection'],
                     'FTTP': premises['properties']['FTTP'],
                     'GFast': premises['properties']['GFast'],

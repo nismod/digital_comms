@@ -2,10 +2,12 @@
 fiona>=1.7
 matplotlib
 networkx>=2.1
-osmnx
+geopandas
+libspatialindex
+Rtree>=0.8.3
 pyproj
 pysftp
-Rtree>=0.8.3
 scikit-learn>=0.19.1
 shapely>=1.6
 sphinx>=1.8
+osmnx
