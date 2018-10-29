@@ -36,9 +36,9 @@ TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
 # setup file locations and data files
 #####################################
 
-DATA_RAW = os.path.join(BASE_PATH, 'raw')
+DATA_RAW_INPUTS = os.path.join(BASE_PATH, 'raw', 'a_fixed_model_cambridge_test')
+DATA_RAW_SHAPES = os.path.join(BASE_PATH, 'raw', 'd_shapes')
 DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
-SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'network_hierarchy_data')
 
 #####################################
 # setup test data file locations
@@ -46,18 +46,18 @@ SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'network_hierarchy_data')
 
 # DATA_RAW = os.path.join(BASE_PATH, 'network_generation_test_data_cambridgeshire', 'raw')
 # DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'network_generation_test_data_cambridgeshire', 'intermediate')
-# SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'network_hierarchy_data')
+# DATA_RAW = os.path.join(DATA_RAW, 'network_hierarchy_data')
 
 #####################################
 # READ EXCHANGE AREA
 #####################################
 
 def read_exchange_area(exchange_name):
-    with fiona.open(os.path.join(DATA_INTERMEDIATE, '_exchange_areas.shp'), 'r') as source:
+    with fiona.open(os.path.join(DATA_RAW_SHAPES, 'exchange_areas', '_exchange_areas.shp'), 'r') as source:
         return [exchange for exchange in source if exchange['properties']['id'] == exchange_name][0]
 
 def read_lads(exchange_area):
-    with fiona.open(os.path.join(DATA_RAW, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'), 'r') as source:
+    with fiona.open(os.path.join(DATA_RAW_SHAPES, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'), 'r') as source:
         exchange_geom = shape(exchange_area['geometry'])
         return [lad for lad in source if exchange_geom.intersection(shape(lad['geometry']))]
 
@@ -86,11 +86,11 @@ def read_msoa_data(lad_ids):
     MSOA_data = []
 
     msoa_lad_id_files = {
-        lad: os.path.join(DATA_RAW,'demographic_scenario_data','msoa_2018','ass_{}_MSOA11_2018.csv'.format(lad))
+        lad: os.path.join(DATA_RAW_INPUTS,'demographic_scenario_data','msoa_2018','ass_{}_MSOA11_2018.csv'.format(lad))
         for lad in lad_ids
     }
 
-    pathlist = glob.iglob(os.path.join(DATA_RAW, 'demographic_scenario_data','msoa_2018') + '/*.csv', recursive=True)
+    pathlist = glob.iglob(os.path.join(DATA_RAW_INPUTS, 'demographic_scenario_data','msoa_2018') + '/*.csv', recursive=True)
 
     for filename in msoa_lad_id_files.values():
         with open(os.path.join(filename), 'r') as system_file:
@@ -119,7 +119,7 @@ def read_age_data():
     """
     my_data = []
 
-    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'age.csv'), 'r') as my_file:
+    with open(os.path.join(DATA_RAW_INPUTS, 'willingness_to_pay', 'age.csv'), 'r') as my_file:
         reader = csv.reader(my_file)
         next(reader, None)
         for row in reader:
@@ -138,7 +138,7 @@ def read_gender_data():
     """
     my_data = []
 
-    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'gender.csv'), 'r') as my_file:
+    with open(os.path.join(DATA_RAW_INPUTS, 'willingness_to_pay', 'gender.csv'), 'r') as my_file:
         reader = csv.reader(my_file)
         next(reader, None)
         for row in reader:
@@ -157,7 +157,7 @@ def read_nation_data():
     """
     my_data = []
 
-    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'nation.csv'), 'r') as my_file:
+    with open(os.path.join(DATA_RAW_INPUTS, 'willingness_to_pay', 'nation.csv'), 'r') as my_file:
         reader = csv.reader(my_file)
         next(reader, None)
         for row in reader:
@@ -176,7 +176,7 @@ def read_urban_rural_data():
     """
     my_data = []
 
-    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'urban_rural.csv'), 'r') as my_file:
+    with open(os.path.join(DATA_RAW_INPUTS, 'willingness_to_pay', 'urban_rural.csv'), 'r') as my_file:
         reader = csv.reader(my_file)
         next(reader, None)
         for row in reader:
@@ -210,7 +210,7 @@ def read_ses_data():
     """
     my_data = []
 
-    with open(os.path.join(BASE_PATH, 'raw', 'willingness_to_pay', 'ses.csv'), 'r') as my_file:
+    with open(os.path.join(DATA_RAW_INPUTS, 'willingness_to_pay', 'ses.csv'), 'r') as my_file:
         reader = csv.reader(my_file)
         next(reader, None)
         for row in reader:
@@ -243,7 +243,7 @@ def read_oa_data():
     OA_data = []
 
     oa_lad_id_files = {
-        lad: os.path.join(DATA_RAW, 'demographic_scenario_data','oa_2018','ass_hh_{}_OA11_2018.csv'.format(lad))
+        lad: os.path.join(DATA_RAW_INPUTS, 'demographic_scenario_data','oa_2018','ass_hh_{}_OA11_2018.csv'.format(lad))
         for lad in lad_ids
     }
 
@@ -402,7 +402,7 @@ def read_premises_data(exchange_area):
     """
     premises_data = []
 
-    pathlist = glob.iglob(os.path.join(DATA_RAW, 'layer_5_premises', 'blds_with_functions_EO_2018_03_29') + '/*.csv', recursive=True)
+    pathlist = glob.iglob(os.path.join(DATA_RAW_INPUTS, 'layer_5_premises', 'blds_with_functions_EO_2018_03_29') + '/*.csv', recursive=True)
 
     exchange_geom = shape(exchange_area['geometry'])
     exchange_bounds = shape(exchange_area['geometry']).bounds
@@ -487,7 +487,7 @@ def read_pcd_to_exchange_lut():
     pcd_to_exchange_data = []
     exchange_id =  exchange_name.replace('exchange_', '')
 
-    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW_INPUTS, 'network_hierarchy_data', 'January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
@@ -497,7 +497,7 @@ def read_pcd_to_exchange_lut():
                 'postcode': line[1].replace(" ", "")
             })
 
-    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part Two.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW_INPUTS, 'network_hierarchy_data','January 2013 PCP to Postcode File Part Two.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
@@ -507,7 +507,7 @@ def read_pcd_to_exchange_lut():
                 'postcode': line[1].replace(" ", "")
             })
 
-    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'pcp.to.pcd.dec.11.one.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW_INPUTS, 'network_hierarchy_data','pcp.to.pcd.dec.11.one.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
@@ -517,7 +517,7 @@ def read_pcd_to_exchange_lut():
                 'postcode': line[1].replace(" ", "")
             })
 
-    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'pcp.to.pcd.dec.11.two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW_INPUTS, 'network_hierarchy_data','pcp.to.pcd.dec.11.two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
@@ -526,7 +526,7 @@ def read_pcd_to_exchange_lut():
                 'postcode': line[1].replace(" ", "")
             })
 
-    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'from_tomasso_valletti.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW_INPUTS, 'network_hierarchy_data','from_tomasso_valletti.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
@@ -567,7 +567,7 @@ def read_pcd_to_cabinet_lut():
     exchange_id =  exchange_name.replace('exchange_', '')
 
 
-    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW_INPUTS, 'network_hierarchy_data','January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
@@ -580,7 +580,7 @@ def read_pcd_to_cabinet_lut():
                     'exchange_only_flag': line[4]
                 }
 
-    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'January 2013 PCP to Postcode File Part Two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW_INPUTS, 'network_hierarchy_data','January 2013 PCP to Postcode File Part Two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
@@ -594,7 +594,7 @@ def read_pcd_to_cabinet_lut():
                     ###skip other unwanted variables
                 }
 
-    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'pcp.to.pcd.dec.11.one.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW_INPUTS, 'network_hierarchy_data','pcp.to.pcd.dec.11.one.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
@@ -607,7 +607,7 @@ def read_pcd_to_cabinet_lut():
                     ###skip other unwanted variables
                 }
 
-    with open(os.path.join(SYSTEM_INPUT_NETWORK, 'pcp.to.pcd.dec.11.two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW_INPUTS, 'network_hierarchy_data','pcp.to.pcd.dec.11.two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
@@ -639,16 +639,16 @@ def read_postcode_areas(exchange_area):
     """
     exchange_geom = shape(exchange_area['geometry'])
 
-    with fiona.open(os.path.join(DATA_INTERMEDIATE, '_postcode_areas.shp'), 'r') as source:
+    with fiona.open(os.path.join(DATA_RAW_SHAPES, 'postcode_areas', '_postcode_areas.shp'), 'r') as source:
         return [postcode_area for postcode_area in source if exchange_geom.contains(shape(postcode_area['geometry']))]
 
 def read_postcode_technology_lut():
 
-    SYSTEM_INPUT_NETWORK = os.path.join(DATA_RAW, 'offcom_initial_system', 'fixed-postcode-2017')
+    DATA_INITIAL_SYSTEM = os.path.join(DATA_RAW_INPUTS, 'offcom_initial_system', 'fixed-postcode-2017')
 
     postcode_technology_lut = []
-    for filename in os.listdir(SYSTEM_INPUT_NETWORK):
-        with open(os.path.join(SYSTEM_INPUT_NETWORK, filename), 'r', encoding='utf8', errors='replace') as system_file:
+    for filename in os.listdir(DATA_INITIAL_SYSTEM):
+        with open(os.path.join(DATA_INITIAL_SYSTEM, filename), 'r', encoding='utf8', errors='replace') as system_file:
             reader = csv.reader(system_file)
             next(reader)
             for line in reader:
@@ -669,7 +669,7 @@ def read_postcode_technology_lut():
 def read_city_exchange_geotype_lut():
 
     exchange_geotypes = []
-    with open(os.path.join(DATA_RAW, 'exchange_geotype_lut', 'exchange_geotype_lut.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW_INPUTS, 'exchange_geotype_lut', 'exchange_geotype_lut.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
@@ -783,7 +783,7 @@ def read_exchanges(exchange_area):
     """
 
     idx = index.Index()
-    postcodes_path = os.path.join(DATA_RAW, 'layer_2_exchanges', 'final_exchange_pcds.csv')
+    postcodes_path = os.path.join(DATA_RAW_INPUTS, 'layer_2_exchanges', 'final_exchange_pcds.csv')
 
     with open(postcodes_path, 'r') as system_file:
         reader = csv.reader(system_file)
@@ -1813,6 +1813,11 @@ def csv_writer(data, filename, fieldnames):
     """
     Write data to a CSV file path
     """
+    # Create path
+    directory = os.path.join(BASE_PATH)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
     with open(os.path.join(DATA_INTERMEDIATE, filename),'w') as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
         writer.writeheader()

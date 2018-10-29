@@ -2,10 +2,9 @@
 Cambridge Communications Assessment Model
 =========================================
 
-Mobile communications are essential for everyday activity, and underpin both the
-economy and our society. This package provides a protoype mobile/wireless
-model, one aim of which is to develop long-term national infrastructure
-strategies for the UK.
+There are very few open-source software tools for analysing broadband networks. 
+
+This model allows different broadband infrastructure strategies to be evaluated, in terms of capacity, coverage and cost.
 
 
 Contents

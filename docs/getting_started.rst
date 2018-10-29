@@ -3,6 +3,18 @@
 Getting Started
 ===============
 
+Run the preprocessing script for a single exchange (exchange_EACAM):
+
+    python scripts/network_preprocess_input_files.py exchange_EACAM
+
+This script will generate a broadband network made up of nodes and edges (assets and links). 
+
+After creating an 'intermediate' folder in data/digital_comms, we can run the following:
+
+    python network_collect_results.py
+
+which will collect the intermediate results and assemble all individual exchange data into a set of aggregated system-wide files.
+
 .. todo::
 
     - Add directions to sample project files.
