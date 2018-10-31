@@ -535,12 +535,14 @@ class Premise(object):
         self.rollout_costs['fttc'] = self.upgrade_costs['fttc']
         self.rollout_costs['adsl'] = self.upgrade_costs['adsl']
 
-        # Rollout benefits
+        # Rollout benefits 
+        # (x12 months per year)
+        # (x4 years payback)
         self.rollout_benefits = {} 
-        self.rollout_benefits['fttp'] = (self.wtp * self.parameters['months_per_year'] * self.parameters['payback_period'] * ((100-self.parameters['profit_margin'])/100)) if self.adoption_desirability else 0
-        self.rollout_benefits['fttdp'] = (self.wtp * self.parameters['months_per_year'] * self.parameters['payback_period'] * ((100-self.parameters['profit_margin'])/100)) if self.adoption_desirability else 0
-        self.rollout_benefits['fttc'] = (self.wtp * self.parameters['months_per_year'] * self.parameters['payback_period'] * ((100-self.parameters['profit_margin'])/100)) if self.adoption_desirability else 0
-        self.rollout_benefits['adsl'] = (self.wtp * self.parameters['months_per_year'] * self.parameters['payback_period'] * ((100-self.parameters['profit_margin'])/100)) if self.adoption_desirability else 0
+        self.rollout_benefits['fttp'] = (self.wtp * 12 * 4 * ((100-80)/100)) if self.adoption_desirability else 0
+        self.rollout_benefits['fttdp'] = (self.wtp * 12 * 4 * ((100-80)/100)) if self.adoption_desirability else 0
+        self.rollout_benefits['fttc'] = (self.wtp * 12 * 4 * ((100-80)/100)) if self.adoption_desirability else 0
+        self.rollout_benefits['adsl'] = (self.wtp * 12 * 4 * ((100-80)/100)) if self.adoption_desirability else 0
 
         # Benefit-cost ratio
         self.rollout_bcr = {}
