@@ -16,8 +16,7 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 # SETUP FILE LOCATIONS 
 #####################################
 
-#DEMOGRAPHICS_INPUT_FIXED = os.path.join(BASE_PATH, 'raw', 'demographic_scenario_data')
-RESULTS_OUTPUT_FIXED = os.path.join(BASE_PATH, '..', 'results')
+RESULTS_OUTPUT_FIXED = os.path.join(BASE_PATH, '..', '..','results')
 SCENARIO_DATA = os.path.join(BASE_PATH,'..', 'scenarios')
 DATA_PROCESSED_INPUTS = os.path.join(BASE_PATH, 'processed')
 
@@ -25,7 +24,7 @@ DATA_PROCESSED_INPUTS = os.path.join(BASE_PATH, 'processed')
 # SETUP MODEL PARAMETERS
 #####################################
 
-BASE_YEAR = 2016
+BASE_YEAR = 2019
 END_YEAR = 2030
 TIMESTEP_INCREMENT = 1
 TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
@@ -45,7 +44,10 @@ MARKET_SHARE = 0.3
 
 # Annual capital budget constraint for the whole industry, GBP * market share
 # ANNUAL_BUDGET = (2 * 10 ** 9) * MARKET_SHARE
-ANNUAL_BUDGET = 100000
+ANNUAL_BUDGET = 100000000000
+TELCO_MATCH_FUNDING = 100000000
+SUBSIDY = 100000000
+SERVICE_OBLIGATION_CAPACITY = 10
 
 # Target threshold for universal mobile service, in Mbps/user
 SERVICE_OBLIGATION_CAPACITY = 10
@@ -112,8 +114,24 @@ def _get_suffix(intervention_strategy):
 ################################################################
 # LOAD SCENARIO DATA
 ################################################################
-#print('Loading scenario data')
+print('Loading scenario data')
 
+adoption_data = {}
+
+for adoption_scenario in ADOPTION_SCENARIOS:
+    adoption_data[adoption_scenario] = {}
+    for intervention_strategy in INTERVENTION_STRATEGIES: 
+        adoption_data[adoption_scenario][intervention_strategy] = {}
+        path = os.path.join(SCENARIO_DATA, '{}_{}_adoption.csv'.format(intervention_strategy, adoption_scenario))
+        with open(path, 'r') as scenario_file:
+            scenario_reader = csv.reader(scenario_file)
+            next(scenario_reader, None)
+            # Put the values in the dict
+            for year, region, interval, value in scenario_reader:
+                year = int(year)
+                if year in TIMESTEPS:
+                    print(year)
+                    adoption_data[adoption_scenario][intervention_strategy][year] = float(value)
 
 ################################################################
 # WRITE RESULTS DATA
@@ -145,16 +163,19 @@ def write_decisions(decisions, year, intervention_strategy):
 
     decisions_file.close()
 
+################################################################
+# WRITE RESULTS DATA
+################################################################
 
 if __name__ == "__main__": # allow the module to be executed directly 
 
     for adoption_scenario, intervention_strategy in [
-            ('low','fttdp'), #rollout_fttp_per_distribution
-            ('baseline','fttdp'), #rollout_fttp_per_cabinet
+            ('low','fttdp'), 
+            ('baseline','fttdp'), 
             ('high','fttdp'),
         
-            ('low','fttp'), #rollout_fttp_per_distribution
-            ('baseline','fttp'), #rollout_fttp_per_cabinet
+            ('low','fttp'), 
+            ('baseline','fttp'), 
             ('high','fttp')
         ]:
 
@@ -169,41 +190,40 @@ if __name__ == "__main__": # allow the module to be executed directly
 
             budget = ANNUAL_BUDGET
 
-            # Simulate first
+            # Simulate first year
             if year == BASE_YEAR:
                 system = ICTManager(assets, links, parameters)
                 #system.coverage()
 
-            print(adoption_scenario, intervention_strategy)
-            print("use dummy adoption rate for now of 10%")
-            annual_adoption_rate = 10
+            #get the adoption rate for each time period (by scenario and technology)
+            annual_adoption_rate = adoption_data[adoption_scenario][intervention_strategy][year]
+            print("Annual adoption rate is {}".format(annual_adoption_rate))
+
+            #get adoption desirability
             adoption_desirability = [premise for premise in system._premises if premise.adoption_desirability is True]
             total_premises = [premise for premise in system._premises]
             adoption_desirability_percentage = (len(adoption_desirability) / len(total_premises) * 100)
+            print("Annual adoption desirability rate is {}%".format(round(adoption_desirability_percentage, 2)))
             percentage_annual_increase = annual_adoption_rate - adoption_desirability_percentage
             percentage_annual_increase = round(float(percentage_annual_increase), 1)
 
+            #update the number of premises wanting to adopt (adoption_desirability)
             system.update_adoption_desirability = update_adoption_desirability(system, percentage_annual_increase)
             premises_adoption_desirability_ids = system.update_adoption_desirability
             
+            #calculate the maximum adoption level based on the scenario, to make sure the model doesn't overestimate
             MAXIMUM_ADOPTION = len(premises_adoption_desirability_ids) + sum(getattr(premise, intervention_strategy) for premise in system._premises)
-
+            
+            #actually decide which interventions to build
             interventions, budget, spend, match_funding_spend, subsidised_spend = decide_interventions(
-                STRATEGY, data_handle.get_parameter('annual_budget'), data_handle.get_parameter('service_obligation_capacity'), 
-                system, now, MAXIMUM_ADOPTION, data_handle.get_parameter('telco_match_funding'), 
-                data_handle.get_parameter('subsidy'))
+                intervention_strategy, budget,SERVICE_OBLIGATION_CAPACITY,  
+                system, year, MAXIMUM_ADOPTION, TELCO_MATCH_FUNDING, SUBSIDY)
 
+            #give the interventions to the system model
             system.upgrade(interventions)
-
-            # Decide interventions
-            interventions, budget, spend = decide_interventions(intervention_strategy, budget, service_obligation_capacity, system, year)
-
-            #print(intervention_decisions[0])
-
-            # Upgrade
-            system.upgrade(intervention_decisions)
-
-            write_decisions(intervention_decisions, year, intervention_strategy)
+            
+            #write out the decisions
+            write_decisions(interventions, year, intervention_strategy)
 
             #write_spend(intervention_strategy, interventions, spend, year)
 
