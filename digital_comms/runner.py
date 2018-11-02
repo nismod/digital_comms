@@ -32,69 +32,6 @@ END_YEAR = 2021
 TIMESTEP_INCREMENT = 1
 TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
 
-ADOPTION_SCENARIOS = [
-    #"high",
-    "baseline",
-    #"low",
-]
-
-INTERVENTION_STRATEGIES = [
-    "fttp",
-    #"fttdp",
-]
-
-#load in digital_comms sector model .yml data from digital_comms/config/sector_models
-path = os.path.join(YAML_DIRECTORY, 'sector_models', 'digital_comms.yml')
-with open(path, 'r') as ymlfile:
-    for data in yaml.load_all(ymlfile):
-        parameters = data['parameters']
-        for param in parameters:
-            if param['name'] == 'annual_budget':
-                ANNUAL_BUDGET = param['default_value'] 
-                print("annual_budget is {}".format(ANNUAL_BUDGET))
-            if param['name'] == 'telco_match_funding':
-                TELCO_MATCH_FUNDING = param['default_value'] 
-                print("telco match funding is {}".format(TELCO_MATCH_FUNDING))
-            if param['name'] == 'subsidy':
-                SUBSIDY = param['default_value'] 
-                print("government subsidy is {}".format(SUBSIDY))
-            if param['name'] == 'service_obligation_capacity':
-                SERVICE_OBLIGATION_CAPACITY = param['default_value'] 
-                print("USO is {}".format(SERVICE_OBLIGATION_CAPACITY))
-
-strategies = []
-
-#load in each model run yaml from digital_comms/config/sos_model_runs
-pathlist = glob.iglob(os.path.join(YAML_DIRECTORY, 'sos_model_runs') + '/*.yml', recursive=True)
-for path in pathlist:
-    with open(path, 'r') as ymlfile:
-        for data in yaml.load_all(ymlfile):
-            narratives = data['narratives']
-            strategies.append(narratives['technology_strategy'][0])
-        
-            # if narrative['technology_strategy'] == 'technology_strategy':
-            #     ANNUAL_BUDGET = param['default_value'] 
-            #     print("annual_budget is {}".format(ANNUAL_BUDGET))
-            # if param['name'] == 'telco_match_funding':
-            #     TELCO_MATCH_FUNDING = param['default_value'] 
-            #     print("telco match funding is {}".format(TELCO_MATCH_FUNDING))
-            # if param['name'] == 'subsidy':
-            #     SUBSIDY = param['default_value'] 
-            #     print("government subsidy is {}".format(SUBSIDY))
-            # if param['name'] == 'service_obligation_capacity':
-            #     SERVICE_OBLIGATION_CAPACITY = param['default_value'] 
-            #     print("USO is {}".format(SERVICE_OBLIGATION_CAPACITY))
-
-# Annual capital budget constraint for the whole industry, GBP * market share
-# ANNUAL_BUDGET = (2 * 10 ** 9) * MARKET_SHARE
-# ANNUAL_BUDGET = 100000000000
-# TELCO_MATCH_FUNDING = 100000000
-# SUBSIDY = 100000000
-# SERVICE_OBLIGATION_CAPACITY = 10
-
-# Target threshold for universal mobile service, in Mbps/user
-# SERVICE_OBLIGATION_CAPACITY = 10
-
 def read_shapefile(file):
     with fiona.open(file, 'r') as source:
         return [f['properties'] for f in source]
@@ -159,14 +96,50 @@ def _get_suffix(intervention_strategy):
 ################################################################
 print('Loading scenario data')
 
+#load in digital_comms sector model .yml data from digital_comms/config/sector_models
+path = os.path.join(YAML_DIRECTORY, 'sector_models', 'digital_comms.yml')
+with open(path, 'r') as ymlfile:
+    for data in yaml.load_all(ymlfile):
+        parameters = data['parameters']
+        for param in parameters:
+            if param['name'] == 'annual_budget':
+                ANNUAL_BUDGET = param['default_value'] 
+                print("annual_budget is {}".format(ANNUAL_BUDGET))
+            if param['name'] == 'telco_match_funding':
+                TELCO_MATCH_FUNDING = param['default_value'] 
+                print("telco match funding is {}".format(TELCO_MATCH_FUNDING))
+            if param['name'] == 'subsidy':
+                SUBSIDY = param['default_value'] 
+                print("government subsidy is {}".format(SUBSIDY))
+            if param['name'] == 'service_obligation_capacity':
+                SERVICE_OBLIGATION_CAPACITY = param['default_value'] 
+                print("USO is {}".format(SERVICE_OBLIGATION_CAPACITY))
+
+scenarios = []
+strategies = []
+
+#load in each model run yaml from digital_comms/config/sos_model_runs
+pathlist = glob.iglob(os.path.join(YAML_DIRECTORY, 'sos_model_runs') + '/*.yml', recursive=True)
+for path in pathlist:
+    with open(path, 'r') as ymlfile:
+        for data in yaml.load_all(ymlfile):
+            narratives = data['narratives']
+            strategy = narratives['technology_strategy'][0].split('_', 1)[0]
+            strategies.append(strategy)
+            scenario_data = data['scenarios']
+            scenarios.append(scenario_data['adoption'].split('_', 2)[1])
+
+scenarios = list(set(scenarios))
+strategies = list(set(strategies))
+
 adoption_data = {}
 
-for adoption_scenario in ADOPTION_SCENARIOS:
+for adoption_scenario in scenarios:
     adoption_data[adoption_scenario] = {}
-    for intervention_strategy in INTERVENTION_STRATEGIES: 
-        adoption_data[adoption_scenario][intervention_strategy] = {}
-        #path = os.path.join(SCENARIO_DATA, '{}_{}_adoption.csv'.format(intervention_strategy, adoption_scenario))
-        path = os.path.join(SCENARIO_DATA, 'fttp_baseline_adoption_test.csv'.format(intervention_strategy, adoption_scenario))
+    for strategy in strategies: 
+        adoption_data[adoption_scenario][strategy] = {}
+        #path = os.path.join(SCENARIO_DATA, '{}_{}_adoption.csv'.format(strategy, adoption_scenario))
+        path = os.path.join(SCENARIO_DATA, 'fttp_baseline_adoption_test.csv'.format(strategy, adoption_scenario))
         with open(path, 'r') as scenario_file:
             scenario_reader = csv.reader(scenario_file)
             next(scenario_reader, None)
@@ -174,7 +147,7 @@ for adoption_scenario in ADOPTION_SCENARIOS:
             for year, region, interval, value in scenario_reader:
                 year = int(year)
                 if year in TIMESTEPS:
-                    adoption_data[adoption_scenario][intervention_strategy][year] = float(value)
+                    adoption_data[adoption_scenario][strategy][year] = float(value)
 
 ################################################################
 # WRITE RESULTS DATA
@@ -240,6 +213,7 @@ if __name__ == "__main__": # allow the module to be executed directly
                 system = ICTManager(assets, links, parameters)
 
             #get the adoption rate for each time period (by scenario and technology)
+            print(adoption_scenario, intervention_strategy)
             annual_adoption_rate = adoption_data[adoption_scenario][intervention_strategy][year]
             print("Annual scenario adoption rate is {}".format(annual_adoption_rate))
 
