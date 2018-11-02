@@ -5,6 +5,7 @@ import configparser
 import csv
 import yaml
 import glob 
+import itertools 
 
 from digital_comms.fixed_network.model import ICTManager
 from digital_comms.fixed_network.interventions import decide_interventions
@@ -96,50 +97,66 @@ def _get_suffix(intervention_strategy):
 ################################################################
 print('Loading scenario data')
 
-#load in digital_comms sector model .yml data from digital_comms/config/sector_models
-path = os.path.join(YAML_DIRECTORY, 'sector_models', 'digital_comms.yml')
-with open(path, 'r') as ymlfile:
-    for data in yaml.load_all(ymlfile):
-        parameters = data['parameters']
-        for param in parameters:
-            if param['name'] == 'annual_budget':
-                ANNUAL_BUDGET = param['default_value'] 
-                print("annual_budget is {}".format(ANNUAL_BUDGET))
-            if param['name'] == 'telco_match_funding':
-                TELCO_MATCH_FUNDING = param['default_value'] 
-                print("telco match funding is {}".format(TELCO_MATCH_FUNDING))
-            if param['name'] == 'subsidy':
-                SUBSIDY = param['default_value'] 
-                print("government subsidy is {}".format(SUBSIDY))
-            if param['name'] == 'service_obligation_capacity':
-                SERVICE_OBLIGATION_CAPACITY = param['default_value'] 
-                print("USO is {}".format(SERVICE_OBLIGATION_CAPACITY))
-
-scenarios = []
-strategies = []
-
-#load in each model run yaml from digital_comms/config/sos_model_runs
-pathlist = glob.iglob(os.path.join(YAML_DIRECTORY, 'sos_model_runs') + '/*.yml', recursive=True)
-for path in pathlist:
+def load_in_yml_parameters():
+    """load in digital_comms sector model .yml data from digital_comms/config/sector_models
+    """
+    path = os.path.join(YAML_DIRECTORY, 'sector_models', 'digital_comms.yml')
     with open(path, 'r') as ymlfile:
         for data in yaml.load_all(ymlfile):
-            narratives = data['narratives']
-            strategy = narratives['technology_strategy'][0].split('_', 1)[0]
-            strategies.append(strategy)
-            scenario_data = data['scenarios']
-            scenarios.append(scenario_data['adoption'].split('_', 2)[1])
+            parameters = data['parameters']
+            for param in parameters:
+                if param['name'] == 'annual_budget':
+                    ANNUAL_BUDGET = param['default_value'] 
+                    print("annual_budget is {}".format(ANNUAL_BUDGET))
+                if param['name'] == 'telco_match_funding':
+                    TELCO_MATCH_FUNDING = param['default_value'] 
+                    print("telco match funding is {}".format(TELCO_MATCH_FUNDING))
+                if param['name'] == 'subsidy':
+                    SUBSIDY = param['default_value'] 
+                    print("government subsidy is {}".format(SUBSIDY))
+                if param['name'] == 'service_obligation_capacity':
+                    SERVICE_OBLIGATION_CAPACITY = param['default_value'] 
+                    print("USO is {}".format(SERVICE_OBLIGATION_CAPACITY))
 
-scenarios = list(set(scenarios))
-strategies = list(set(strategies))
+    return ANNUAL_BUDGET, TELCO_MATCH_FUNDING, SUBSIDY, SERVICE_OBLIGATION_CAPACITY
+
+ANNUAL_BUDGET, TELCO_MATCH_FUNDING, SUBSIDY, SERVICE_OBLIGATION_CAPACITY = load_in_yml_parameters()
+
+def load_in_scenarios_and_strategies():
+    """#load in each model run yaml from digital_comms/config/sos_model_runs
+
+    """
+    scenarios = []
+    strategy_technologies = []
+    strategy_policies = []
+    pathlist = glob.iglob(os.path.join(YAML_DIRECTORY, 'sos_model_runs') + '/*.yml', recursive=True)
+    for path in pathlist:
+        with open(path, 'r') as ymlfile:
+            for data in yaml.load_all(ymlfile):
+                narratives = data['narratives']
+                strategy_tech = narratives['technology_strategy'][0].split('_', 1)[0]
+                strategy_technologies.append(strategy_tech)                
+                scenario_data = data['scenarios']
+                scenarios.append(scenario_data['adoption'].split('_', 2)[1])
+                strategy_policy = narratives['technology_strategy'][0].split('_', 1)[1]
+                strategy_policies.append(strategy_policy) 
+
+    scenarios = list(set(scenarios))
+    strategy_technologies = list(set(strategy_technologies))
+    strategy_policies = list(set(strategy_policies))
+
+    return scenarios, strategy_technologies, strategy_policies
+
+scenarios, strategy_technologies, strategy_policies = load_in_scenarios_and_strategies()
 
 adoption_data = {}
 
-for adoption_scenario in scenarios:
-    adoption_data[adoption_scenario] = {}
-    for strategy in strategies: 
-        adoption_data[adoption_scenario][strategy] = {}
-        #path = os.path.join(SCENARIO_DATA, '{}_{}_adoption.csv'.format(strategy, adoption_scenario))
-        path = os.path.join(SCENARIO_DATA, 'fttp_baseline_adoption_test.csv'.format(strategy, adoption_scenario))
+for scenario in scenarios:
+    adoption_data[scenario] = {}
+    for strategy in strategy_technologies: 
+        adoption_data[scenario][strategy] = {}
+        #path = os.path.join(SCENARIO_DATA, '{}_{}_adoption.csv'.format(strategy, scenario))
+        path = os.path.join(SCENARIO_DATA, 'fttp_baseline_adoption_test.csv'.format(strategy, scenario))
         with open(path, 'r') as scenario_file:
             scenario_reader = csv.reader(scenario_file)
             next(scenario_reader, None)
@@ -147,7 +164,7 @@ for adoption_scenario in scenarios:
             for year, region, interval, value in scenario_reader:
                 year = int(year)
                 if year in TIMESTEPS:
-                    adoption_data[adoption_scenario][strategy][year] = float(value)
+                    adoption_data[scenario][strategy][year] = float(value)
 
 ################################################################
 # WRITE RESULTS DATA
@@ -185,23 +202,15 @@ def write_decisions(decisions, year, intervention_strategy):
 
 if __name__ == "__main__": # allow the module to be executed directly 
 
-    for adoption_scenario, intervention_strategy, policy in [
-            #('low','fttdp'), 
-            #('baseline','fttdp'), 
-            #('high','fttdp'),
-        
-            #('low','fttp'), 
-            ('baseline','fttp', '_rollout_per_distribution'), 
-            #('high','fttp')
-        ]:
+    for scenario, strategy_tech, strategy_policy in itertools.product(scenarios, strategy_technologies, strategy_policies):
 
-        print("Running:", adoption_scenario, intervention_strategy, policy)
+        print("Running:", scenario, strategy_tech, strategy_policy)
 
         assets = read_assets()
         links = read_links()
         parameters = read_parameters()
 
-        policy = intervention_strategy + policy
+        strategy_policy = strategy_tech + strategy_policy
 
         for year in TIMESTEPS:
             print("-", year)
@@ -213,8 +222,8 @@ if __name__ == "__main__": # allow the module to be executed directly
                 system = ICTManager(assets, links, parameters)
 
             #get the adoption rate for each time period (by scenario and technology)
-            print(adoption_scenario, intervention_strategy)
-            annual_adoption_rate = adoption_data[adoption_scenario][intervention_strategy][year]
+            print(scenario, strategy_tech)
+            annual_adoption_rate = adoption_data[scenario][strategy_tech][year]
             print("Annual scenario adoption rate is {}".format(annual_adoption_rate))
 
             #get adoption desirability from previous timestep
@@ -236,22 +245,22 @@ if __name__ == "__main__": # allow the module to be executed directly
             print("Annual adoption desirability rate is {}%".format(round(total_adoption_desirability_percentage, 2)))
 
             #calculate the maximum adoption level based on the scenario, to make sure the model doesn't overestimate
-            MAXIMUM_ADOPTION = len(premises_adoption_desirability_ids) + sum(getattr(premise, intervention_strategy) for premise in system._premises)
+            MAXIMUM_ADOPTION = len(premises_adoption_desirability_ids) + sum(getattr(premise, strategy_tech) for premise in system._premises)
             print("Maximum annual adoption rate is {}%".format(round(total_adoption_desirability_percentage, 2)))
 
             #actually decide which interventions to build
             interventions, budget, spend, match_funding_spend, subsidised_spend = decide_interventions(
-                policy, budget, SERVICE_OBLIGATION_CAPACITY,  
+                strategy_policy, budget, SERVICE_OBLIGATION_CAPACITY,  
                 system, year, MAXIMUM_ADOPTION, TELCO_MATCH_FUNDING, SUBSIDY)
 
             #give the interventions to the system model
             system.upgrade(interventions)
             
             #write out the decisions
-            write_decisions(interventions, year, intervention_strategy)
+            write_decisions(interventions, year, strategy_tech)
 
-            #write_spend(intervention_strategy, interventions, spend, year)
+            #write_spend(strategy_tech, interventions, spend, year)
 
-            #write_pcd_results(system, year, pop_scenario, throughput_scenario,intervention_strategy, cost_by_pcd)
+            #write_pcd_results(system, year, pop_scenario, throughput_scenario,strategy_tech, cost_by_pcd)
 
 
