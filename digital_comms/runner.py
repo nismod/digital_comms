@@ -55,35 +55,61 @@ def read_links():
     return links
 
 def read_parameters():
-    return {
-        'costs_links_fiber_meter': 5,
-        'costs_links_copper_meter': 3,
-        'costs_assets_exchange_fttp': 50000,
-        'costs_assets_exchange_gfast': 40000,
-        'costs_assets_exchange_fttc': 30000,
-        'costs_assets_exchange_adsl': 20000,
-        'costs_assets_cabinet_fttp_32_ports': 10,
-        'costs_assets_upgrade_cabinet_fttp': 2000,
-        'costs_assets_upgrade_cabinet_fttdp': 4000,
-        'costs_assets_cabinet_fttdp': 4000,
-        'costs_assets_cabinet_fttc': 3000,
-        'costs_assets_cabinet_adsl': 2000,
-        'costs_assets_distribution_fttp_32_ports': 10,
-        'costs_assets_distribution_fttdp_8_ports': 1500,
-        'costs_assets_distribution_fttc': 300,
-        'costs_assets_distribution_adsl': 200,
-        'costs_assets_premise_fttp_modem': 20,
-        'costs_assets_premise_fttp_optical_network_terminator': 10,
-        'costs_assets_premise_fttp_optical_connection_point': 37,
-        'costs_assets_premise_fttdp_modem': 20,
-        'costs_assets_premise_fttc_modem': 15,
-        'costs_assets_premise_adsl_modem': 10,
-        'benefits_assets_premise_fttp': 50,
-        'benefits_assets_premise_gfast': 40,
-        'benefits_assets_premise_fttc': 30,
-        'benefits_assets_premise_adsl': 20,
-        'planning_administration_cost': 200
-    }
+    params = {}
+
+    path = os.path.join(YAML_DIRECTORY, 'sector_models', 'digital_comms.yml')
+    with open(path, 'r') as ymlfile:
+        for data in yaml.load_all(ymlfile):
+            parameters = data['parameters']
+            for param in parameters:
+                if param['name'] == 'costs_assets_exchange_fttp':
+                    params['costs_assets_exchange_fttp'] = param['default_value']
+                if param['name'] == 'costs_assets_exchange_fttdp':
+                    params['costs_assets_exchange_fttdp'] = param['default_value']
+                if param['name'] == 'costs_assets_exchange_fttc':
+                    params['costs_assets_exchange_fttc'] = param['default_value']
+                if param['name'] == 'costs_assets_exchange_adsl':
+                    params['costs_assets_exchange_adsl'] = param['default_value']
+                if param['name'] == 'costs_assets_upgrade_cabinet_fttp':
+                    params['costs_assets_upgrade_cabinet_fttp'] = param['default_value']
+                if param['name'] == 'costs_assets_cabinet_fttdp':
+                    params['costs_assets_cabinet_fttdp'] = param['default_value']
+                if param['name'] == 'costs_assets_cabinet_fttc':
+                    params['costs_assets_cabinet_fttc'] = param['default_value']
+                if param['name'] == 'costs_assets_cabinet_adsl':
+                    params['costs_assets_cabinet_adsl'] = param['default_value']
+                if param['name'] == 'costs_assets_premise_fttp_optical_connection_point':
+                    params['costs_assets_premise_fttp_optical_connection_point'] = param['default_value']
+                if param['name'] == 'costs_assets_distribution_fttdp_8_ports':
+                    params['costs_assets_distribution_fttdp_8_ports'] = param['default_value']
+                if param['name'] == 'costs_assets_distribution_fttc':
+                    params['costs_assets_distribution_fttc'] = param['default_value']
+                if param['name'] == 'costs_assets_distribution_adsl':
+                    params['costs_assets_distribution_adsl'] = param['default_value']        
+                if param['name'] == 'costs_links_fiber_meter':
+                    params['costs_links_fiber_meter'] = param['default_value']
+                if param['name'] == 'costs_links_copper_meter':
+                    params['costs_links_copper_meter'] = param['default_value'] 
+                if param['name'] == 'costs_assets_premise_fttp_modem':
+                    params['costs_assets_premise_fttp_modem'] = param['default_value']
+                if param['name'] == 'costs_assets_premise_fttp_optical_network_terminator':
+                    params['costs_assets_premise_fttp_optical_network_terminator'] = param['default_value'] 
+                if param['name'] == 'planning_administration_cost':
+                    params['planning_administration_cost'] = param['default_value'] 
+                if param['name'] == 'costs_assets_premise_fttdp_modem':
+                    params['costs_assets_premise_fttdp_modem'] = param['default_value'] 
+                if param['name'] == 'costs_assets_premise_fttc_modem':
+                    params['costs_assets_premise_fttc_modem'] = param['default_value']
+                if param['name'] == 'costs_assets_premise_adsl_modem':
+                    params['costs_assets_premise_adsl_modem'] = param['default_value']
+                #revenue aspects
+                if param['name'] == 'months_per_year':
+                    params['months_per_year'] = param['default_value']
+                if param['name'] == 'payback_period':
+                    params['payback_period'] = param['default_value']
+                if param['name'] == 'profit_margin':
+                    params['profit_margin'] = param['default_value']
+    return params
 
 def _get_suffix(intervention_strategy):
     suffix = '{}_strategy'.format(
@@ -210,13 +236,14 @@ if __name__ == "__main__": # allow the module to be executed directly
         links = read_links()
         parameters = read_parameters()
 
-        strategy_policy = strategy_tech + strategy_policy
+        #get strategy policy string combination
+        strategy_policy = strategy_tech + "_" + strategy_policy
 
         for year in TIMESTEPS:
             print("-", year)
 
             budget = ANNUAL_BUDGET
-
+            #print(strategy_policy)
             # Simulate first year
             if year == BASE_YEAR:
                 system = ICTManager(assets, links, parameters)
@@ -247,12 +274,12 @@ if __name__ == "__main__": # allow the module to be executed directly
             #calculate the maximum adoption level based on the scenario, to make sure the model doesn't overestimate
             MAXIMUM_ADOPTION = len(premises_adoption_desirability_ids) + sum(getattr(premise, strategy_tech) for premise in system._premises)
             print("Maximum annual adoption rate is {}%".format(round(total_adoption_desirability_percentage, 2)))
-
+            
             #actually decide which interventions to build
             interventions, budget, spend, match_funding_spend, subsidised_spend = decide_interventions(
                 strategy_policy, budget, SERVICE_OBLIGATION_CAPACITY,  
                 system, year, MAXIMUM_ADOPTION, TELCO_MATCH_FUNDING, SUBSIDY)
-
+            
             #give the interventions to the system model
             system.upgrade(interventions)
             
