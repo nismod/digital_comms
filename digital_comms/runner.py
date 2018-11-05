@@ -1,3 +1,5 @@
+print("Running fixed broadband runner.py")
+
 import fiona
 from operator import attrgetter
 import os
@@ -6,6 +8,7 @@ import csv
 import yaml
 import glob 
 import itertools 
+import logging 
 
 from digital_comms.fixed_network.model import ICTManager
 from digital_comms.fixed_network.interventions import decide_interventions
@@ -14,6 +17,9 @@ from digital_comms.fixed_network.adoption import update_adoption_desirability
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), '..', 'scripts', 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
+
+logging.basicConfig(filename='fixed_runner.py_logged_info', level=logging.INFO)#%(asctime)s:%(levelname)s:%(message)s
+#logging.info("Here is a debug message containing more detailed information for debugging purposes")
 
 #####################################
 # SETUP FILE LOCATIONS 
@@ -121,7 +127,9 @@ def _get_suffix(intervention_strategy):
 ################################################################
 # LOAD SCENARIO DATA
 ################################################################
-print('Loading scenario data')
+
+logging.info('--')
+logging.info('Loading scenario data')
 
 def load_in_yml_parameters():
     """load in digital_comms sector model .yml data from digital_comms/config/sector_models
@@ -133,16 +141,16 @@ def load_in_yml_parameters():
             for param in parameters:
                 if param['name'] == 'annual_budget':
                     ANNUAL_BUDGET = param['default_value'] 
-                    print("annual_budget is {}".format(ANNUAL_BUDGET))
+                    logging.info("annual_budget is {}".format(ANNUAL_BUDGET))
                 if param['name'] == 'telco_match_funding':
                     TELCO_MATCH_FUNDING = param['default_value'] 
-                    print("telco match funding is {}".format(TELCO_MATCH_FUNDING))
+                    logging.info("telco match funding is {}".format(TELCO_MATCH_FUNDING))
                 if param['name'] == 'subsidy':
                     SUBSIDY = param['default_value'] 
-                    print("government subsidy is {}".format(SUBSIDY))
+                    logging.info("government subsidy is {}".format(SUBSIDY))
                 if param['name'] == 'service_obligation_capacity':
                     SERVICE_OBLIGATION_CAPACITY = param['default_value'] 
-                    print("USO is {}".format(SERVICE_OBLIGATION_CAPACITY))
+                    logging.info("USO is {}".format(SERVICE_OBLIGATION_CAPACITY))
 
     return ANNUAL_BUDGET, TELCO_MATCH_FUNDING, SUBSIDY, SERVICE_OBLIGATION_CAPACITY
 
@@ -165,7 +173,7 @@ def load_in_scenarios_and_strategies():
                 scenario_data = data['scenarios']
                 scenarios.append(scenario_data['adoption'].split('_', 2)[1])
                 strategy_policy = narratives['technology_strategy'][0].split('_', 1)[1]
-                strategy_policies.append(strategy_policy) 
+                strategy_policies.append(strategy_policy)
 
     scenarios = list(set(scenarios))
     strategy_technologies = list(set(strategy_technologies))
@@ -230,7 +238,9 @@ if __name__ == "__main__": # allow the module to be executed directly
 
     for scenario, strategy_tech, strategy_policy in itertools.product(scenarios, strategy_technologies, strategy_policies):
 
-        print("Running:", scenario, strategy_tech, strategy_policy)
+        logging.info("--")
+        logging.info("Running: {}, {}, {}".format(scenario, strategy_tech, strategy_policy))
+        logging.info("--")
 
         assets = read_assets()
         links = read_links()
@@ -240,18 +250,17 @@ if __name__ == "__main__": # allow the module to be executed directly
         strategy_policy = strategy_tech + "_" + strategy_policy
 
         for year in TIMESTEPS:
-            print("-", year)
+            logging.info("-{}".format(year))
 
             budget = ANNUAL_BUDGET
-            #print(strategy_policy)
+
             # Simulate first year
             if year == BASE_YEAR:
                 system = ICTManager(assets, links, parameters)
 
             #get the adoption rate for each time period (by scenario and technology)
-            print(scenario, strategy_tech)
             annual_adoption_rate = adoption_data[scenario][strategy_tech][year]
-            print("Annual scenario adoption rate is {}".format(annual_adoption_rate))
+            logging.info("Annual scenario adoption rate is {}".format(annual_adoption_rate))
 
             #get adoption desirability from previous timestep
             adoption_desirability = [premise for premise in system._premises if premise.adoption_desirability is True]
@@ -269,11 +278,11 @@ if __name__ == "__main__": # allow the module to be executed directly
             #get total adoption desirability for this time step (has to be done after system.update_adoption_desirability)
             adoption_desirability_now = [premise for premise in system._premises if premise.adoption_desirability is True]
             total_adoption_desirability_percentage = (len(adoption_desirability_now) / len(total_premises) * 100)
-            print("Annual adoption desirability rate is {}%".format(round(total_adoption_desirability_percentage, 2)))
+            logging.info("Annual adoption desirability rate is {}%".format(round(total_adoption_desirability_percentage, 2)))
 
             #calculate the maximum adoption level based on the scenario, to make sure the model doesn't overestimate
             MAXIMUM_ADOPTION = len(premises_adoption_desirability_ids) + sum(getattr(premise, strategy_tech) for premise in system._premises)
-            print("Maximum annual adoption rate is {}%".format(round(total_adoption_desirability_percentage, 2)))
+            logging.info("Maximum annual adoption rate is {}%".format(round(total_adoption_desirability_percentage, 2)))
             
             #actually decide which interventions to build
             interventions, budget, spend, match_funding_spend, subsidised_spend = decide_interventions(
@@ -289,5 +298,7 @@ if __name__ == "__main__": # allow the module to be executed directly
             #write_spend(strategy_tech, interventions, spend, year)
 
             #write_pcd_results(system, year, pop_scenario, throughput_scenario,strategy_tech, cost_by_pcd)
+            
+            logging.info("--")
 
-
+print("Fixed broadband runner.py is complete")
