@@ -416,8 +416,8 @@ for pop_scenario, throughput_scenario, intervention_strategy in [
 
         # decide
         interventions_built, budget, spend = decide_interventions(intervention_strategy, budget, service_obligation_capacity, system, year)
-
         # accumulate decisions
+
         assets += interventions_built
 
         # simulate with decisions

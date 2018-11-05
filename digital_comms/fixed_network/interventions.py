@@ -12,25 +12,6 @@ from operator import itemgetter
 # - TODO come back to net present value or total cost of ownership for costs
 ################################################################
 
-AVAILABLE_STRATEGY_INTERVENTIONS = {
-    # Intervention Strategy 1
-    # Minimal Intervention 'Do Nothing Scenario'
-    # Build no more additional fibre 
-    'minimal': (),
-
-    # Intervention Strategy 2
-    'FTTP_most_beneficial_distributions': (),
-
-    # Intervention Strategy 3.
-    'FTTP_most_beneficial_cabinets': (),
-
-    # Intervention Strategy 2
-    'FTTDP_most_beneficial_distributions': (),
-
-    # Intervention Strategy 3.
-    'FTTDP_most_beneficial_cabinets': (),
-}
-
 def decide_interventions(strategy, budget, service_obligation_capacity,
                          system, timestep, adoption_cap, telco_match_funding, subsidy):
     """Given strategy parameters and a system return some next best intervention
@@ -53,7 +34,6 @@ def _suggest_interventions(budget, strategy, system, timestep, adoption_cap, tel
     match_funding_spend = []
     premises_passed = 0
     subsidised_spend = []
-
     if strategy == 'fttp_rollout_per_distribution':
         distributions = sorted(system._distributions, key=lambda item: item.rollout_bcr['fttp']) 
         for distribution in distributions:
@@ -139,5 +119,7 @@ def _suggest_interventions(budget, strategy, system, timestep, adoption_cap, tel
                 premises_passed += len(distribution._clients)
             else:
                 break
+    else:
+        print("No upgrades built")
 
     return built_interventions, budget, spend, match_funding_spend, subsidised_spend
