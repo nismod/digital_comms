@@ -55,7 +55,7 @@ def read_pcd_to_exchange_lut():
     """
     pcd_to_exchange_data = []
 
-    with open(os.path.join(DATA_RAW, 'network_hierarchy_data', 'January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW, 'a_fixed_model', 'network_hierarchy_data', 'January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
@@ -65,7 +65,7 @@ def read_pcd_to_exchange_lut():
                 'postcode': line[1].replace(" ", "")
             })
 
-    with open(os.path.join(DATA_RAW, 'network_hierarchy_data', 'January 2013 PCP to Postcode File Part One.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW, 'a_fixed_model','network_hierarchy_data', 'January 2013 PCP to Postcode File Part One.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
@@ -75,7 +75,7 @@ def read_pcd_to_exchange_lut():
                 'postcode': line[1].replace(" ", "")
             })
 
-    with open(os.path.join(DATA_RAW, 'network_hierarchy_data', 'pcp.to.pcd.dec.11.one.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW, 'a_fixed_model','network_hierarchy_data', 'pcp.to.pcd.dec.11.one.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
@@ -85,7 +85,7 @@ def read_pcd_to_exchange_lut():
                 'postcode': line[1].replace(" ", "")
             })
 
-    with open(os.path.join(DATA_RAW, 'network_hierarchy_data', 'pcp.to.pcd.dec.11.two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW, 'a_fixed_model','network_hierarchy_data', 'pcp.to.pcd.dec.11.two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
@@ -94,7 +94,7 @@ def read_pcd_to_exchange_lut():
                 'postcode': line[1].replace(" ", "")
             })
 
-    with open(os.path.join(DATA_RAW, 'network_hierarchy_data', 'from_tomasso_valletti.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW, 'a_fixed_model','network_hierarchy_data', 'from_tomasso_valletti.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
@@ -123,7 +123,7 @@ def read_postcode_areas():
 
     postcode_areas = []
 
-    pathlist = glob.iglob(os.path.join(DATA_RAW, 'codepoint', 'codepoint-poly_2429451') + '/**/*.shp', recursive=True)
+    pathlist = glob.iglob(os.path.join(DATA_RAW, 'd_shapes', 'codepoint', 'codepoint-poly_2429451') + '/**/*.shp', recursive=True)
 
     for path in pathlist:
 
@@ -206,7 +206,7 @@ def read_exchanges():
 
     exchanges = []
 
-    with open(os.path.join(DATA_RAW, 'layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
+    with open(os.path.join(DATA_RAW, 'a_fixed_model','layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
         reader = csv.reader(system_file)
         next(reader)
     
