@@ -36,7 +36,7 @@ TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
 # setup file locations and data files
 #####################################
 
-DATA_RAW_INPUTS = os.path.join(BASE_PATH, 'raw', 'a_fixed_model_cambridge_test')
+DATA_RAW_INPUTS = os.path.join(BASE_PATH, 'raw', 'a_fixed_model')
 DATA_RAW_SHAPES = os.path.join(BASE_PATH, 'raw', 'd_shapes')
 DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 
