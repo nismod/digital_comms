@@ -2,7 +2,7 @@
 . /etc/profile.d/profile.sh
 echo Pre-processing $1: Running on `hostname`
 
-source activate digital_comms2
+source activate digital_comms
 #cd projects/digital_comms2
 
 mkdir -p data/processed_cluster/$1
