@@ -3,9 +3,8 @@
 echo Pre-processing $1: Running on `hostname`
 
 source activate digital_comms
-cd /ouce-home/projects/mistral/nismod/digital_comms2/
 
-cd /soge-home/projects/mistral/nismod/digital_comms/data/digital_comms/intermediate
+cd /soge-home/projects/mistral/nismod/digital_comms2/data/digital_comms/intermediate
 mkdir -p $1
 touch $1/log.txt
 
