@@ -418,6 +418,15 @@ def write_shapefile(data, path):
         for feature in data:
             sink.write(feature)
 
+def return_file_count(exchange_id):
+    
+    if not os.path.exists(os.path.join(DATA_INTERMEDIATE, exchange_id)):
+        files = 'no files'
+    else:
+        files = [f for f in os.listdir(os.path.join(DATA_INTERMEDIATE, exchange_id)) if f.endswith('.shp')]
+
+    return len(files)
+
 #####################################
 # APPLY METHODS
 #####################################
@@ -454,7 +463,7 @@ if __name__ == "__main__":
         write_shapefile(geojson_exchange_areas, '_exchange_areas.shp')
 
     exchange_areas = read_exchange_area()
-    [print(exchange['properties']['id']) for exchange in exchange_areas]
+    [print(exchange['properties']['id']) for exchange in exchange_areas if return_file_count(exchange['properties']['id']) < 11 ]
 
 #     print('exchange_EAARR')
 #     print('exchange_EABTM')
