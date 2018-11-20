@@ -25,7 +25,10 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 # setup file locations and data files
 #####################################
 
-DATA_RAW = os.path.join(BASE_PATH, 'raw')
+# DATA_RAW_DATA = os.path.join(BASE_PATH, 'raw', 'a_fixed_model')
+# DATA_RAW_SHAPES = os.path.join(BASE_PATH, 'raw', 'd_shapes_cambridge_test')
+DATA_RAW_DATA = os.path.join(BASE_PATH, 'raw', 'a_fixed_model')
+DATA_RAW_SHAPES = os.path.join(BASE_PATH, 'raw', 'd_shapes')
 DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 
 #####################################
@@ -55,7 +58,7 @@ def read_pcd_to_exchange_lut():
     """
     pcd_to_exchange_data = []
 
-    with open(os.path.join(DATA_RAW, 'a_fixed_model', 'network_hierarchy_data', 'January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW_DATA, 'network_hierarchy_data', 'January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
@@ -65,7 +68,7 @@ def read_pcd_to_exchange_lut():
                 'postcode': line[1].replace(" ", "")
             })
 
-    with open(os.path.join(DATA_RAW, 'a_fixed_model','network_hierarchy_data', 'January 2013 PCP to Postcode File Part One.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW_DATA,'network_hierarchy_data', 'January 2013 PCP to Postcode File Part One.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
@@ -75,7 +78,7 @@ def read_pcd_to_exchange_lut():
                 'postcode': line[1].replace(" ", "")
             })
 
-    with open(os.path.join(DATA_RAW, 'a_fixed_model','network_hierarchy_data', 'pcp.to.pcd.dec.11.one.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW_DATA, 'network_hierarchy_data', 'pcp.to.pcd.dec.11.one.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         for skip in range(11):
             next(reader)
@@ -85,7 +88,7 @@ def read_pcd_to_exchange_lut():
                 'postcode': line[1].replace(" ", "")
             })
 
-    with open(os.path.join(DATA_RAW, 'a_fixed_model','network_hierarchy_data', 'pcp.to.pcd.dec.11.two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW_DATA, 'network_hierarchy_data', 'pcp.to.pcd.dec.11.two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
@@ -94,7 +97,7 @@ def read_pcd_to_exchange_lut():
                 'postcode': line[1].replace(" ", "")
             })
 
-    with open(os.path.join(DATA_RAW, 'a_fixed_model','network_hierarchy_data', 'from_tomasso_valletti.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    with open(os.path.join(DATA_RAW_DATA, 'network_hierarchy_data', 'from_tomasso_valletti.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
@@ -123,7 +126,7 @@ def read_postcode_areas():
 
     postcode_areas = []
 
-    pathlist = glob.iglob(os.path.join(DATA_RAW, 'd_shapes', 'codepoint', 'codepoint-poly_2429451') + '/**/*.shp', recursive=True)
+    pathlist = glob.iglob(os.path.join(DATA_RAW_SHAPES, 'codepoint', 'codepoint-poly_2429451') + '/**/*.shp', recursive=True)
 
     for path in pathlist:
 
@@ -206,25 +209,26 @@ def read_exchanges():
 
     exchanges = []
 
-    with open(os.path.join(DATA_RAW, 'a_fixed_model','layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
+    with open(os.path.join(DATA_RAW_DATA, 'layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
         reader = csv.reader(system_file)
         next(reader)
     
         for line in reader:
-            exchanges.append({
-                'type': "Feature",
-                'geometry': {
-                    "type": "Point",
-                    "coordinates": [float(line[5]), float(line[6])]
-                },
-                'properties': {
-                    'id': 'exchange_' + line[1],
-                    'Name': line[2],
-                    'pcd': line[0],
-                    'Region': line[3],
-                    'County': line[4]
-                }
-            })
+            if line[3] != 'Scotland':
+                exchanges.append({
+                    'type': "Feature",
+                    'geometry': {
+                        "type": "Point",
+                        "coordinates": [float(line[5]), float(line[6])]
+                    },
+                    'properties': {
+                        'id': 'exchange_' + line[1],
+                        'Name': line[2],
+                        'pcd': line[0],
+                        'Region': line[3],
+                        'County': line[4]
+                    }
+                })
 
     return exchanges
 
@@ -265,18 +269,18 @@ def add_exchange_id_to_postcode_areas(exchanges, postcode_areas, exchange_to_pos
             'Region': exchange['properties']['Region'],
             'County': exchange['properties']['County'],
         }
-
+    
     # Read the postcode-to-cabinet-to-exchange lookup file
     lut_pcb2cab = {}
 
     for idx, row in enumerate(exchange_to_postcode):
         lut_pcb2cab[row['postcode']] = row['exchange_id']
-
+        
     # Connect each postcode area to an exchange
     for postcode_area in postcode_areas:
 
         postcode = postcode_area['properties']['POSTCODE']
-
+        
         if postcode in lut_pcb2cab:
 
             # Postcode-to-cabinet-to-exchange association
@@ -289,7 +293,7 @@ def add_exchange_id_to_postcode_areas(exchanges, postcode_areas, exchange_to_pos
             nearest = [n.object for n in idx_exchanges.nearest((shape(postcode_area['geometry']).bounds), 1, objects=True)]
             postcode_area['properties']['EX_ID'] = nearest[0]
             postcode_area['properties']['EX_SRC'] = 'ESTIMATED NEAREST'
-
+        
         # Match the exchange ID with remaining exchange info
         if postcode_area['properties']['EX_ID'] in lut_exchanges:
             postcode_area['properties']['EX_NAME'] = lut_exchanges[postcode_area['properties']['EX_ID']]['Name']
@@ -305,7 +309,7 @@ def add_exchange_id_to_postcode_areas(exchanges, postcode_areas, exchange_to_pos
     return postcode_areas
 
 def generate_exchange_area(exchanges, merge=True):
-
+    
     exchanges_by_group = defaultdict(list)
 
     # Loop through all exchanges
@@ -320,7 +324,23 @@ def generate_exchange_area(exchanges, merge=True):
 
         exchanges_by_group[f['properties']['EX_ID']].extend(polygons)
 
+    for exchange, area in exchanges_by_group.items():
+        print(exchange[0])
 
+    #print('generate_exchange_area - Generate multipolygons')
+    #exchange_areas = []
+    # for exchange in exchanges:
+    #     exchange_shape = exchanges_by_group[exchange['properties']['EX_ID']]
+    #     exchange_multipolygon = MultiPolygon(exchange_shape)     
+    #     exchange_areas.append({
+    #             'type': "Feature",
+    #             'geometry': mapping(exchange_multipolygon),
+    #             'properties': {
+    #                 'id': exchange['properties']['EX_ID'],
+    #                 'region': exchange['properties']['EX_REGION']
+    #             }
+    #         })
+    
     # Write Multipolygons per exchange
     print('generate_exchange_area - Generate multipolygons')
     exchange_areas = []
@@ -335,6 +355,21 @@ def generate_exchange_area(exchanges, merge=True):
             }
         })
 
+    # # Write Multipolygons per exchange
+    # print('generate_exchange_area - Generate multipolygons')
+    # exchange_areas = []
+    # for exchange in exchanges:
+    #     #exchange_multipolygon = MultiPolygon(area)
+    #     exchange_areas.append({
+    #         'type': "Feature",
+    #         'geometry': exchange['geometry'],
+    #         'properties': {
+    #             'id': exchange['properties']['EX_ID'],
+    #             'region': exchange['properties']['EX_REGION']
+    #         }
+    #     })
+
+    #print(exchange_areas)
     if merge:
         print('generate_exchange_area - Merge multipolygons into singlepolygons')
         # Merge MultiPolygons into single Polygon
@@ -450,20 +485,24 @@ if __name__ == "__main__":
         
         print('read exchanges')
         geojson_layer2_exchanges = read_exchanges()
-
+        
         # Process/Estimate network hierarchy
         print('add exchange id to postcode areas')
         geojson_postcode_areas = add_exchange_id_to_postcode_areas(geojson_layer2_exchanges, geojson_postcode_areas, lut_pcd_to_exchange)
-
-        print('generate exchange areas')
+        
+        #generate exchange areas
         geojson_exchange_areas = generate_exchange_area(geojson_postcode_areas)
-
+        
         # Write
         print('write exchange_areas')
         write_shapefile(geojson_exchange_areas, '_exchange_areas.shp')
 
     exchange_areas = read_exchange_area()
-    [print(exchange['properties']['id']) for exchange in exchange_areas if return_file_count(exchange['properties']['id']) < 11 ]
+    #print(exchange_areas)
+    #[print(exchange['properties']) for exchange in exchange_areas] 
+    #[print(exchange['properties']['id']) for exchange in exchange_areas if return_file_count(exchange['properties']['id']) < 11 and (exchange['properties']['region']) is not 'Scotland'] 
+    [print(exchange['properties']['id']) for exchange in exchange_areas if return_file_count(exchange['properties']['id']) < 11] 
+
 
 #     print('exchange_EAARR')
 #     print('exchange_EABTM')
