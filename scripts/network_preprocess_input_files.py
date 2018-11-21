@@ -1032,7 +1032,7 @@ def complement_postcode_cabinets(postcode_areas, premises, exchanges, exchange_a
             minimum_samples = 50
         elif exchange['properties']['geotype'] == '<1k lines' or 'other':
             local_cluster_radius = 100 # TODO: according to table these premises geotypes have no internet access
-            minimum_samples = 25
+            minimum_samples = 1
         else:
             print('Geotype ' + exchange['properties']['geotype'] + ' is unknown')
             raise Exception()
