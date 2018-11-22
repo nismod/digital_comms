@@ -1768,7 +1768,7 @@ def generate_link_with_nearest(origin_points, dest_points):
             'properties': {
                 "origin": origin_point['properties']['id'],
                 "dest": nearest['properties']['id'],
-                "length": LineString([origin_point['geometry']['coordinates'], nearest['geometry']['coordinates']]).length
+                "length": round(LineString([origin_point['geometry']['coordinates'], nearest['geometry']['coordinates']]).length,2)
             }
         })
     return links
@@ -1778,6 +1778,23 @@ def copy_id_to_name(data):
     for entry in data:
         entry['properties']['name'] = entry['properties']['id']
     return data
+
+#####################################
+# GENERATE NETWORK LENGTH STATISTICS
+######################################
+
+#Generate link statistics
+def generate_link_statistics(links):
+    aggregate_link_stats = []
+
+    for link in links:
+        aggregate_link_stats.append({
+            'origin': link['properties']['origin'],
+            'dest': link['properties']['dest'],
+            'length': round(float(link['properties']['length']),2)
+        })
+        
+    return aggregate_link_stats
 
 
 #####################################
@@ -2048,6 +2065,29 @@ if __name__ == "__main__":
 
     print('copy id to name (cabinets)')
     geojson_layer3_cabinets = copy_id_to_name(geojson_layer3_cabinets)
+
+    # Generate loop lengths
+    print('generating dist point to premises link length statistics')
+    dp_to_prem_length_stats = generate_link_statistics(geojson_layer5_premises_links)
+
+    print('generating cabinet to dist point link length statistics')
+    cab_to_dp_length_stats = generate_link_statistics(geojson_layer4_distributions_links)
+
+    print('generating exchange to cabinet link length statistics')
+    exchange_to_cab_length_stats = generate_link_statistics(geojson_layer3_cabinets_links)
+
+    #write loop lengths
+    print('Write dist point to premises link lengths to .csv')
+    loop_length_fieldnames = ['origin','dest','length']
+    csv_writer(dp_to_prem_length_stats, '{}_dp_to_prem_link_length.csv'.format(exchange_abbr), loop_length_fieldnames)
+
+    print('Write cabinet to dist point link lengths to .csv')
+    loop_length_fieldnames = ['origin','dest','length']
+    csv_writer(cab_to_dp_length_stats, '{}_cab_to_dp_link_length.csv'.format(exchange_abbr), loop_length_fieldnames)
+
+    print('Write cabinet to dist point link lengths to .csv')
+    loop_length_fieldnames = ['origin','dest','length']
+    csv_writer(exchange_to_cab_length_stats, '{}_exchange_to_cab_link_length.csv'.format(exchange_abbr), loop_length_fieldnames)
 
     # Write lookups (for debug purposes)
     print('write postcode_areas')
