@@ -1796,6 +1796,38 @@ def generate_link_statistics(links):
         
     return aggregate_link_stats
 
+def calc_total_link_length(cab_links, dist_point_links, premises_links):
+    
+    length_data = []
+    
+    for cab_link in cab_links:
+        
+        for dist_point_link in dist_point_links:
+            
+            if cab_link['properties']['origin'] == dist_point_link['properties']['dest']:
+                
+                for premises_link in premises_links:
+                    
+                    if dist_point_link['properties']['origin'] == premises_link['properties']['dest']:
+                        
+                        cab_link_length = round(cab_link['properties']['length'],2)
+                        
+                        dist_point_link_length = round(dist_point_link['properties']['length'],2)          
+                
+                        premises_link_length = round(premises_link['properties']['length'],2)
+                        
+                        d_side_length = round(dist_point_link_length + premises_link_length,2)
+                        
+                        total_link_length = round(cab_link_length + d_side_length,2)
+                        
+                        length_data.append({
+                            'cab_link_length': cab_link_length,
+                            'dist_point_link_length': dist_point_link_length,
+                            'premises_link_length': premises_link_length, 
+                            'd_side': d_side_length,
+                            'total_link_length': total_link_length,
+                        })
+    return length_data
 
 #####################################
 # WRITE LUTS/ASSETS/LINKS
@@ -2067,27 +2099,13 @@ if __name__ == "__main__":
     geojson_layer3_cabinets = copy_id_to_name(geojson_layer3_cabinets)
 
     # Generate loop lengths
-    print('generating dist point to premises link length statistics')
-    dp_to_prem_length_stats = generate_link_statistics(geojson_layer5_premises_links)
+    print('calculating loop length stats')
+    length_data = calc_total_link_length(geojson_layer3_cabinets_links, geojson_layer4_distributions_links, geojson_layer5_premises_links)
 
-    print('generating cabinet to dist point link length statistics')
-    cab_to_dp_length_stats = generate_link_statistics(geojson_layer4_distributions_links)
-
-    print('generating exchange to cabinet link length statistics')
-    exchange_to_cab_length_stats = generate_link_statistics(geojson_layer3_cabinets_links)
-
-    #write loop lengths
-    print('Write dist point to premises link lengths to .csv')
-    loop_length_fieldnames = ['origin','dest','length']
-    csv_writer(dp_to_prem_length_stats, '{}_dp_to_prem_link_length.csv'.format(exchange_abbr), loop_length_fieldnames)
-
-    print('Write cabinet to dist point link lengths to .csv')
-    loop_length_fieldnames = ['origin','dest','length']
-    csv_writer(cab_to_dp_length_stats, '{}_cab_to_dp_link_length.csv'.format(exchange_abbr), loop_length_fieldnames)
-
-    print('Write cabinet to dist point link lengths to .csv')
-    loop_length_fieldnames = ['origin','dest','length']
-    csv_writer(exchange_to_cab_length_stats, '{}_exchange_to_cab_link_length.csv'.format(exchange_abbr), loop_length_fieldnames)
+    # Write loop lengths
+    print('write link lengths to .csv')
+    loop_length_fieldnames = ['cab_link_length','dist_point_link_length','premises_link_length', 'd_side', 'total_link_length']
+    csv_writer(length_data, '{}_link_lengths.csv'.format(exchange_abbr), loop_length_fieldnames)
 
     # Write lookups (for debug purposes)
     print('write postcode_areas')
