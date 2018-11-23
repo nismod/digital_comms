@@ -10,6 +10,7 @@ import numpy as np
 import random
 import glob
 
+from matplotlib import pyplot
 from shapely.geometry import shape, Point, LineString, Polygon, MultiPolygon, mapping, MultiPoint
 from shapely.ops import unary_union, cascaded_union
 from pyproj import Proj, transform
@@ -1809,16 +1810,16 @@ def copy_id_to_name(data):
 # GENERATE NETWORK LENGTH STATISTICS
 ######################################
 
-def calc_total_link_length(exchanges, cab_links, dist_point_links, premises_links):
+def calc_total_link_length(exchanges, sp_cab_links, sp_dist_point_links, sp_premises_links, sl_cab_links, sl_dist_point_links, sl_premises_links,):
     
         length_data = []
         
         for exchange in exchanges:
-            for cab_link in cab_links:
+            for cab_link in sp_cab_links:
                 if exchange['properties']['id'] == cab_link['properties']['dest']:
-                    for dist_point_link in dist_point_links:
+                    for dist_point_link in sp_dist_point_links:
                         if cab_link['properties']['origin'] == dist_point_link['properties']['dest']:
-                            for premises_link in premises_links:
+                            for premises_link in sp_premises_links:
                                 if dist_point_link['properties']['origin'] == premises_link['properties']['dest']:
                                                 
                                     cab_link_length = round(cab_link['properties']['length'],2)
@@ -1833,10 +1834,70 @@ def calc_total_link_length(exchanges, cab_links, dist_point_links, premises_link
                                         'premises_link_length': premises_link_length, 
                                         'd_side': d_side_length,
                                         'total_link_length': total_link_length,
+                                        'length_type': 'shortest_path'
+                                    })
+
+        for exchange in exchanges:
+            for cab_link in sl_cab_links:
+                if exchange['properties']['id'] == cab_link['properties']['dest']:
+                    for dist_point_link in sl_dist_point_links:
+                        if cab_link['properties']['origin'] == dist_point_link['properties']['dest']:
+                            for premises_link in sl_premises_links:
+                                if dist_point_link['properties']['origin'] == premises_link['properties']['dest']:
+                                                
+                                    cab_link_length = round(cab_link['properties']['length'],2)
+                                    dist_point_link_length = round(dist_point_link['properties']['length'],2)          
+                                    premises_link_length = round(premises_link['properties']['length'],2)
+                                    d_side_length = round(dist_point_link_length + premises_link_length,2)
+                                    total_link_length = round(cab_link_length + d_side_length,2)
+                                    
+                                    length_data.append({
+                                        'cab_link_length': cab_link_length,
+                                        'dist_point_link_length': dist_point_link_length,
+                                        'premises_link_length': premises_link_length, 
+                                        'd_side': d_side_length,
+                                        'total_link_length': total_link_length,
+                                        'length_type': 'straight_line'
                                     })
 
         return length_data
 
+#####################################
+# VISUALISE NETWORK STATS
+#####################################
+
+def plot_length_data(data):
+
+    e_side_sp_length = []
+    d_side_sp_length = []
+    total_link_sp_length = []
+    
+    e_side_sl_length = []
+    d_side_sl_length = []
+    total_link_sl_length = []
+
+    for datum in data:
+        if datum['length_type'] == 'shortest_path':
+            e_side_sp_length.append(datum['cab_link_length'])
+            d_side_sp_length.append(datum['d_side'])
+            total_link_sp_length.append(datum['total_link_length'])
+        elif datum['length_type'] == 'straight_line':
+            e_side_sl_length.append(datum['cab_link_length'])
+            d_side_sl_length.append(datum['d_side'])
+            total_link_sl_length.append(datum['total_link_length'])
+
+    bins = np.linspace(0, 10000, 100)
+
+    pyplot.hist(e_side_sp_length, bins, alpha=0.5, label='e_side_sp')
+    pyplot.hist(d_side_sp_length, bins, alpha=0.5, label='d_side_sp')
+    pyplot.hist(total_link_sp_length, bins, alpha=0.5, label='total_length_sp')
+    
+    pyplot.hist(e_side_sl_length, bins, alpha=0.5, label='e_side_sl')
+    pyplot.hist(d_side_sl_length, bins, alpha=0.5, label='d_side_sl')
+    pyplot.hist(total_link_sl_length, bins, alpha=0.5, label='total_length_sl')
+
+    pyplot.legend(loc='upper right')
+    pyplot.show()
 
 #####################################
 # WRITE LUTS/ASSETS/LINKS
@@ -1908,78 +1969,78 @@ if __name__ == "__main__":
     print('get lad ids')
     lad_ids = get_lad_area_ids(geojson_lad_areas)
 
-    # #####
-    # # Integrate WTP and WTA household data into premises
-    # print('Loading MSOA data')
-    # MSOA_data = read_msoa_data(lad_ids)
+    #####
+    # Integrate WTP and WTA household data into premises
+    print('Loading MSOA data')
+    MSOA_data = read_msoa_data(lad_ids)
 
-    # print('Loading age data')
-    # age_data = read_age_data()
+    print('Loading age data')
+    age_data = read_age_data()
 
-    # print('Loading gender data')
-    # gender_data = read_gender_data()
+    print('Loading gender data')
+    gender_data = read_gender_data()
 
-    # print('Loading nation data')
-    # nation_data = read_nation_data()
+    print('Loading nation data')
+    nation_data = read_nation_data()
 
-    # print('Loading urban_rural data')
-    # urban_rural_data = read_urban_rural_data()
+    print('Loading urban_rural data')
+    urban_rural_data = read_urban_rural_data()
 
-    # print('Add country indicator')
-    # MSOA_data = add_country_indicator(MSOA_data)
+    print('Add country indicator')
+    MSOA_data = add_country_indicator(MSOA_data)
 
-    # print('Adding adoption data to MSOA data')
-    # MSOA_data = add_data_to_MSOA_data(age_data, MSOA_data, 'age')
-    # MSOA_data = add_data_to_MSOA_data(gender_data, MSOA_data, 'gender')
+    print('Adding adoption data to MSOA data')
+    MSOA_data = add_data_to_MSOA_data(age_data, MSOA_data, 'age')
+    MSOA_data = add_data_to_MSOA_data(gender_data, MSOA_data, 'gender')
 
-    # print('Loading OA data')
-    # oa_data = read_oa_data()
+    print('Loading OA data')
+    oa_data = read_oa_data()
 
-    # print('Match and convert social grades from NS-Sec to NRS')
-    # oa_data = convert_ses_grades(oa_data)
+    print('Match and convert social grades from NS-Sec to NRS')
+    oa_data = convert_ses_grades(oa_data)
 
-    # print('Loading ses data')
-    # ses_data = read_ses_data()
+    print('Loading ses data')
+    ses_data = read_ses_data()
 
-    # print('Adding ses adoption data to OA data')
-    # oa_data = add_data_to_MSOA_data(ses_data, oa_data, 'ses')
+    print('Adding ses adoption data to OA data')
+    oa_data = add_data_to_MSOA_data(ses_data, oa_data, 'ses')
 
-    # print('Adding MSOA data to OA data')
-    # final_data = merge_two_lists_of_dicts(MSOA_data, oa_data, 'HID', 'lad', 'year')
+    print('Adding MSOA data to OA data')
+    final_data = merge_two_lists_of_dicts(MSOA_data, oa_data, 'HID', 'lad', 'year')
 
-    # print('Catching any missing data')
-    # final_data, missing_data = get_missing_ses_key(final_data)
+    print('Catching any missing data')
+    final_data, missing_data = get_missing_ses_key(final_data)
 
-    # print('Calculate product of adoption factors')
-    # final_data = calculate_adoption_propensity(final_data)
+    print('Calculate product of adoption factors')
+    final_data = calculate_adoption_propensity(final_data)
 
-    # print('Calculate willingness to pay')
-    # final_data = calculate_wtp(final_data)
+    print('Calculate willingness to pay')
+    final_data = calculate_wtp(final_data)
 
-    # print('Aggregating WTP by household')
-    # household_wtp = aggregate_wtp_and_wta_by_household(final_data)
+    print('Aggregating WTP by household')
+    household_wtp = aggregate_wtp_and_wta_by_household(final_data)
 
-    # print('Reading premises data')
-    # premises = read_premises_data(exchange_area)
+    print('Reading premises data')
+    premises = read_premises_data(exchange_area)
 
-    # print('Expand premises entries')
-    # premises = expand_premises(premises)
+    print('Expand premises entries')
+    premises = expand_premises(premises)
 
-    # print('Adding household data to premises')
-    # premises = merge_prems_and_housholds(premises, household_wtp)
+    print('Adding household data to premises')
+    premises = merge_prems_and_housholds(premises, household_wtp)
 
-    # print('Write premises_multiple by household to .csv')
-    # premises_fieldnames = ['uid','oa','gor','residential_address_count','non_residential_address_count','function','postgis_geom','N','E', 'HID','lad','year','wta','wtp']
-    # csv_writer(premises, '{}_premises_data.csv'.format(exchange_abbr), premises_fieldnames)
+    print('Write premises_multiple by household to .csv')
+    premises_fieldnames = ['uid','oa','gor','residential_address_count','non_residential_address_count','function','postgis_geom','N','E', 'HID','lad','year','wta','wtp']
+    csv_writer(premises, '{}_premises_data.csv'.format(exchange_abbr), premises_fieldnames)
 
-    # print('Writing wtp')
-    # wta_data_fieldnames = ['HID','lad','year','wta','wtp']
-    # csv_writer(household_wtp, '{}_wta_data.csv'.format(exchange_abbr), wta_data_fieldnames)
+    print('Writing wtp')
+    wta_data_fieldnames = ['HID','lad','year','wta','wtp']
+    csv_writer(household_wtp, '{}_wta_data.csv'.format(exchange_abbr), wta_data_fieldnames)
 
-    # print('Writing any missing data')
-    # missing_data_fieldnames = ['PID','MSOA','lad','gender','age','ethnicity','HID','year', 'nation']
-    # csv_writer(missing_data, '{}_missing_data.csv'.format(exchange_abbr), missing_data_fieldnames)
-    # ####
+    print('Writing any missing data')
+    missing_data_fieldnames = ['PID','MSOA','lad','gender','age','ethnicity','HID','year', 'nation']
+    csv_writer(missing_data, '{}_missing_data.csv'.format(exchange_abbr), missing_data_fieldnames)
+    ####
 
     print('read_pcd_to_exchange_lut')
     lut_pcd_to_exchange = read_pcd_to_exchange_lut()
@@ -2023,10 +2084,10 @@ if __name__ == "__main__":
     print('add LAD to exchanges')
     geojson_layer2_exchanges = add_lad_to_exchanges(geojson_layer2_exchanges, geojson_lad_areas)
 
-    # print('merge geotype info by LAD to exchanges')
+    print('merge geotype info by LAD to exchanges')
     geojson_layer2_exchanges = add_urban_geotype_to_exchanges(geojson_layer2_exchanges, city_exchange_lad_lut)
     
-    Process/Estimate assets
+    # Process/Estimate assets
     print('complement cabinet locations as expected for this geotype')
     geojson_layer3_cabinets = complement_postcode_cabinets(geojson_postcode_areas, geojson_layer5_premises, geojson_layer2_exchanges, exchange_abbr)
 
@@ -2070,14 +2131,23 @@ if __name__ == "__main__":
     geojson_layer3_cabinets = connect_points_to_area(geojson_layer3_cabinets, geojson_exchange_areas)
 
     # Process/Estimate links
-    print('generate links layer 5')
-    geojson_layer5_premises_links = generate_link_straight_line(geojson_layer5_premises, geojson_layer4_distributions)
+    print('generate shortest path links layer 5')
+    geojson_layer5_premises_sp_links = generate_link_shortest_path(geojson_layer5_premises, geojson_layer4_distributions, exchange_area)
 
-    print('generate links layer 4')
-    geojson_layer4_distributions_links = generate_link_shortest_path(geojson_layer4_distributions, geojson_layer3_cabinets, exchange_area)
+    print('generate shortest path links layer 4')
+    geojson_layer4_distributions_sp_links = generate_link_shortest_path(geojson_layer4_distributions, geojson_layer3_cabinets, exchange_area)
 
-    print('generate links layer 3')
-    geojson_layer3_cabinets_links = generate_link_shortest_path(geojson_layer3_cabinets, geojson_layer2_exchanges, exchange_area)
+    print('generate shortest path links layer 3')
+    geojson_layer3_cabinets_sp_links = generate_link_shortest_path(geojson_layer3_cabinets, geojson_layer2_exchanges, exchange_area)
+
+    print('generate straight line links layer 5')
+    geojson_layer5_premises_sl_links = generate_link_straight_line(geojson_layer5_premises, geojson_layer4_distributions)
+
+    print('generate straight line links layer 4')
+    geojson_layer4_distributions_sl_links = generate_link_straight_line(geojson_layer4_distributions, geojson_layer3_cabinets)
+
+    print('generate straight line links layer 3')
+    geojson_layer3_cabinets_sl_links = generate_link_straight_line(geojson_layer3_cabinets, geojson_layer2_exchanges)
 
     # Add technology to network and process this into the network hierachy
     print('add technology to postcode areas')
@@ -2087,19 +2157,19 @@ if __name__ == "__main__":
     geojson_layer5_premises = add_technology_to_premises(geojson_layer5_premises, geojson_postcode_areas)
 
     print('add technology to premises links (finaldrop)')
-    geojson_layer5_premises_links = add_technology_to_link(geojson_layer5_premises, geojson_layer5_premises_links)
+    geojson_layer5_premises_links = add_technology_to_link(geojson_layer5_premises, geojson_layer5_premises_sp_links)
 
     print('add technology to distributions')
     geojson_layer4_distributions = add_technology_to_assets(geojson_layer4_distributions, geojson_layer5_premises)
 
     print('add technology to distribution links')
-    geojson_layer4_distributions_links = add_technology_to_link(geojson_layer4_distributions, geojson_layer4_distributions_links)
+    geojson_layer4_distributions_sp_links = add_technology_to_link(geojson_layer4_distributions, geojson_layer4_distributions_sp_links)
 
     print('add technology to cabinets')
     geojson_layer3_cabinets = add_technology_to_assets(geojson_layer3_cabinets, geojson_layer4_distributions)
 
     print('add technology to cabinet links')
-    geojson_layer3_cabinets_links = add_technology_to_link(geojson_layer3_cabinets, geojson_layer3_cabinets_links)
+    geojson_layer3_cabinets_sp_links = add_technology_to_link(geojson_layer3_cabinets, geojson_layer3_cabinets_sp_links)
 
     print('add technology to exchanges')
     geojson_layer2_exchanges = add_technology_to_assets(geojson_layer2_exchanges, geojson_layer3_cabinets)
@@ -2113,11 +2183,16 @@ if __name__ == "__main__":
 
     # Generate loop lengths
     print('calculating loop length stats')
-    length_data = calc_total_link_length(geojson_layer2_exchanges, geojson_layer3_cabinets_links, geojson_layer4_distributions_links, geojson_layer5_premises_links)
+    length_data = calc_total_link_length(geojson_layer2_exchanges, 
+                                            geojson_layer3_cabinets_sp_links, geojson_layer4_distributions_sp_links, geojson_layer5_premises_sp_links,
+                                            geojson_layer3_cabinets_sl_links, geojson_layer4_distributions_sl_links, geojson_layer5_premises_sl_links)
+
+    # Plot network statistics
+    plot_length_data(length_data)
 
     # Write loop lengths
     print('write link lengths to .csv')
-    loop_length_fieldnames = ['cab_link_length','dist_point_link_length','premises_link_length', 'd_side', 'total_link_length']
+    loop_length_fieldnames = ['cab_link_length','dist_point_link_length','premises_link_length', 'd_side', 'total_link_length', 'length_type']
     csv_writer(length_data, '{}_link_lengths.csv'.format(exchange_abbr), loop_length_fieldnames)
 
     # Write lookups (for debug purposes)
@@ -2148,13 +2223,22 @@ if __name__ == "__main__":
 
     # Write links
     print('write links layer5')
-    write_shapefile(geojson_layer5_premises_links,  exchange_name, 'links_layer5_premises.shp')
+    write_shapefile(geojson_layer5_premises_sp_links,  exchange_name, 'links_sp_layer5_premises.shp')
 
     print('write links layer4')
-    write_shapefile(geojson_layer4_distributions_links,  exchange_name, 'links_layer4_distributions.shp')
+    write_shapefile(geojson_layer4_distributions_sp_links,  exchange_name, 'links_sp_layer4_distributions.shp')
 
     print('write links layer3')
-    write_shapefile(geojson_layer3_cabinets_links,  exchange_name, 'links_layer3_cabinets.shp')
+    write_shapefile(geojson_layer3_cabinets_sp_links,  exchange_name, 'links_sp_layer3_cabinets.shp')
+
+    print('write links layer5')
+    write_shapefile(geojson_layer5_premises_sl_links,  exchange_name, 'links_sl_layer5_premises.shp')
+
+    print('write links layer4')
+    write_shapefile(geojson_layer4_distributions_sl_links,  exchange_name, 'links_sl_layer4_distributions.shp')
+
+    print('write links layer3')
+    write_shapefile(geojson_layer3_cabinets_sl_links,  exchange_name, 'links_sl_layer3_cabinets.shp')
 
     end = time.time()
     print("script finished")
