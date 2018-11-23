@@ -733,8 +733,8 @@ def read_premises(exchange_area, exchange_abbr):
                 'properties': {
                     'id': 'premise_' + line[0],
                     'oa': line[1],
-                    'residential_address_count': line[3],
-                    'non_residential_address_count': line[4],
+                    'residential_address_count': int(line[3]),
+                    'non_residential_address_count': int(line[4]),
                     'function': line[5],
                     'postgis_geom': line[6],
                     'HID': line[9],
@@ -822,6 +822,31 @@ def read_exchanges(exchange_area):
         for n in idx.intersection(shape(exchange_area['geometry']).bounds, objects='raw')
         if exchange_geom.intersection(shape(n['geometry']))
     ]
+
+def geotype_exchange(exchanges, premises):
+
+    for premise in premises:
+        sum_of_delivery_points = 0
+        sum_of_delivery_points += int(premise['properties']['residential_address_count'])
+
+    for exchange in exchanges:
+
+        if sum_of_delivery_points >= 20000:
+            exchange['properties']['geotype'] = '>20k lines'
+
+        elif sum_of_delivery_points >= 10000 and sum_of_delivery_points < 20000:
+            exchange['properties']['geotype'] = '>10k lines'            
+
+        elif sum_of_delivery_points >= 3000 and sum_of_delivery_points <= 10000:
+            exchange['properties']['geotype'] = '>3k lines'     
+
+        elif sum_of_delivery_points >= 1000 and sum_of_delivery_points <= 30000:
+            exchange['properties']['geotype'] = '>1k lines' 
+
+        elif sum_of_delivery_points < 1000:
+            exchange['properties']['geotype'] = '<1k lines'          
+
+    return exchanges
 
 #####################################
 # PROCESS NETWORK HIERARCHY
@@ -993,9 +1018,10 @@ def add_urban_geotype_to_exchanges(exchanges, exchange_geotype_lut):
 
             })
         else:
-            exchange['properties'].update({
-                'geotype': 'other',
-            })
+            pass
+            # exchange['properties'].update({
+            #     'geotype': 'other',
+            # })
 
     return exchanges
 
@@ -1783,51 +1809,34 @@ def copy_id_to_name(data):
 # GENERATE NETWORK LENGTH STATISTICS
 ######################################
 
-#Generate link statistics
-def generate_link_statistics(links):
-    aggregate_link_stats = []
-
-    for link in links:
-        aggregate_link_stats.append({
-            'origin': link['properties']['origin'],
-            'dest': link['properties']['dest'],
-            'length': round(float(link['properties']['length']),2)
-        })
-        
-    return aggregate_link_stats
-
-def calc_total_link_length(cab_links, dist_point_links, premises_links):
+def calc_total_link_length(exchanges, cab_links, dist_point_links, premises_links):
     
-    length_data = []
-    
-    for cab_link in cab_links:
+        length_data = []
         
-        for dist_point_link in dist_point_links:
-            
-            if cab_link['properties']['origin'] == dist_point_link['properties']['dest']:
-                
-                for premises_link in premises_links:
-                    
-                    if dist_point_link['properties']['origin'] == premises_link['properties']['dest']:
-                        
-                        cab_link_length = round(cab_link['properties']['length'],2)
-                        
-                        dist_point_link_length = round(dist_point_link['properties']['length'],2)          
-                
-                        premises_link_length = round(premises_link['properties']['length'],2)
-                        
-                        d_side_length = round(dist_point_link_length + premises_link_length,2)
-                        
-                        total_link_length = round(cab_link_length + d_side_length,2)
-                        
-                        length_data.append({
-                            'cab_link_length': cab_link_length,
-                            'dist_point_link_length': dist_point_link_length,
-                            'premises_link_length': premises_link_length, 
-                            'd_side': d_side_length,
-                            'total_link_length': total_link_length,
-                        })
-    return length_data
+        for exchange in exchanges:
+            for cab_link in cab_links:
+                if exchange['properties']['id'] == cab_link['properties']['dest']:
+                    for dist_point_link in dist_point_links:
+                        if cab_link['properties']['origin'] == dist_point_link['properties']['dest']:
+                            for premises_link in premises_links:
+                                if dist_point_link['properties']['origin'] == premises_link['properties']['dest']:
+                                                
+                                    cab_link_length = round(cab_link['properties']['length'],2)
+                                    dist_point_link_length = round(dist_point_link['properties']['length'],2)          
+                                    premises_link_length = round(premises_link['properties']['length'],2)
+                                    d_side_length = round(dist_point_link_length + premises_link_length,2)
+                                    total_link_length = round(cab_link_length + d_side_length,2)
+                                    
+                                    length_data.append({
+                                        'cab_link_length': cab_link_length,
+                                        'dist_point_link_length': dist_point_link_length,
+                                        'premises_link_length': premises_link_length, 
+                                        'd_side': d_side_length,
+                                        'total_link_length': total_link_length,
+                                    })
+
+        return length_data
+
 
 #####################################
 # WRITE LUTS/ASSETS/LINKS
@@ -1899,78 +1908,78 @@ if __name__ == "__main__":
     print('get lad ids')
     lad_ids = get_lad_area_ids(geojson_lad_areas)
 
-    #####
-    # Integrate WTP and WTA household data into premises
-    print('Loading MSOA data')
-    MSOA_data = read_msoa_data(lad_ids)
+    # #####
+    # # Integrate WTP and WTA household data into premises
+    # print('Loading MSOA data')
+    # MSOA_data = read_msoa_data(lad_ids)
 
-    print('Loading age data')
-    age_data = read_age_data()
+    # print('Loading age data')
+    # age_data = read_age_data()
 
-    print('Loading gender data')
-    gender_data = read_gender_data()
+    # print('Loading gender data')
+    # gender_data = read_gender_data()
 
-    print('Loading nation data')
-    nation_data = read_nation_data()
+    # print('Loading nation data')
+    # nation_data = read_nation_data()
 
-    print('Loading urban_rural data')
-    urban_rural_data = read_urban_rural_data()
+    # print('Loading urban_rural data')
+    # urban_rural_data = read_urban_rural_data()
 
-    print('Add country indicator')
-    MSOA_data = add_country_indicator(MSOA_data)
+    # print('Add country indicator')
+    # MSOA_data = add_country_indicator(MSOA_data)
 
-    print('Adding adoption data to MSOA data')
-    MSOA_data = add_data_to_MSOA_data(age_data, MSOA_data, 'age')
-    MSOA_data = add_data_to_MSOA_data(gender_data, MSOA_data, 'gender')
+    # print('Adding adoption data to MSOA data')
+    # MSOA_data = add_data_to_MSOA_data(age_data, MSOA_data, 'age')
+    # MSOA_data = add_data_to_MSOA_data(gender_data, MSOA_data, 'gender')
 
-    print('Loading OA data')
-    oa_data = read_oa_data()
+    # print('Loading OA data')
+    # oa_data = read_oa_data()
 
-    print('Match and convert social grades from NS-Sec to NRS')
-    oa_data = convert_ses_grades(oa_data)
+    # print('Match and convert social grades from NS-Sec to NRS')
+    # oa_data = convert_ses_grades(oa_data)
 
-    print('Loading ses data')
-    ses_data = read_ses_data()
+    # print('Loading ses data')
+    # ses_data = read_ses_data()
 
-    print('Adding ses adoption data to OA data')
-    oa_data = add_data_to_MSOA_data(ses_data, oa_data, 'ses')
+    # print('Adding ses adoption data to OA data')
+    # oa_data = add_data_to_MSOA_data(ses_data, oa_data, 'ses')
 
-    print('Adding MSOA data to OA data')
-    final_data = merge_two_lists_of_dicts(MSOA_data, oa_data, 'HID', 'lad', 'year')
+    # print('Adding MSOA data to OA data')
+    # final_data = merge_two_lists_of_dicts(MSOA_data, oa_data, 'HID', 'lad', 'year')
 
-    print('Catching any missing data')
-    final_data, missing_data = get_missing_ses_key(final_data)
+    # print('Catching any missing data')
+    # final_data, missing_data = get_missing_ses_key(final_data)
 
-    print('Calculate product of adoption factors')
-    final_data = calculate_adoption_propensity(final_data)
+    # print('Calculate product of adoption factors')
+    # final_data = calculate_adoption_propensity(final_data)
 
-    print('Calculate willingness to pay')
-    final_data = calculate_wtp(final_data)
+    # print('Calculate willingness to pay')
+    # final_data = calculate_wtp(final_data)
 
-    print('Aggregating WTP by household')
-    household_wtp = aggregate_wtp_and_wta_by_household(final_data)
+    # print('Aggregating WTP by household')
+    # household_wtp = aggregate_wtp_and_wta_by_household(final_data)
 
-    print('Reading premises data')
-    premises = read_premises_data(exchange_area)
+    # print('Reading premises data')
+    # premises = read_premises_data(exchange_area)
 
-    print('Expand premises entries')
-    premises = expand_premises(premises)
+    # print('Expand premises entries')
+    # premises = expand_premises(premises)
 
-    print('Adding household data to premises')
-    premises = merge_prems_and_housholds(premises, household_wtp)
+    # print('Adding household data to premises')
+    # premises = merge_prems_and_housholds(premises, household_wtp)
 
-    print('Write premises_multiple by household to .csv')
-    premises_fieldnames = ['uid','oa','gor','residential_address_count','non_residential_address_count','function','postgis_geom','N','E', 'HID','lad','year','wta','wtp']
-    csv_writer(premises, '{}_premises_data.csv'.format(exchange_abbr), premises_fieldnames)
+    # print('Write premises_multiple by household to .csv')
+    # premises_fieldnames = ['uid','oa','gor','residential_address_count','non_residential_address_count','function','postgis_geom','N','E', 'HID','lad','year','wta','wtp']
+    # csv_writer(premises, '{}_premises_data.csv'.format(exchange_abbr), premises_fieldnames)
 
-    print('Writing wtp')
-    wta_data_fieldnames = ['HID','lad','year','wta','wtp']
-    csv_writer(household_wtp, '{}_wta_data.csv'.format(exchange_abbr), wta_data_fieldnames)
+    # print('Writing wtp')
+    # wta_data_fieldnames = ['HID','lad','year','wta','wtp']
+    # csv_writer(household_wtp, '{}_wta_data.csv'.format(exchange_abbr), wta_data_fieldnames)
 
-    print('Writing any missing data')
-    missing_data_fieldnames = ['PID','MSOA','lad','gender','age','ethnicity','HID','year', 'nation']
-    csv_writer(missing_data, '{}_missing_data.csv'.format(exchange_abbr), missing_data_fieldnames)
-    ####
+    # print('Writing any missing data')
+    # missing_data_fieldnames = ['PID','MSOA','lad','gender','age','ethnicity','HID','year', 'nation']
+    # csv_writer(missing_data, '{}_missing_data.csv'.format(exchange_abbr), missing_data_fieldnames)
+    # ####
 
     print('read_pcd_to_exchange_lut')
     lut_pcd_to_exchange = read_pcd_to_exchange_lut()
@@ -1993,6 +2002,10 @@ if __name__ == "__main__":
 
     print('read exchanges')
     geojson_layer2_exchanges = read_exchanges(exchange_area)
+    
+    # Geotype exchange
+    print('geotype exchanges')
+    geojson_layer2_exchanges = geotype_exchange(geojson_layer2_exchanges, geojson_layer5_premises)
 
     # Process/Estimate network hierarchy
     print('add exchange id to postcode areas')
@@ -2010,10 +2023,10 @@ if __name__ == "__main__":
     print('add LAD to exchanges')
     geojson_layer2_exchanges = add_lad_to_exchanges(geojson_layer2_exchanges, geojson_lad_areas)
 
-    print('merge geotype info by LAD to exchanges')
+    # print('merge geotype info by LAD to exchanges')
     geojson_layer2_exchanges = add_urban_geotype_to_exchanges(geojson_layer2_exchanges, city_exchange_lad_lut)
-
-    # Process/Estimate assets
+    
+    Process/Estimate assets
     print('complement cabinet locations as expected for this geotype')
     geojson_layer3_cabinets = complement_postcode_cabinets(geojson_postcode_areas, geojson_layer5_premises, geojson_layer2_exchanges, exchange_abbr)
 
@@ -2100,7 +2113,7 @@ if __name__ == "__main__":
 
     # Generate loop lengths
     print('calculating loop length stats')
-    length_data = calc_total_link_length(geojson_layer3_cabinets_links, geojson_layer4_distributions_links, geojson_layer5_premises_links)
+    length_data = calc_total_link_length(geojson_layer2_exchanges, geojson_layer3_cabinets_links, geojson_layer4_distributions_links, geojson_layer5_premises_links)
 
     # Write loop lengths
     print('write link lengths to .csv')

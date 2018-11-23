@@ -24,7 +24,8 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 # SETUP FILE LOCATIONS
 #####################################
 
-SYSTEM_INPUT_FIXED = os.path.join(BASE_PATH, 'raw')
+SYSTEM_INPUT_FIXED = os.path.join(BASE_PATH, 'raw', 'a_fixed_model_cambridge_test')
+SYSTEM_INPUT_SHAPES = os.path.join(BASE_PATH, 'raw', 'd_shapes_cambridge_test')
 SYSTEM_OUTPUT_FILENAME = os.path.join(BASE_PATH, 'processed')
 SYSTEM_INPUT_NETWORK = os.path.join(SYSTEM_INPUT_FIXED, 'network_hierarchy_data')
 
@@ -204,7 +205,7 @@ def read_postcode_areas():
     # Initialze Rtree
     idx = index.Index()
 
-    CODEPOINT_INPUT = os.path.join(SYSTEM_INPUT_FIXED,'codepoint', 'codepoint-poly_2429451')
+    CODEPOINT_INPUT = os.path.join(SYSTEM_INPUT_SHAPES,'codepoint', 'codepoint-poly_2429451')
 
     for dirpath, subdirs, files in os.walk(CODEPOINT_INPUT):
         for x in files:
@@ -489,7 +490,7 @@ def get_postcode_centroids():
 
     postcode_shapes = []
     
-    for dirpath, subdirs, files in os.walk(os.path.join(SYSTEM_INPUT_FIXED, 'codepoint', 'codepoint-poly_2429451')):
+    for dirpath, subdirs, files in os.walk(os.path.join(SYSTEM_INPUT_SHAPES, 'codepoint', 'codepoint-poly_2429451')):
         for x in files:
             #print(files)
             if x.endswith(".shp"):
@@ -507,12 +508,10 @@ def read_codepoint_lut():
 
     codepoint_lut_data = []
 
-    SYSTEM_INPUT_NETWORK = os.path.join(SYSTEM_INPUT_FIXED,'codepoint', 'codepoint_2429650', 'all_codepoint')
-
-    for filename in os.listdir(SYSTEM_INPUT_NETWORK):
+    for filename in os.listdir(SYSTEM_INPUT_SHAPES):
         #print(filename)
         if filename.endswith(".csv"):
-            with open(os.path.join(SYSTEM_INPUT_NETWORK, filename), 'r', encoding='utf8', errors='replace') as system_file:
+            with open(os.path.join(SYSTEM_INPUT_SHAPES, filename), 'r', encoding='utf8', errors='replace') as system_file:
                 reader = csv.reader(system_file) #csv.reader((line.replace('\0','') for line in system_file))
                 next(reader)    
                 for line in reader:
@@ -618,7 +617,7 @@ def sum_premises_by_exchange():
 ############################################
 
 def read_lads():
-    with fiona.open(os.path.join(SYSTEM_INPUT_FIXED, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'), 'r') as source:
+    with fiona.open(os.path.join(SYSTEM_INPUT_SHAPES, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'), 'r') as source:
         return [lad for lad in source]
 
 def read_city_exchange_geotype_lut():
@@ -725,10 +724,10 @@ def add_urban_geotype_to_exchanges(exchanges, exchange_geotype_lut):
     # Add properties
     for exchange in exchanges:
         
-        if 'geotype' not in exchange['properties']:
-            exchange['properties'].update({
-                'geotype': 'unknown',
-            })
+        # if 'geotype' not in exchange['properties']:
+        #     exchange['properties'].update({
+        #         'geotype': 'unknown',
+        #     })
         
         if exchange['properties']['lad'] in exchange_geotypes:
             exchange['properties'].update({
@@ -781,8 +780,13 @@ def write_shapefile(data, path):
         'properties': OrderedDict(prop_schema)
     }
 
+    # Create path
+    directory = os.path.join(SYSTEM_OUTPUT_FILENAME, path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
     # Write all elements to output file
-    with fiona.open(os.path.join(SYSTEM_OUTPUT_FILENAME, path), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
+    with fiona.open(directory, 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         for feature in data:
             sink.write(feature)
 
@@ -821,47 +825,47 @@ exchange_boundaries = read_exchange_boundaries()
 
 print("reading postcode boundaries")
 postcode_centroids = get_postcode_centroids()
- 
-print("reading codepoint lut")
-codepoint_lut = read_codepoint_lut()
+#print(postcode_centroids)
+# print("reading codepoint lut")
+# codepoint_lut = read_codepoint_lut()
 
-print("adding codepoint lut to postcode shapes")
-postcode_centroids = add_codepoint_lut_to_postcode_shapes(postcode_centroids, codepoint_lut)
+# print("adding codepoint lut to postcode shapes")
+# postcode_centroids = add_codepoint_lut_to_postcode_shapes(postcode_centroids, codepoint_lut)
 
-print("adding intersecting exchange IDs to postcode points")
-postcode_centroids = add_exchange_to_postcodes(postcode_centroids, exchange_boundaries)
+# print("adding intersecting exchange IDs to postcode points")
+# postcode_centroids = add_exchange_to_postcodes(postcode_centroids, exchange_boundaries)
 
-print("summing delivery points by exchange area")
-premises_by_exchange = sum_premises_by_exchange()
+# print("summing delivery points by exchange area")
+# premises_by_exchange = sum_premises_by_exchange()
 
-#### PART 3 ALLOCATE EXCHANGE GEOTYPES 
-print('read lads')
-geojson_lad_areas = read_lads()
+# #### PART 3 ALLOCATE EXCHANGE GEOTYPES 
+# print('read lads')
+# geojson_lad_areas = read_lads()
 
-print('read city exchange geotypes lut')
-city_exchange_lad_lut = read_city_exchange_geotype_lut()
+# print('read city exchange geotypes lut')
+# city_exchange_lad_lut = read_city_exchange_geotype_lut()
 
-print('add LAD to exchanges')
-geojson_layer2_exchanges = add_lad_to_exchanges(geojson_layer2_exchanges, geojson_lad_areas)
+# print('add LAD to exchanges')
+# geojson_layer2_exchanges = add_lad_to_exchanges(geojson_layer2_exchanges, geojson_lad_areas)
 
-print("convert exchange areas to list of dicts")
-premises_by_exchange = covert_data_into_list_of_dicts(premises_by_exchange)
+# print("convert exchange areas to list of dicts")
+# premises_by_exchange = covert_data_into_list_of_dicts(premises_by_exchange)
 
-print("merge geojason exchanges with premises summed by exchange")
-geojson_layer2_exchanges = merge_exchanges_with_summed_prems(geojson_layer2_exchanges, premises_by_exchange)
+# print("merge geojason exchanges with premises summed by exchange")
+# geojson_layer2_exchanges = merge_exchanges_with_summed_prems(geojson_layer2_exchanges, premises_by_exchange)
 
-print('merge geotype info by LAD to exchanges')
-geojson_layer2_exchanges = add_urban_geotype_to_exchanges(geojson_layer2_exchanges, city_exchange_lad_lut)
+# print('merge geotype info by LAD to exchanges')
+# geojson_layer2_exchanges = add_urban_geotype_to_exchanges(geojson_layer2_exchanges, city_exchange_lad_lut)
 
-print("convert exchange areas to list of dicts")
-layer2_exchanges = covert_geojson_exchanges_into_list_of_dicts(geojson_layer2_exchanges)
+# print("convert exchange areas to list of dicts")
+# layer2_exchanges = covert_geojson_exchanges_into_list_of_dicts(geojson_layer2_exchanges)
 
-#### WRITE DATA 
-print('write geotype lut')
-geotype_lut_fieldnames = ['exchange_id', 'lad', 'delivery_points', 'geotype']
-csv_writer(layer2_exchanges, geotype_lut_fieldnames, 'exchange_geotype_lut.csv')
+# #### WRITE DATA 
+# print('write geotype lut')
+# geotype_lut_fieldnames = ['exchange_id', 'lad', 'delivery_points', 'geotype']
+# csv_writer(layer2_exchanges, geotype_lut_fieldnames, 'exchange_geotype_lut.csv')
 
-print('write postcode_centroids')
-write_shapefile(postcode_centroids, 'postcode_centroids.shp')
+# print('write postcode_centroids')
+# write_shapefile(postcode_centroids, 'postcode_centroids.shp')
 
-print("script finished")
+# print("script finished")
