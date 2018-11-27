@@ -2382,9 +2382,9 @@ if __name__ == "__main__":
     print('Adding household data to premises')
     premises = merge_prems_and_housholds(premises, household_wtp)
 
-    # print('Write premises_multiple by household to .csv')
-    # premises_fieldnames = ['uid','oa','gor','residential_address_count','non_residential_address_count','function','postgis_geom','N','E', 'HID','lad','year','wta','wtp']
-    # csv_writer(premises, '{}_premises_data.csv'.format(exchange_abbr), premises_fieldnames)
+    print('Write premises_multiple by household to .csv')
+    premises_fieldnames = ['uid','oa','gor','residential_address_count','non_residential_address_count','function','postgis_geom','N','E', 'HID','lad','year','wta','wtp']
+    csv_writer(premises, '{}_premises_data.csv'.format(exchange_abbr), premises_fieldnames)
 
     # print('Writing wtp')
     # wta_data_fieldnames = ['HID','lad','year','wta','wtp']
