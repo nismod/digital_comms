@@ -2382,17 +2382,17 @@ if __name__ == "__main__":
     print('Adding household data to premises')
     premises = merge_prems_and_housholds(premises, household_wtp)
 
-    print('Write premises_multiple by household to .csv')
-    premises_fieldnames = ['uid','oa','gor','residential_address_count','non_residential_address_count','function','postgis_geom','N','E', 'HID','lad','year','wta','wtp']
-    csv_writer(premises, '{}_premises_data.csv'.format(exchange_abbr), premises_fieldnames)
+    # print('Write premises_multiple by household to .csv')
+    # premises_fieldnames = ['uid','oa','gor','residential_address_count','non_residential_address_count','function','postgis_geom','N','E', 'HID','lad','year','wta','wtp']
+    # csv_writer(premises, '{}_premises_data.csv'.format(exchange_abbr), premises_fieldnames)
 
-    print('Writing wtp')
-    wta_data_fieldnames = ['HID','lad','year','wta','wtp']
-    csv_writer(household_wtp, '{}_wta_data.csv'.format(exchange_abbr), wta_data_fieldnames)
+    # print('Writing wtp')
+    # wta_data_fieldnames = ['HID','lad','year','wta','wtp']
+    # csv_writer(household_wtp, '{}_wta_data.csv'.format(exchange_abbr), wta_data_fieldnames)
 
-    print('Writing any missing data')
-    missing_data_fieldnames = ['PID','MSOA','lad','gender','age','ethnicity','HID','year', 'nation']
-    csv_writer(missing_data, '{}_missing_data.csv'.format(exchange_abbr), missing_data_fieldnames)
+    # print('Writing any missing data')
+    # missing_data_fieldnames = ['PID','MSOA','lad','gender','age','ethnicity','HID','year', 'nation']
+    # csv_writer(missing_data, '{}_missing_data.csv'.format(exchange_abbr), missing_data_fieldnames)
     ####
 
     print('read_pcd_to_exchange_lut')
@@ -2496,14 +2496,14 @@ if __name__ == "__main__":
     print('generate shortest path links layer 3')
     geojson_layer3_cabinets_sp_links = generate_link_shortest_path(geojson_layer3_cabinets, geojson_layer2_exchanges, exchange_area)
 
-    print('generate straight line links layer 5')
-    geojson_layer5_premises_sl_links = generate_link_straight_line(geojson_layer5_premises, geojson_layer4_distributions)
+    # print('generate straight line links layer 5')
+    # geojson_layer5_premises_sl_links = generate_link_straight_line(geojson_layer5_premises, geojson_layer4_distributions)
 
-    print('generate straight line links layer 4')
-    geojson_layer4_distributions_sl_links = generate_link_straight_line(geojson_layer4_distributions, geojson_layer3_cabinets)
+    # print('generate straight line links layer 4')
+    # geojson_layer4_distributions_sl_links = generate_link_straight_line(geojson_layer4_distributions, geojson_layer3_cabinets)
 
-    print('generate straight line links layer 3')
-    geojson_layer3_cabinets_sl_links = generate_link_straight_line(geojson_layer3_cabinets, geojson_layer2_exchanges)
+    # print('generate straight line links layer 3')
+    # geojson_layer3_cabinets_sl_links = generate_link_straight_line(geojson_layer3_cabinets, geojson_layer2_exchanges)
 
     # Add technology to network and process this into the network hierachy
     print('add technology to postcode areas')
@@ -2537,49 +2537,49 @@ if __name__ == "__main__":
     print('copy id to name (cabinets)')
     geojson_layer3_cabinets = copy_id_to_name(geojson_layer3_cabinets)
 
-    # Generate loop lengths
-    print('calculating loop length stats')
-    length_data = calc_total_link_length(geojson_layer2_exchanges, 
-                                            geojson_layer3_cabinets_sp_links, geojson_layer4_distributions_sp_links, geojson_layer5_premises_sp_links,
-                                            geojson_layer3_cabinets_sl_links, geojson_layer4_distributions_sl_links, geojson_layer5_premises_sl_links,
-                                            prems_over_lut, prems_under_lut)
+    # # Generate loop lengths
+    # print('calculating loop length stats')
+    # length_data = calc_total_link_length(geojson_layer2_exchanges, 
+    #                                         geojson_layer3_cabinets_sp_links, geojson_layer4_distributions_sp_links, geojson_layer5_premises_sp_links,
+    #                                         geojson_layer3_cabinets_sl_links, geojson_layer4_distributions_sl_links, geojson_layer5_premises_sl_links,
+    #                                         prems_over_lut, prems_under_lut)
 
-    # Calculate geotype statistics
-    print('calculating geotype statistics')
-    exchanges = calc_geotype_statistics(geojson_layer2_exchanges, geojson_layer3_cabinets, geojson_layer4_distributions, geojson_layer5_premises)
+    # # Calculate geotype statistics
+    # print('calculating geotype statistics')
+    # exchanges = calc_geotype_statistics(geojson_layer2_exchanges, geojson_layer3_cabinets, geojson_layer4_distributions, geojson_layer5_premises)
 
-    # Calculate network statistics
-    print('calculating network statistics')
-    network_stats = calculate_network_statistics(length_data, exchanges, exchange_name)
+    # # Calculate network statistics
+    # print('calculating network statistics')
+    # network_stats = calculate_network_statistics(length_data, exchanges, exchange_name)
 
-    # Plot network statistics
-    print('plotting network statistics')
-    plot_length_data(length_data, exchange_name)
+    # # Plot network statistics
+    # print('plotting network statistics')
+    # plot_length_data(length_data, exchange_name)
 
-    # Write network statistics
-    print('write link lengths to .csv')
-    loop_length_fieldnames = ['premises_id','exchange_id','geotype','cab_link_length','dist_point_link_length','premises_link_length', 
-                                'd_side', 'total_link_length', 'length_type', 'premises_distance']
-    csv_writer(length_data, '{}_link_lengths.csv'.format(exchange_abbr), loop_length_fieldnames)
+    # # Write network statistics
+    # print('write link lengths to .csv')
+    # loop_length_fieldnames = ['premises_id','exchange_id','geotype','cab_link_length','dist_point_link_length','premises_link_length', 
+    #                             'd_side', 'total_link_length', 'length_type', 'premises_distance']
+    # csv_writer(length_data, '{}_link_lengths.csv'.format(exchange_abbr), loop_length_fieldnames)
 
-    print('write link lengths to .csv')
-    network_stats_fieldnames = ['exchange_id','geotype','distance_type','am_ave_lines_per_ex','total_lines','am_cabinets','total_cabinets',
-                                'am_ave_lines_per_cab', 'ave_lines_per_cab', 'am_distribution_points','total_dps', 
-                                'am_ave_lines_per_dist_point', 'ave_lines_per_dist_point', 'am_ave_line_length','ave_line_length']
-    csv_writer(network_stats, '{}_network_statistics.csv'.format(exchange_abbr), network_stats_fieldnames)
+    # print('write link lengths to .csv')
+    # network_stats_fieldnames = ['exchange_id','geotype','distance_type','am_ave_lines_per_ex','total_lines','am_cabinets','total_cabinets',
+    #                             'am_ave_lines_per_cab', 'ave_lines_per_cab', 'am_distribution_points','total_dps', 
+    #                             'am_ave_lines_per_dist_point', 'ave_lines_per_dist_point', 'am_ave_line_length','ave_line_length']
+    # csv_writer(network_stats, '{}_network_statistics.csv'.format(exchange_abbr), network_stats_fieldnames)
 
-    # Write lookups (for debug purposes)
-    print('write postcode_areas')
-    write_shapefile(geojson_postcode_areas,  exchange_name, '_postcode_areas.shp')
+    # # Write lookups (for debug purposes)
+    # print('write postcode_areas')
+    # write_shapefile(geojson_postcode_areas,  exchange_name, '_postcode_areas.shp')
 
-    print('write distribution_areas')
-    write_shapefile(geojson_distribution_areas,  exchange_name, '_distribution_areas.shp')
+    # print('write distribution_areas')
+    # write_shapefile(geojson_distribution_areas,  exchange_name, '_distribution_areas.shp')
 
-    print('write cabinet_areas')
-    write_shapefile(geojson_cabinet_areas,  exchange_name, '_cabinet_areas.shp')
+    # print('write cabinet_areas')
+    # write_shapefile(geojson_cabinet_areas,  exchange_name, '_cabinet_areas.shp')
 
-    print('write exchange_areas')
-    write_shapefile(geojson_exchange_areas,  exchange_name, '_exchange_areas.shp')
+    # print('write exchange_areas')
+    # write_shapefile(geojson_exchange_areas,  exchange_name, '_exchange_areas.shp')
 
     # Write assets
     print('write premises')
@@ -2604,14 +2604,14 @@ if __name__ == "__main__":
     print('write links layer3')
     write_shapefile(geojson_layer3_cabinets_sp_links,  exchange_name, 'links_sp_layer3_cabinets.shp')
 
-    print('write links layer5')
-    write_shapefile(geojson_layer5_premises_sl_links,  exchange_name, 'links_sl_layer5_premises.shp')
+    # print('write links layer5')
+    # write_shapefile(geojson_layer5_premises_sl_links,  exchange_name, 'links_sl_layer5_premises.shp')
 
-    print('write links layer4')
-    write_shapefile(geojson_layer4_distributions_sl_links,  exchange_name, 'links_sl_layer4_distributions.shp')
+    # print('write links layer4')
+    # write_shapefile(geojson_layer4_distributions_sl_links,  exchange_name, 'links_sl_layer4_distributions.shp')
 
-    print('write links layer3')
-    write_shapefile(geojson_layer3_cabinets_sl_links,  exchange_name, 'links_sl_layer3_cabinets.shp')
+    # print('write links layer3')
+    # write_shapefile(geojson_layer3_cabinets_sl_links,  exchange_name, 'links_sl_layer3_cabinets.shp')
 
     end = time.time()
     print("script finished")
