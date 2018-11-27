@@ -19,7 +19,7 @@ def collect_results(selection, name):
     results = []
     for entry in selection:
         results.append(os.path.join(DATA_INTERMEDIATE, entry, name))
-
+    
     geojson_results = []
     for result_file in results:
         try:
@@ -109,7 +109,7 @@ if __name__ == "__main__":
     selection = []
 
     if len(sys.argv) < 2:
-        selection = [item for item in os.listdir(DATA_INTERMEDIATE) if os.path.isdir(os.path.join(DATA_INTERMEDIATE, item))]
+        selection = [item for item in os.listdir(DATA_INTERMEDIATE) if os.path.isdir(os.path.join(DATA_INTERMEDIATE, item)) and item != '.ipynb_checkpoints']
     elif sys.argv[1] == 'exchange_EACAM':
         selection = ['exchange_EACAM']
     elif sys.argv[1] == 'cambridge':
