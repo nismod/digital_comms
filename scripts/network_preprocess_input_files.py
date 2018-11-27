@@ -2487,23 +2487,23 @@ if __name__ == "__main__":
     geojson_layer3_cabinets = connect_points_to_area(geojson_layer3_cabinets, geojson_exchange_areas)
 
     # Process/Estimate links
-    print('generate shortest path links layer 5')
-    geojson_layer5_premises_sp_links = generate_link_shortest_path(geojson_layer5_premises, geojson_layer4_distributions, exchange_area)
+    # print('generate shortest path links layer 5')
+    # geojson_layer5_premises_sp_links = generate_link_shortest_path(geojson_layer5_premises, geojson_layer4_distributions, exchange_area)
 
-    print('generate shortest path links layer 4')
-    geojson_layer4_distributions_sp_links = generate_link_shortest_path(geojson_layer4_distributions, geojson_layer3_cabinets, exchange_area)
+    # print('generate shortest path links layer 4')
+    # geojson_layer4_distributions_sp_links = generate_link_shortest_path(geojson_layer4_distributions, geojson_layer3_cabinets, exchange_area)
 
-    print('generate shortest path links layer 3')
-    geojson_layer3_cabinets_sp_links = generate_link_shortest_path(geojson_layer3_cabinets, geojson_layer2_exchanges, exchange_area)
+    # print('generate shortest path links layer 3')
+    # geojson_layer3_cabinets_sp_links = generate_link_shortest_path(geojson_layer3_cabinets, geojson_layer2_exchanges, exchange_area)
 
-    # print('generate straight line links layer 5')
-    # geojson_layer5_premises_sl_links = generate_link_straight_line(geojson_layer5_premises, geojson_layer4_distributions)
+    print('generate straight line links layer 5')
+    geojson_layer5_premises_sl_links = generate_link_straight_line(geojson_layer5_premises, geojson_layer4_distributions)
 
-    # print('generate straight line links layer 4')
-    # geojson_layer4_distributions_sl_links = generate_link_straight_line(geojson_layer4_distributions, geojson_layer3_cabinets)
+    print('generate straight line links layer 4')
+    geojson_layer4_distributions_sl_links = generate_link_straight_line(geojson_layer4_distributions, geojson_layer3_cabinets)
 
-    # print('generate straight line links layer 3')
-    # geojson_layer3_cabinets_sl_links = generate_link_straight_line(geojson_layer3_cabinets, geojson_layer2_exchanges)
+    print('generate straight line links layer 3')
+    geojson_layer3_cabinets_sl_links = generate_link_straight_line(geojson_layer3_cabinets, geojson_layer2_exchanges)
 
     # Add technology to network and process this into the network hierachy
     print('add technology to postcode areas')
@@ -2513,19 +2513,19 @@ if __name__ == "__main__":
     geojson_layer5_premises = add_technology_to_premises(geojson_layer5_premises, geojson_postcode_areas)
 
     print('add technology to premises links (finaldrop)')
-    geojson_layer5_premises_links = add_technology_to_link(geojson_layer5_premises, geojson_layer5_premises_sp_links)
+    geojson_layer5_premises_links = add_technology_to_link(geojson_layer5_premises, geojson_layer5_premises_sl_links)
 
     print('add technology to distributions')
     geojson_layer4_distributions = add_technology_to_assets(geojson_layer4_distributions, geojson_layer5_premises)
 
     print('add technology to distribution links')
-    geojson_layer4_distributions_sp_links = add_technology_to_link(geojson_layer4_distributions, geojson_layer4_distributions_sp_links)
+    geojson_layer4_distributions_sp_links = add_technology_to_link(geojson_layer4_distributions, geojson_layer4_distributions_sl_links)
 
     print('add technology to cabinets')
     geojson_layer3_cabinets = add_technology_to_assets(geojson_layer3_cabinets, geojson_layer4_distributions)
 
     print('add technology to cabinet links')
-    geojson_layer3_cabinets_sp_links = add_technology_to_link(geojson_layer3_cabinets, geojson_layer3_cabinets_sp_links)
+    geojson_layer3_cabinets_sp_links = add_technology_to_link(geojson_layer3_cabinets, geojson_layer3_cabinets_sl_links)
 
     print('add technology to exchanges')
     geojson_layer2_exchanges = add_technology_to_assets(geojson_layer2_exchanges, geojson_layer3_cabinets)
@@ -2595,23 +2595,23 @@ if __name__ == "__main__":
     write_shapefile(geojson_layer2_exchanges,  exchange_name, 'assets_layer2_exchanges.shp')
 
     # Write links
-    print('write links layer5')
-    write_shapefile(geojson_layer5_premises_sp_links,  exchange_name, 'links_sp_layer5_premises.shp')
-
-    print('write links layer4')
-    write_shapefile(geojson_layer4_distributions_sp_links,  exchange_name, 'links_sp_layer4_distributions.shp')
-
-    print('write links layer3')
-    write_shapefile(geojson_layer3_cabinets_sp_links,  exchange_name, 'links_sp_layer3_cabinets.shp')
-
     # print('write links layer5')
-    # write_shapefile(geojson_layer5_premises_sl_links,  exchange_name, 'links_sl_layer5_premises.shp')
+    # write_shapefile(geojson_layer5_premises_sp_links,  exchange_name, 'links_sp_layer5_premises.shp')
 
     # print('write links layer4')
-    # write_shapefile(geojson_layer4_distributions_sl_links,  exchange_name, 'links_sl_layer4_distributions.shp')
+    # write_shapefile(geojson_layer4_distributions_sp_links,  exchange_name, 'links_sp_layer4_distributions.shp')
 
     # print('write links layer3')
-    # write_shapefile(geojson_layer3_cabinets_sl_links,  exchange_name, 'links_sl_layer3_cabinets.shp')
+    # write_shapefile(geojson_layer3_cabinets_sp_links,  exchange_name, 'links_sp_layer3_cabinets.shp')
+
+    print('write links layer5')
+    write_shapefile(geojson_layer5_premises_sl_links,  exchange_name, 'links_sl_layer5_premises.shp')
+
+    print('write links layer4')
+    write_shapefile(geojson_layer4_distributions_sl_links,  exchange_name, 'links_sl_layer4_distributions.shp')
+
+    print('write links layer3')
+    write_shapefile(geojson_layer3_cabinets_sl_links,  exchange_name, 'links_sl_layer3_cabinets.shp')
 
     end = time.time()
     print("script finished")
