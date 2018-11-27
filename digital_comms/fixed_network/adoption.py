@@ -1,5 +1,7 @@
+
 """Decide who adopts
 """
+
 ################################################################
 # Decide who adopts
 ################################################################
@@ -20,32 +22,32 @@ def update_adoption_desirability(system, annual_adoption_rate):
 
     """
 
-    non_adopted_premises = [
+    premises_not_wanting_to_adopt = [
         premise for premise in system._premises
         if premise.adoption_desirability is not True
     ]
 
-    adopted_premises = [
+    premises_already_wanting_to_adopt = [
         premise for premise in system._premises
         if premise.adoption_desirability is True
     ]
     #rank premises based on household wta
-    non_adopted_premises = sorted(non_adopted_premises, key=lambda item: item.wta)
+    premises_not_wanting_to_adopt = sorted(premises_not_wanting_to_adopt, key=lambda item: item.wta)
 
     #get number of premises to select = convert adopt rate into raw premises
     to_adopt = (len(system._premises) * annual_adoption_rate) / 100
 
     #select number of premises ready to adopt
-    premises_to_be_adopting = non_adopted_premises[1:int(to_adopt)]
+    new_premises_wanting_to_adopt = premises_not_wanting_to_adopt[1:int(to_adopt)]
 
-    print("-- premises not wanting to connect {}".format(len(non_adopted_premises)))
-    print("-- premises wanting to connect {}".format(len(premises_to_be_adopting)))
-    print("-- total premises {}".format((len(adopted_premises) + len(non_adopted_premises))))
+    # logger.info("-- premises not wanting to connect {}".format(len(premises_not_wanting_to_adopt)))
+    # logger.info("-- premises wanting to connect {}".format(len(new_premises_wanting_to_adopt)))
+    # logger.info("-- total premises {}".format((len(premises_already_wanting_to_adopt) + len(premises_not_wanting_to_adopt))))
 
     premises_adoption = []
 
     #cycle through number of premises
-    for premises in premises_to_be_adopting:
+    for premises in new_premises_wanting_to_adopt:
 
         #turn adoption_desirability to True
         premises.adoption_desirability = True

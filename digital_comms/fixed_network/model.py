@@ -132,7 +132,6 @@ class ICTManager(object):
         """
         premises_per_lad = self._premises_by_lad
 
-        #print(premises_per_lad.keys())
         coverage_results = []
         for lad in premises_per_lad.keys():
             sum_of_fttp = sum(premise.fttp for premise in premises_per_lad[lad])
