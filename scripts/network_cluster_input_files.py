@@ -166,12 +166,15 @@ def read_postcode_areas():
                 # Merge with best neighbour
                 neighbour = postcodes[best_neighbour['id']]
                 merged_geom = unary_union([shape(neighbour['geometry']), vpost_geom])
-                simple_geom = merged_geom.simplify(0.05, preserve_topology=False)
+
+                #g = shape(pcd_area['geometry'])
+                merged_geom = merged_geom.buffer(1.0)          
+                merged_geom = merged_geom.simplify(0.95, preserve_topology=False)
 
                 merged_postcode = {
                     'id': neighbour['id'].replace(" ", ""),
                     'properties': neighbour['properties'],
-                    'geometry': mapping(simple_geom)
+                    'geometry': mapping(merged_geom)
                 }
 
                 try:
