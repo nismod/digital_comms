@@ -166,11 +166,12 @@ def read_postcode_areas():
                 # Merge with best neighbour
                 neighbour = postcodes[best_neighbour['id']]
                 merged_geom = unary_union([shape(neighbour['geometry']), vpost_geom])
+                simple_geom = merged_geom.simplify(0.05, preserve_topology=False)
 
                 merged_postcode = {
                     'id': neighbour['id'].replace(" ", ""),
                     'properties': neighbour['properties'],
-                    'geometry': mapping(merged_geom)
+                    'geometry': mapping(simple_geom)
                 }
 
                 try:
@@ -503,28 +504,3 @@ if __name__ == "__main__":
     #[print(exchange['properties']['id']) for exchange in exchange_areas if return_file_count(exchange['properties']['id']) < 11 and (exchange['properties']['region']) is not 'Scotland'] 
     [print(exchange['properties']['id']) for exchange in exchange_areas if return_file_count(exchange['properties']['id']) < 11] 
 
-
-#     print('exchange_EAARR')
-#     print('exchange_EABTM')
-#     print('exchange_EABWL')
-#     print('exchange_EACAM')
-#     print('exchange_EACFH')
-#     print('exchange_EACOM')
-#     print('exchange_EACRH')
-#     print('exchange_EACTM')
-#     print('exchange_EAESW')
-#     print('exchange_EAFUL')
-#     print('exchange_EAGIR')
-#     print('exchange_EAHIS')
-#     print('exchange_EAHST')
-#     print('exchange_EALNT')
-#     print('exchange_EAMAD')
-#     print('exchange_EAMBN')
-#     print('exchange_EASCI')
-#     print('exchange_EASIX')
-#     print('exchange_EASST')
-#     print('exchange_EASWV')
-#     print('exchange_EATEV')
-#     print('exchange_EATRU')
-#     print('exchange_EAWLM')
-#     print('exchange_EAWTB')
