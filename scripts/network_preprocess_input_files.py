@@ -1100,34 +1100,34 @@ def complement_postcode_cabinets(postcode_areas, premises, exchanges, exchange_a
         local_cluster_radius = 1
         minimum_samples = 1
 
-        # # Calculate number of expected cabinets
-        # if exchange['properties']['geotype'] == 'inner london': #>500k
-        #     local_cluster_radius = 500
-        #     minimum_samples = 500
-        # elif exchange['properties']['geotype'] == 'large city': #>500k
-        #     local_cluster_radius = 500
-        #     minimum_samples = 500
-        # elif exchange['properties']['geotype'] == 'small city': #>200k
-        #     local_cluster_radius = 500
-        #     minimum_samples = 500
-        # elif exchange['properties']['geotype'] == '>20k lines':
-        #     local_cluster_radius = 600
-        #     minimum_samples = 200
-        # elif exchange['properties']['geotype'] == '>10k lines':
-        #     local_cluster_radius = 700
-        #     minimum_samples = 100
-        # elif exchange['properties']['geotype'] == '>3k lines':
-        #     local_cluster_radius = 800
-        #     minimum_samples = 75
-        # elif exchange['properties']['geotype'] == '>1k lines':
-        #     local_cluster_radius = 900
-        #     minimum_samples = 50
-        # elif exchange['properties']['geotype'] == '<1k lines' or 'other':
-        #     local_cluster_radius = 1000 # TODO: according to table these premises geotypes have no internet access
-        #     minimum_samples = 1
-        # else:
-        #     print('Geotype ' + exchange['properties']['geotype'] + ' is unknown')
-        #     raise Exception()
+        # Calculate number of expected cabinets
+        if exchange['properties']['geotype'] == 'inner london': 
+            local_cluster_radius = 500
+            minimum_samples = 75
+        elif exchange['properties']['geotype'] == 'large city': 
+            local_cluster_radius = 500
+            minimum_samples = 75
+        elif exchange['properties']['geotype'] == 'small city': 
+            local_cluster_radius = 500
+            minimum_samples = 75
+        elif exchange['properties']['geotype'] == '>20k lines':
+            local_cluster_radius = 500
+            minimum_samples = 75
+        elif exchange['properties']['geotype'] == '>10k lines':
+            local_cluster_radius = 500
+            minimum_samples = 75
+        elif exchange['properties']['geotype'] == '>3k lines':
+            local_cluster_radius = 500
+            minimum_samples = 75
+        elif exchange['properties']['geotype'] == '>1k lines':
+            local_cluster_radius = 500
+            minimum_samples = 50
+        elif exchange['properties']['geotype'] == '<1k lines' or 'other':
+            local_cluster_radius = 500
+            minimum_samples = 50
+        else:
+            print('Geotype ' + exchange['properties']['geotype'] + ' is unknown')
+            raise Exception()
 
         points = np.vstack([[float(i) for i in premise['geometry']['coordinates']] for premise in premises])
 
