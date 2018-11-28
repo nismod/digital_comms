@@ -1075,6 +1075,16 @@ def add_urban_geotype_to_exchanges(exchanges, exchange_geotype_lut):
 
     return exchanges
 
+def get_exchange_properties(exchanges):
+
+    exchange_properties = []
+
+    for exchange in exchanges:
+        properties = exchange['properties']
+        exchange_properties.append(properties)
+    
+    return exchange_properties
+
 #####################################
 # PROCESS ASSETS
 #####################################
@@ -2283,7 +2293,7 @@ def write_shapefile(data, exchange_name, filename):
     with fiona.open(os.path.join(directory, filename), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         [sink.write(feature) for feature in data]
 
-def csv_writer(data, filename, fieldnames):
+def csv_writer(data, filename, fieldnames, function):
     """
     Write data to a CSV file path
     """
@@ -2292,10 +2302,18 @@ def csv_writer(data, filename, fieldnames):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    with open(os.path.join(DATA_INTERMEDIATE, filename),'w') as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
-        writer.writeheader()
-        writer.writerows(data)
+    name = os.path.join(DATA_INTERMEDIATE, filename)
+
+    if not os.path.isfile(name):
+        with open(name, function) as csv_file:
+            writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
+            writer.writeheader()
+            writer.writerows(data)
+    else:
+        with open(name, function) as csv_file:
+            writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
+            writer.writerows(data)
+
 
 #####################################
 # APPLY METHODS
@@ -2386,15 +2404,15 @@ if __name__ == "__main__":
 
     print('Write premises_multiple by household to .csv')
     premises_fieldnames = ['uid','oa','gor','residential_address_count','non_residential_address_count','function','postgis_geom','N','E', 'HID','lad','year','wta','wtp']
-    csv_writer(premises, '{}_premises_data.csv'.format(exchange_abbr), premises_fieldnames)
+    csv_writer(premises, '{}_premises_data.csv'.format(exchange_abbr), premises_fieldnames, 'w')
 
     # print('Writing wtp')
     # wta_data_fieldnames = ['HID','lad','year','wta','wtp']
-    # csv_writer(household_wtp, '{}_wta_data.csv'.format(exchange_abbr), wta_data_fieldnames)
+    # csv_writer(household_wtp, '{}_wta_data.csv'.format(exchange_abbr), wta_data_fieldnames, 'w')
 
     # print('Writing any missing data')
     # missing_data_fieldnames = ['PID','MSOA','lad','gender','age','ethnicity','HID','year', 'nation']
-    # csv_writer(missing_data, '{}_missing_data.csv'.format(exchange_abbr), missing_data_fieldnames)
+    # csv_writer(missing_data, '{}_missing_data.csv'.format(exchange_abbr), missing_data_fieldnames, 'w')
     ####
 
     print('read_pcd_to_exchange_lut')
@@ -2444,7 +2462,14 @@ if __name__ == "__main__":
 
     print('merge geotype info by LAD to exchanges')
     geojson_layer2_exchanges = add_urban_geotype_to_exchanges(geojson_layer2_exchanges, city_exchange_lad_lut)
-    
+
+    print('get exchange properties')
+    exchange_properties = get_exchange_properties(geojson_layer2_exchanges)
+
+    print('use csv_add to place exchange info into geotype list')
+    exchange_fieldnames = ['id','Name','pcd','Region','County','geotype','prems_over','prems_under', 'lad']
+    csv_writer(exchange_properties, 'exchange_geotype_list.csv', exchange_fieldnames, 'a')
+
     # Process/Estimate assets
     print('complement cabinet locations as expected for this geotype')
     geojson_layer3_cabinets = complement_postcode_cabinets(geojson_postcode_areas, geojson_layer5_premises, geojson_layer2_exchanges, exchange_abbr)
@@ -2562,13 +2587,13 @@ if __name__ == "__main__":
     # print('write link lengths to .csv')
     # loop_length_fieldnames = ['premises_id','exchange_id','geotype','cab_link_length','dist_point_link_length','premises_link_length', 
     #                             'd_side', 'total_link_length', 'length_type', 'premises_distance']
-    # csv_writer(length_data, '{}_link_lengths.csv'.format(exchange_abbr), loop_length_fieldnames)
+    # csv_writer(length_data, '{}_link_lengths.csv'.format(exchange_abbr), loop_length_fieldnames,'w')
 
     # print('write link lengths to .csv')
     # network_stats_fieldnames = ['exchange_id','geotype','distance_type','am_ave_lines_per_ex','total_lines','am_cabinets','total_cabinets',
     #                             'am_ave_lines_per_cab', 'ave_lines_per_cab', 'am_distribution_points','total_dps', 
     #                             'am_ave_lines_per_dist_point', 'ave_lines_per_dist_point', 'am_ave_line_length','ave_line_length']
-    # csv_writer(network_stats, '{}_network_statistics.csv'.format(exchange_abbr), network_stats_fieldnames)
+    # csv_writer(network_stats, '{}_network_statistics.csv'.format(exchange_abbr), network_stats_fieldnames, 'w')
 
     # # Write lookups (for debug purposes)
     # print('write postcode_areas')

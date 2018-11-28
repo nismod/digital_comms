@@ -437,7 +437,7 @@ def read_exchange_area():
     with fiona.open(os.path.join(DATA_INTERMEDIATE, '_exchange_areas.shp'), 'r') as source:
         return [exchange for exchange in source]
 
-def write_shapefile(data, path):
+def write_shapefile(data, folder, path):
 
     # Translate props to Fiona sink schema
     prop_schema = []
@@ -452,8 +452,12 @@ def write_shapefile(data, path):
         'properties': OrderedDict(prop_schema)
     }
 
+    directory = os.path.join(DATA_RAW_SHAPES, folder)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
     # Write all elements to output file
-    with fiona.open(os.path.join(DATA_INTERMEDIATE, path), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
+    with fiona.open(os.path.join(directory, path), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         for feature in data:
             sink.write(feature)
 
@@ -474,7 +478,7 @@ if __name__ == "__main__":
 
     SYSTEM_INPUT = os.path.join('data', 'digital_comms', 'raw')
 
-    if not os.path.isfile(os.path.join(DATA_INTERMEDIATE, '_exchange_areas.shp')):
+    if not os.path.isfile(os.path.join(DATA_RAW_SHAPES,'exchange_areas','_exchange_areas.shp')):
 
         # Read LUTs
         print('read_pcd_to_exchange_lut')
@@ -485,7 +489,7 @@ if __name__ == "__main__":
 
         # Write
         print('write postcode_areas')
-        write_shapefile(geojson_postcode_areas, '_postcode_areas.shp')
+        write_shapefile(geojson_postcode_areas, 'postcode_areas','_postcode_areas.shp')
         
         print('read exchanges')
         geojson_layer2_exchanges = read_exchanges()
@@ -499,7 +503,7 @@ if __name__ == "__main__":
         
         # Write
         print('write exchange_areas')
-        write_shapefile(geojson_exchange_areas, '_exchange_areas.shp')
+        write_shapefile(geojson_exchange_areas, 'exchange_areas', '_exchange_areas.shp')
 
     exchange_areas = read_exchange_area()
     #print(exchange_areas)
