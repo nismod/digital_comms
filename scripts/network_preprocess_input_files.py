@@ -1088,26 +1088,29 @@ def complement_postcode_cabinets(postcode_areas, premises, exchanges, exchange_a
         count_cabinets_in_data = len(set(cabinets_in_data))
 
         # Calculate number of expected cabinets
-        if exchange['properties']['geotype'] == 'large city': #>500k
+        if exchange['properties']['geotype'] == 'inner london': #>500k
+            local_cluster_radius = 500
+            minimum_samples = 500
+        elif exchange['properties']['geotype'] == 'large city': #>500k
             local_cluster_radius = 500
             minimum_samples = 500
         elif exchange['properties']['geotype'] == 'small city': #>200k
             local_cluster_radius = 500
             minimum_samples = 500
         elif exchange['properties']['geotype'] == '>20k lines':
-            local_cluster_radius = 475
+            local_cluster_radius = 600
             minimum_samples = 200
         elif exchange['properties']['geotype'] == '>10k lines':
-            local_cluster_radius = 400
+            local_cluster_radius = 700
             minimum_samples = 100
         elif exchange['properties']['geotype'] == '>3k lines':
-            local_cluster_radius = 205
+            local_cluster_radius = 800
             minimum_samples = 75
         elif exchange['properties']['geotype'] == '>1k lines':
-            local_cluster_radius = 185
+            local_cluster_radius = 900
             minimum_samples = 50
         elif exchange['properties']['geotype'] == '<1k lines' or 'other':
-            local_cluster_radius = 100 # TODO: according to table these premises geotypes have no internet access
+            local_cluster_radius = 1000 # TODO: according to table these premises geotypes have no internet access
             minimum_samples = 1
         else:
             print('Geotype ' + exchange['properties']['geotype'] + ' is unknown')
@@ -1987,7 +1990,7 @@ def calculate_network_statistics(length_data, exchanges, exchange_name):
     over_exchange_length_data = []
 
     for length in length_data:
-        if (length['geotype'] == 'Inner London' or length['geotype'] == 'Large City' or length['geotype'] == 'Small City'):
+        if (length['geotype'] == 'inner london' or length['geotype'] == 'large city' or length['geotype'] == 'small city'):
 
             if length['exchange_id'] == exchange_name and length['length_type'] == 'straight_line':
                 urban_exchange_length_data.append(float(length['total_link_length']))
@@ -2023,7 +2026,7 @@ def calculate_network_statistics(length_data, exchanges, exchange_name):
         - 'udr' = under
         
         """
-        if exchange['properties']['geotype'] == 'Inner London':
+        if exchange['properties']['geotype'] == 'inner london':
             am_average_lines_per_exchange = 16,812
             am_cabinets = 2,892
             am_average_lines_per_cabinet = 500
@@ -2031,7 +2034,7 @@ def calculate_network_statistics(length_data, exchanges, exchange_name):
             am_ave_lines_per_dist_point = 8.4
             am_ave_line_length = 1240
 
-        elif exchange['properties']['geotype'] == 'Large City':
+        elif exchange['properties']['geotype'] == 'large city':
             am_average_lines_per_exchange = 15,512
             am_cabinets = 6,329
             am_average_lines_per_cabinet = 500
@@ -2039,7 +2042,7 @@ def calculate_network_statistics(length_data, exchanges, exchange_name):
             am_ave_lines_per_dist_point = 8.4
             am_ave_line_length = 1780
 
-        elif exchange['properties']['geotype'] == 'Small City':
+        elif exchange['properties']['geotype'] == 'small city':
             am_average_lines_per_exchange = 15,527
             am_cabinets = 5,590
             am_average_lines_per_cabinet = 500
@@ -2129,9 +2132,9 @@ def calculate_network_statistics(length_data, exchanges, exchange_name):
         else:
             print('no geotype found for AM reference statistics')
 
-        if (exchange['properties']['geotype'] == 'Inner London' or 
-                exchange['properties']['geotype'] == 'Large City' or 
-                exchange['properties']['geotype'] == 'Small City'):
+        if (exchange['properties']['geotype'] == 'inner london' or 
+                exchange['properties']['geotype'] == 'large city' or 
+                exchange['properties']['geotype'] == 'small city'):
         
             return_network_stats.append({
                 'exchange_id': exchange['properties']['id'],
