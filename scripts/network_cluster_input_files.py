@@ -434,7 +434,7 @@ def generate_exchange_area(exchanges, merge=True):
     return exchange_areas
 
 def read_exchange_area():
-    with fiona.open(os.path.join(DATA_INTERMEDIATE, '_exchange_areas.shp'), 'r') as source:
+    with fiona.open(os.path.join(DATA_RAW_SHAPES,'exchange_areas', '_exchange_areas.shp'), 'r') as source:
         return [exchange for exchange in source]
 
 def write_shapefile(data, folder, path):
