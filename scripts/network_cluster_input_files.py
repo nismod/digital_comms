@@ -481,4 +481,3 @@ if __name__ == "__main__":
     #[print(exchange['properties']) for exchange in exchange_areas] 
     #[print(exchange['properties']['id']) for exchange in exchange_areas if return_file_count(exchange['properties']['id']) < 11 and (exchange['properties']['region']) is not 'Scotland'] 
     [print(exchange['properties']['id']) for exchange in exchange_areas if return_file_count(exchange['properties']['id']) < 11] 
-
