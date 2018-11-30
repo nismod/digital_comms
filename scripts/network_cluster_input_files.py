@@ -331,20 +331,6 @@ def generate_exchange_area(exchanges, merge=True):
     for exchange, area in exchanges_by_group.items():
         print(exchange[0])
 
-    #print('generate_exchange_area - Generate multipolygons')
-    #exchange_areas = []
-    # for exchange in exchanges:
-    #     exchange_shape = exchanges_by_group[exchange['properties']['EX_ID']]
-    #     exchange_multipolygon = MultiPolygon(exchange_shape)     
-    #     exchange_areas.append({
-    #             'type': "Feature",
-    #             'geometry': mapping(exchange_multipolygon),
-    #             'properties': {
-    #                 'id': exchange['properties']['EX_ID'],
-    #                 'region': exchange['properties']['EX_REGION']
-    #             }
-    #         })
-    
     # Write Multipolygons per exchange
     print('generate_exchange_area - Generate multipolygons')
     exchange_areas = []
@@ -359,21 +345,6 @@ def generate_exchange_area(exchanges, merge=True):
             }
         })
 
-    # # Write Multipolygons per exchange
-    # print('generate_exchange_area - Generate multipolygons')
-    # exchange_areas = []
-    # for exchange in exchanges:
-    #     #exchange_multipolygon = MultiPolygon(area)
-    #     exchange_areas.append({
-    #         'type': "Feature",
-    #         'geometry': exchange['geometry'],
-    #         'properties': {
-    #             'id': exchange['properties']['EX_ID'],
-    #             'region': exchange['properties']['EX_REGION']
-    #         }
-    #     })
-
-    #print(exchange_areas)
     if merge:
         print('generate_exchange_area - Merge multipolygons into singlepolygons')
         # Merge MultiPolygons into single Polygon

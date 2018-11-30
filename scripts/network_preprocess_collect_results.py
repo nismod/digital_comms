@@ -19,7 +19,7 @@ def collect_results(selection, name):
     results = []
     for entry in selection:
         results.append(os.path.join(DATA_INTERMEDIATE, entry, name))
-    
+
     geojson_results = []
     for result_file in results:
         try:
