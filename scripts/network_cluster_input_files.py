@@ -441,8 +441,7 @@ def return_file_count(exchange_id):
 
     return len(files)
 
-#####################################
-# APPLY METHODS
+####################################
 #####################################
 
 if __name__ == "__main__":
@@ -476,8 +475,18 @@ if __name__ == "__main__":
         print('write exchange_areas')
         write_shapefile(geojson_exchange_areas, 'exchange_areas', '_exchange_areas.shp')
 
-    exchange_areas = read_exchange_area()
-    #print(exchange_areas)
-    #[print(exchange['properties']) for exchange in exchange_areas] 
-    #[print(exchange['properties']['id']) for exchange in exchange_areas if return_file_count(exchange['properties']['id']) < 11 and (exchange['properties']['region']) is not 'Scotland'] 
-    [print(exchange['properties']['id']) for exchange in exchange_areas if return_file_count(exchange['properties']['id']) < 11] 
+    #exchange_areas = read_exchange_area()
+    #[print(exchange['properties']['id']) for exchange in exchange_areas if return_file_count(exchange['properties']['id']) < 11] 
+
+    exchanges = [
+            'WEWPRI', # Primrose Hill (Inner London)
+            'MYCHA', # Chapeltown (Major City)
+            'STBNMTH', # Bournemouth (Minor City)
+            'EACAM', # Cambridge (>20,000)
+            'NEILB', # Ingleby Barwick(>10,000)
+            'STWINCH', #Winchester (>3,000)
+            'WWTORQ', #Torquay (>,1000)
+            'EACOM', #Comberton (<1000)
+        ]
+
+    print(*exchanges, sep='\n')
