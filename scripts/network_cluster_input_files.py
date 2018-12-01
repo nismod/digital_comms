@@ -475,18 +475,18 @@ if __name__ == "__main__":
         print('write exchange_areas')
         write_shapefile(geojson_exchange_areas, 'exchange_areas', '_exchange_areas.shp')
 
-    #exchange_areas = read_exchange_area()
-    #[print(exchange['properties']['id']) for exchange in exchange_areas if return_file_count(exchange['properties']['id']) < 11] 
+    exchange_areas = read_exchange_area()
+    [print(exchange['properties']['id']) for exchange in exchange_areas if return_file_count(exchange['properties']['id']) < 11] 
 
-    exchanges = [
-            'WEWPRI', # Primrose Hill (Inner London)
-            'MYCHA', # Chapeltown (Major City)
-            'STBNMTH', # Bournemouth (Minor City)
-            'EACAM', # Cambridge (>20,000)
-            'NEILB', # Ingleby Barwick(>10,000)
-            'STWINCH', #Winchester (>3,000)
-            'WWTORQ', #Torquay (>,1000)
-            'EACOM', #Comberton (<1000)
-        ]
+    # exchanges = [
+    #         'WEWPRI', # Primrose Hill (Inner London)
+    #         'MYCHA', # Chapeltown (Major City)
+    #         'STBNMTH', # Bournemouth (Minor City)
+    #         'EACAM', # Cambridge (>20,000)
+    #         'NEILB', # Ingleby Barwick(>10,000)
+    #         'STWINCH', #Winchester (>3,000)
+    #         'WWTORQ', #Torquay (>,1000)
+    #         'EACOM', #Comberton (<1000)
+    #     ]
 
-    print(*exchanges, sep='\n')
+    # print(*exchanges, sep='\n')

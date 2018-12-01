@@ -1,3 +1,4 @@
+
 import os
 import configparser
 import csv
@@ -297,6 +298,68 @@ def geotype_exchange(exchanges, premises):
 
     return exchanges, geotype, prems_ids_over, prems_ids_under
 
+
+def add_urban_geotype_to_exchanges(exchanges, geotype, exchange_geotype_lut):
+
+    # Process lookup into dictionary
+    exchange_geotypes = {}
+    for lad in exchange_geotype_lut:
+        exchange_geotypes[lad['lad']] = lad
+        del exchange_geotypes[lad['lad']]['lad']
+
+    for exchange in exchanges:
+        exchange['properties']['geotype'] == geotype
+    
+    # Add properties
+    for exchange in exchanges:
+        if exchange['properties']['lad'] in exchange_geotypes:
+            exchange['properties'].update({
+                'geotype': exchange_geotypes[exchange['properties']['lad']]['geotype'],
+
+            })
+        else:
+            pass
+            # exchange['properties'].update({
+            #     'geotype': 'other',
+            # })
+    
+    return exchanges
+
+def add_lad_to_exchanges(exchanges, lads):
+
+    joined_exchanges = []
+
+    # Initialze Rtree
+    idx = index.Index()
+
+    for rtree_idx, exchange in enumerate(exchanges):
+        idx.insert(rtree_idx, shape(exchange['geometry']).bounds, exchange)
+
+    # Join the two
+    for lad in lads:
+        for n in idx.intersection((shape(lad['geometry']).bounds), objects='raw'):
+            lad_shape = shape(lad['geometry'])
+            premise_shape = shape(n['geometry'])
+            if lad_shape.contains(premise_shape):
+                n['properties']['lad'] = lad['properties']['name']
+                joined_exchanges.append(n)
+
+    return joined_exchanges
+
+def read_city_exchange_geotype_lut():
+
+    exchange_geotypes = []
+    with open(os.path.join(DATA_RAW_INPUTS, 'exchange_geotype_lut', 'exchange_geotype_lut.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+        reader = csv.reader(system_file)
+        next(reader)
+        for line in reader:
+            exchange_geotypes.append({
+                'lad': line[0],
+                'geotype': line[1],
+            })
+
+    return exchange_geotypes
+
 def get_exchange_properties(exchanges):
 
     exchange_properties = []
@@ -344,6 +407,7 @@ def csv_writer(data, filename, fieldnames):
                             'Region': item['Region'],'County': item['County'], 'geotype': item['geotype'], 
                             'prems_over': item['prems_over'], 'prems_under': item['prems_under']})
 
+
 ############################################################
 # RUN SCRIPT
 ############################################################
@@ -384,6 +448,15 @@ if __name__ == "__main__":
     # Geotype exchange
     print('geotype exchanges')
     geojson_layer2_exchanges, geotype, prems_over_lut, prems_under_lut = geotype_exchange(geojson_layer2_exchanges, geojson_layer5_premises)
+
+    print('add LAD to exchanges')
+    geojson_layer2_exchanges = add_lad_to_exchanges(geojson_layer2_exchanges, geojson_lad_areas)
+
+    print('read city exchange geotypes lut')
+    city_exchange_lad_lut = read_city_exchange_geotype_lut()
+
+    print('merge geotype info by LAD to exchanges')
+    geojson_layer2_exchanges = add_urban_geotype_to_exchanges(geojson_layer2_exchanges, geotype, city_exchange_lad_lut)
 
     print('get exchange properties')
     exchange_properties = get_exchange_properties(geojson_layer2_exchanges)
