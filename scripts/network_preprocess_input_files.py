@@ -2454,7 +2454,7 @@ if __name__ == "__main__":
 
     print('allocating cabinet to premises')
     geojson_layer5_premises = allocate_to_cabinet(geojson_layer5_premises, geojson_layer3_cabinets)
-    print(geojson_layer5_premises)    
+    #print(geojson_layer5_premises)    
     # print('allocating cabinet to pcd_areas')
     # geojson_postcode_areas = allocate_to_cabinet(geojson_postcode_areas, geojson_layer3_cabinets)
 
@@ -2586,18 +2586,18 @@ if __name__ == "__main__":
     # # print('write exchange_areas')
     # # write_shapefile(geojson_exchange_areas,  exchange_name, '_exchange_areas.shp')
 
-    # # Write assets
-    # print('write premises')
-    # write_shapefile(geojson_layer5_premises,  exchange_name, 'assets_layer5_premises.shp')
+    # Write assets
+    print('write premises')
+    write_shapefile(geojson_layer5_premises,  exchange_name, 'assets_layer5_premises.shp')
 
     # print('write distribution points')
     # write_shapefile(geojson_layer4_distributions,  exchange_name, 'assets_layer4_distributions.shp')
 
-    # print('write cabinets')
-    # write_shapefile(geojson_layer3_cabinets,  exchange_name, 'assets_layer3_cabinets.shp')
+    print('write cabinets')
+    write_shapefile(geojson_layer3_cabinets,  exchange_name, 'assets_layer3_cabinets.shp')
 
-    # print('write exchanges')
-    # write_shapefile(geojson_layer2_exchanges,  exchange_name, 'assets_layer2_exchanges.shp')
+    print('write exchanges')
+    write_shapefile(geojson_layer2_exchanges,  exchange_name, 'assets_layer2_exchanges.shp')
 
     # # Write links
     # # print('write links layer5')
