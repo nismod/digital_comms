@@ -2317,120 +2317,120 @@ if __name__ == "__main__":
     print('read exchange area')
     exchange_area = read_exchange_area(exchange_name)
     
-    # print('read lads')
-    # geojson_lad_areas = read_lads(exchange_area)
+    print('read lads')
+    geojson_lad_areas = read_lads(exchange_area)
 
-    # print('get lad ids')
-    # lad_ids = get_lad_area_ids(geojson_lad_areas)
+    print('get lad ids')
+    lad_ids = get_lad_area_ids(geojson_lad_areas)
 
-    # print('Reading premises data')
-    # premises = read_premises_data(exchange_area)
+    print('Reading premises data')
+    premises = read_premises_data(exchange_area)
 
-    # print('converting prems to geojsons')
-    # geojson_layer5_premises = premises_to_geojson(premises, exchange_area)
+    print('converting prems to geojsons')
+    geojson_layer5_premises = premises_to_geojson(premises, exchange_area)
 
-    # # Read Premises/Assets
-    # print('read exchanges')
-    # geojson_layer2_exchanges = read_exchanges(exchange_area)
+    # Read Premises/Assets
+    print('read exchanges')
+    geojson_layer2_exchanges = read_exchanges(exchange_area)
     
-    # # Geotype exchange
-    # print('geotype exchanges')
-    # geojson_layer2_exchanges, geotype, prems_over_lut, prems_under_lut = geotype_exchange(geojson_layer2_exchanges, geojson_layer5_premises)
+    # Geotype exchange
+    print('geotype exchanges')
+    geojson_layer2_exchanges, geotype, prems_over_lut, prems_under_lut = geotype_exchange(geojson_layer2_exchanges, geojson_layer5_premises)
 
-    # ####
-    # # Integrate WTP and WTA household data into premises
-    # print('Loading MSOA data')
-    # MSOA_data = read_msoa_data(lad_ids)
+    ####
+    # Integrate WTP and WTA household data into premises
+    print('Loading MSOA data')
+    MSOA_data = read_msoa_data(lad_ids)
 
-    # print('Loading age data')
-    # age_data = read_age_data()
+    print('Loading age data')
+    age_data = read_age_data()
 
-    # print('Loading gender data')
-    # gender_data = read_gender_data()
+    print('Loading gender data')
+    gender_data = read_gender_data()
 
-    # print('Loading nation data')
-    # nation_data = read_nation_data()
+    print('Loading nation data')
+    nation_data = read_nation_data()
 
-    # print('Loading urban_rural data')
-    # urban_rural_data = read_urban_rural_data()
+    print('Loading urban_rural data')
+    urban_rural_data = read_urban_rural_data()
 
-    # print('Add country indicator')
-    # MSOA_data = add_country_indicator(MSOA_data)
+    print('Add country indicator')
+    MSOA_data = add_country_indicator(MSOA_data)
 
-    # print('Adding adoption data to MSOA data')
-    # MSOA_data = add_data_to_MSOA_data(age_data, MSOA_data, 'age')
-    # MSOA_data = add_data_to_MSOA_data(gender_data, MSOA_data, 'gender')
+    print('Adding adoption data to MSOA data')
+    MSOA_data = add_data_to_MSOA_data(age_data, MSOA_data, 'age')
+    MSOA_data = add_data_to_MSOA_data(gender_data, MSOA_data, 'gender')
 
-    # print('Loading OA data')
-    # oa_data = read_oa_data()
+    print('Loading OA data')
+    oa_data = read_oa_data()
 
-    # print('Match and convert social grades from NS-Sec to NRS')
-    # oa_data = convert_ses_grades(oa_data)
+    print('Match and convert social grades from NS-Sec to NRS')
+    oa_data = convert_ses_grades(oa_data)
 
-    # print('Loading ses data')
-    # ses_data = read_ses_data()
+    print('Loading ses data')
+    ses_data = read_ses_data()
 
-    # print('Adding ses adoption data to OA data')
-    # oa_data = add_data_to_MSOA_data(ses_data, oa_data, 'ses')
+    print('Adding ses adoption data to OA data')
+    oa_data = add_data_to_MSOA_data(ses_data, oa_data, 'ses')
 
-    # print('Adding MSOA data to OA data')
-    # final_data = merge_two_lists_of_dicts(MSOA_data, oa_data, 'HID', 'lad', 'year')
+    print('Adding MSOA data to OA data')
+    final_data = merge_two_lists_of_dicts(MSOA_data, oa_data, 'HID', 'lad', 'year')
 
-    # print('Catching any missing data')
-    # final_data, missing_data = get_missing_ses_key(final_data)
+    print('Catching any missing data')
+    final_data, missing_data = get_missing_ses_key(final_data)
 
-    # print('Calculate product of adoption factors')
-    # final_data = calculate_adoption_propensity(final_data)
+    print('Calculate product of adoption factors')
+    final_data = calculate_adoption_propensity(final_data)
 
-    # print('Calculate willingness to pay')
-    # final_data = calculate_wtp(final_data)
+    print('Calculate willingness to pay')
+    final_data = calculate_wtp(final_data)
 
-    # print('Aggregating WTP by household')
-    # household_wtp = aggregate_wtp_and_wta_by_household(final_data)
+    print('Aggregating WTP by household')
+    household_wtp = aggregate_wtp_and_wta_by_household(final_data)
 
-    # print('Reading premises data')
-    # premises = read_premises_data(exchange_area)
+    print('Reading premises data')
+    premises = read_premises_data(exchange_area)
 
-    # print('Expand premises entries')
-    # premises = expand_premises(premises)
+    print('Expand premises entries')
+    premises = expand_premises(premises)
 
-    # print('Adding household data to premises')
-    # premises = merge_prems_and_housholds(premises, household_wtp)
+    print('Adding household data to premises')
+    premises = merge_prems_and_housholds(premises, household_wtp)
     
-    # print('converting prems to geojsons')
-    # geojson_layer5_premises = premises_to_geojson(premises, exchange_area)
+    print('converting prems to geojsons')
+    geojson_layer5_premises = premises_to_geojson(premises, exchange_area)
 
-    # ###
-    # print('read_pcd_to_exchange_lut')
-    # lut_pcd_to_exchange = read_pcd_to_exchange_lut()
+    ###
+    print('read_pcd_to_exchange_lut')
+    lut_pcd_to_exchange = read_pcd_to_exchange_lut()
 
-    # print('read pcd_to_cabinet_lut')
-    # lut_pcd_to_cabinet = read_pcd_to_cabinet_lut()
+    print('read pcd_to_cabinet_lut')
+    lut_pcd_to_cabinet = read_pcd_to_cabinet_lut()
 
-    # print('read postcode_areas')
-    # geojson_postcode_areas = read_postcode_areas(exchange_area)
+    print('read postcode_areas')
+    geojson_postcode_areas = read_postcode_areas(exchange_area)
 
-    # print('read city exchange geotypes lut')
-    # city_exchange_lad_lut = read_city_exchange_geotype_lut()
+    print('read city exchange geotypes lut')
+    city_exchange_lad_lut = read_city_exchange_geotype_lut()
 
-    # # Process/Estimate network hierarchy
-    # print('add exchange id to postcode areas')
-    # geojson_postcode_areas = add_exchange_id_to_postcode_areas(geojson_layer2_exchanges, geojson_postcode_areas, lut_pcd_to_exchange)
+    # Process/Estimate network hierarchy
+    print('add exchange id to postcode areas')
+    geojson_postcode_areas = add_exchange_id_to_postcode_areas(geojson_layer2_exchanges, geojson_postcode_areas, lut_pcd_to_exchange)
 
-    # print('add cabinet id to postcode areas')
-    # geojson_postcode_areas = add_cabinet_id_to_postcode_areas(geojson_postcode_areas, lut_pcd_to_cabinet)
+    print('add cabinet id to postcode areas')
+    geojson_postcode_areas = add_cabinet_id_to_postcode_areas(geojson_postcode_areas, lut_pcd_to_cabinet)
 
-    # print('add postcode to premises')
-    # geojson_layer5_premises = add_postcode_to_premises(geojson_layer5_premises, geojson_postcode_areas)
+    print('add postcode to premises')
+    geojson_layer5_premises = add_postcode_to_premises(geojson_layer5_premises, geojson_postcode_areas)
 
-    # print('add LAD to premises')
-    # geojson_layer5_premises = add_lad_to_matching_area(geojson_layer5_premises, geojson_lad_areas)
+    print('add LAD to premises')
+    geojson_layer5_premises = add_lad_to_matching_area(geojson_layer5_premises, geojson_lad_areas)
 
-    # print('add LAD to exchanges')
-    # geojson_layer2_exchanges = add_lad_to_exchanges(geojson_layer2_exchanges, geojson_lad_areas)
+    print('add LAD to exchanges')
+    geojson_layer2_exchanges = add_lad_to_exchanges(geojson_layer2_exchanges, geojson_lad_areas)
 
-    # print('merge geotype info by LAD to exchanges')
-    # geojson_layer2_exchanges = add_urban_geotype_to_exchanges(geojson_layer2_exchanges, geotype, city_exchange_lad_lut)
+    print('merge geotype info by LAD to exchanges')
+    geojson_layer2_exchanges = add_urban_geotype_to_exchanges(geojson_layer2_exchanges, geotype, city_exchange_lad_lut)
 
     # # Write assets
     # print('write files for speed')
@@ -2438,9 +2438,9 @@ if __name__ == "__main__":
     # write_shapefile(geojson_layer2_exchanges,  exchange_name, 'intermediate_exchanges.shp')
     # write_shapefile(geojson_postcode_areas,  exchange_name, 'intermediate_pcd_areas.shp')
 
-    geojson_layer5_premises = read_shapes(exchange_name, 'intermediate_premises.shp')
-    geojson_layer2_exchanges = read_shapes(exchange_name, 'intermediate_exchanges.shp')
-    geojson_postcode_areas = read_shapes(exchange_name, 'intermediate_pcd_areas.shp')
+    # geojson_layer5_premises = read_shapes(exchange_name, 'intermediate_premises.shp')
+    # geojson_layer2_exchanges = read_shapes(exchange_name, 'intermediate_exchanges.shp')
+    # geojson_postcode_areas = read_shapes(exchange_name, 'intermediate_pcd_areas.shp')
 
     print('read pcd_technology_lut')
     lut_pcd_technology = read_postcode_technology_lut()
@@ -2454,93 +2454,92 @@ if __name__ == "__main__":
 
     print('allocating cabinet to premises')
     geojson_layer5_premises = allocate_to_cabinet(geojson_layer5_premises, geojson_layer3_cabinets)
-    #print(geojson_layer5_premises)    
-    # print('allocating cabinet to pcd_areas')
-    # geojson_postcode_areas = allocate_to_cabinet(geojson_postcode_areas, geojson_layer3_cabinets)
+  
+    print('allocating cabinet to pcd_areas')
+    geojson_postcode_areas = allocate_to_cabinet(geojson_postcode_areas, geojson_layer3_cabinets)
 
-    # print('estimate location of distribution points')
-    # geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises, exchange_abbr)
+    print('estimate cabinet locations')
+    geojson_layer3_cabinets = estimate_cabinet_locations(geojson_layer5_premises)
 
-    # print('estimate cabinet locations')
-    # geojson_layer3_cabinets = estimate_cabinet_locations(geojson_layer5_premises)
-    
-    # #Place assets on roads
-    # print('estimate cabinet locations on road network')
-    # geojson_layer3_cabinets = estimate_asset_locations_on_road_network(geojson_layer3_cabinets, exchange_area)
+    print('estimate cabinet locations on road network')
+    geojson_layer3_cabinets = estimate_asset_locations_on_road_network(geojson_layer3_cabinets, exchange_area)
 
-    # print('estimate dist points on road network')
-    # geojson_layer4_distributions = estimate_asset_locations_on_road_network(geojson_layer4_distributions, exchange_area)
+    print('estimate location of distribution points')
+    geojson_layer4_distributions = estimate_dist_points(geojson_layer5_premises, exchange_abbr)
 
-    # # Process/Estimate boundaries
-    # print('generate cabinet areas')
-    # geojson_cabinet_areas = generate_voronoi_areas(geojson_layer3_cabinets, geojson_postcode_areas)
+    print('estimate dist points on road network')
+    geojson_layer4_distributions = estimate_asset_locations_on_road_network(geojson_layer4_distributions, exchange_area)
 
-    # print('generate distribution areas')
-    # geojson_distribution_areas = generate_voronoi_areas(geojson_layer4_distributions, geojson_postcode_areas)
+    # Process/Estimate boundaries
+    print('generate cabinet areas')
+    geojson_cabinet_areas = generate_voronoi_areas(geojson_layer3_cabinets, geojson_postcode_areas)
 
-    # print('generate exchange areas')
-    # geojson_exchange_areas = generate_exchange_area(geojson_postcode_areas)
+    print('generate distribution areas')
+    geojson_distribution_areas = generate_voronoi_areas(geojson_layer4_distributions, geojson_postcode_areas)
 
-    # # Connect assets
-    # print('connect premises to distributions')
-    # geojson_layer5_premises = connect_points_to_area(geojson_layer5_premises, geojson_distribution_areas)
+    print('generate exchange areas')
+    geojson_exchange_areas = generate_exchange_area(geojson_postcode_areas)
 
-    # print('connect distributions to cabinets')
-    # geojson_layer4_distributions = connect_points_to_area(geojson_layer4_distributions, geojson_cabinet_areas)
+    # Connect assets
+    print('connect premises to distributions')
+    geojson_layer5_premises = connect_points_to_area(geojson_layer5_premises, geojson_distribution_areas)
 
-    # print('connect cabinets to exchanges')
-    # geojson_layer3_cabinets = connect_points_to_area(geojson_layer3_cabinets, geojson_exchange_areas)
+    print('connect distributions to cabinets')
+    geojson_layer4_distributions = connect_points_to_area(geojson_layer4_distributions, geojson_cabinet_areas)
 
-    # # Process/Estimate links
-    # # print('generate shortest path links layer 5')
-    # # geojson_layer5_premises_sp_links = generate_link_shortest_path(geojson_layer5_premises, geojson_layer4_distributions, exchange_area)
+    print('connect cabinets to exchanges')
+    geojson_layer3_cabinets = connect_points_to_area(geojson_layer3_cabinets, geojson_exchange_areas)
 
-    # # print('generate shortest path links layer 4')
-    # # geojson_layer4_distributions_sp_links = generate_link_shortest_path(geojson_layer4_distributions, geojson_layer3_cabinets, exchange_area)
+    # Process/Estimate links
+    print('generate shortest path links layer 5')
+    geojson_layer5_premises_sp_links = generate_link_shortest_path(geojson_layer5_premises, geojson_layer4_distributions, exchange_area)
 
-    # # print('generate shortest path links layer 3')
-    # # geojson_layer3_cabinets_sp_links = generate_link_shortest_path(geojson_layer3_cabinets, geojson_layer2_exchanges, exchange_area)
+    print('generate shortest path links layer 4')
+    geojson_layer4_distributions_sp_links = generate_link_shortest_path(geojson_layer4_distributions, geojson_layer3_cabinets, exchange_area)
 
-    # print('generate straight line links layer 5')
-    # geojson_layer5_premises_sl_links = generate_link_straight_line(geojson_layer5_premises, geojson_layer4_distributions)
+    print('generate shortest path links layer 3')
+    geojson_layer3_cabinets_sp_links = generate_link_shortest_path(geojson_layer3_cabinets, geojson_layer2_exchanges, exchange_area)
 
-    # print('generate straight line links layer 4')
-    # geojson_layer4_distributions_sl_links = generate_link_straight_line(geojson_layer4_distributions, geojson_layer3_cabinets)
+    print('generate straight line links layer 5')
+    geojson_layer5_premises_sl_links = generate_link_straight_line(geojson_layer5_premises, geojson_layer4_distributions)
 
-    # print('generate straight line links layer 3')
-    # geojson_layer3_cabinets_sl_links = generate_link_straight_line(geojson_layer3_cabinets, geojson_layer2_exchanges)
+    print('generate straight line links layer 4')
+    geojson_layer4_distributions_sl_links = generate_link_straight_line(geojson_layer4_distributions, geojson_layer3_cabinets)
 
-    # # Add technology to network and process this into the network hierachy
-    # print('add technology to postcode areas')
-    # geojson_postcode_areas = add_technology_to_postcode_areas(geojson_postcode_areas, lut_pcd_technology)
+    print('generate straight line links layer 3')
+    geojson_layer3_cabinets_sl_links = generate_link_straight_line(geojson_layer3_cabinets, geojson_layer2_exchanges)
 
-    # print('add technology to premises')
-    # geojson_layer5_premises = add_technology_to_premises(geojson_layer5_premises, geojson_postcode_areas)
+    # Add technology to network and process this into the network hierachy
+    print('add technology to postcode areas')
+    geojson_postcode_areas = add_technology_to_postcode_areas(geojson_postcode_areas, lut_pcd_technology)
 
-    # print('add technology to distributions')
-    # geojson_layer4_distributions = add_technology_to_assets(geojson_layer4_distributions, geojson_layer5_premises)
+    print('add technology to premises')
+    geojson_layer5_premises = add_technology_to_premises(geojson_layer5_premises, geojson_postcode_areas)
 
-    # print('add technology to cabinets')
-    # geojson_layer3_cabinets = add_technology_to_assets(geojson_layer3_cabinets, geojson_layer4_distributions)
+    print('add technology to distributions')
+    geojson_layer4_distributions = add_technology_to_assets(geojson_layer4_distributions, geojson_layer5_premises)
 
-    # print('add technology to exchanges')
-    # geojson_layer2_exchanges = add_technology_to_assets(geojson_layer2_exchanges, geojson_layer3_cabinets)
+    print('add technology to cabinets')
+    geojson_layer3_cabinets = add_technology_to_assets(geojson_layer3_cabinets, geojson_layer4_distributions)
 
-    # print('add technology to premises links (finaldrop)')
-    # geojson_layer5_premises_links = add_technology_to_link(geojson_layer5_premises, geojson_layer5_premises_sl_links)
+    print('add technology to exchanges')
+    geojson_layer2_exchanges = add_technology_to_assets(geojson_layer2_exchanges, geojson_layer3_cabinets)
 
-    # print('add technology to distribution links')
-    # geojson_layer4_distributions_sl_links = add_technology_to_link(geojson_layer4_distributions, geojson_layer4_distributions_sl_links)
+    print('add technology to premises links (finaldrop)')
+    geojson_layer5_premises_links = add_technology_to_link(geojson_layer5_premises, geojson_layer5_premises_sl_links)
 
-    # print('add technology to cabinet links')
-    # geojson_layer3_cabinets_sl_links = add_technology_to_link(geojson_layer3_cabinets, geojson_layer3_cabinets_sl_links)
+    print('add technology to distribution links')
+    geojson_layer4_distributions_sl_links = add_technology_to_link(geojson_layer4_distributions, geojson_layer4_distributions_sl_links)
 
-    # # Copy id to name (required for smif outputs)
-    # print('copy id to name (distributions)')
-    # geojson_layer4_distributions = copy_id_to_name(geojson_layer4_distributions)
+    print('add technology to cabinet links')
+    geojson_layer3_cabinets_sl_links = add_technology_to_link(geojson_layer3_cabinets, geojson_layer3_cabinets_sl_links)
 
-    # print('copy id to name (cabinets)')
-    # geojson_layer3_cabinets = copy_id_to_name(geojson_layer3_cabinets)
+    # Copy id to name (required for smif outputs)
+    print('copy id to name (distributions)')
+    geojson_layer4_distributions = copy_id_to_name(geojson_layer4_distributions)
+
+    print('copy id to name (cabinets)')
+    geojson_layer3_cabinets = copy_id_to_name(geojson_layer3_cabinets)
 
     # # # Generate loop lengths
     # # print('calculating loop length stats')
@@ -2573,25 +2572,25 @@ if __name__ == "__main__":
     # #                             'am_ave_lines_per_dist_point', 'ave_lines_per_dist_point', 'am_ave_line_length','ave_line_length']
     # # csv_writer(network_stats, '{}_network_statistics.csv'.format(exchange_abbr), network_stats_fieldnames)
 
-    # # # Write lookups (for debug purposes)
-    # # print('write postcode_areas')
-    # # write_shapefile(geojson_postcode_areas,  exchange_name, '_postcode_areas.shp')
+    # # Write lookups (for debug purposes)
+    # print('write postcode_areas')
+    # write_shapefile(geojson_postcode_areas,  exchange_name, '_postcode_areas.shp')
 
-    # # print('write distribution_areas')
-    # # write_shapefile(geojson_distribution_areas,  exchange_name, '_distribution_areas.shp')
+    # print('write distribution_areas')
+    # write_shapefile(geojson_distribution_areas,  exchange_name, '_distribution_areas.shp')
 
-    # # print('write cabinet_areas')
-    # # write_shapefile(geojson_cabinet_areas,  exchange_name, '_cabinet_areas.shp')
+    # print('write cabinet_areas')
+    # write_shapefile(geojson_cabinet_areas,  exchange_name, '_cabinet_areas.shp')
 
-    # # print('write exchange_areas')
-    # # write_shapefile(geojson_exchange_areas,  exchange_name, '_exchange_areas.shp')
+    # print('write exchange_areas')
+    # write_shapefile(geojson_exchange_areas,  exchange_name, '_exchange_areas.shp')
 
     # Write assets
     print('write premises')
     write_shapefile(geojson_layer5_premises,  exchange_name, 'assets_layer5_premises.shp')
 
-    # print('write distribution points')
-    # write_shapefile(geojson_layer4_distributions,  exchange_name, 'assets_layer4_distributions.shp')
+    print('write distribution points')
+    write_shapefile(geojson_layer4_distributions,  exchange_name, 'assets_layer4_distributions.shp')
 
     print('write cabinets')
     write_shapefile(geojson_layer3_cabinets,  exchange_name, 'assets_layer3_cabinets.shp')
@@ -2609,15 +2608,15 @@ if __name__ == "__main__":
     # # print('write links layer3')
     # # write_shapefile(geojson_layer3_cabinets_sp_links,  exchange_name, 'links_sp_layer3_cabinets.shp')
 
-    # print('write links layer5')
-    # write_shapefile(geojson_layer5_premises_sl_links,  exchange_name, 'links_sl_layer5_premises.shp')
+    print('write links layer5')
+    write_shapefile(geojson_layer5_premises_sl_links,  exchange_name, 'links_sl_layer5_premises.shp')
 
-    # print('write links layer4')
-    # write_shapefile(geojson_layer4_distributions_sl_links,  exchange_name, 'links_sl_layer4_distributions.shp')
+    print('write links layer4')
+    write_shapefile(geojson_layer4_distributions_sl_links,  exchange_name, 'links_sl_layer4_distributions.shp')
 
-    # print('write links layer3')
-    # write_shapefile(geojson_layer3_cabinets_sl_links,  exchange_name, 'links_sl_layer3_cabinets.shp')
+    print('write links layer3')
+    write_shapefile(geojson_layer3_cabinets_sl_links,  exchange_name, 'links_sl_layer3_cabinets.shp')
 
-    # end = time.time()
-    # print("script finished")
-    # print("script took {} minutes to complete".format(round((end - start)/60, 2)))
+    end = time.time()
+    print("script finished")
+    print("script took {} minutes to complete".format(round((end - start)/60, 2)))
