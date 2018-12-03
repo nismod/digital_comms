@@ -478,7 +478,7 @@ if __name__ == "__main__":
         write_shapefile(geojson_exchange_areas, 'exchange_areas', '_exchange_areas.shp')
 
     
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 2 or sys.argv[1] == 'national':
 
         exchange_areas = read_exchange_area()
         selection = [(exchange['properties']['id']) for exchange in exchange_areas if return_file_count(exchange['properties']['id']) < 11] 
