@@ -219,21 +219,20 @@ def read_exchanges():
         next(reader)
     
         for line in reader:
-            if line[3] != 'Scotland':
-                exchanges.append({
-                    'type': "Feature",
-                    'geometry': {
-                        "type": "Point",
-                        "coordinates": [float(line[5]), float(line[6])]
-                    },
-                    'properties': {
-                        'id': 'exchange_' + line[1],
-                        'Name': line[2],
-                        'pcd': line[0],
-                        'Region': line[3],
-                        'County': line[4]
-                    }
-                })
+            exchanges.append({
+                'type': "Feature",
+                'geometry': {
+                    "type": "Point",
+                    "coordinates": [float(line[5]), float(line[6])]
+                },
+                'properties': {
+                    'id': 'exchange_' + line[1],
+                    'Name': line[2],
+                    'pcd': line[0],
+                    'Region': line[3],
+                    'County': line[4]
+                }
+            })
 
     return exchanges
 
