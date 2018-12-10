@@ -2598,15 +2598,15 @@ if __name__ == "__main__":
     print('write exchanges')
     write_shapefile(geojson_layer2_exchanges,  exchange_name, 'assets_layer2_exchanges.shp')
 
-    # # Write links
-    # # print('write links layer5')
-    # # write_shapefile(geojson_layer5_premises_sp_links,  exchange_name, 'links_sp_layer5_premises.shp')
+    # Write links
+    print('write links layer5')
+    write_shapefile(geojson_layer5_premises_sp_links,  exchange_name, 'links_sp_layer5_premises.shp')
 
-    # # print('write links layer4')
-    # # write_shapefile(geojson_layer4_distributions_sp_links,  exchange_name, 'links_sp_layer4_distributions.shp')
+    print('write links layer4')
+    write_shapefile(geojson_layer4_distributions_sp_links,  exchange_name, 'links_sp_layer4_distributions.shp')
 
-    # # print('write links layer3')
-    # # write_shapefile(geojson_layer3_cabinets_sp_links,  exchange_name, 'links_sp_layer3_cabinets.shp')
+    print('write links layer3')
+    write_shapefile(geojson_layer3_cabinets_sp_links,  exchange_name, 'links_sp_layer3_cabinets.shp')
 
     print('write links layer5')
     write_shapefile(geojson_layer5_premises_sl_links,  exchange_name, 'links_sl_layer5_premises.shp')
