@@ -6,7 +6,7 @@ from pprint import pprint
 
 PERCENTAGE_OF_TRAFFIC_IN_BUSY_HOUR = 0.15
 
-SERVICE_OBLIGATION_CAPACITY = 5
+SERVICE_OBLIGATION_CAPACITY = 10
 
 class ICTManager(object):
     """Model controller class.
@@ -80,8 +80,7 @@ class ICTManager(object):
     """
 
     def __init__(self, lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup):
-        """ 
-        Load the `lads` in local :obj:`dict` attribute `lad`
+        """ Load the `lads` in local :obj:`dict` attribute `lad`
         Record the assets, capacity and clutter per postcode sector in the :obj:`dict` attribute `postcode_sectors`
         """
 
