@@ -3,10 +3,9 @@
 
 from digital_comms.mobile_network.path_loss_calculations import path_loss_calc_module
 
+class TestPathLossCalcModule():
 
-class PathLossCalcModuleTest():
-
-    def test_path_loss_module(self, frequency, distance, ant_height, ant_type, settlement_type, type_of_sight, ue_height):
+    def test_path_loss_module(self):
 
         frequency = 3.5 #in GHz
         distance = 1000 #in meters
@@ -16,7 +15,8 @@ class PathLossCalcModuleTest():
         type_of_sight = 'los'
         ue_height = 1.5
 
-        path_loss = path_loss_calc_module(frequency, distance, ant_height, ant_type, settlement_type, type_of_sight, ue_height)
+        path_loss = round(path_loss_calc_module(frequency, distance, ant_height, ant_type, settlement_type, type_of_sight, ue_height),0)
 
-        assert path_loss == 500
+        assert path_loss == 101
+
 
