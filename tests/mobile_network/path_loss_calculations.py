@@ -4,16 +4,20 @@
 import pytest
 from digital_comms.mobile_network.path_loss_calculations import path_loss_calc_module
 
-@pytest.mark.parametrize("frequency, distance, ant_height, ant_type, settlement_type, type_of_sight, ue_height, expected", [
-    (3.5,1000,10,'micro','urban','los',1.5, 108),
-    (3.5,1000,10,'micro','urban','nlos',1.5, 147),
-    (3.5,1000,25,'macro','urban','los',1.5, 101),
-    (3.5,1000,25,'macro','urban','nlos',1.5, 142),
-    (3.5,1000,25,'macro','suburban','los',1.5, 101),
-    (3.5,1000,25,'macro','suburban','nlos',1.5, 142),
-    (3.5,1000,25,'macro','rural','los',1.5, 101),
-    (3.5,1000,25,'macro','rural','nlos',1.5, 142),
+@pytest.mark.parametrize("frequency, distance, ant_height, ant_type, building_height, street_width, settlement_type, type_of_sight, ue_height, expected", [
+    (3.5,500,10,'micro','-','-','urban','los',1.5, 98),
+    (3.5,1000,10,'micro','-','-','urban','los',1.5, 108),
+    (3.5,500,10,'micro','-','-','urban','nlos',1.5, 136),
+    (3.5,500,25, 'macro',20,20,'urban','los',1.5, 98),
+    (3.5,2000,25,'macro',20,20,'urban','los',1.5, 113),
+    (3.5,1000,25,'macro',20,20,'urban','nlos',1.5, 142),
+    (3.5,1000,35,'macro',10,20,'suburban','los',1.5, 108),
+    (3.5,4000,35,'macro',10,20,'suburban','los',1.5, 127),
+    (3.5,500,35,'macro',10,20,'suburban','nlos',1.5, 121),
+    (3.5,1000,35,'macro',10,20,'rural','los',1.5, 108),
+    (3.5,4000,35,'macro',10,20,'rural','los',1.5, 127),
+    (3.5,500,35,'macro',10,20,'rural','nlos',1.5, 121),
 ])
 
-def test_eval(frequency, distance, ant_height, ant_type, settlement_type, type_of_sight, ue_height, expected):
-    assert (path_loss_calc_module(frequency, distance, ant_height, ant_type, settlement_type, type_of_sight, ue_height)) == expected
+def test_eval(frequency, distance, ant_height, ant_type, building_height, street_width, settlement_type, type_of_sight, ue_height, expected):
+    assert (path_loss_calc_module(frequency, distance, ant_height, ant_type, building_height, street_width, settlement_type, type_of_sight, ue_height)) == expected

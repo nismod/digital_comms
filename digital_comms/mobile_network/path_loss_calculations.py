@@ -4,18 +4,19 @@
 import numpy as np
 from math import pi
 
-def path_loss_calc_module(frequency, distance, ant_height, ant_type, settlement_type, type_of_sight, ue_height):
+def path_loss_calc_module(frequency, distance, ant_height, ant_type, building_height, street_width, 
+                            settlement_type, type_of_sight, ue_height):
 
     """Calculate the correct path loss given a range of critera
 
     Parameters
     ----------
     frequency : float
-        Frequency band given in GHz
+        Frequency band given in GHz (f)
     distance : float
-        Distance between the transmitter and receiver
+        Distance between the transmitter and receiver (d)
     ant_height:
-        Height of the antenna
+        Height of the antenna (hBS)
     ant_type : string
         Indicates the type of cell (hotspot, micro, macro)
     settlement_type : string
@@ -23,66 +24,142 @@ def path_loss_calc_module(frequency, distance, ant_height, ant_type, settlement_
     type_of_sight : string
         Indicates whether the path is (Non) Line of Sight (LOS or NLOS) 
     ue_height : float
-        Height of the User Equipment
+        Height of the User Equipment (hUT)
     street_width : float
-        Width of street
+        Width of street (W)
 
     Returns
     -------
     float: path_loss (dB)
 
     """
+    #######################
+    # check frequency
+    #######################
 
-    #check the frequency band is within necessary range
     if 2 < frequency < 6: 
         pass
     else:
         print("frequency is NOT within correct range")
-
-    street_width = 20
-    ave_building_height = 20
     
-    if ant_type == 'micro' and settlement_type == 'urban' and type_of_sight == 'los':
-        
-        path_loss = (40*np.log10(distance)+7.8-18*np.log10(ant_height)-18*np.log10(ue_height)+2*np.log10(frequency))
+    #######################
+    # calc breakpoint dist (d'BP)
+    #######################
 
-    if ant_type == 'micro' and settlement_type == 'urban' and type_of_sight == 'nlos':
+    #d’BP  = 4 h’BS h’UT fc/c, where fc is the centre frequency in Hz, c = 3.0108 m/s 
+    #f is in Hz and c is the speed of light (3*10^8)
+    breakpoint_urban = 4 * ant_height * ue_height * (int(frequency*1000000000)) / 300000000
+
+    #dBP  = 2π hBS hUT fc/c, where fc is the centre frequency in Hz, c = 3.0108 m/s  
+    #f is in Hz and c is the speed of light (3*10^8)
+    breakpoint_suburban_rural = 2 * pi * ant_height * ue_height * (int(frequency*1000000000)) / 300000000
+
+    #######################
+    # set applicability function
+    #######################
+
+    def check_applicability():
+        if (5 <= building_height < 50 and
+            5 <= street_width < 50 and 
+            10 <= ant_height < 150 and 
+            1 <= ue_height < 10): 
         
+            compliant = True
+
+        else:
+            compliant = False
+
+        return compliant
+
+    #######################
+    # indoor hotspot
+    #######################
+    
+    #pass
+
+    #######################
+    # micro cells
+    #######################
+
+    if ant_type == 'micro' and settlement_type == 'urban' and type_of_sight == 'los': 
+        if distance < breakpoint_urban:
+            path_loss = 22 * np.log10(distance) + 28 + 20*np.log10(frequency)
+        elif breakpoint_urban < distance < 5000:
+            path_loss = 40 * np.log10(distance) + 7.8 - 18*np.log10(ant_height) - 18*np.log10(ue_height) + 2*np.log10(frequency)
+        else:
+            print("distance is out of cell range at {}m".format(distance))
+            #fallback value needs refining
+            path_loss = 100
+
+    if ant_type == 'micro' and settlement_type == 'urban' and type_of_sight == 'nlos':  
         path_loss = (36.7*np.log10(distance) + 22.7 + 26*np.log10(frequency))
+        
+    # add outside-to-inside calculations for urban microcell
 
-    #add outside to in calculations for urban microcell
+    #######################
+    # macro cells
+    #######################
 
-    if ant_type == 'macro' and settlement_type == 'urban' and type_of_sight == 'los':
-       
-        path_loss = (40*np.log10(distance) + 7.8-18*np.log10(ant_height) - 18*np.log10(ue_height) + 2*np.log10(frequency))
+    if ant_type == 'macro' and settlement_type == 'urban' and type_of_sight == 'los': 
+        if 10 < distance < breakpoint_urban:
+            path_loss = 22 * np.log10(distance) + 28 + 20*np.log10(frequency)
+        elif breakpoint_urban < distance < 5000:
+            path_loss = (40*np.log10(distance) + 7.8 - 18*np.log10(ant_height) - 
+                        18*np.log10(ue_height) + 2*np.log10(frequency))
+        else:
+            print("distance is out of cell range at {}m".format(distance))
+            #fallback value needs refining
+            path_loss = 100
 
     if ant_type == 'macro' and settlement_type == 'urban' and type_of_sight == 'nlos':
- 
-        path_loss = (161.04-7.1*np.log10(street_width)+ 7.5*np.log10(ave_building_height)-(24.37-3.7*
-                    (ave_building_height/ant_height)**2)*np.log10(ant_height)+(43.42-3.1*
+        
+        if (10 < distance < 5000 and check_applicability()):
+
+            path_loss = (161.04-7.1*np.log10(street_width)+ 7.5*np.log10(building_height)-(24.37-3.7*
+                    (building_height/ant_height)**2)*np.log10(ant_height)+(43.42-3.1*
                     np.log10(ant_height))*(np.log10(distance)-3)+ 20*np.log10(frequency)-
                     (3.2*(np.log10(11.75*ue_height))**2-4.97))
+        else:
+            print("parameters not in 3GPP applicability ranges")
+            #fallback value needs refining
+            path_loss = 100
 
-    if ant_type == 'macro' and settlement_type == 'suburban' and type_of_sight == 'los':
+    if ant_type == 'macro' and settlement_type != 'urban' and type_of_sight == 'los':
+     
+        def suburban_los_pl1(input_distance): 
 
-        path_loss = (20*np.log10(40*pi*distance*frequency/3) + min(0.03*ave_building_height**1.72,10)*np.log10(distance) - min(0.044*(ave_building_height**1.72, 14.77)+0.002*np.log10(ave_building_height)*distance))
+            pl1 = (20*np.log10(40*pi*input_distance*frequency/3) + min(0.03*building_height**1.72,10) * 
+            np.log10(input_distance) - min(0.044*building_height**1.72, 14.77) + 
+            0.002*np.log10(building_height)*input_distance)
 
-    if ant_type == 'macro' and settlement_type == 'suburban' and type_of_sight == 'nlos':
+            return pl1
 
-        path_loss = (161.04-7.1*np.log10(street_width)+ 7.5*np.log10(ave_building_height)-(24.37-3.7*
-                    (ave_building_height/ant_height)**2)*np.log10(ant_height)+(43.42-3.1*
+        def suburban_los_pl2(input_distance):
+
+            pl2 =  40*np.log10(input_distance / breakpoint_suburban_rural)
+
+            return pl2
+
+        if (10 < distance < breakpoint_suburban_rural and check_applicability()):
+
+            path_loss = suburban_los_pl1(distance)
+
+        elif breakpoint_suburban_rural < distance < 5000 and check_applicability():
+            pl1 = suburban_los_pl1(breakpoint_suburban_rural)
+            path_loss = pl1 + suburban_los_pl2(distance)
+
+        else:
+            print("parameters not in 3GPP applicability ranges")
+            #fallback value needs refining
+            path_loss = 100
+
+    if ant_type == 'macro' and settlement_type != 'urban' and type_of_sight == 'nlos':
+
+        path_loss = (161.04-7.1*np.log10(street_width)+ 7.5*np.log10(building_height)-(24.37-3.7*
+                    (building_height/ant_height)**2)*np.log10(ant_height)+(43.42-3.1*
                     np.log10(ant_height))*(np.log10(distance)-3)+ 20*np.log10(frequency)-
                     (3.2*(np.log10(11.75*ue_height))**2-4.97))
+    
 
-    if ant_type == 'macro' and settlement_type == 'rural' and type_of_sight == 'los':
-
-        #path_loss = (20*np.log10(40*pi*distance*frequency/3) + min(0.03*ave_building_height**1.72,10)*np.log10(distance) - min(0.044*(ave_building_height**1.72, 14.77)+0.002*np.log10(ave_building_height)*distance))
-        pass
-    if ant_type == 'macro' and settlement_type == 'rural' and type_of_sight == 'nlos':
-
-        path_loss = (161.04-7.1*np.log10(street_width)+ 7.5*np.log10(ave_building_height)-(24.37-3.7*
-                    (ave_building_height/ant_height)**2)*np.log10(ant_height)+(43.42-3.1*
-                    np.log10(ant_height))*(np.log10(distance)-3)+ 20*np.log10(frequency)-
-                    (3.2*(np.log10(11.75*ue_height))**2-4.97))
 
     return round(path_loss,0)

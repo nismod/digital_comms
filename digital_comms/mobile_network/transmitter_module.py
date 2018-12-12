@@ -37,12 +37,18 @@ class NetworkManager(object):
             for receiver in receivers:
                 receiver_geom = Point(receiver.coordinates)
                 #strt_distance = round(transmitter_geom.distance(receiver_geom), 2)
-                strt_distance = 100
+                strt_distance = 1000
+                ant_type = 'macro'
+                settlement_type = 'urban'
                 type_of_sight = 'nlos'
+                ant_height = 25
+                building_height = 20
+                street_width = 20
                 ue_height = 1.5
 
                 #print(strt_distance)
-                path_loss = path_loss_calc_module(frequency, strt_distance, 25, 'macro', 'urban', type_of_sight, ue_height)
+                path_loss = path_loss_calc_module(frequency, strt_distance, ant_height, ant_type, 
+                            building_height, street_width, settlement_type, type_of_sight, ue_height)
                 
                 print(path_loss)
 
