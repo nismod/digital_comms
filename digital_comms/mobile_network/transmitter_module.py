@@ -1,4 +1,5 @@
 from pprint import pprint
+from rtree import index
 from shapely.geometry import shape, Point
 
 from digital_comms.mobile_network.path_loss_calculations import path_loss_calc_module
@@ -22,7 +23,17 @@ class NetworkManager(object):
             transmitter_containing_receiver.add_receiver(receiver)
     
     def calc_link_budget(self, frequency):
+        
+        #setup rtree
+        idx = index.Index()
         for transmitter in self.transmitters.values(): 
+            #insert transmitter objects into rtree
+            idx.insert(0, Point(transmitter.coordinates).bounds, transmitter)
+
+        for transmitter in self.transmitters.values(): 
+            
+            nearest_transmitters = []
+
             ant_type = transmitter.type
             ant_height = transmitter.ant_height
             transmitter_geom = Point(transmitter.coordinates)
@@ -32,7 +43,7 @@ class NetworkManager(object):
                 if transmitter.id == receiver.transmitter_id:
                     receivers.append(receiver)
                 else:
-                    pass
+                    pass            
 
             for receiver in receivers:
                 receiver_geom = Point(receiver.coordinates)
@@ -46,17 +57,20 @@ class NetworkManager(object):
                 street_width = 20
                 ue_height = 1.5
 
+                #TODO - module that determines line of sight
+
                 #print(strt_distance)
                 path_loss = path_loss_calc_module(frequency, strt_distance, ant_height, ant_type, 
                             building_height, street_width, settlement_type, type_of_sight, ue_height)
-                
-                print(path_loss)
 
-                #do path_loss calc
-                #pass coordinates to a separate module that does the distance calc?
-                #pass coordinates to a separate module that does the LOS or NLOS?
-                #pass coordinates to a separate module that does the path loss equation?
-         
+            #find the nearest transmitters likely to cause interference  
+            nearest_transmitters.append (
+                    idx.nearest(
+                        Point(transmitter.coordinates).bounds, 4, objects='raw'))
+
+            for transmitter in nearest_transmitters:
+                print(transmitter)
+ 
         return 
 
 class Transmitter(object):
@@ -119,6 +133,42 @@ if __name__ == '__main__':
                 "operator":'voda',
                 "opref": 31745,
                 "sitengr": 'TL4570557386',
+                "ant_height": 14.9,
+                "type": 'macro',
+                "power": 29.8,
+                "gain": 18,
+                "losses": 2,
+                "pcd_sector": "CB1 2",
+            }
+        },
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [52.1, 0.1]
+            },
+            'properties': {
+                "operator":'voda',
+                "opref": 31742,
+                "sitengr": 'TL4570557310',
+                "ant_height": 14.9,
+                "type": 'macro',
+                "power": 29.8,
+                "gain": 18,
+                "losses": 2,
+                "pcd_sector": "CB1 2",
+            }
+        },
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [52.59, 0.83]
+            },
+            'properties': {
+                "operator":'voda',
+                "opref": 31746,
+                "sitengr": 'TL4570557360',
                 "ant_height": 14.9,
                 "type": 'macro',
                 "power": 29.8,
