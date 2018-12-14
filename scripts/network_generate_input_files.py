@@ -14,7 +14,8 @@ CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
 # Config
-input_shapefiles_dir = os.path.join('tests', 'fixed_network', 'fixtures')
+fixed_input_shapefiles_dir = os.path.join('tests', 'fixed_network', 'fixtures')
+mobile_input_shapefiles_dir = os.path.join('tests', 'mobile_network', 'fixtures')
 
 # Helper functions
 def write_points_to_shp(filename, data, schema):
@@ -50,6 +51,11 @@ def write_links_to_shp(filename, data):
                 'properties': link[1]
             })
 
+
+#######################
+# FIXED 
+#######################
+
 # Create shapefiles
 setup_assets_layer5_premises_schema = {
     'geometry': 'Point',
@@ -57,38 +63,42 @@ setup_assets_layer5_premises_schema = {
         [
             ('id',          'str:80'),
             ('connection',  'str:80'),
-            ('FTTP',        'int:9'),
-            ('GFast',       'int:9'),
-            ('FTTC',        'int:9'),
-            ('DOCSIS3',     'int:9'),
-            ('ADSL',        'int:9')
+            ('FTTP',        'int:9' ),
+            ('GFast',       'int:9' ),
+            ('FTTC',        'int:9' ),
+            ('DOCSIS3',     'int:9' ),
+            ('ADSL',        'int:9' ),
+            ('lad',         'str:80'),
+            ('wta',         'float:9'),
+            ('wtp',         'int:9'),
+            ('adoption_desirability',  'int:9')
         ]
     )
 }
 
 setup_assets_layer5_premises = [
-    (Point(0.123026918434941,52.2165504829092), OrderedDict([('id', 'premise_1'), ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.122976797821796,52.2165813794341), OrderedDict([('id', 'premise_2'), ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.122923221944425,52.2166095174221), OrderedDict([('id', 'premise_3'), ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.122883253086023,52.2166385519268), OrderedDict([('id', 'premise_4'), ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.122832132472878,52.2166686554264), OrderedDict([('id', 'premise_5'), ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.122783132472878,52.2166938279235), OrderedDict([('id', 'premise_6'), ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.122648614925457,52.2167712069892), OrderedDict([('id', 'premise_7'), ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.122588735538602,52.2168061034969), OrderedDict([('id', 'premise_8'), ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.122603467123959,52.2169040350416), OrderedDict([('id', 'premise_9'), ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.122659525453909,52.2169508625585), OrderedDict([('id', 'premise_10'), ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.122725373699167,52.2169952421224), OrderedDict([('id', 'premise_11'), ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.122791614925457,52.2170374836873), OrderedDict([('id', 'premise_12'), ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.122847400887520,52.2170765182346), OrderedDict([('id', 'premise_13'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.122910793868552,52.2171207598228), OrderedDict([('id', 'premise_14'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.122974490359068,52.2171656908543), OrderedDict([('id', 'premise_15'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.123037852198502,52.2172047944235), OrderedDict([('id', 'premise_16'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.123172361839434,52.2172035183565), OrderedDict([('id', 'premise_17'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.123253817103661,52.2171583112688), OrderedDict([('id', 'premise_18'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.123332089471548,52.2171133112305), OrderedDict([('id', 'premise_19'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.123406210084692,52.2170664492107), OrderedDict([('id', 'premise_20'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.123488937716805,52.2170213456584), OrderedDict([('id', 'premise_21'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
-    (Point(0.123563634207321,52.2169773456193), OrderedDict([('id', 'premise_22'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
+    (Point(0.123026918434941,52.2165504829092), OrderedDict([('id', 'premise_1'),  ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.122976797821796,52.2165813794341), OrderedDict([('id', 'premise_2'),  ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.122923221944425,52.2166095174221), OrderedDict([('id', 'premise_3'),  ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.122883253086023,52.2166385519268), OrderedDict([('id', 'premise_4'),  ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.122832132472878,52.2166686554264), OrderedDict([('id', 'premise_5'),  ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.122783132472878,52.2166938279235), OrderedDict([('id', 'premise_6'),  ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.122648614925457,52.2167712069892), OrderedDict([('id', 'premise_7'),  ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.122588735538602,52.2168061034969), OrderedDict([('id', 'premise_8'),  ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.122603467123959,52.2169040350416), OrderedDict([('id', 'premise_9'),  ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.122659525453909,52.2169508625585), OrderedDict([('id', 'premise_10'), ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.122725373699167,52.2169952421224), OrderedDict([('id', 'premise_11'), ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.122791614925457,52.2170374836873), OrderedDict([('id', 'premise_12'), ('connection', 'distribution_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.122847400887520,52.2170765182346), OrderedDict([('id', 'premise_13'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.122910793868552,52.2171207598228), OrderedDict([('id', 'premise_14'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.122974490359068,52.2171656908543), OrderedDict([('id', 'premise_15'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.123037852198502,52.2172047944235), OrderedDict([('id', 'premise_16'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.123172361839434,52.2172035183565), OrderedDict([('id', 'premise_17'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.123253817103661,52.2171583112688), OrderedDict([('id', 'premise_18'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.123332089471548,52.2171133112305), OrderedDict([('id', 'premise_19'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.123406210084692,52.2170664492107), OrderedDict([('id', 'premise_20'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.123488937716805,52.2170213456584), OrderedDict([('id', 'premise_21'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
+    (Point(0.123563634207321,52.2169773456193), OrderedDict([('id', 'premise_22'), ('connection', 'distribution_2'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0), ('lad','E07000008'), ('wta','0.2'), ('wtp','30'), ('adoption_desirability','0') ])),
 ]
 
 setup_links_layer5_premises_schema = {
@@ -198,12 +208,150 @@ setup_assets_layer2_exchanges = [
     (Point(0.121507260074479, 52.2047310714094), OrderedDict([('id', 'exchange_1'), ('connection', 'cabinet_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
 ]
 
-write_points_to_shp(os.path.join(input_shapefiles_dir, 'assets_layer5_premises.shp'), setup_assets_layer5_premises, setup_assets_layer5_premises_schema)
-write_points_to_shp(os.path.join(input_shapefiles_dir, 'links_layer5_premises.shp'), setup_links_layer5_premises, setup_links_layer5_premises_schema)
-write_points_to_shp(os.path.join(input_shapefiles_dir, 'assets_layer4_distributions.shp'), setup_assets_layer4_distributions, setup_assets_layer4_distributions_schema)
-write_points_to_shp(os.path.join(input_shapefiles_dir, 'links_layer4_distributions.shp'), setup_links_layer4_distributions, setup_links_layer4_distributions_schema)
-write_points_to_shp(os.path.join(input_shapefiles_dir, 'assets_layer3_cabinets.shp'), setup_assets_layer3_cabinets, setup_assets_layer3_cabinets_schema)
-write_points_to_shp(os.path.join(input_shapefiles_dir, 'links_layer3_cabinets.shp'), setup_links_layer3_cabinets, setup_links_layer3_cabinets_schema)
-write_points_to_shp(os.path.join(input_shapefiles_dir, 'assets_layer2_exchanges.shp'), setup_assets_layer2_exchanges, setup_assets_layer2_exchanges_schema)
+#######################
+# MOBILE 
+#######################
+
+# Create shapefiles
+setup_assets_transmitter_schema = {
+    'geometry': 'Point',
+    'properties': OrderedDict(
+        [
+            ('operator',    'str:80'),
+            ('opref',       'str:80'),
+            ('sitengr',     'str:80'),
+            ('ant_height',  'float:9'),
+            ('type',        'str:80'),
+            ('power',       'float:9'),
+            ('gain',        'float:9'),
+            ('losses',      'float:9'),
+            ('pcd_sector',  'str:80'),
+        ]
+    )
+}
+
+setup_assets_transmitters = [
+    (Point(0.124896, 52.215965), OrderedDict([('operator', 'EE'), 
+                                                              ('opref', '94745'), 
+                                                              ('sitengr', 'TL4515059700'), 
+                                                              ('ant_height', 22.15), 
+                                                              ('type', 'macro'), 
+                                                              ('power', 25), 
+                                                              ('gain', 0),
+                                                              ('losses', 0),
+                                                              ('pcd_sector', 'CB4 1')])),
+    (Point(0.133939, 52.215263), OrderedDict([('operator', 'EE'), 
+                                                              ('opref', 'CAM7012'), 
+                                                              ('sitengr', 'TL4577059640'), 
+                                                              ('ant_height', 17.8), 
+                                                              ('type', 'micro'), 
+                                                              ('power', 17.5), 
+                                                              ('gain', 0),
+                                                              ('losses', 0),
+                                                              ('pcd_sector', 'CB4 1')])),
+    (Point(0.11593, 52.215227), OrderedDict([('operator', 'EE'), 
+                                                              ('opref', 'CAM7025'), 
+                                                              ('sitengr', 'TL4454059600'), 
+                                                              ('ant_height', 4), 
+                                                              ('type', 'micro'), 
+                                                              ('power', 15.1), 
+                                                              ('gain', 0),
+                                                              ('losses', 0),
+                                                              ('pcd_sector', 'CB4 3')])),
+    (Point(0.12512, 52.21442), OrderedDict([('operator', 'EE'), 
+                                                              ('opref', 'CAM7114'), 
+                                                              ('sitengr', 'TL4529059480'), 
+                                                              ('ant_height', 10.5), 
+                                                              ('type', 'macro'), 
+                                                              ('power', 22.4), 
+                                                              ('gain', 0),
+                                                              ('losses', 0),
+                                                              ('pcd_sector', 'CB4 1')])),
+    (Point(0.126849, 52.213952), OrderedDict([('operator', 'EE'), 
+                                                              ('opref', 'CAM7026'), 
+                                                              ('sitengr', 'TL4529059480'), 
+                                                              ('ant_height', 10.5), 
+                                                              ('type', 'macro'), 
+                                                              ('power', 15.1), 
+                                                              ('gain', 0),
+                                                              ('losses', 0),
+                                                              ('pcd_sector', 'CB4 1')])),
+]
+
+
+# Create shapefiles
+setup_assets_receiver_schema = {
+    'geometry': 'Point',
+    'properties': OrderedDict(
+        [
+            ('ue_id',       'str:80'),
+            ('sitengr',     'str:80'),
+            ('misc_losses', 'float:9'),
+            ('gain',        'float:9'),
+            ('losses',      'float:9'),
+        ]
+    )
+}
+
+setup_assets_receivers = [
+    (Point(0.11748, 52.21854), OrderedDict([('ue_id', 'AB1'), 
+                                              ('sitengr', 'TL4454059600'), 
+                                              ('misc_losses', 0),
+                                              ('gain', 0),
+                                              ('losses', 0)])),
+    (Point(0.11670, 52.21362), OrderedDict([('ue_id', 'AB2'), 
+                                              ('sitengr', 'TL4454059600'), 
+                                              ('misc_losses', 0),
+                                              ('gain', 0),
+                                              ('losses', 0)])),
+    (Point(0.118174, 52.214870), OrderedDict([('ue_id', 'AB3'), 
+                                              ('sitengr', 'TL4454059600'), 
+                                              ('misc_losses', 0),
+                                              ('gain', 0),
+                                              ('losses', 0)])),
+    # (Point(0.133939, 52.21608), OrderedDict([('ue_id', 'AB4'), 
+    #                                           ('sitengr', 'TL4577059640'), 
+    #                                           ('misc_losses', 10.5),
+    #                                           ('gain', 0),
+    #                                           ('losses', 0)])),
+    # (Point(0.13027, 52.21531), OrderedDict([('ue_id', 'AB5'), 
+    #                                           ('sitengr', 'TL4577059640'), 
+    #                                           ('misc_losses', 10.5),
+    #                                           ('gain', 0),
+    #                                           ('losses', 0)])),
+    # (Point(0.12504, 52.21465), OrderedDict([('ue_id', 'AB6'), 
+    #                                           ('sitengr', 'TL4577059640'), 
+    #                                           ('misc_losses', 10.5),
+    #                                           ('gain', 0),
+    #                                           ('losses', 0)])),
+
+    # (Point(0.12313, 52.21685), OrderedDict([('ue_id', 'EE'), 
+    #                                           ('sitengr', 'TL4510059725'), 
+    #                                           ('misc_losses', 10.5),
+    #                                           ('gain', 0),
+    #                                           ('losses', 0)])),
+
+    # (Point(0.12694, 52.21463), OrderedDict([('ue_id', 'EE'), 
+    #                                           ('sitengr', 'TL4529059480'), 
+    #                                           ('misc_losses', 10.5),
+    #                                           ('gain', 0),
+    #                                           ('losses', 0)])),
+]
+
+#######################
+# RUN 
+#######################
+
+#fixed
+write_points_to_shp(os.path.join(fixed_input_shapefiles_dir, 'assets_layer5_premises.shp'), setup_assets_layer5_premises, setup_assets_layer5_premises_schema)
+write_points_to_shp(os.path.join(fixed_input_shapefiles_dir, 'links_layer5_premises.shp'), setup_links_layer5_premises, setup_links_layer5_premises_schema)
+write_points_to_shp(os.path.join(fixed_input_shapefiles_dir, 'assets_layer4_distributions.shp'), setup_assets_layer4_distributions, setup_assets_layer4_distributions_schema)
+write_points_to_shp(os.path.join(fixed_input_shapefiles_dir, 'links_layer4_distributions.shp'), setup_links_layer4_distributions, setup_links_layer4_distributions_schema)
+write_points_to_shp(os.path.join(fixed_input_shapefiles_dir, 'assets_layer3_cabinets.shp'), setup_assets_layer3_cabinets, setup_assets_layer3_cabinets_schema)
+write_points_to_shp(os.path.join(fixed_input_shapefiles_dir, 'links_layer3_cabinets.shp'), setup_links_layer3_cabinets, setup_links_layer3_cabinets_schema)
+write_points_to_shp(os.path.join(fixed_input_shapefiles_dir, 'assets_layer2_exchanges.shp'), setup_assets_layer2_exchanges, setup_assets_layer2_exchanges_schema)
+#mobile
+write_points_to_shp(os.path.join(mobile_input_shapefiles_dir, 'assets_transmitters.shp'), setup_assets_transmitters, setup_assets_transmitter_schema)
+write_points_to_shp(os.path.join(mobile_input_shapefiles_dir, 'assets_receivers.shp'), setup_assets_receivers, setup_assets_receiver_schema)
 
 print('Done... Files are generated')
