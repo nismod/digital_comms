@@ -58,18 +58,35 @@ def path_loss_calc_module(frequency, distance, ant_height, ant_type, building_he
     # set applicability function
     #######################
 
-    def check_applicability():
-        if (5 <= building_height < 50 and
-            5 <= street_width < 50 and 
-            10 <= ant_height < 150 and 
-            1 <= ue_height < 10): 
-        
-            compliant = True
-
+    def check_applicability(building_height, street_width, ant_height, ue_height):
+        if 5 <= building_height < 50 : 
+            building_height_compliant = True
         else:
-            compliant = False
+            building_height_compliant = False
+            print('building_height not compliant')
+        if 5 <= street_width < 50:
+            street_width_compliant = True
+        else:
+            street_width_compliant = False
+            print('street_width not compliant')
+        if 10 <= ant_height < 150:
+            ant_height_compliant = True
+        else:
+            ant_height_compliant = False
+            print('ant_height not compliant')
+        if 1 <= ue_height < 10:
+            ue_height_compliant = True
+        else:
+            ue_height_compliant = False 
+            print('ue_height not compliant')
 
-        return compliant
+        if (building_height_compliant + street_width_compliant +
+        ant_height_compliant + ue_height_compliant) == 4:
+            overall_compliant = True    
+        else:
+            overall_compliant = False
+
+        return overall_compliant
 
     #######################
     # indoor hotspot
@@ -113,7 +130,7 @@ def path_loss_calc_module(frequency, distance, ant_height, ant_type, building_he
 
     if ant_type == 'macro' and settlement_type == 'urban' and type_of_sight == 'nlos':
         
-        if (10 < distance < 5000 and check_applicability()):
+        if (10 < distance < 5000 and check_applicability(building_height, street_width, ant_height, ue_height)):
 
             path_loss = (161.04-7.1*np.log10(street_width)+ 7.5*np.log10(building_height)-(24.37-3.7*
                     (building_height/ant_height)**2)*np.log10(ant_height)+(43.42-3.1*
@@ -140,11 +157,14 @@ def path_loss_calc_module(frequency, distance, ant_height, ant_type, building_he
 
             return pl2
 
-        if (10 < distance < breakpoint_suburban_rural and check_applicability()):
+        if (10 < distance < breakpoint_suburban_rural and 
+        check_applicability(building_height, street_width, ant_height, ue_height)):
 
             path_loss = suburban_los_pl1(distance)
 
-        elif breakpoint_suburban_rural < distance < 5000 and check_applicability():
+        elif (breakpoint_suburban_rural < distance < 5000 and 
+        check_applicability(building_height, street_width, ant_height, ue_height)):
+            
             pl1 = suburban_los_pl1(breakpoint_suburban_rural)
             path_loss = pl1 + suburban_los_pl2(distance)
 
@@ -160,6 +180,4 @@ def path_loss_calc_module(frequency, distance, ant_height, ant_type, building_he
                     np.log10(ant_height))*(np.log10(distance)-3)+ 20*np.log10(frequency)-
                     (3.2*(np.log10(11.75*ue_height))**2-4.97))
     
-
-
     return round(path_loss,0)

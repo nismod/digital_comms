@@ -2,7 +2,7 @@
 """
 
 import pytest
-from digital_comms.mobile_network.path_loss_calculations import path_loss_calc_module
+from digital_comms.mobile_network.path_loss_calculations import path_loss_calc_module, check_applicability
 
 @pytest.mark.parametrize("frequency, distance, ant_height, ant_type, building_height, street_width, settlement_type, type_of_sight, ue_height, expected", [
     (3.5,500,10,'micro','-','-','urban','los',1.5, 98),
@@ -21,3 +21,11 @@ from digital_comms.mobile_network.path_loss_calculations import path_loss_calc_m
 
 def test_eval(frequency, distance, ant_height, ant_type, building_height, street_width, settlement_type, type_of_sight, ue_height, expected):
     assert (path_loss_calc_module(frequency, distance, ant_height, ant_type, building_height, street_width, settlement_type, type_of_sight, ue_height)) == expected
+
+@pytest.mark.parametrize("frequency, expected", [
+    (20, 20, 1.5, True),
+    (5, 20, 1.5, False),
+])
+
+def test_eval(building_height, street_width, ant_height, ue_height, expected):
+    assert (check_applicability(building_height, street_width, ant_height, ue_height)) == expected
