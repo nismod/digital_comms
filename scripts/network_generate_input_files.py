@@ -269,7 +269,7 @@ setup_assets_transmitters = [
                                                               ('pcd_sector', 'CB4 1')])),
     (Point(0.126849, 52.213952), OrderedDict([('operator', 'EE'), 
                                                               ('opref', 'CAM7026'), 
-                                                              ('sitengr', 'TL4529059480'), 
+                                                              ('sitengr', 'TL4529059500'), 
                                                               ('ant_height', 10.5), 
                                                               ('type', 'macro'), 
                                                               ('power', 15.1), 
