@@ -3,8 +3,8 @@ from rtree import index
 from shapely.geometry import shape, Point
 import pyproj
 
-from digital_comms.mobile_network.path_loss_calculations import path_loss_calc_module
-
+from path_loss_calculations import path_loss_calc_module
+from built_env_module import find_line_of_sight 
 
 class NetworkManager(object):
 
@@ -72,7 +72,10 @@ class NetworkManager(object):
                 #determine line of sight and built env parameters
                 settlement_type = 'urban'
                 #type_of_sight, building_height, street_width = built_environment_module(transmitter_geom, receiver_geom)  
-                type_of_sight = 'los'
+                print('testing')
+                type_of_sight = find_line_of_sight(x1_transmitter, y1_transmitter, x2_receiver, y2_receiver)  
+                print(type_of_sight)
+                #type_of_sight = 'los'
                 building_height = 20
                 street_width = 20
 

@@ -1,5 +1,5 @@
 import configparser
-import os
+import os, sys
 import glob
 import csv
 from math import sqrt, pi, sin, cos, tan, atan2 as arctan2
@@ -8,6 +8,8 @@ import fiona
 from shapely.geometry import Point, LineString, shape
 from osgeo import gdal
 from collections import OrderedDict
+
+import rasterio
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), '..',  '..', 'scripts','script_config.ini'))
@@ -18,34 +20,31 @@ DATA_RAW_INPUTS = os.path.join(BASE_PATH, 'raw', 'e_dem_and_buildings')
 DATA_RAW_SHAPES = os.path.join(BASE_PATH, 'raw', 'd_shapes')
 DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 
-def find_line_of_sight(x1, y1, x2, y2):
-
-    x_coordinates = []
-    y_coordinates = []
-
-    x_coordinates.append(x1)
-    x_coordinates.append(x2)
-    y_coordinates.append(y1)
-    y_coordinates.append(y2)
-
-    x_min = min(x_coordinates)
-    x_max = max(x_coordinates) 
-    y_min = min(y_coordinates)
-    y_max = max(y_coordinates)
+def find_line_of_sight (x_transmitter, y_transmitter, x_receiver, y_receiver):
 
     projOSGB36 = Proj(init='epsg:27700')
     projWGS84 = Proj(init='epsg:4326')
 
-    x_min, y_min = transform(projWGS84, projOSGB36, x_min, y_min)
-    x_max, y_max = transform(projWGS84, projOSGB36, x_max, y_max)
-    
-    premises_data = read_premises_data(x_min, y_min, x_max, y_max)
+    x_transmitter, y_transmitter = transform(projWGS84, projOSGB36, x_transmitter, y_transmitter)
+    x_receiver, y_receiver = transform(projWGS84, projOSGB36, x_receiver, y_receiver)
 
+    x_coordinates = []
+    y_coordinates = []
+
+    x_coordinates.extend([x_transmitter, x_receiver])
+    y_coordinates.extend([y_transmitter, y_receiver])
+
+    x_min, x_max = min(x_coordinates), max(x_coordinates) 
+    y_min, y_max = min(y_coordinates), max(y_coordinates)
+   
+    premises_data = read_premises_data(x_min, y_min, x_max, y_max)
+    
     if len(premises_data) < 1:
         line_of_sight = 'los'
     else:
         tile_ids = find_osbg_tile(x_min, y_min, x_max, y_max)
         
+        #get building heights
         building_heights = []
 
         for tile_id in tile_ids:
@@ -64,6 +63,7 @@ def find_line_of_sight(x1, y1, x2, y2):
                 else:
                     pass
         
+        #match premises with building heights
         premises_with_heights = []
 
         for premises in premises_data:
@@ -81,16 +81,51 @@ def find_line_of_sight(x1, y1, x2, y2):
                         }
                     })
 
+        #make sure viewshed files have been generated
+        #get list of required tile ids
+        final_tile_id_list = []
+
         for tile_id in tile_ids:
             pathlist = glob.iglob(os.path.join(DATA_RAW_INPUTS,'terrain-5-dtm_2736772',
             tile_id['tile_ref_2_digit'] + '/*.asc'))
-            for path in pathlist:
-                if path[-10:-4] == tile_id['full_tile_ref']:
-                    print('i matched')
-                    raster = gdal.Open(path)
-                    print(type(raster))
-                
-    return premises_data
+            for tile_path in pathlist:
+                filename = tile_path[-10:-4]
+                if filename == tile_id['full_tile_ref']:
+                    final_tile_id_list.append(filename)
+
+        output_dir = os.path.abspath(os.path.join(DATA_INTERMEDIATE, 'viewshed_tiles'))
+
+        if len(final_tile_id_list) == 1:
+            filename = final_tile_id_list[0]
+            if not os.path.exists(os.path.join(output_dir, filename + '-viewshed.tif')):
+                from generate_viewshed import generate_viewshed
+                generate_viewshed(x_transmitter, y_transmitter, output_dir, filename, tile_path)                      
+        else:
+            #TODO deal with multiple tiles
+            for filename in final_tile_id_list:
+                if not os.path.exists(os.path.join(output_dir, filename + '-viewshed.tif')):
+                    from generate_viewshed import generate_viewshed
+                    #merge files together
+                    #then generate viewshed
+                    generate_viewshed(x_transmitter, y_transmitter, output_dir, filename, tile_path)   
+        
+        #load in raster viewshed files
+        for final_tile in final_tile_id_list:
+            path = os.path.join(output_dir,final_tile + '-viewshed.tif')
+            src = rasterio.open(path)
+
+        # from rasterio.plot import show
+        # show(src, cmap='terrain')
+        
+        for val in src.sample([(x_receiver, y_receiver)]): 
+            if val == 0:
+                line_of_sight = 'nlos'
+            elif val == 1:
+                line_of_sight = 'los'
+            else:
+                print('binary viewshed .tif returning non-conforming value')
+
+    return line_of_sight
 
 def read_premises_data(x_min, y_min, x_max, y_max):
     """
@@ -223,7 +258,10 @@ def write_shapefile(data, filename):
     with fiona.open(os.path.join(directory, filename), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         [sink.write(feature) for feature in data]
 
+#use coords inside one tile
+line_of_sight = find_line_of_sight(0.124896, 52.215965, 0.133939, 52.215263)
 
-premises = find_line_of_sight(0.124896, 52.215965, 0.133939, 52.215263)
+#coords in two different tiles
+#premises = find_line_of_sight = 'nlos'(0.0790, 52.1982, 0.133939, 52.215263)
 
-write_shapefile(premises, 'built_env_premises.shp')
+#write_shapefile(premises, 'built_env_premises.shp')
