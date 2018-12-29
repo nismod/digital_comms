@@ -9,6 +9,8 @@ from shapely.geometry import Point, LineString, shape
 from osgeo import gdal
 from collections import OrderedDict
 
+from generate_viewshed import load_raster_files
+
 import rasterio
 
 CONFIG = configparser.ConfigParser()
@@ -44,42 +46,42 @@ def find_line_of_sight (x_transmitter, y_transmitter, x_receiver, y_receiver):
     else:
         tile_ids = find_osbg_tile(x_min, y_min, x_max, y_max)
         
-        #get building heights
-        building_heights = []
+        # #get building heights
+        # building_heights = []
 
-        for tile_id in tile_ids:
-            pathlist = glob.iglob(os.path.join(DATA_RAW_INPUTS,'mastermap_building_heights_2726794',
-            tile_id['tile_ref_2_digit'] + '/*.csv'))
-            for path in pathlist:
-                if path[-10:-6] == tile_id['tile_ref_4_digit'].lower(): 
-                    with open(path, 'r') as system_file:
-                        reader = csv.reader(system_file)
-                        next(reader)
-                        for line in reader:
-                            building_heights.append({
-                                'id': line[0],
-                                'max_height': line[6],
-                            })
-                else:
-                    pass
+        # for tile_id in tile_ids:
+        #     pathlist = glob.iglob(os.path.join(DATA_RAW_INPUTS,'mastermap_building_heights_2726794',
+        #     tile_id['tile_ref_2_digit'] + '/*.csv'))
+        #     for path in pathlist:
+        #         if path[-10:-6] == tile_id['tile_ref_4_digit'].lower(): 
+        #             with open(path, 'r') as system_file:
+        #                 reader = csv.reader(system_file)
+        #                 next(reader)
+        #                 for line in reader:
+        #                     building_heights.append({
+        #                         'id': line[0],
+        #                         'max_height': line[6],
+        #                     })
+        #         else:
+        #             pass
         
-        #match premises with building heights
-        premises_with_heights = []
+        # #match premises with building heights
+        # premises_with_heights = []
 
-        for premises in premises_data:
-            for building_height in building_heights:
-                if premises['properties']['uid'] == building_height['id']:     
-                    premises_with_heights.append({
-                        'type': "Feature",
-                        'geometry': {
-                            "type": "Point",
-                            "coordinates": [premises['geometry']['coordinates']]
-                        },
-                        'properties': {
-                            'uid': premises['properties']['uid'],
-                            'max_height': building_height['max_height']
-                        }
-                    })
+        # for premises in premises_data:
+        #     for building_height in building_heights:
+        #         if premises['properties']['uid'] == building_height['id']:     
+        #             premises_with_heights.append({
+        #                 'type': "Feature",
+        #                 'geometry': {
+        #                     "type": "Point",
+        #                     "coordinates": [premises['geometry']['coordinates']]
+        #                 },
+        #                 'properties': {
+        #                     'uid': premises['properties']['uid'],
+        #                     'max_height': building_height['max_height']
+        #                 }
+        #             })
 
         #make sure viewshed files have been generated
         #get list of required tile ids
@@ -91,41 +93,43 @@ def find_line_of_sight (x_transmitter, y_transmitter, x_receiver, y_receiver):
             for tile_path in pathlist:
                 filename = tile_path[-10:-4]
                 if filename == tile_id['full_tile_ref']:
-                    final_tile_id_list.append(filename)
+                    final_tile_id_list.append(tile_path)
 
         output_dir = os.path.abspath(os.path.join(DATA_INTERMEDIATE, 'viewshed_tiles'))
 
-        if len(final_tile_id_list) == 1:
-            filename = final_tile_id_list[0]
-            if not os.path.exists(os.path.join(output_dir, filename + '-viewshed.tif')):
-                from generate_viewshed import generate_viewshed
-                generate_viewshed(x_transmitter, y_transmitter, output_dir, filename, tile_path)                      
-        else:
-            #TODO deal with multiple tiles
-            for filename in final_tile_id_list:
-                if not os.path.exists(os.path.join(output_dir, filename + '-viewshed.tif')):
-                    from generate_viewshed import generate_viewshed
-                    #merge files together
-                    #then generate viewshed
-                    generate_viewshed(x_transmitter, y_transmitter, output_dir, filename, tile_path)   
+        load_raster_files(final_tile_id_list, output_dir,x_transmitter, y_transmitter)
+
+        # if len(final_tile_id_list) == 1:
+        #     filename = final_tile_id_list[0]
+        #     if not os.path.exists(os.path.join(output_dir, filename + '-viewshed.tif')):
+        #         from generate_viewshed import generate_viewshed
+        #         generate_viewshed(x_transmitter, y_transmitter, output_dir, filename, tile_path)                      
+        # else:
+        #     #TODO deal with multiple tiles
+        #     for filename in final_tile_id_list:
+        #         if not os.path.exists(os.path.join(output_dir, filename + '-viewshed.tif')):
+        #             from generate_viewshed import generate_viewshed
+        #             #merge files together
+        #             #then generate viewshed
+        #             generate_viewshed(x_transmitter, y_transmitter, output_dir, filename, tile_path)   
         
-        #load in raster viewshed files
-        for final_tile in final_tile_id_list:
-            path = os.path.join(output_dir,final_tile + '-viewshed.tif')
-            src = rasterio.open(path)
+        # #load in raster viewshed files
+        # for final_tile in final_tile_id_list:
+        #     path = os.path.join(output_dir,final_tile + '-viewshed.tif')
+        #     src = rasterio.open(path)
 
         # from rasterio.plot import show
         # show(src, cmap='terrain')
         
-        for val in src.sample([(x_receiver, y_receiver)]): 
-            if val == 0:
-                line_of_sight = 'nlos'
-            elif val == 1:
-                line_of_sight = 'los'
-            else:
-                print('binary viewshed .tif returning non-conforming value')
+        # for val in src.sample([(x_receiver, y_receiver)]): 
+        #     if val == 0:
+        #         line_of_sight = 'nlos'
+        #     elif val == 1:
+        #         line_of_sight = 'los'
+        #     else:
+        #         print('binary viewshed .tif returning non-conforming value')
 
-    return line_of_sight
+    return print('complete')#line_of_sight
 
 def read_premises_data(x_min, y_min, x_max, y_max):
     """
@@ -259,9 +263,9 @@ def write_shapefile(data, filename):
         [sink.write(feature) for feature in data]
 
 #use coords inside one tile
-line_of_sight = find_line_of_sight(0.124896, 52.215965, 0.133939, 52.215263)
+#line_of_sight = find_line_of_sight(0.124896, 52.215965, 0.133939, 52.215263)
 
 #coords in two different tiles
-#premises = find_line_of_sight = 'nlos'(0.0790, 52.1982, 0.133939, 52.215263)
+line_of_sight = find_line_of_sight(0.0790, 52.1982, 0.133939, 52.215263)
 
 #write_shapefile(premises, 'built_env_premises.shp')
