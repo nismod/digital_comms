@@ -19,6 +19,13 @@ from digital_comms.mobile_network.path_loss_calculations import path_loss_calc_m
     (3.5,500,35,'macro',10,20,'rural','nlos',1.5, 121),
 ])
 
-def test_eval(frequency, distance, ant_height, ant_type, building_height, street_width, settlement_type, type_of_sight, ue_height, expected):
+def test_eval_path_loss_calc(frequency, distance, ant_height, ant_type, building_height, street_width, settlement_type, type_of_sight, ue_height, expected):
     assert (path_loss_calc_module(frequency, distance, ant_height, ant_type, building_height, street_width, settlement_type, type_of_sight, ue_height)) == expected
+
+@pytest.mark.parametrize("building_height, street_width, ant_height, ue_height, expected", [
+    (20, 20, 20, 1.5, True),
+    (5, 20, 8, 1.5, False), ])
+ 
+def test_eval_applicability(building_height, street_width, ant_height, ue_height, expected):
+    assert (check_applicability(building_height, street_width, ant_height, ue_height)) == expected
 

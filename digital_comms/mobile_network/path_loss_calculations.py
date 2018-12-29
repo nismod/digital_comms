@@ -58,35 +58,7 @@ def path_loss_calc_module(frequency, distance, ant_height, ant_type, building_he
     # set applicability function
     #######################
 
-    def check_applicability(building_height, street_width, ant_height, ue_height):
-        if 5 <= building_height < 50 : 
-            building_height_compliant = True
-        else:
-            building_height_compliant = False
-            print('building_height not compliant')
-        if 5 <= street_width < 50:
-            street_width_compliant = True
-        else:
-            street_width_compliant = False
-            print('street_width not compliant')
-        if 10 <= ant_height < 150:
-            ant_height_compliant = True
-        else:
-            ant_height_compliant = False
-            print('ant_height not compliant')
-        if 1 <= ue_height < 10:
-            ue_height_compliant = True
-        else:
-            ue_height_compliant = False 
-            print('ue_height not compliant')
-
-        if (building_height_compliant + street_width_compliant +
-        ant_height_compliant + ue_height_compliant) == 4:
-            overall_compliant = True    
-        else:
-            overall_compliant = False
-
-        return overall_compliant
+    check_applicability(building_height, street_width, ant_height, ue_height)
 
     #######################
     # indoor hotspot
@@ -181,3 +153,34 @@ def path_loss_calc_module(frequency, distance, ant_height, ant_type, building_he
                     (3.2*(np.log10(11.75*ue_height))**2-4.97))
     
     return round(path_loss,0)
+
+
+def check_applicability(building_height, street_width, ant_height, ue_height):
+    if 5 <= building_height < 50 : 
+        building_height_compliant = True
+    else:
+        building_height_compliant = False
+        print('building_height not compliant')
+    if 5 <= street_width < 50:
+        street_width_compliant = True
+    else:
+        street_width_compliant = False
+        print('street_width not compliant')
+    if 10 <= ant_height < 150:
+        ant_height_compliant = True
+    else:
+        ant_height_compliant = False
+        print('ant_height not compliant')
+    if 1 <= ue_height < 10:
+        ue_height_compliant = True
+    else:
+        ue_height_compliant = False 
+        print('ue_height not compliant')
+
+    if (building_height_compliant + street_width_compliant +
+    ant_height_compliant + ue_height_compliant) == 4:
+        overall_compliant = True    
+    else:
+        overall_compliant = False
+
+    return overall_compliant
