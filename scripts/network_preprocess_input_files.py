@@ -39,6 +39,7 @@ TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
 
 DATA_RAW_INPUTS = os.path.join(BASE_PATH, 'raw', 'a_fixed_model')
 DATA_RAW_SHAPES = os.path.join(BASE_PATH, 'raw', 'd_shapes')
+DATA_BUILDING_DATA = os.path.join(BASE_PATH, 'raw', 'e_dem_and_buildings')
 DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 
 #####################################
@@ -407,7 +408,10 @@ def read_premises_data(exchange_area):
     """
     premises_data = []
 
-    pathlist = glob.iglob(os.path.join(DATA_RAW_INPUTS, 'layer_5_premises', 'blds_with_functions_EO_2018_03_29') + '/*.csv', recursive=True)
+    # pathlist = glob.iglob(os.path.join(DATA_BUILDING_DATA, 'layer_5_premises') + '/*.csv', recursive=True)
+
+    pathlist = []
+    pathlist.append(os.path.join(DATA_BUILDING_DATA, 'layer_5_premises', 'blds_with_functions_en_E12000006.csv'))
 
     exchange_geom = shape(exchange_area['geometry'])
     exchange_bounds = shape(exchange_area['geometry']).bounds
@@ -969,7 +973,7 @@ def add_cabinet_id_to_postcode_areas(postcode_areas, pcd_to_cabinet):
     return postcode_areas
 
 def add_postcode_to_premises(premises, postcode_areas):
-
+    
     joined_premises = []
 
     # Initialze Rtree
