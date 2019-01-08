@@ -485,14 +485,14 @@ if __name__ == "__main__":
 
     elif sys.argv[1] == 'geotype_selection':
         selection = [
-            'WEWPRI', # Primrose Hill (Inner London)
-            'MYCHA', # Chapeltown (Major City)
-            'STBNMTH', # Bournemouth (Minor City)
-            'EACAM', # Cambridge (>20,000)
-            'NEILB', # Ingleby Barwick(>10,000)
-            'STWINCH', #Winchester (>3,000)
-            'WWTORQ', #Torquay (>,1000)
-            'EACOM', #Comberton (<1000)
+            'exchange_WEWPRI', # Primrose Hill (Inner London)
+            'exchange_MYCHA', # Chapeltown (Major City)
+            'exchange_STBNMTH', # Bournemouth (Minor City)
+            'exchange_EACAM', # Cambridge (>20,000)
+            'exchange_NEILB', # Ingleby Barwick(>10,000)
+            'exchange_STWINCH', #Winchester (>3,000)
+            'exchange_WWTORQ', #Torquay (>,1000)
+            'exchange_EACOM', #Comberton (<1000)
         ]
 
     elif sys.argv[1] == 'sample':
