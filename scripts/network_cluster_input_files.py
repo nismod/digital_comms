@@ -32,6 +32,8 @@ DATA_RAW_DATA = os.path.join(BASE_PATH, 'raw', 'a_fixed_model')
 DATA_RAW_SHAPES = os.path.join(BASE_PATH, 'raw', 'd_shapes')
 DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 
+print('running network_cluster_input_files.py')
+
 #####################################
 # READ LOOK UP TABLE (LUT) DATA
 #####################################
