@@ -41,6 +41,3 @@ class TestLAD():
 
         testPopulation = testLAD.population
         assert testPopulation == 700
-
-
-

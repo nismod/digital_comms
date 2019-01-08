@@ -1,10 +1,21 @@
+import os, sys, configparser
 from pprint import pprint
 from rtree import index
 from shapely.geometry import shape, Point
+from numpy import log2
 import pyproj
 
 from path_loss_calculations import path_loss_calc_module
-from built_env_module import find_line_of_sight 
+# from built_env_module import find_line_of_sight 
+
+CONFIG = configparser.ConfigParser()
+CONFIG.read(os.path.join(os.path.dirname(__file__), '..',  '..', 'scripts','script_config.ini'))
+BASE_PATH = CONFIG['file_locations']['base_path']
+
+#data locations
+DATA_RAW_INPUTS = os.path.join(BASE_PATH, 'raw', 'e_dem_and_buildings')
+DATA_RAW_SHAPES = os.path.join(BASE_PATH, 'raw', 'd_shapes')
+DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 
 class NetworkManager(object):
 
@@ -25,7 +36,7 @@ class NetworkManager(object):
             transmitter_containing_receiver = self.transmitters[transmitter_id]
             transmitter_containing_receiver.add_receiver(receiver)
     
-    def calc_link_budget(self, frequency):
+    def calc_link_budget(self, frequency, bandwidth):
         
         idx = index.Index()
 
@@ -72,8 +83,9 @@ class NetworkManager(object):
                 #determine line of sight and built env parameters
                 settlement_type = 'urban'
                 #type_of_sight, building_height, street_width = built_environment_module(transmitter_geom, receiver_geom)  
-                print('testing')
-                type_of_sight = find_line_of_sight(x1_transmitter, y1_transmitter, x2_receiver, y2_receiver)  
+                print('not currently using find_line_of_sight function')
+                #type_of_sight = find_line_of_sight(x1_transmitter, y1_transmitter, x2_receiver, y2_receiver)  
+                type_of_sight = 'nlos'
                 print(type_of_sight)
                 #type_of_sight = 'los'
                 building_height = 20
@@ -136,10 +148,13 @@ class NetworkManager(object):
 
                 #calculate SINR
                 sinr = round(received_power / sum(interference) + noise, 1)
+                
+                #capacity (Mbps) = bandwidth (MHz) + log2*(1+SINR[dB])
+                throughput = round(bandwidth*log2(1+sinr), 2)
 
-                #get block error rate (BER)
+                #print(throughput)
 
-        return 
+        return throughput
 
 class Transmitter(object):
     
@@ -299,5 +314,34 @@ if __name__ == '__main__':
         }
     ]
 
-MANAGER = NetworkManager(TRANSMITTERS, RECEIVERS)
-MANAGER.calc_link_budget(3.5)
+#####################################
+# APPLY METHODS
+#####################################
+
+if __name__ == "__main__":
+
+    SYSTEM_INPUT = os.path.join('data', 'raw')
+
+    if len(sys.argv) != 2:
+        print("Error: no postcode sector provided")
+        #print("Usage: {} <postcode>".format(os.path.basename(__file__)))
+        exit(-1)
+
+    print('Process ' + sys.argv[1])
+    postcode_sector_name = sys.argv[1]
+    postcode_sector_abbr = sys.argv[1].replace('postcode_sector_', '')
+
+    #get postcode sector
+    #geojson_postcode_sector = read_postcode_sector(postcode_sector_name)
+
+    #get list of transmitters
+    #TRANSMITTERS = get_transmitters(geojson_postcode_sector)
+    
+    #generate receivers
+    #RECEIVERS = generate_receivers(geojson_postcode_sector)
+
+    MANAGER = NetworkManager(TRANSMITTERS, RECEIVERS)
+
+    collect_capacity = MANAGER.calc_link_budget(3.5, 10)
+
+    print(collect_capacity)
