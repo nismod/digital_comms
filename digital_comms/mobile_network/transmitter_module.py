@@ -7,6 +7,7 @@ import numpy as np
 from pyproj import Proj, transform, Geod
 from geographiclib.geodesic import Geodesic
 from collections import OrderedDict
+import matplotlib.pyplot as plt
 
 from path_loss_calculations import path_loss_calc_module
 # from built_env_module import find_line_of_sight 
@@ -82,31 +83,38 @@ def generate_receivers(postcode_sector, quantity):
     maxx = geom_box[2]
     maxy = geom_box[3]
 
-    x_coords = np.random.uniform(low=minx, high=maxx, size=quantity)
-    y_coords = np.random.uniform(low=miny, high=maxy, size=quantity)
-
-    coordinates = list(zip(x_coords, y_coords))
-
     receivers = []
 
     id_number = 0
 
-    for coordinate in coordinates:
-        receivers.append({
-            'type': "Feature",
-            'geometry': {
-                "type": "Point",
-                "coordinates": [coordinate[0], coordinate[1]]
-            },
-            'properties': {
-                'ue_id': "id_{}".format(id_number),
-                #"sitengr": 'TL4454059600',
-                "misc_losses": 4,
-                "gain": 4,
-                "losses": 4,
-            }
-        })
-        id_number += 1
+    while len(receivers) < quantity:
+
+        x_coord = np.random.uniform(low=minx, high=maxx, size=1)
+        y_coord = np.random.uniform(low=miny, high=maxy, size=1)
+
+        coordinates = list(zip(x_coord, y_coord))
+
+        # Join the two
+        postcode_sector_shape = shape(postcode_sector['geometry'])
+        receiver = Point((x_coord, y_coord))
+        if postcode_sector_shape.contains(receiver):
+            receivers.append({
+                'type': "Feature",
+                'geometry': {
+                    "type": "Point",
+                    "coordinates": [coordinates[0][0],coordinates[0][1]],
+                },
+                'properties': {
+                    'ue_id': "id_{}".format(id_number),
+                    #"sitengr": 'TL4454059600',
+                    "misc_losses": 4,
+                    "gain": 4,
+                    "losses": 4,
+                }
+            })
+            id_number += 1
+        else:
+            pass
 
     return receivers
 
@@ -329,43 +337,61 @@ class SystemManager(object):
 
         return estimated_capacity
     
-    # def transmitter_density(self):
-    #     """Calculate transmitter density per square kilometer (km^2) 
+    def transmitter_density(self):
+        """Calculate transmitter density per square kilometer (km^2) 
 
-    #     Returns
-    #     -------
-    #     obj 
-    #         Demand of the local area district
+        Returns
+        -------
+        obj 
+            Sum of transmitters
 
-    #     Notes
-    #     -----
-    #     Function returns `0` when no postcode sectors are configured to the LAD.
-    #     """
-    #     if not self.transmitters:
-    #         return 0
+        Notes
+        -----
+        Function returns `0` when no transmitters are configered to the area.
+        """
+        if not self.transmitters:
+            return 0
 
-    #     summed_transmitters = sum(
-    #         area.transmitters * area.area
-    #         for area in self.transmitters.values()
-    #     )
+        summed_transmitters = len(
+            self.transmitters 
+        )
 
-    #     return summed_transmitters
+        return summed_transmitters
 
+    def receiver_density(self):
+        """Calculate receiver density per square kilometer (km^2) 
+
+        Returns
+        -------
+        obj 
+            Sum of receiver
+
+        Notes
+        -----
+        Function returns `0` when no receivers are configered to the area.
+        """
+        if not self.receivers:
+            return 0
+
+        summed_receivers = len(
+            self.receivers 
+        )
+
+        return summed_receivers
 
 class Area(object):
     
     def __init__(self, data):
-        print(data)
         #id and geographic info
         self.id = data['properties']["postcode"]
         self.coordinates = data['geometry']["coordinates"]
-        self.area = self._calculate_area()
+        self.area = self._calculate_area(data)
         #connections
         self._transmitters = {}
         self._receivers = {}
 
-    def _calculate_area(self):
-        polygon = Polygon(self.coordinates)
+    def _calculate_area(self, data):
+        polygon = shape(data['geometry'])
         area = polygon.area
         return area
     
@@ -414,11 +440,11 @@ def transform_coordinates(old_proj, new_proj, x, y):
 
     return new_x, new_y
 
-def write_results(frequency, bandwidth, cell_density, sinr, throughput):
+def write_results(results, frequency, bandwidth, t_density, r_density, postcode_sector_name):
 
-    suffix = suffix = 'freq_{}_bandwidth_{}_density_{}'.format(frequency, bandwidth, cell_density)
+    suffix = suffix = 'freq_{}_bandwidth_{}_density_{}'.format(frequency, bandwidth, t_density)
     
-    directory = os.path.join(DATA_RESULTS)
+    directory = os.path.join(DATA_RESULTS, postcode_sector_name)
     if not os.path.exists(directory):
         os.makedirs(directory)
     
@@ -429,17 +455,18 @@ def write_results(frequency, bandwidth, cell_density, sinr, throughput):
         results_file = open(directory, 'w', newline='')
         results_writer = csv.writer(results_file)
         results_writer.writerow(
-            ('frequency', 'bandwidth', 'cell_density', 'sinr', 'throughput'))
+            ('frequency','bandwidth','t_density','r_density','sinr','throughput'))
     else:
         results_file = open(directory, 'a', newline='')
         results_writer = csv.writer(results_file)
 
     # output and report results for this timestep
-    for frequency, bandwidth, cell_density, sinr, throughput in spend:
-        spend_writer.writerow(
-            (year, pcd_sector, lad, item, cost))
+    for result in results:
+        # Output metrics
+        results_writer.writerow(
+            (frequency, bandwidth, t_density, r_density, result['sinr'], result['estimated_capacity']))
 
-    spend_file.close()
+    results_file.close()
 
 def write_shapefile(data, postcode_sector_name, filename):
 
@@ -466,6 +493,101 @@ def write_shapefile(data, postcode_sector_name, filename):
     with fiona.open(os.path.join(directory, filename), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         [sink.write(feature) for feature in data]
 
+def format_data(existing_data, new_data, frequency, bandwidth, postcode_sector_name):
+
+    for datum in new_data:
+        existing_data.append({
+            'frequency': frequency,
+            'bandwidth': bandwidth,
+            'sinr': datum['sinr'],
+            'capacity': datum['estimated_capacity']
+        })
+
+    return existing_data
+
+#####################################
+# VISUALISE NETWORK STATS
+#####################################
+
+def plot_data(data, frequency, bandwidth, postcode_sector_name):
+   
+    sinr = []
+    capacity = []
+
+    for datum in data:
+        sinr.append(datum['sinr'])
+        capacity.append(datum['estimated_capacity'])
+    
+    plt.figure()
+    plt.scatter(sinr, capacity)
+
+    plt.xlabel("SINR")
+    plt.ylabel("Capacity (Mbps)")
+    plt.legend(loc='upper left')
+
+    plt.axis((0,30,0,150))
+
+    # Create path
+    directory = os.path.join(DATA_RESULTS, postcode_sector_name, 'plots')
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    plt.savefig(os.path.join(directory, 'freq_{}_bw_{}.png'.format(frequency, bandwidth)))
+
+def joint_plot(data, postcode_sector_name):
+   
+    sinr_2_5 = []
+    sinr_2_10 = []
+    sinr_2_20 = []
+    sinr_3p5_5 = []
+    sinr_3p5_10 = []
+    sinr_3p5_20 = []
+    capacity_2_5 = []
+    capacity_2_10 = []
+    capacity_2_20 = []
+    capacity_3p5_5 = []
+    capacity_3p5_10 = []
+    capacity_3p5_20 = []
+
+    for datum in data:
+        if datum['frequency'] == 2 and datum['bandwidth'] == 5:
+            sinr_2_5.append(datum['sinr'])
+            capacity_2_5.append(datum['capacity'])
+        if datum['frequency'] == 2 and datum['bandwidth'] == 10:
+            sinr_2_10.append(datum['sinr'])
+            capacity_2_10.append(datum['capacity'])
+        if datum['frequency'] == 2 and datum['bandwidth'] == 20:
+            sinr_2_20.append(datum['sinr'])
+            capacity_2_20.append(datum['capacity'])
+        if datum['frequency'] == 3.5 and datum['bandwidth'] == 5:
+            sinr_3p5_5.append(datum['sinr'])
+            capacity_3p5_5.append(datum['capacity'])
+        if datum['frequency'] == 3.5 and datum['bandwidth'] == 10:
+            sinr_3p5_10.append(datum['sinr'])
+            capacity_3p5_10.append(datum['capacity'])
+        if datum['frequency'] == 3.5 and datum['bandwidth'] == 20:
+            sinr_3p5_20.append(datum['sinr'])
+            capacity_3p5_20.append(datum['capacity'])
+
+        #setup and plot
+    plt.scatter(sinr_2_5, capacity_2_5, label='5@2GHz ')
+    plt.scatter(sinr_2_10, capacity_2_10, label='10@2GHz')
+    plt.scatter(sinr_2_20, capacity_2_20, label='20@2GHz')
+    plt.scatter(sinr_3p5_5, capacity_3p5_5, label='5@3.5GHz')
+    plt.scatter(sinr_3p5_10, capacity_3p5_10, label='10@3.5GHz')
+    plt.scatter(sinr_3p5_20, capacity_3p5_20, label='20@3.5GHz')
+
+    plt.xlabel("SINR")
+    plt.ylabel("Capacity (Mbps)")
+    plt.legend(loc='upper left')
+
+    # Create path
+    directory = os.path.join(DATA_RESULTS, postcode_sector_name, 'plots')
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    plt.savefig(os.path.join(directory, 'panel_plot.png'))
+
 #####################################
 # APPLY METHODS
 #####################################
@@ -490,14 +612,10 @@ if __name__ == "__main__":
     TRANSMITTERS = get_transmitters(geojson_postcode_sector)
 
     #generate receivers
-    RECEIVERS = generate_receivers(geojson_postcode_sector, 3)
+    RECEIVERS = generate_receivers(geojson_postcode_sector, 1000)
 
-    #load system model with data
-    MANAGER = SystemManager(geojson_postcode_sector, TRANSMITTERS, RECEIVERS)
+    joint_plot_data = []
 
-    # #calculate transmitter density
-    # t_density = MANAGER.transmitter_density()
-    # print(t_density)
     for frequency, bandwidth in [
         (2, 5),
         (2, 10),
@@ -509,10 +627,24 @@ if __name__ == "__main__":
         ]:
         print("Running {} GHz with {} MHz bandwidth".format(frequency, bandwidth))
     
-        results = MANAGER.calc_link_budget(frequency, bandwidth, 10) 
-    
-        print(results)
-        # write_results(results, frequency, bandwidth, cell_density, sinr, throughput)
+        #load system model with data
+        MANAGER = SystemManager(geojson_postcode_sector, TRANSMITTERS, RECEIVERS)
+
+        results = MANAGER.calc_link_budget(frequency, bandwidth, 10000) 
+
+        #calculate transmitter density
+        t_density = MANAGER.transmitter_density()
+
+        #calculate transmitter density
+        r_density = MANAGER.receiver_density()
+        
+        write_results(results, frequency, bandwidth, t_density, r_density, postcode_sector_name)
+
+        plot_data(results, frequency, bandwidth, postcode_sector_name)
+
+        format_data(joint_plot_data, results, frequency, bandwidth, postcode_sector_name)
+ 
+    joint_plot(joint_plot_data, postcode_sector_name)
 
     print('write cells')
     write_shapefile(TRANSMITTERS,  postcode_sector_name, 'transmitters.shp')
@@ -520,8 +652,10 @@ if __name__ == "__main__":
     print('write receivers')
     write_shapefile(RECEIVERS,  postcode_sector_name, 'receivers.shp')
 
-    # # #print(results)
-
+    print('write cells')
+    geojson_postcode_sector_list = []
+    geojson_postcode_sector_list.append(geojson_postcode_sector)
+    write_shapefile(geojson_postcode_sector_list,  postcode_sector_name, '_boundary.shp')
 
 #####################################
 # TEST DATA
