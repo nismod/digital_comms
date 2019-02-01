@@ -32,7 +32,7 @@ def get_transmitters(postcode_sector):
     geom = shape(postcode_sector['geometry'])
     geom_box = geom.bounds
 
-    with open(os.path.join(DATA_RAW, 'b_mobile_model', 'sitefinder', 'sitefinder_asset_data.csv'), 'r') as system_file:
+    with open(os.path.join(DATA_RAW, 'b_mobile_model', 'sitefinder', 'sitefinder.csv'), 'r') as system_file:
             reader = csv.reader(system_file)
             next(reader)
             for line in reader:
@@ -242,7 +242,7 @@ class SystemManager(object):
         received_power = eirp - path_loss - receiver.misc_losses + receiver.gain - receiver.losses
 
         return received_power    
-    
+
     def calculate_interference(self, nearest_transmitters, receiver):
 
         """
@@ -631,6 +631,7 @@ if __name__ == "__main__":
         MANAGER = SystemManager(geojson_postcode_sector, TRANSMITTERS, RECEIVERS)
 
         results = MANAGER.calc_link_budget(frequency, bandwidth, 10000) 
+        print('TODO: iterations is not currently doing anything')
 
         #calculate transmitter density
         t_density = MANAGER.transmitter_density()
