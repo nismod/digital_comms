@@ -517,13 +517,7 @@ def premises_to_geojson(premises, exchange_area):
 
 def read_pcd_to_exchange_lut():
     """
-    Produces all unique postcode-to-exchange combinations from available data, including:
-
-    'January 2013 PCP to Postcode File Part One.csv'
-    'January 2013 PCP to Postcode File Part Two.csv'
-    'pcp.to.pcd.dec.11.one.csv'
-    'pcp.to.pcd.dec.11.two.csv'
-    'from_tomasso_valletti.csv'
+    Loads a preprocessed list of all postcode to exchange data. 
 
     Data Schema
     ----------
@@ -537,58 +531,17 @@ def read_pcd_to_exchange_lut():
     pcd_to_exchange_data: List of dicts
     """
     pcd_to_exchange_data = []
-    exchange_id =  exchange_name.replace('exchange_', '')
-
-    with open(os.path.join(DATA_RAW_INPUTS, 'network_hierarchy_data', 'January 2013 PCP to Postcode File Part One.csv'), 'r', encoding='utf8', errors='replace') as system_file:
-        reader = csv.reader(system_file)
-        for skip in range(11):
-            next(reader)
-        for line in reader:
-            pcd_to_exchange_data.append({
-                'exchange_id': line[0],
-                'postcode': line[1].replace(" ", "")
-            })
-
-    with open(os.path.join(DATA_RAW_INPUTS, 'network_hierarchy_data','January 2013 PCP to Postcode File Part Two.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
-        reader = csv.reader(system_file)
-        for skip in range(11):
-            next(reader)
-        for line in reader:
-            pcd_to_exchange_data.append({
-                'exchange_id': line[0],
-                'postcode': line[1].replace(" ", "")
-            })
-
-    with open(os.path.join(DATA_RAW_INPUTS, 'network_hierarchy_data','pcp.to.pcd.dec.11.one.csv'), 'r',  encoding='utf8', errors='replace') as system_file:
-        reader = csv.reader(system_file)
-        for skip in range(11):
-            next(reader)
-        for line in reader:
-            pcd_to_exchange_data.append({
-                'exchange_id': line[0],
-                'postcode': line[1].replace(" ", "")
-            })
-
-    with open(os.path.join(DATA_RAW_INPUTS, 'network_hierarchy_data','pcp.to.pcd.dec.11.two.csv'), 'r', encoding='utf8', errors='replace') as system_file:
+    
+    with open(os.path.join(DATA_RAW_INPUTS, 'network_hierarchy_data', 'all_pcd_to_exchange_data.csv'), 'r', encoding='utf8', errors='replace') as system_file:
         reader = csv.reader(system_file)
         next(reader)
         for line in reader:
             pcd_to_exchange_data.append({
                 'exchange_id': line[0],
-                'postcode': line[1].replace(" ", "")
+                'postcode': line[1]
             })
 
-    with open(os.path.join(DATA_RAW_INPUTS, 'network_hierarchy_data','from_tomasso_valletti.csv'), 'r', encoding='utf8', errors='replace') as system_file:
-        reader = csv.reader(system_file)
-        next(reader)
-        for line in reader:
-            pcd_to_exchange_data.append({
-                'exchange_id': line[0],
-                'postcode': line[1].replace(" ", "")
-            })
-
-    ### find unique values in list of dicts
-    return list({pcd['postcode']:pcd for pcd in pcd_to_exchange_data}.values())
+    return pcd_to_exchange_data
 
 def read_pcd_to_cabinet_lut():
     """
@@ -678,7 +631,8 @@ def read_pcd_to_cabinet_lut():
 def read_postcode_areas(exchange_area):
 
     """
-    Reads all postcodes shapes, removing vertical postcodes, and merging with closest neighbour.
+    Reads all postcodes shapes which have already been processed to 
+    remove vertical postcodes, merging verticals with the closest neighbour.
 
     Data Schema
     -----------
