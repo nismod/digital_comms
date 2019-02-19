@@ -333,7 +333,125 @@ def write_shapefile(data, directory):
             sink.write(exchange)
 
 #####################################################################################
-# 4) intersect postcode_areas with exchanges to get exchange_to_pcd_area_lut
+# 4) generate postcode areas from postcode sectors
+#####################################################################################
+
+"""Fix up a shapefile with slivers, islands
+- keep only polygon exteriors (drop holes)
+- keep only polygons (or parts of multipolygons) above an area threshold
+
+e.g. run after a dissolve operation:
+    ogr2ogr output.shp postcode_sectors.shp -dialect sqlite \
+        -sql "SELECT ST_Union(geometry), pc_area FROM _postcode_sectors GROUP BY pc_area"
+"""
+
+
+def read_postcode_sectors(path):
+    """Read all shapes
+
+    Yields
+    ------
+    postcode_areas : iterable[dict]
+    """
+    dirname = os.path.join(DATA_RAW_SHAPES, 'postcode_sectors')
+    pathlist = glob.iglob(dirname + '/*.shp', recursive=True)
+
+    for path in pathlist:
+        with fiona.open(path, 'r') as source:
+            for feature in source:
+                yield feature
+
+def generate_postcode_areas(data):
+    """Create postcode area polygons using postcode sectors.
+
+    - Gets the postcode area by cutting the first two characters of the postcode.
+    - Numbers are then removed to leave just the postcode area character(s).
+    - Polygons are then dissolved on this variable
+    """
+    def get_postcode_area(feature):
+        postcode = feature['properties']['postcode']
+        match = re.search('^[A-Z]+', postcode)
+        if match:
+            return match.group(0)
+
+    for key, group in itertools.groupby(data, key=get_postcode_area):
+        buffer_distance = 0.001
+        geom = unary_union([
+            shape(feature['geometry']).buffer(buffer_distance) for feature in group])
+        yield {
+            'type': "Feature",
+            'geometry': mapping(geom),
+            'properties': {
+                'pc_area': key
+            }
+        }
+
+def fix_up(data, threshold_area):
+    """Dissolve/buffer
+    """
+    for feature in data:
+        geom = shape(feature['geometry'])
+        geom = drop_small_multipolygon_parts(geom, threshold_area)
+        geom = drop_holes(geom)
+        yield {
+            'type': "Feature",
+            'geometry': mapping(geom),
+            'properties': feature['properties']
+        }
+
+
+def drop_small_multipolygon_parts(geom, threshold_area):
+    if geom.type == 'MultiPolygon':
+        return MultiPolygon(
+            p
+            for p in geom.geoms
+            if p.area > threshold_area
+        )
+    return geom
+
+def pick_biggest_if_multi(geom):
+    if geom.type == 'MultiPolygon':
+        geom = max(geom, key=lambda g: g.area)
+    return geom
+
+
+def drop_holes(geom):
+    if geom.type == 'Polygon':
+        return Polygon(geom.exterior)
+    if geom.type == 'MultiPolygon':
+        return MultiPolygon(Polygon(p.exterior) for p in geom.geoms)
+    return geom
+
+
+def get_fiona_type(value):
+    for fiona_type, python_type in fiona.FIELD_TYPES_MAP.items():
+        if python_type == type(value):
+            return fiona_type
+    return None
+
+
+def write_single_shapefile(data, path):
+    first_data_item = next(data)
+
+    prop_schema = []
+    for name, value in first_data_item['properties'].items():
+        fiona_prop_type = get_fiona_type(value)
+        prop_schema.append((name, fiona_prop_type))
+
+    driver = 'ESRI Shapefile'
+    crs = {'init': 'epsg:27700'}
+    schema = {
+        'geometry': first_data_item['geometry']['type'],
+        'properties': OrderedDict(prop_schema)
+    }
+
+    with fiona.open(path, 'w', driver=driver, crs=crs, schema=schema) as sink:
+        sink.write(first_data_item)
+        for feature in tqdm(data):
+            sink.write(feature)
+
+#####################################################################################
+# 5) intersect postcode_areas with exchanges to get exchange_to_pcd_area_lut
 #####################################################################################
 
 def read_postcode_areas():
@@ -386,28 +504,6 @@ def write_to_csv(data, folder, file_prefix, fieldnames):
             pass
 
 
-def write_lut_to_csv(data, folder, file_prefix, fieldnames):
-    """
-    Write data to a CSV file path
-    """
-
-    # Create path
-    directory = os.path.join(DATA_INTERMEDIATE_INPUTS, folder)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-    for key, value in data.items():
-
-        print('finding data for {}'.format(key))
-        filename = key
-
-        if len(value) > 0:
-            with open(os.path.join(directory, file_prefix + filename + '.csv'), 'w') as csv_file:
-                writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
-                writer.writerows(value)
-        else:
-            pass
-
 # def write_shapefile(data, filename):
 
 #     # Translate props to Fiona sink schema
@@ -449,11 +545,23 @@ exchange_areas = read_exchange_areas()
 # exchange_areas = add_properties_to_exchanges(exchange_areas, exchange_properties)
 # write_shapefile(exchange_areas, 'individual_exchange_areas')
 
-# 4) intersect postcode_areas with exchanges to get exchange_to_pcd_area_lut
-postcode_areas = read_postcode_areas()
-lut = intersect_pcd_areas_and_exchanges(postcode_areas, exchange_areas)
-fieldnames = ['postcode_areas']
-write_to_csv(lut, 'exchange_to_pcd_area_lut', 'exchange_to_pcd_area.csv', fieldnames)
+# 4) generate postcode areas from postcode sectors
+PC_PATH = os.path.join(DATA_RAW_SHAPES,'postcode_sectors', '_postcode_sectors.shp')
+PC_SECTORS = read_postcode_sectors(PC_PATH)
+
+PC_AREAS = generate_postcode_areas(PC_SECTORS)
+
+MIN_AREA = 1e6  # 1km^2
+PC_AREAS = fix_up(PC_AREAS, MIN_AREA)
+
+PC_OUT_PATH = os.path.join(DATA_RAW_SHAPES,'postcode_areas', 'postcode_areas.shp')
+write_single_shapefile(PC_AREAS, PC_OUT_PATH)
+
+# # 5) intersect postcode_areas with exchanges to get exchange_to_pcd_area_lut
+# postcode_areas = read_postcode_areas()
+# lut = intersect_pcd_areas_and_exchanges(postcode_areas, exchange_areas)
+# fieldnames = ['postcode_areas']
+# write_to_csv(lut, 'exchange_to_pcd_area_lut', 'exchange_to_pcd_area.csv', fieldnames)
 
 
 
@@ -461,9 +569,4 @@ write_to_csv(lut, 'exchange_to_pcd_area_lut', 'exchange_to_pcd_area.csv', fieldn
 
 
 
-# print('reading pcd_sectors')
-# postcode_sectors = read_postcode_sectors()
-# print('generating pcd_areas')
-# postcode_areas = generate_postcode_areas(postcode_sectors)
-# print('writing shapesfiles')
-# write_shapefile(postcode_areas, '_postcode_areas_v2.shp')
+
