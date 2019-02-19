@@ -1,4 +1,5 @@
 import time
+start = time.time()
 import os
 import sys
 from pprint import pprint
@@ -54,13 +55,22 @@ DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 #####################################
 
 def read_exchange_area(exchange_name):
-    with fiona.open(os.path.join(DATA_RAW_SHAPES, 'exchange_areas', '_exchange_areas.shp'), 'r') as source:
-        return [exchange for exchange in source if exchange['properties']['id'] == exchange_name][0]
+    """Read exchange polygon
 
-def read_lads(exchange_area):
-    with fiona.open(os.path.join(DATA_RAW_SHAPES, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'), 'r') as source:
-        exchange_geom = shape(exchange_area['geometry'])
-        return [lad for lad in source if exchange_geom.intersection(shape(lad['geometry']))]
+    Yields
+    ------
+    exchange_area : iterable[dict]
+    """
+    filename = os.path.join(DATA_RAW_SHAPES, 'individual_exchange_areas', exchange_name + '.shp')
+    dirname = os.path.join(DATA_RAW_SHAPES, 'individual_exchange_areas')
+    pathlist = glob.iglob(dirname + '/*.shp', recursive=True)
+    
+    for path in pathlist:
+        if path == filename: 
+            with fiona.open(path, 'r') as source:
+                feature = next(source)
+    
+    return feature
 
 def get_lad_area_ids(lad_areas):
     lad_area_ids = []
@@ -68,9 +78,9 @@ def get_lad_area_ids(lad_areas):
         lad_area_ids.append(lad['properties']['name'])
     return lad_area_ids
 
-def read_shapes(exchange_name, filename):
-    with fiona.open(os.path.join(DATA_INTERMEDIATE, exchange_name, filename), 'r') as source:
-        return [shape for shape in source]
+# def read_shapes(exchange_name, filename):
+#     with fiona.open(os.path.join(DATA_INTERMEDIATE, exchange_name, filename), 'r') as source:
+#         return shape 
 
 #####################################
 # INTEGRATE WTP AND WTA HOUSEHOLD DATA INTO PREMIses
@@ -410,7 +420,7 @@ def read_premises_data(exchange_area):
     #pathlist = glob.iglob(os.path.join(DATA_BUILDING_DATA, 'layer_5_premises') + '/*.csv', recursive=True)
 
     pathlist = []
-    pathlist.append(os.path.join(DATA_BUILDING_DATA, 'layer_5_premises', 'blds_with_functions_en_E12000003.csv'))
+    pathlist.append(os.path.join(DATA_BUILDING_DATA, 'layer_5_premises', 'blds_with_functions_en_E12000006.csv'))
 
     exchange_geom = shape(exchange_area['geometry'])
     exchange_bounds = shape(exchange_area['geometry']).bounds
@@ -419,32 +429,44 @@ def read_premises_data(exchange_area):
         with open(os.path.join(path), 'r') as system_file:
             reader = csv.reader(system_file)
             next(reader)
-            [premises_data.append({
-                'uid': line[0],
-                'oa': line[1],
-                'gor': line[2],
-                'residential_address_count': line[3],
-                'non_residential_address_count': line[4],
-                #'function': line[5],
-                #'postgis_geom': line[6],
-                'N': line[7],
-                'E':line[8],
-            })
-                for line in reader
-                if (exchange_bounds[0] <= float(line[8]) and exchange_bounds[1] <= float(line[7]) and exchange_bounds[2] >= float(line[8]) and exchange_bounds[3] >= float(line[7]))
-            ]
+            for line in reader:
+                if (exchange_bounds[0] <= float(line[8]) and exchange_bounds[1] <= float(line[7]) and 
+                    exchange_bounds[2] >= float(line[8]) and exchange_bounds[3] >= float(line[7])):
+                    premises_data.append({
+                        'type': "Feature",
+                        'geometry': {
+                            "type": "Point",
+                            "coordinates": [float(line[8]), float(line[7])]
+                        },
+                        'properties': {
+                            'id': 'premise_' + line[0],
+                            'oa': line[1],
+                            'residential_address_count': line[3],
+                            'non_residential_address_count': line[4],
+                            #'function': line[5],
+                            #'postgis_geom': line[6],
+                            # 'HID': prem['HID'],
+                            # 'lad': prem['lad'],
+                            # 'year': prem['year'],
+                            # 'wta': prem['wta'],
+                            # 'wtp': prem['wtp'],
+                        }
+                    })
 
     # remove 'None' and replace with '0'
     for idx, row in enumerate(premises_data):
-        if row['residential_address_count'] == 'None':
-            premises_data[idx]['residential_address_count'] = '0'
-        if row['non_residential_address_count'] == 'None':
-            premises_data[idx]['non_residential_address_count'] = '0'
+        if row['properties']['residential_address_count'] == 'None':
+            premises_data[idx]['properties']['residential_address_count'] = '0'
+        if row['properties']['non_residential_address_count'] == 'None':
+            premises_data[idx]['properties']['non_residential_address_count'] = '0'
 
     for row in premises_data:
-        row['residential_address_count']  = int(row['residential_address_count'])
+        row['properties']['residential_address_count'] = int(row['properties']['residential_address_count'])
+        row['properties']['non_residential_address_count'] = int(row['properties']['non_residential_address_count'])
 
-    return premises_data
+    output = [premise for premise in premises_data if exchange_geom.contains(shape(premise['geometry']))]
+
+    return output
 
 def expand_premises(pemises_data):
     """
@@ -467,56 +489,13 @@ def merge_prems_and_housholds(premises_data, household_data):
 
     return result
 
-def premises_to_geojson(premises, exchange_area):
-
-    geo_prems = []
-    idx = index.Index()
-
-    exchange_geom = shape(exchange_area['geometry'])
-    exchange_bounds = shape(exchange_area['geometry']).bounds
-
-    for prem in premises:
-        if (exchange_bounds[0] <= float(prem['E']) and exchange_bounds[1] <= float(prem['N']) and 
-            exchange_bounds[2] >= float(prem['E']) and exchange_bounds[3] >= float(prem['N'])):
-            geo_prems.append({
-                            'type': "Feature",
-                            'geometry': {
-                                "type": "Point",
-                                "coordinates": [float(prem['E']), float(prem['N'])]
-                            },
-                            'properties': {
-                                'id': 'premise_' + prem['uid'],
-                                'oa': prem['oa'],
-                                'residential_address_count': int(prem['residential_address_count']),
-                                'non_residential_address_count': int(prem['non_residential_address_count']),
-                                #'function': line[5],
-                                #'postgis_geom': line[6],
-                                # 'HID': prem['HID'],
-                                # 'lad': prem['lad'],
-                                # 'year': prem['year'],
-                                # 'wta': prem['wta'],
-                                # 'wtp': prem['wtp'],
-                            }
-                        })
-    
-    geo_prems = [premise for premise in geo_prems if exchange_geom.contains(shape(premise['geometry']))]
-
-    for prem in geo_prems:
-
-        if prem['properties']['residential_address_count'] == 'None':
-            prem['properties']['residential_address_count'] = '0'
-        if prem['properties']['non_residential_address_count'] == 'None':
-            prem['properties']['non_residential_address_count'] = '0'
-    
-    return geo_prems
-
 #####################################
 # READ LOOK UP TABLE (LUT) DATA
 #####################################
 
 def read_pcd_to_exchange_lut(exchange_abbr):
     """
-    Loads a preprocessed list of all postcode to exchange data. 
+    Loads a preprocessed list of all postcodes linked to this exchange. 
 
     Data Schema
     ----------
@@ -599,32 +578,67 @@ def read_postcode_areas(exchange_area):
     -------
     postcode_areas = list of dicts
     """
+
+    postcode_areas = []
+
     exchange_geom = shape(exchange_area['geometry'])
 
-    with fiona.open(os.path.join(DATA_RAW_SHAPES, 'postcode_areas', '_postcode_areas.shp'), 'r') as source:
-        return [postcode_area for postcode_area in source if exchange_geom.contains(shape(postcode_area['geometry']))]
+    postcode_areas = find_intersecting_postcode_areas(exchange_area)
 
-def read_postcode_technology_lut():
+    for area in postcode_areas:
+        with fiona.open(os.path.join(DATA_RAW_SHAPES, 'postcode_areas', '_postcode_areas.shp'), 'r') as source:
+            return [postcode_area for postcode_area in source if exchange_geom.contains(shape(postcode_area['geometry']))]
 
-    DATA_INITIAL_SYSTEM = os.path.join(DATA_RAW_INPUTS, 'offcom_initial_system', 'fixed-postcode-2017')
+def find_intersecting_postcode_areas(exchange_abbr):
+
+    pcd_areas = []
+    
+    pathlist = glob.iglob(os.path.join(DATA_INTERMEDIATE, 'exchange_to_pcd_area_lut') + '/*.csv', recursive=True)
+
+    filename = exchange_abbr + '.csv'
+
+    for path in pathlist:
+        path_partition = path.split("_exchange_")[1]
+        if path_partition == filename:
+            with open(path, 'r', encoding='utf8', errors='replace') as system_file:
+                reader = csv.reader(system_file)
+                for line in reader:
+                    for item in line:
+                        pcd_areas.append({
+                            'postcode_area': item,
+                            })
+
+    return pcd_areas
+
+def read_postcode_technology_lut(exchange_abbr):
+
+    DATA_INITIAL_SYSTEM = os.path.join(DATA_RAW_INPUTS, 'ofcom_initial_system', 'fixed-postcode-2017')
+
+    postcode_areas = find_intersecting_postcode_areas(exchange_abbr)
 
     postcode_technology_lut = []
-    for filename in os.listdir(DATA_INITIAL_SYSTEM):
-        with open(os.path.join(DATA_INITIAL_SYSTEM, filename), 'r', encoding='utf8', errors='replace') as system_file:
-            reader = csv.reader(system_file)
-            next(reader)
-            for line in reader:
-                postcode_technology_lut.append({
-                    'postcode': line[0],
-                    'sfbb_availability': line[3],
-                    'ufbb_availability': line[4],
-                    'fttp_availability': line[36],
-                    'max_download_speed': line[12],
-                    'max_upload_speed': line[20],
-                    'average_data_download_adsl': line[33],
-                    'average_data_download_sfbb': line[34],
-                    'average_data_download_ufbb': line[35],
-                })
+    
+    for area in postcode_areas:
+        pcd_area = area['postcode_area']
+        for filename in os.listdir(DATA_INITIAL_SYSTEM):
+            path_partition = filename.split("_r02_")[1]
+            path_partition = path_partition[:-4]
+            if path_partition == pcd_area:
+                with open(os.path.join(DATA_INITIAL_SYSTEM, filename), 'r', encoding='utf8', errors='replace') as system_file:
+                    reader = csv.reader(system_file)
+                    next(reader)
+                    for line in reader:
+                        postcode_technology_lut.append({
+                            'postcode': line[0],
+                            'sfbb_availability': line[3],
+                            'ufbb_availability': line[4],
+                            'fttp_availability': line[36],
+                            'max_download_speed': line[12],
+                            'max_upload_speed': line[20],
+                            'average_data_download_adsl': line[33],
+                            'average_data_download_sfbb': line[34],
+                            'average_data_download_ufbb': line[35],
+                        })
 
     return postcode_technology_lut
 
@@ -2222,25 +2236,22 @@ if __name__ == "__main__":
     exchange_name = sys.argv[1]
     exchange_abbr = sys.argv[1].replace('exchange_', '')
 
-    print('read exchange area')
+    print('read exchange area') #COMPLETE
     exchange_area = read_exchange_area(exchange_name)
-    
-    print('read lads')
-    geojson_lad_areas = read_lads(exchange_area)
+
+    # print('read lads')
+    # geojson_lad_areas = read_lads(exchange_area)
 
     # print('get lad ids')
     # lad_ids = get_lad_area_ids(geojson_lad_areas)
 
-    # print('Reading premises data')
-    # premises = read_premises_data(exchange_area)
+    # print('Reading premises data') #COMPLETE
+    # geojson_layer5_premises = read_premises_data(exchange_area)
 
-    # print('converting prems to geojsons')
-    # geojson_layer5_premises = premises_to_geojson(premises, exchange_area)
+    # Read Premises/Assets #COMPLETE
+    print('read exchanges')
+    geojson_layer2_exchanges = read_exchanges(exchange_area)
 
-    # # Read Premises/Assets
-    # print('read exchanges')
-    # geojson_layer2_exchanges = read_exchanges(exchange_area)
-    
     # # Geotype exchange
     # print('geotype exchanges')
     # geojson_layer2_exchanges, geotype, prems_over_lut, prems_under_lut = geotype_exchange(geojson_layer2_exchanges, geojson_layer5_premises)
@@ -2296,28 +2307,25 @@ if __name__ == "__main__":
     # print('Aggregating WTP by household')
     # household_wtp = aggregate_wtp_and_wta_by_household(final_data)
 
-    # print('Reading premises data')
-    # premises = read_premises_data(exchange_area)
-
     # print('Expand premises entries')
     # premises = expand_premises(premises)
 
     # print('Adding household data to premises')
     # premises = merge_prems_and_housholds(premises, household_wtp)
-    
-    # print('converting prems to geojsons')
-    # geojson_layer5_premises = premises_to_geojson(premises, exchange_area)
-
+    ###
+    #####################################################################################################
     ###
     # print('read_pcd_to_exchange_lut')
     # lut_pcd_to_exchange = read_pcd_to_exchange_lut(exchange_abbr)
-  
+
     # print('read pcd_to_cabinet_lut')
     # lut_pcd_to_cabinet = read_pcd_to_cabinet_lut(exchange_abbr)
 
-    start = time.time()
-    print('read postcode_areas')
-    geojson_postcode_areas = read_postcode_areas(exchange_area)
+    # print('read postcode_areas')
+    # geojson_postcode_areas = read_postcode_areas(exchange_area)
+
+    print('finding intersecting postcode areas from lu')
+    pcd_areas = find_intersecting_postcode_areas(exchange_abbr)
 
     # print('read city exchange geotypes lut')
     # city_exchange_lad_lut = read_city_exchange_geotype_lut()
@@ -2341,18 +2349,8 @@ if __name__ == "__main__":
     # print('merge geotype info by LAD to exchanges')
     # geojson_layer2_exchanges = add_urban_geotype_to_exchanges(geojson_layer2_exchanges, geotype, city_exchange_lad_lut)
 
-    # # # Write assets
-    # # print('write files for speed')
-    # # write_shapefile(geojson_layer5_premises,  exchange_name, 'intermediate_premises.shp')
-    # # write_shapefile(geojson_layer2_exchanges,  exchange_name, 'intermediate_exchanges.shp')
-    # # write_shapefile(geojson_postcode_areas,  exchange_name, 'intermediate_pcd_areas.shp')
-
-    # # geojson_layer5_premises = read_shapes(exchange_name, 'intermediate_premises.shp')
-    # # geojson_layer2_exchanges = read_shapes(exchange_name, 'intermediate_exchanges.shp')
-    # # geojson_postcode_areas = read_shapes(exchange_name, 'intermediate_pcd_areas.shp')
-
-    # print('read pcd_technology_lut')
-    # lut_pcd_technology = read_postcode_technology_lut()
+    # print('read pcd_technology_lut') #COMPLETE
+    # lut_pcd_technology = read_postcode_technology_lut(exchange_abbr)
 
     # print('get exchange properties')
     # exchange_properties = get_exchange_properties(geojson_layer2_exchanges)
@@ -2491,12 +2489,12 @@ if __name__ == "__main__":
     # # print('write cabinet_areas')
     # # write_shapefile(geojson_cabinet_areas,  exchange_name, '_cabinet_areas.shp')
 
-    # # print('write exchange_areas')
-    # # write_shapefile(geojson_exchange_areas,  exchange_name, '_exchange_areas.shp')
+    # print('write exchange_areas')
+    # write_shapefile(geojson_exchange_areas,  exchange_name, '_exchange_area.shp')
 
-    # # Write assets
-    # print('write premises')
-    # write_shapefile(geojson_layer5_premises,  exchange_name, 'assets_layer5_premises.shp')
+    # Write assets
+    print('write premises')
+    write_shapefile(geojson_layer5_premises,  exchange_name, 'assets_layer5_premises.shp')
 
     # print('write distribution points')
     # write_shapefile(geojson_layer4_distributions,  exchange_name, 'assets_layer4_distributions.shp')

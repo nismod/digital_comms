@@ -542,7 +542,7 @@ def write_to_csv(data, folder, file_prefix, fieldnames):
 exchange_areas = read_exchange_areas()
 # exchange_properties = load_exchange_properties()
 # exchange_areas = add_properties_to_exchanges(exchange_areas, exchange_properties)
-# write_shapefile(exchange_areas, 'individual_exchange_areas')
+write_shapefile(exchange_areas, 'individual_exchange_areas')
 
 # 4) generate postcode areas from postcode sectors
 # PC_PATH = os.path.join(DATA_RAW_SHAPES,'postcode_sectors', '_postcode_sectors.shp')
