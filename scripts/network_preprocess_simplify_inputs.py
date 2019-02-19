@@ -345,7 +345,6 @@ e.g. run after a dissolve operation:
         -sql "SELECT ST_Union(geometry), pc_area FROM _postcode_sectors GROUP BY pc_area"
 """
 
-
 def read_postcode_sectors(path):
     """Read all shapes
 
@@ -546,22 +545,22 @@ exchange_areas = read_exchange_areas()
 # write_shapefile(exchange_areas, 'individual_exchange_areas')
 
 # 4) generate postcode areas from postcode sectors
-PC_PATH = os.path.join(DATA_RAW_SHAPES,'postcode_sectors', '_postcode_sectors.shp')
-PC_SECTORS = read_postcode_sectors(PC_PATH)
+# PC_PATH = os.path.join(DATA_RAW_SHAPES,'postcode_sectors', '_postcode_sectors.shp')
+# PC_SECTORS = read_postcode_sectors(PC_PATH)
 
-PC_AREAS = generate_postcode_areas(PC_SECTORS)
+# PC_AREAS = generate_postcode_areas(PC_SECTORS)
 
-MIN_AREA = 1e6  # 1km^2
-PC_AREAS = fix_up(PC_AREAS, MIN_AREA)
+# MIN_AREA = 1e6  # 1km^2
+# PC_AREAS = fix_up(PC_AREAS, MIN_AREA)
 
-PC_OUT_PATH = os.path.join(DATA_RAW_SHAPES,'postcode_areas', 'postcode_areas.shp')
-write_single_shapefile(PC_AREAS, PC_OUT_PATH)
+# PC_OUT_PATH = os.path.join(DATA_RAW_SHAPES,'postcode_areas', 'postcode_areas.shp')
+# write_single_shapefile(PC_AREAS, PC_OUT_PATH)
 
-# # 5) intersect postcode_areas with exchanges to get exchange_to_pcd_area_lut
-# postcode_areas = read_postcode_areas()
-# lut = intersect_pcd_areas_and_exchanges(postcode_areas, exchange_areas)
-# fieldnames = ['postcode_areas']
-# write_to_csv(lut, 'exchange_to_pcd_area_lut', 'exchange_to_pcd_area.csv', fieldnames)
+# 5) intersect postcode_areas with exchanges to get exchange_to_pcd_area_lut
+postcode_areas = read_postcode_areas()
+lut = intersect_pcd_areas_and_exchanges(postcode_areas, exchange_areas)
+fieldnames = ['postcode_areas']
+write_to_csv(lut, 'exchange_to_pcd_area_lut', 'exchange_to_pcd_area.csv', fieldnames)
 
 
 
