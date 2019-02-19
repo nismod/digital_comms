@@ -469,9 +469,9 @@ def intersect_pcd_areas_and_exchanges(exchanges, areas):
         for n in idx.intersection((shape(area['geometry']).bounds), objects=True):
             area_shape = shape(area['geometry'])
             exchange_shape = shape(n.object['geometry'])
-            if area_shape.contains(exchange_shape):             
-                exchange_to_pcd_area_lut[n.object['properties']['exchange_id']].append({
-                    'postcode_area': area['properties']['postcode_area'],
+            if area_shape.intersects(exchange_shape):             
+                exchange_to_pcd_area_lut[n.object['properties']['id']].append({
+                    'postcode_area': area['properties']['postcode_a'],
                     })
 
     return exchange_to_pcd_area_lut
@@ -493,7 +493,7 @@ def write_to_csv(data, folder, file_prefix, fieldnames):
     for key, value in data.items():
 
         print('finding prem data for {}'.format(key))
-        filename = key
+        filename = key.replace("/", "")
 
         if len(value) > 0:
             with open(os.path.join(directory, file_prefix + filename + '.csv'), 'w') as csv_file:
@@ -558,9 +558,9 @@ exchange_areas = read_exchange_areas()
 
 # 5) intersect postcode_areas with exchanges to get exchange_to_pcd_area_lut
 postcode_areas = read_postcode_areas()
-lut = intersect_pcd_areas_and_exchanges(postcode_areas, exchange_areas)
-fieldnames = ['postcode_areas']
-write_to_csv(lut, 'exchange_to_pcd_area_lut', 'exchange_to_pcd_area.csv', fieldnames)
+lut = intersect_pcd_areas_and_exchanges(exchange_areas, postcode_areas)
+fieldnames = ['postcode_area']
+write_to_csv(lut, 'exchange_to_pcd_area_lut', 'ex_to_pcd_area_', fieldnames)
 
 
 
