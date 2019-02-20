@@ -477,6 +477,34 @@ def intersect_pcd_areas_and_exchanges(exchanges, areas):
     return exchange_to_pcd_area_lut
 
 #####################################################################################
+# 6) intersect lad_areas with exchanges to get exchange_to_lad_area_lut
+#####################################################################################
+
+def read_lad_areas():
+    with fiona.open(os.path.join(DATA_RAW_SHAPES, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'), 'r') as source:
+        return [area for area in source]
+
+def intersect_lad_areas_and_exchanges(exchanges, areas):
+    
+    exchange_to_lad_area_lut = defaultdict(list)
+
+    # Initialze Rtree
+    idx = index.Index()
+    [idx.insert(0, shape(exchange['geometry']).bounds, exchange) for exchange in exchanges]
+
+    for area in areas:
+        for n in idx.intersection((shape(area['geometry']).bounds), objects=True):
+            area_shape = shape(area['geometry'])
+            exchange_shape = shape(n.object['geometry'])
+            if area_shape.intersects(exchange_shape):             
+                exchange_to_lad_area_lut[n.object['properties']['id']].append({
+                    'lad': area['properties']['name'],
+                    })
+
+    return exchange_to_lad_area_lut
+
+
+#####################################################################################
 # Write out data
 #####################################################################################
 
@@ -542,7 +570,7 @@ def write_to_csv(data, folder, file_prefix, fieldnames):
 exchange_areas = read_exchange_areas()
 # exchange_properties = load_exchange_properties()
 # exchange_areas = add_properties_to_exchanges(exchange_areas, exchange_properties)
-write_shapefile(exchange_areas, 'individual_exchange_areas')
+# write_shapefile(exchange_areas, 'individual_exchange_areas')
 
 # 4) generate postcode areas from postcode sectors
 # PC_PATH = os.path.join(DATA_RAW_SHAPES,'postcode_sectors', '_postcode_sectors.shp')
@@ -556,14 +584,17 @@ write_shapefile(exchange_areas, 'individual_exchange_areas')
 # PC_OUT_PATH = os.path.join(DATA_RAW_SHAPES,'postcode_areas', 'postcode_areas.shp')
 # write_single_shapefile(PC_AREAS, PC_OUT_PATH)
 
-# 5) intersect postcode_areas with exchanges to get exchange_to_pcd_area_lut
-postcode_areas = read_postcode_areas()
-lut = intersect_pcd_areas_and_exchanges(exchange_areas, postcode_areas)
-fieldnames = ['postcode_area']
-write_to_csv(lut, 'exchange_to_pcd_area_lut', 'ex_to_pcd_area_', fieldnames)
+# # 5) intersect postcode_areas with exchanges to get exchange_to_pcd_area_lut
+# postcode_areas = read_postcode_areas()
+# lut = intersect_pcd_areas_and_exchanges(exchange_areas, postcode_areas)
+# fieldnames = ['postcode_area']
+# write_to_csv(lut, 'exchange_to_pcd_area_lut', 'ex_to_pcd_area_', fieldnames)
 
-
-
+# 6) intersect lad_areas with exchanges to get exchange_to_lad_area_lut
+lad_areas = read_lad_areas()
+lut = intersect_lad_areas_and_exchanges(exchange_areas, lad_areas)
+fieldnames = ['lad']
+write_to_csv(lut, 'exchange_to_lad_lut', 'ex_to_lad_', fieldnames)
 
 
 
