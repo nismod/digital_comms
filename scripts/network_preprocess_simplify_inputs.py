@@ -558,13 +558,13 @@ def write_to_csv(data, folder, file_prefix, fieldnames):
 # pcd_to_exchange_data = read_pcd_to_exchange_lut()
 # pcd_to_exchange_data = get_unique_postcodes_by_exchanges(pcd_to_exchange_data)
 # fieldnames = ['postcode']
-# write_to_csv(pcd_to_exchange_data, 'pcd_2_exchange_luts', 'pcd_to_ex_', fieldnames)
+# write_to_csv(pcd_to_exchange_data, 'lut_pcd_to_exchange', 'pcd_to_ex_', fieldnames)
 
 # # 2) generate unique postcode to cabinet lut and export as one .csv per exchange
 # pcd_to_cabinet_data = read_pcd_to_cabinet_lut()
 # pcd_to_cabinet_data = get_unique_postcodes_to_cabs_by_exchange(pcd_to_cabinet_data)
 # fieldnames = ['postcode','cabinet','exchange_only_flag']
-# write_to_csv(pcd_to_cabinet_data, 'pcd_to_cabinet_by_exchange', 'pcd_to_cab_', fieldnames)
+# write_to_csv(pcd_to_cabinet_data, 'lut_pcd_to_cabinet_by_exchange', 'pcd_to_cab_', fieldnames)
 
 # 3) add necessary properties (postcode) to exchange polygons
 exchange_areas = read_exchange_areas()
@@ -588,13 +588,13 @@ exchange_areas = read_exchange_areas()
 # postcode_areas = read_postcode_areas()
 # lut = intersect_pcd_areas_and_exchanges(exchange_areas, postcode_areas)
 # fieldnames = ['postcode_area']
-# write_to_csv(lut, 'exchange_to_pcd_area_lut', 'ex_to_pcd_area_', fieldnames)
+# write_to_csv(lut, 'lut_exchange_to_pcd_area', 'ex_to_pcd_area_', fieldnames)
 
 # 6) intersect lad_areas with exchanges to get exchange_to_lad_area_lut
 lad_areas = read_lad_areas()
 lut = intersect_lad_areas_and_exchanges(exchange_areas, lad_areas)
 fieldnames = ['lad']
-write_to_csv(lut, 'exchange_to_lad_lut', 'ex_to_lad_', fieldnames)
+write_to_csv(lut, 'lut_exchange_to_lad', 'ex_to_lad_', fieldnames)
 
 
 
