@@ -46,7 +46,6 @@ def get_lad_area_ids(lad_areas):
         lad_area_ids.append(lad['properties']['name'])
     return lad_area_ids
 
-
 def read_premises_data(exchange_area):
     """
     Reads in premises points from the OS AddressBase data (.csv).
@@ -214,9 +213,7 @@ def read_exchanges(exchange_area):
         if exchange_geom.intersection(shape(n['geometry']))
     ]
 
-
 def geotype_exchange(exchanges, premises):
-
 
     sum_of_delivery_points = 0
 
@@ -297,7 +294,6 @@ def geotype_exchange(exchanges, premises):
 
     return exchanges, geotype, prems_ids_over, prems_ids_under
 
-
 def add_urban_geotype_to_exchanges(exchanges, geotype, exchange_geotype_lut):
 
     # Process lookup into dictionary
@@ -369,21 +365,6 @@ def get_exchange_properties(exchanges):
     
     return exchange_properties
 
-# def csv_writer(data, filename, fieldnames):
-#     """
-#     Write data to a CSV file path
-#     """
-#     # Create path
-#     directory = os.path.join(DATA_INTERMEDIATE, 'geotypes')
-#     if not os.path.exists(directory):
-#         os.makedirs(directory)
-
-#     name = os.path.join(directory, filename)
-
-#     with open(name, 'a') as csv_file:
-#         writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
-#         writer.writerows(data)
-
 def csv_writer(data, filename, fieldnames):
 
     # Create path
@@ -401,7 +382,6 @@ def csv_writer(data, filename, fieldnames):
         if not file_exists:
             writer.writeheader()  # file doesn't exist yet, write a header
         for item in data:
-
             writer.writerow({'id': item['id'], 'Name': item['Name'],'pcd': item['pcd'],
                             'Region': item['Region'],'County': item['County'], 'geotype': item['geotype'], 
                             'prems_over': item['prems_over'], 'prems_under': item['prems_under']})
