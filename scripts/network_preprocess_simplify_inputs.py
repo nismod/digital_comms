@@ -306,7 +306,7 @@ def add_properties_to_exchanges(exchanges, properties):
 
     return output
 
-def write_shapefile(data, directory):
+def write_shapefile(data, directory, id):
 
     # Translate props to Fiona sink schema
     prop_schema = []
@@ -326,11 +326,11 @@ def write_shapefile(data, directory):
     if not os.path.exists(folder_directory):
         os.makedirs(folder_directory)
 
-    for exchange in data:
-        filename = exchange['properties']['id']
+    for area in data:
+        filename = area['properties'][id]
         # Write all elements to output file
         with fiona.open(os.path.join(folder_directory, filename + '.shp'), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
-            sink.write(exchange)
+            sink.write(area)
 
 #####################################################################################
 # 4) generate postcode areas from postcode sectors
@@ -530,72 +530,48 @@ def write_to_csv(data, folder, file_prefix, fieldnames):
         else:
             pass
 
-
-# def write_shapefile(data, filename):
-
-#     # Translate props to Fiona sink schema
-#     prop_schema = []
-#     for name, value in data[0]['properties'].items():
-#         fiona_prop_type = next((fiona_type for fiona_type, python_type in fiona.FIELD_TYPES_MAP.items() if python_type == type(value)), None)
-#         prop_schema.append((name, fiona_prop_type))
-
-#     sink_driver = 'ESRI Shapefile'
-#     sink_crs = {'init': 'epsg:27700'}
-#     sink_schema = {
-#         'geometry': data[0]['geometry']['type'],
-#         'properties': OrderedDict(prop_schema)
-#     }
-
-#     #print(os.path.join(directory, shapefile_filename))
-#     # Write all elements to output file
-#     with fiona.open(os.path.join(DATA_RAW_SHAPES, 'postcode_areas', filename), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
-#         [sink.write(feature) for feature in data]
-
 ###############################################################################
 
-# #Run functions
-# # 1) generate unique postcode to exchange lut and export as one .csv per exchange
-# pcd_to_exchange_data = read_pcd_to_exchange_lut()
-# pcd_to_exchange_data = get_unique_postcodes_by_exchanges(pcd_to_exchange_data)
-# fieldnames = ['postcode']
-# write_to_csv(pcd_to_exchange_data, 'lut_pcd_to_exchange', 'pcd_to_ex_', fieldnames)
+#Run functions
+# 1) generate unique postcode to exchange lut and export as one .csv per exchange
+pcd_to_exchange_data = read_pcd_to_exchange_lut()
+pcd_to_exchange_data = get_unique_postcodes_by_exchanges(pcd_to_exchange_data)
+fieldnames = ['postcode']
+write_to_csv(pcd_to_exchange_data, 'lut_pcd_to_exchange', 'pcd_to_ex_', fieldnames)
 
-# # 2) generate unique postcode to cabinet lut and export as one .csv per exchange
-# pcd_to_cabinet_data = read_pcd_to_cabinet_lut()
-# pcd_to_cabinet_data = get_unique_postcodes_to_cabs_by_exchange(pcd_to_cabinet_data)
-# fieldnames = ['postcode','cabinet','exchange_only_flag']
-# write_to_csv(pcd_to_cabinet_data, 'lut_pcd_to_cabinet_by_exchange', 'pcd_to_cab_', fieldnames)
+# 2) generate unique postcode to cabinet lut and export as one .csv per exchange
+pcd_to_cabinet_data = read_pcd_to_cabinet_lut()
+pcd_to_cabinet_data = get_unique_postcodes_to_cabs_by_exchange(pcd_to_cabinet_data)
+fieldnames = ['postcode','cabinet','exchange_only_flag']
+write_to_csv(pcd_to_cabinet_data, 'lut_pcd_to_cabinet_by_exchange', 'pcd_to_cab_', fieldnames)
 
 # 3) add necessary properties (postcode) to exchange polygons
 exchange_areas = read_exchange_areas()
-# exchange_properties = load_exchange_properties()
-# exchange_areas = add_properties_to_exchanges(exchange_areas, exchange_properties)
-# write_shapefile(exchange_areas, 'individual_exchange_areas')
+exchange_properties = load_exchange_properties()
+exchange_areas = add_properties_to_exchanges(exchange_areas, exchange_properties)
+write_shapefile(exchange_areas, 'individual_exchange_areas', 'id')
 
 # 4) generate postcode areas from postcode sectors
-# PC_PATH = os.path.join(DATA_RAW_SHAPES,'postcode_sectors', '_postcode_sectors.shp')
-# PC_SECTORS = read_postcode_sectors(PC_PATH)
+PC_PATH = os.path.join(DATA_RAW_SHAPES,'postcode_sectors', '_postcode_sectors.shp')
+PC_SECTORS = read_postcode_sectors(PC_PATH)
+PC_AREAS = generate_postcode_areas(PC_SECTORS)
+MIN_AREA = 1e6  # 1km^2
+PC_AREAS = fix_up(PC_AREAS, MIN_AREA)
+PC_OUT_PATH = os.path.join(DATA_RAW_SHAPES,'postcode_areas', 'postcode_areas.shp')
+write_single_shapefile(PC_AREAS, PC_OUT_PATH)
 
-# PC_AREAS = generate_postcode_areas(PC_SECTORS)
-
-# MIN_AREA = 1e6  # 1km^2
-# PC_AREAS = fix_up(PC_AREAS, MIN_AREA)
-
-# PC_OUT_PATH = os.path.join(DATA_RAW_SHAPES,'postcode_areas', 'postcode_areas.shp')
-# write_single_shapefile(PC_AREAS, PC_OUT_PATH)
-
-# # 5) intersect postcode_areas with exchanges to get exchange_to_pcd_area_lut
-# postcode_areas = read_postcode_areas()
-# lut = intersect_pcd_areas_and_exchanges(exchange_areas, postcode_areas)
-# fieldnames = ['postcode_area']
-# write_to_csv(lut, 'lut_exchange_to_pcd_area', 'ex_to_pcd_area_', fieldnames)
+# 5) intersect postcode_areas with exchanges to get exchange_to_pcd_area_lut
+postcode_areas = read_postcode_areas()
+lut = intersect_pcd_areas_and_exchanges(exchange_areas, postcode_areas)
+fieldnames = ['postcode_area']
+write_to_csv(lut, 'lut_exchange_to_pcd_area', 'ex_to_pcd_area_', fieldnames)
 
 # 6) intersect lad_areas with exchanges to get exchange_to_lad_area_lut
 lad_areas = read_lad_areas()
 lut = intersect_lad_areas_and_exchanges(exchange_areas, lad_areas)
 fieldnames = ['lad']
 write_to_csv(lut, 'lut_exchange_to_lad', 'ex_to_lad_', fieldnames)
-
+write_shapefile(lad_areas, 'individual_lad_areas', 'name')
 
 
 
