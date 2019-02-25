@@ -3,13 +3,14 @@ import sys
 import configparser
 import csv
 import re
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import fiona
 import glob
 import itertools
 from shapely.geometry import shape, Polygon, MultiPolygon, mapping
 from shapely.ops import unary_union
-from collections import OrderedDict
+from shapely.prepared import prep
+from shapely.wkt import loads
 from rtree import index
 from tqdm import tqdm 
 
@@ -18,8 +19,9 @@ CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
 DATA_RAW_INPUTS = os.path.join(BASE_PATH, 'raw', 'a_fixed_model')
-DATA_INTERMEDIATE_INPUTS = os.path.join(BASE_PATH, 'intermediate')
+DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 DATA_RAW_SHAPES = os.path.join(BASE_PATH, 'raw', 'd_shapes')
+DATA_BUILDING_DATA = os.path.join(BASE_PATH, 'raw', 'e_dem_and_buildings')
 
 #####################################################################################
 # 1) generate unique postcode to exchange lut and export as one .csv per exchange
@@ -509,6 +511,200 @@ def intersect_lad_areas_and_exchanges(exchanges, areas):
 
     return exchange_to_lad_area_lut
 
+#####################################################################################
+# 7) read premises by exchange and export
+#####################################################################################
+
+def get_lad_area_ids(exchange_name):
+    """Read in existing exchange to lad lookup table
+
+    Returns
+    ------
+    string
+        lad values as strings
+    """
+    lad_area_ids = []
+
+    dirname = os.path.join(DATA_INTERMEDIATE, 'lut_exchange_to_lad')
+    pathlist = glob.iglob(dirname + '/*.csv', recursive=True)
+    filename = os.path.join(DATA_INTERMEDIATE, 'lut_exchange_to_lad', 'ex_to_lad_' + exchange_name + '.csv')
+
+    for path in pathlist:
+        if path == filename: 
+            with open(path, 'r') as system_file:
+                reader = csv.reader(system_file)
+                for line in reader:
+                    lad_area_ids.append(line[0])
+
+    unique_lads = list(set(lad_area_ids))
+
+    return unique_lads
+
+def read_premises_data(exchange_area):
+
+    #prepare exchange_area polygon
+    prepared_area = prep(shape(exchange_area['geometry']))
+
+    lads = get_lad_area_ids(exchange_area['properties']['id'])
+
+    def premises():
+        i = 0
+        for lad in lads:
+            directory = os.path.join(DATA_BUILDING_DATA, 'prems_by_lad', lad)  
+            pathlist = glob.iglob(directory + '/*.csv', recursive=True)
+            for path in pathlist:
+                with open(path, 'r') as system_file:
+                    reader = csv.reader(system_file)
+                    next(reader)
+                    for line in reader:
+                        geom = loads(line[8])
+                        geom_point = geom.representative_point()
+
+                        feature = {
+                            'type': 'Feature',
+                            'geometry': mapping(geom),
+                            'representative_point': geom_point,
+                            'properties':{
+                                #'landparcel_id': line[0],
+                                #'mistral_function': line[1],
+                                'toid': line[2],
+                                #'household_id': line[4],
+                                #'res_count': line[6],
+                                #'lad': line[13],
+                                'oa': line[17],
+                            }
+                        }
+                        yield (i, geom_point.bounds, feature)
+                        i += 1
+    output = []
+
+    try:
+        # create index from generator (see http://toblerity.org/rtree/performance.html#use-stream-loading)
+        idx = index.Index(premises())
+
+        for n in idx.intersection((shape(exchange_area['geometry']).bounds), objects=True):
+            point = n.object['representative_point']
+            if prepared_area.contains(point):
+                del n.object['representative_point']
+                output.append(n.object)
+    
+    except:
+        print('{} failed'.format(exchange_area['properties']['id']))
+
+    return output 
+
+def write_premises_shapefile(data, path):
+
+    # Translate props to Fiona sink schema
+    prop_schema = []
+    for name, value in data[0]['properties'].items():
+        fiona_prop_type = next((fiona_type for fiona_type, python_type in fiona.FIELD_TYPES_MAP.items() if python_type == type(value)), None)
+        prop_schema.append((name, fiona_prop_type))
+
+    sink_driver = 'ESRI Shapefile'
+    sink_crs = {'init': 'epsg:27700'}
+    sink_schema = {
+        'geometry': data[0]['geometry']['type'],
+        'properties': OrderedDict(prop_schema)
+    }
+    
+    # Write all elements to output file
+    with fiona.open(path, 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
+        [sink.write(feature) for feature in data]
+
+def read_premises_by_exchange(exchange_areas):
+    
+    for exchange in exchange_areas:
+        exchange_id = exchange['properties']['id'].replace("/", "")
+        PATH = os.path.join(DATA_INTERMEDIATE, 'premises_by_exchange', exchange_id + '.shp')
+
+        if not os.path.isfile(PATH): 
+        
+            premises = read_premises_data(exchange)
+            
+            if len(premises) > 0:
+                write_premises_shapefile(premises, PATH)
+            else:
+                print('{} was empty'.format(exchange_id))
+        else:
+            print('{} already exists'.format(exchange_id))
+
+    return print('complete')
+
+#####################################################################################
+# 8) find problem exchanges and export
+#####################################################################################
+
+def find_problem_exchanges(exchange_areas):
+
+    missing = []
+
+    for exchange in exchange_areas:
+        exchange_id = exchange['properties']['id'].replace("/", "")
+
+        PATH = os.path.join(DATA_INTERMEDIATE, 'premises_by_exchange', exchange_id + '.shp')
+
+        if not os.path.isfile(PATH): 
+        
+            missing.append({
+                'problem_exchange': exchange_id
+                })
+            
+        else:
+            pass
+
+    missing_output = defaultdict(list)
+
+    for exchange in missing:
+        missing_output['problem_exchange'].append({
+            'problem_exchange': exchange['problem_exchange']                  
+            })
+
+    return missing_output
+
+#####################################################################################
+# 9) get OA to exchange LUT and export
+#####################################################################################
+
+def read_premises(path):
+    """Read all shapes
+
+    Yields
+    ------
+    premises : iterable[dict]
+    """
+    with fiona.open(path, 'r') as source:
+        for feature in source:
+            yield feature
+
+def get_oa_to_exchange_lut(exchange_areas):
+    """get a set of Ouput Areas by Exchange Area
+    """
+
+    unique_lad_to_oa_lut = defaultdict(set)
+
+    for exchange in exchange_areas:
+        exchange_id = exchange['properties']['id']
+        PATH = os.path.join(DATA_INTERMEDIATE, 'premises_by_exchange', exchange_id + '.shp')
+        
+        if os.path.isfile(PATH): 
+            premises = read_premises(PATH)
+            for premise in premises:
+                unique_lad_to_oa_lut[exchange_id].add(premise['properties']['oa'])  
+        else:
+            pass
+    
+    output_lut = defaultdict(list)
+
+    for key, values in unique_lad_to_oa_lut.items():
+        output_values = []
+        for value in values:
+            output_values.append({
+                'oa': value})
+        for value in output_values:
+            output_lut[key].append(value)
+
+    return output_lut
 
 #####################################################################################
 # Write out data
@@ -520,12 +716,11 @@ def write_to_csv(data, folder, file_prefix, fieldnames):
     """
 
     # Create path
-    directory = os.path.join(DATA_INTERMEDIATE_INPUTS, folder)
+    directory = os.path.join(DATA_INTERMEDIATE, folder)
     if not os.path.exists(directory):
         os.makedirs(directory)
 
     for key, value in data.items():
-
         print('finding prem data for {}'.format(key))
         filename = key.replace("/", "")
 
@@ -551,11 +746,11 @@ def write_to_csv(data, folder, file_prefix, fieldnames):
 # fieldnames = ['postcode','cabinet','exchange_only_flag']
 # write_to_csv(pcd_to_cabinet_data, 'lut_pcd_to_cabinet_by_exchange', 'pcd_to_cab_', fieldnames)
 
-# 3) add necessary properties (postcode) to exchange polygons
+# # 3) add necessary properties (postcode) to exchange polygons
 exchange_areas = read_exchange_areas()
-exchange_properties = load_exchange_properties()
-exchange_areas = add_properties_to_exchanges(exchange_areas, exchange_properties)
-write_shapefile(exchange_areas, 'individual_exchange_areas', 'id')
+# exchange_properties = load_exchange_properties()
+# exchange_areas = add_properties_to_exchanges(exchange_areas, exchange_properties)
+# write_shapefile(exchange_areas, 'individual_exchange_areas', 'id')
 
 # # 4) generate postcode areas from postcode sectors
 # PC_PATH = os.path.join(DATA_RAW_SHAPES,'postcode_sectors', '_postcode_sectors.shp')
@@ -579,6 +774,15 @@ write_shapefile(exchange_areas, 'individual_exchange_areas', 'id')
 # write_to_csv(lut, 'lut_exchange_to_lad', 'ex_to_lad_', fieldnames)
 # write_shapefile(lad_areas, 'individual_lad_areas', 'name')
 
+# 7) read premises by exchange and export
+# read_premises_by_exchange(exchange_areas)
 
+# 8) find problem exchanges and export
+# problem_exchanges = find_problem_exchanges(exchange_areas)
+# fieldnames = ['problem_exchange']
+# write_to_csv(problem_exchanges, 'problem_exchanges', '', fieldnames)
 
-
+# 9) get OA to exchange LUT and export
+oa_to_ex_lut = get_oa_to_exchange_lut(exchange_areas)
+fieldnames = ['oa']
+write_to_csv(oa_to_ex_lut, 'oa_to_ex_lut', '', fieldnames)
