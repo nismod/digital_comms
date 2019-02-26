@@ -662,6 +662,41 @@ def find_problem_exchanges(exchange_areas):
 
     return missing_output
 
+def get_problem_exchange_shapes(exchange_areas, problem_exchanges):
+
+    output_shapes = []
+    
+    for exchange in exchange_areas:
+        for value in problem_exchanges.values():
+            for v in value:
+                if exchange['properties']['id'] == v['problem_exchange']:
+                    output_shapes.append({
+                        'type': exchange['type'],
+                        'geometry': exchange['geometry'],
+                        'properties': exchange['properties']
+                    })
+
+    return output_shapes
+
+def write_single_exchange_shapefile(data, path):
+
+    prop_schema = []
+
+    for name, value in data[0]['properties'].items():
+        fiona_prop_type = next((fiona_type for fiona_type, python_type in fiona.FIELD_TYPES_MAP.items() if python_type == type(value)), None)
+        prop_schema.append((name, fiona_prop_type))
+
+    sink_driver = 'ESRI Shapefile'
+    sink_crs = {'init': 'epsg:27700'}
+    sink_schema = {
+        'geometry': data[0]['geometry']['type'],
+        'properties': OrderedDict(prop_schema)
+    }
+
+    # Write all elements to output file
+    with fiona.open(path, 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
+        [sink.write(feature) for feature in data]
+
 #####################################################################################
 # 9) get OA to exchange LUT and export
 #####################################################################################
@@ -778,11 +813,14 @@ exchange_areas = read_exchange_areas()
 # read_premises_by_exchange(exchange_areas)
 
 # 8) find problem exchanges and export
-# problem_exchanges = find_problem_exchanges(exchange_areas)
-# fieldnames = ['problem_exchange']
-# write_to_csv(problem_exchanges, 'problem_exchanges', '', fieldnames)
+problem_exchanges = find_problem_exchanges(exchange_areas)
+fieldnames = ['problem_exchange']
+write_to_csv(problem_exchanges, 'problem_exchanges', '', fieldnames)
+problem_exchange_shapes = get_problem_exchange_shapes(exchange_areas, problem_exchanges)
+PC_OUT_PATH = os.path.join(DATA_INTERMEDIATE, 'problem_exchanges', 'problem_exchanges.shp')
+write_single_exchange_shapefile(problem_exchange_shapes, PC_OUT_PATH)
 
-# 9) get OA to exchange LUT and export
-oa_to_ex_lut = get_oa_to_exchange_lut(exchange_areas)
-fieldnames = ['oa']
-write_to_csv(oa_to_ex_lut, 'oa_to_ex_lut', '', fieldnames)
+# # 9) get OA to exchange LUT and export
+# oa_to_ex_lut = get_oa_to_exchange_lut(exchange_areas)
+# fieldnames = ['oa']
+# write_to_csv(oa_to_ex_lut, 'oa_to_ex_lut', '', fieldnames)
