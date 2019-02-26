@@ -64,7 +64,7 @@ def read_exchange_area(exchange_name):
     
     return feature
 
-def get_lad_area_ids(exchange_name):
+def get_area_ids(exchange_name, directory, prefix):
     """Read in existing exchange to lad lookup table
 
     Returns
@@ -72,61 +72,96 @@ def get_lad_area_ids(exchange_name):
     string
         lad values as strings
     """
-    lad_area_ids = []
+    output_area_ids = []
 
-    dirname = os.path.join(DATA_INTERMEDIATE, 'lut_exchange_to_lad')
+    dirname = os.path.join(DATA_INTERMEDIATE, directory)
     pathlist = glob.iglob(dirname + '/*.csv', recursive=True)
-    filename = os.path.join(DATA_INTERMEDIATE, 'lut_exchange_to_lad', 'ex_to_lad_' + exchange_name + '.csv')
+    filename = os.path.join(DATA_INTERMEDIATE, directory, prefix + exchange_name + '.csv')
 
     for path in pathlist:
         if path == filename: 
             with open(path, 'r') as system_file:
                 reader = csv.reader(system_file)
                 for line in reader:
-                    lad_area_ids.append(line[0])
+                    output_area_ids.append(line[0])
 
-    unique_lads = list(set(lad_area_ids))
+    unique_areas = list(set(output_area_ids))
 
-    return unique_lads
+    return unique_areas
 
 def read_premises_data(exchange_area):
 
     #prepare exchange_area polygon
     prepared_area = prep(shape(exchange_area['geometry']))
+    PATH = os.path.join(DATA_INTERMEDIATE, 'oa_to_ex_lut', (exchange_area['properties']['id']) + '.csv')
 
-    lads = get_lad_area_ids(exchange_area['properties']['id'])
+    lad_areas = get_area_ids((exchange_area['properties']['id']), 'lut_exchange_to_lad', 'ex_to_lad_')
+
+    # if os.path.isfile(PATH):
+    lower_areas = get_area_ids((exchange_area['properties']['id']), 'oa_to_ex_lut','')
+    # else:
+    #     lower_areas = get_area_ids((exchange_area['properties']['id']), 'lut_exchange_to_lad', 'ex_to_lad_')
 
     def premises():
         i = 0
-        for lad in lads:
+        for lad in lad_areas:
+            print(lad)
             directory = os.path.join(DATA_BUILDING_DATA, 'prems_by_lad', lad)  
             pathlist = glob.iglob(directory + '/*.csv', recursive=True)
             for path in pathlist:
-                with open(path, 'r') as system_file:
-                    reader = csv.reader(system_file)
-                    next(reader)
-                    for line in reader:
-                        geom = loads(line[8])
-                        geom_point = geom.representative_point()
+                if os.path.isfile(PATH):
+                    print('PATH exists')
+                    for oa in lower_areas:
+                        if os.path.basename(path[:-4]) == oa:
+                            with open(path, 'r') as system_file:
+                                reader = csv.reader(system_file)
+                                next(reader)
+                                for line in reader:
+                                    geom = loads(line[8])
+                                    geom_point = geom.representative_point()
 
-                        feature = {
-                            'type': 'Feature',
-                            'geometry': mapping(geom),
-                            'representative_point': geom_point,
-                            'properties':{
-                                #'landparcel_id': line[0],
-                                #'mistral_function': line[1],
-                                'toid': line[2],
-                                #'household_id': line[4],
-                                #'res_count': line[6],
-                                #'lad': line[13],
-                                #'oa': line[17],
+                                    feature = {
+                                        'type': 'Feature',
+                                        'geometry': mapping(geom),
+                                        'representative_point': geom_point,
+                                        'properties':{
+                                            #'landparcel_id': line[0],
+                                            #'mistral_function': line[1],
+                                            'toid': line[2],
+                                            #'household_id': line[4],
+                                            #'res_count': line[6],
+                                            #'lad': line[13],
+                                            #'oa': line[17],
+                                        }
+                                    }
+                                    yield (i, geom_point.bounds, feature)
+                                    i += 1
+                else:
+                    print('PATH does not exist')
+                    with open(path, 'r') as system_file:
+                        reader = csv.reader(system_file)
+                        next(reader)
+                        for line in reader:
+                            geom = loads(line[8])
+                            geom_point = geom.representative_point()
+
+                            feature = {
+                                'type': 'Feature',
+                                'geometry': mapping(geom),
+                                'representative_point': geom_point,
+                                'properties':{
+                                    #'landparcel_id': line[0],
+                                    #'mistral_function': line[1],
+                                    'toid': line[2],
+                                    #'household_id': line[4],
+                                    #'res_count': line[6],
+                                    #'lad': line[13],
+                                    #'oa': line[17],
+                                }
                             }
-                        }
-                        yield (i, geom_point.bounds, feature)
-                        i += 1
+                            yield (i, geom_point.bounds, feature)
+                            i += 1
     
-    # create index from generator (see http://toblerity.org/rtree/performance.html#use-stream-loading)
     idx = index.Index(premises())
 
     output = []
@@ -1300,38 +1335,38 @@ if __name__ == "__main__":
     print('Reading premises data') 
     geojson_layer5_premises = read_premises_data(exchange_area)
 
-    print('Read exchanges') 
-    geojson_layer2_exchange = read_exchanges(exchange_area)
+    # print('Read exchanges') 
+    # geojson_layer2_exchange = read_exchanges(exchange_area)
 
-    #####################################################################################################
-    ### IMPORT SUPPLEMETARY DATA AND PROCESS
-    print('Read pcd_to_exchange_lut') 
-    lut_pcd_to_exchange = read_pcd_to_exchange_lut(exchange_abbr)
+    # #####################################################################################################
+    # ### IMPORT SUPPLEMETARY DATA AND PROCESS
+    # print('Read pcd_to_exchange_lut') 
+    # lut_pcd_to_exchange = read_pcd_to_exchange_lut(exchange_abbr)
 
-    print('Read pcd_to_cabinet_lut') 
-    lut_pcd_to_cabinet = read_pcd_to_cabinet_lut(exchange_abbr)
+    # print('Read pcd_to_cabinet_lut') 
+    # lut_pcd_to_cabinet = read_pcd_to_cabinet_lut(exchange_abbr)
 
-    print('Read postcode_areas') 
-    geojson_postcode_areas = read_postcode_areas(exchange_area)
+    # print('Read postcode_areas') 
+    # geojson_postcode_areas = read_postcode_areas(exchange_area)
 
     # print('Read pcd_technology_lut') 
     # lut_pcd_technology = read_postcode_technology_lut(exchange_abbr)
 
-    #####################################################################################################
-    # Process/Estimate network hierarchy
-    print('Add exchange id to postcode areas')
-    geojson_postcode_areas = add_exchange_id_to_postcode_areas(geojson_layer2_exchange, geojson_postcode_areas, lut_pcd_to_exchange)
+    # #####################################################################################################
+    # # Process/Estimate network hierarchy
+    # print('Add exchange id to postcode areas')
+    # geojson_postcode_areas = add_exchange_id_to_postcode_areas(geojson_layer2_exchange, geojson_postcode_areas, lut_pcd_to_exchange)
 
-    print('Add cabinet id to postcode areas')
-    geojson_postcode_areas = add_cabinet_id_to_postcode_areas(geojson_postcode_areas, lut_pcd_to_cabinet)
+    # print('Add cabinet id to postcode areas')
+    # geojson_postcode_areas = add_cabinet_id_to_postcode_areas(geojson_postcode_areas, lut_pcd_to_cabinet)
 
-    print('Add postcode to premises')
-    geojson_layer5_premises = add_postcode_to_premises(geojson_layer5_premises, geojson_postcode_areas)
+    # print('Add postcode to premises')
+    # geojson_layer5_premises = add_postcode_to_premises(geojson_layer5_premises, geojson_postcode_areas)
 
-    #####################################################################################################
-    ### Process/Estimate assets
-    print('complement cabinet locations as expected for this geotype')
-    geojson_layer3_cabinets = complement_postcode_cabinets(geojson_layer5_premises, geojson_layer2_exchange, geojson_postcode_areas, exchange_abbr)
+    # #####################################################################################################
+    # ### Process/Estimate assets
+    # print('complement cabinet locations as expected for this geotype')
+    # geojson_layer3_cabinets = complement_postcode_cabinets(geojson_layer5_premises, geojson_layer2_exchange, geojson_postcode_areas, exchange_abbr)
 
     # print('allocating cabinet to premises')
     # geojson_layer5_premises = allocate_to_cabinet(geojson_layer5_premises, geojson_layer3_cabinets)
@@ -1438,9 +1473,9 @@ if __name__ == "__main__":
     # # #                             'am_ave_lines_per_dist_point', 'ave_lines_per_dist_point', 'am_ave_line_length','ave_line_length']
     # # # csv_writer(network_stats, '{}_network_statistics.csv'.format(exchange_abbr), network_stats_fieldnames)
 
-    # Write lookups (for debug purposes)
-    print('write postcode_areas')
-    write_shapefile(geojson_postcode_areas,  exchange_name, '_postcode_areas.shp')
+    # # Write lookups (for debug purposes)
+    # print('write postcode_areas')
+    # write_shapefile(geojson_postcode_areas,  exchange_name, '_postcode_areas.shp')
 
     # # print('write distribution_areas')
     # # write_shapefile(geojson_distribution_areas,  exchange_name, '_distribution_areas.shp')
@@ -1451,15 +1486,15 @@ if __name__ == "__main__":
     # print('write exchange_areas')
     # write_shapefile(geojson_exchange_areas,  exchange_name, '_exchange_area.shp')
 
-    # Write assets
-    print('write premises')
-    write_shapefile(geojson_layer5_premises,  exchange_name, 'assets_layer5_premises.shp')
+    # # Write assets
+    # print('write premises')
+    # write_shapefile(geojson_layer5_premises,  exchange_name, 'assets_layer5_premises.shp')
 
     # print('write distribution points')
     # write_shapefile(geojson_layer4_distributions,  exchange_name, 'assets_layer4_distributions.shp')
 
-    print('write cabinets')
-    write_shapefile(geojson_layer3_cabinets,  exchange_name, 'assets_layer3_cabinets.shp')
+    # print('write cabinets')
+    # write_shapefile(geojson_layer3_cabinets,  exchange_name, 'assets_layer3_cabinets.shp')
 
     # print('write exchanges')
     # write_shapefile(geojson_layer2_exchange,  exchange_name, 'assets_layer2_exchange.shp')
