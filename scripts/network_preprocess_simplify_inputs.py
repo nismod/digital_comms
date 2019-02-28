@@ -545,7 +545,7 @@ def read_premises_data(exchange_area):
     #prepare exchange_area polygon
     prepared_area = prep(shape(exchange_area['geometry']))
 
-    lads = get_lad_area_ids(exchange_area['properties']['id'])
+    lads = get_lad_area_ids(exchange_area['properties']['id'].replace("/", ""))
 
     def premises():
         i = 0
@@ -554,12 +554,11 @@ def read_premises_data(exchange_area):
             pathlist = glob.iglob(directory + '/*.csv', recursive=True)
             for path in pathlist:
                 with open(path, 'r') as system_file:
-                    reader = csv.reader(system_file)
+                    reader = csv.DictReader(system_file)
                     next(reader)
                     for line in reader:
-                        geom = loads(line[8])
+                        geom = loads(line['geom'])
                         geom_point = geom.representative_point()
-
                         feature = {
                             'type': 'Feature',
                             'geometry': mapping(geom),
@@ -567,11 +566,11 @@ def read_premises_data(exchange_area):
                             'properties':{
                                 #'landparcel_id': line[0],
                                 #'mistral_function': line[1],
-                                'toid': line[2],
+                                'toid': line['toid'],
                                 #'household_id': line[4],
                                 #'res_count': line[6],
                                 #'lad': line[13],
-                                'oa': line[17],
+                                'oa': line['oa'],
                             }
                         }
                         yield (i, geom_point.bounds, feature)
@@ -582,7 +581,7 @@ def read_premises_data(exchange_area):
         # create index from generator (see http://toblerity.org/rtree/performance.html#use-stream-loading)
         idx = index.Index(premises())
 
-        for n in idx.intersection((shape(exchange_area['geometry']).bounds), objects=True):
+        for n in idx.intersection((shape(exchange_area['geometry']).bounds), objects=True):            
             point = n.object['representative_point']
             if prepared_area.contains(point):
                 del n.object['representative_point']
@@ -809,18 +808,72 @@ exchange_areas = read_exchange_areas()
 # write_to_csv(lut, 'lut_exchange_to_lad', 'ex_to_lad_', fieldnames)
 # write_shapefile(lad_areas, 'individual_lad_areas', 'name')
 
-# 7) read premises by exchange and export
-# read_premises_by_exchange(exchange_areas)
+# # 7) read premises by exchange and export
+read_premises_by_exchange(exchange_areas)
 
 # 8) find problem exchanges and export
 problem_exchanges = find_problem_exchanges(exchange_areas)
 fieldnames = ['problem_exchange']
 write_to_csv(problem_exchanges, 'problem_exchanges', '', fieldnames)
 problem_exchange_shapes = get_problem_exchange_shapes(exchange_areas, problem_exchanges)
-PC_OUT_PATH = os.path.join(DATA_INTERMEDIATE, 'problem_exchanges', 'problem_exchanges.shp')
+PC_OUT_PATH = os.path.join(DATA_INTERMEDIATE, 'problem_exchanges', 'problem_exchanges_2.shp')
 write_single_exchange_shapefile(problem_exchange_shapes, PC_OUT_PATH)
 
 # # 9) get OA to exchange LUT and export
 # oa_to_ex_lut = get_oa_to_exchange_lut(exchange_areas)
 # fieldnames = ['oa']
 # write_to_csv(oa_to_ex_lut, 'oa_to_ex_lut', '', fieldnames)
+
+
+# def read_single_exchange(exchange_name):
+#     """Read all exchange area shapes
+
+#     Data Schema
+#     -----------
+#     * id: 'string'
+#         Unique exchange id
+#     """    
+ 
+#     with fiona.open(os.path.join(DATA_RAW_SHAPES, 'all_exchange_areas', '_exchange_areas.shp'), 'r') as source:
+#         return [exchange for exchange in source if exchange['properties']['id'] == exchange_name][0]
+
+
+
+
+# def premises():
+#     output = []
+#     directory = os.path.join(DATA_BUILDING_DATA, 'prems_by_lad', 'S12000017')  
+#     pathlist = glob.iglob(directory + '/*.csv', recursive=True)
+#     for path in pathlist:
+#         with open(path, 'r') as system_file:
+#             reader = csv.reader(system_file)
+#             next(reader)
+#             for line in reader:
+#                 geom = loads(line[8])
+#                 geom_point = geom.representative_point()
+#                 output.append({
+#                     'type': 'Feature',
+#                     'geometry': mapping(geom),
+#                     'representative_point': geom_point,
+#                     'properties':{
+#                         #'landparcel_id': line[0],
+#                         #'mistral_function': line[1],
+#                         'toid': line[2],
+#                         #'household_id': line[4],
+#                         #'res_count': line[6],
+#                         #'lad': line[13],
+#                         'oa': line[17],
+#                     }
+#                 })
+#     return output
+
+
+# exchange_area = read_single_exchange('exchange_NSKIS')
+# my_data = read_premises_data(exchange_area)
+# print([dat for dat in my_data])
+# # exchange_WSLED
+
+# data = premises()
+
+# PC_OUT_PATH = os.path.join(DATA_INTERMEDIATE, 'problem_exchanges', 'buildings.shp')
+# write_single_exchange_shapefile(data, PC_OUT_PATH)
