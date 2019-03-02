@@ -1,4 +1,3 @@
-import time
 import os, sys
 import configparser
 import csv
@@ -119,13 +118,14 @@ def read_premises_data(exchange_area):
                                             'id': line[2],
                                             #'household_id': line[4],
                                             #'res_count': line[6],
-                                            #'lad': line[13],
+                                            'lad': line[13],
                                             #'oa': line[17],
+                                            'wta': round(random.uniform(0, 1), 4),
+                                            'wtp': round(int(random.uniform(20, 60))),
                                         }
                                     }
                                     yield (i, geom_point.bounds, feature)
                                     i += 1
-
     
     idx = index.Index(premises())
 
@@ -440,8 +440,7 @@ def add_postcode_to_premises(premises, postcode_areas):
         for n in idx.intersection((shape(postcode_area['geometry']).bounds), objects=True):
             postcode_area_shape = shape(postcode_area['geometry'])
             premise_shape = shape(n.object['geometry'])
-            if postcode_area_shape.intersects(premise_shape):
-                #print('m')
+            if postcode_area_shape.contains(premise_shape):
                 n.object['properties']['postcode'] = postcode_area['properties']['POSTCODE']
                 n.object['properties']['CAB_ID'] = postcode_area['properties']['CAB_ID']
                 joined_premises.append(n.object)
@@ -1290,22 +1289,30 @@ def write_shapefile(data, exchange_name, filename):
     with fiona.open(os.path.join(directory, filename), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         [sink.write(feature) for feature in data]
 
-def csv_writer(data, filename, fieldnames):
+def csv_writer(data, exchange_name, filename):
+
     """
     Write data to a CSV file path
     """
+    fieldnames = []
+    for name, value in data[0]['properties'].items():
+        fieldnames.append(name)
+
     # Create path
-    directory = os.path.join(DATA_INTERMEDIATE)
+    directory = os.path.join(DATA_INTERMEDIATE, exchange_name)
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    name = os.path.join(DATA_INTERMEDIATE, filename)
+    data_to_write = []
 
+    for entry in data:
+        data_to_write.append(entry['properties'])
+        
+    name = os.path.join(directory, filename)
     with open(name, 'w') as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
         writer.writeheader()
-        writer.writerows(data)
-
+        writer.writerows(data_to_write) 
 
 #####################################
 # APPLY METHODS
@@ -1459,45 +1466,40 @@ if __name__ == "__main__":
     geojson_layer3_cabinets = copy_id_to_name(geojson_layer3_cabinets)
 
     ###########################################################################################################
-    # # # # Write network statistics
-    # # # print('write link lengths to .csv')
-    # # # loop_length_fieldnames = ['premises_id','exchange_id','geotype','cab_link_length','dist_point_link_length','premises_link_length', 
-    # # #                             'd_side', 'total_link_length', 'length_type', 'premises_distance']
-    # # # csv_writer(length_data, '{}_link_lengths.csv'.format(exchange_abbr), loop_length_fieldnames)
+    ### WRITE OUT
+    ###########################################################################################################
+    
+    # # Write lookups (for debug purposes)
+    # print('write postcode_areas')
+    # write_shapefile(geojson_postcode_areas,  exchange_name, '_postcode_areas.shp')
 
-    # # # print('write link lengths to .csv')
-    # # # network_stats_fieldnames = ['exchange_id','geotype','distance_type','am_ave_lines_per_ex','total_lines','am_cabinets','total_cabinets',
-    # # #                             'am_ave_lines_per_cab', 'ave_lines_per_cab', 'am_distribution_points','total_dps', 
-    # # #                             'am_ave_lines_per_dist_point', 'ave_lines_per_dist_point', 'am_ave_line_length','ave_line_length']
-    # # # csv_writer(network_stats, '{}_network_statistics.csv'.format(exchange_abbr), network_stats_fieldnames)
+    # print('write distribution_areas')
+    # write_shapefile(geojson_distribution_areas,  exchange_name, '_distribution_areas.shp')
 
-    # Write lookups (for debug purposes)
-    print('write postcode_areas')
-    write_shapefile(geojson_postcode_areas,  exchange_name, '_postcode_areas.shp')
+    # print('write cabinet_areas')
+    # write_shapefile(geojson_cabinet_areas,  exchange_name, '_cabinet_areas.shp')
 
-    print('write distribution_areas')
-    write_shapefile(geojson_distribution_areas,  exchange_name, '_distribution_areas.shp')
-
-    print('write cabinet_areas')
-    write_shapefile(geojson_cabinet_areas,  exchange_name, '_cabinet_areas.shp')
-
-    print('write exchange_area')
-    write_exchange_area =[]
-    write_exchange_area.append(exchange_area)
-    write_shapefile(write_exchange_area,  exchange_name, '_exchange_area.shp')
+    # print('write exchange_area')
+    # write_exchange_area =[]
+    # write_exchange_area.append(exchange_area)
+    # write_shapefile(write_exchange_area,  exchange_name, '_exchange_area.shp')
 
     # Write assets
     print('write premises')
-    write_shapefile(geojson_layer5_premises,  exchange_name, 'assets_layer5_premises.shp')
+    # write_shapefile(geojson_layer5_premises,  exchange_name, 'assets_layer5_premises.shp')
+    csv_writer(geojson_layer5_premises, exchange_name, 'assets_layer5_premises.csv')
 
-    print('write distribution points')
-    write_shapefile(geojson_layer4_distributions,  exchange_name, 'assets_layer4_distributions.shp')
+    # print('write distribution points')
+    # write_shapefile(geojson_layer4_distributions,  exchange_name, 'assets_layer4_distributions.shp')
+    csv_writer(geojson_layer4_distributions, exchange_name, 'assets_layer4_distributions.csv')
+    
+    # print('write cabinets')
+    # write_shapefile(geojson_layer3_cabinets,  exchange_name, 'assets_layer3_cabinets.shp')
+    csv_writer(geojson_layer3_cabinets, exchange_name, 'assets_layer3_cabinets.csv')
 
-    print('write cabinets')
-    write_shapefile(geojson_layer3_cabinets,  exchange_name, 'assets_layer3_cabinets.shp')
-
-    print('write exchanges')
-    write_shapefile(geojson_layer2_exchange,  exchange_name, 'assets_layer2_exchange.shp')
+    # print('write exchanges')
+    # write_shapefile(geojson_layer2_exchange,  exchange_name, 'assets_layer2_exchange.shp')
+    csv_writer(geojson_layer2_exchange, exchange_name, 'assets_layer2_exchange.csv')
 
     # # Write links
     # print('write links layer5')
@@ -1509,15 +1511,19 @@ if __name__ == "__main__":
     # print('write links layer3')
     # write_shapefile(geojson_layer3_cabinets_sp_links,  exchange_name, 'links_sp_layer3_cabinets.shp')
 
-    print('write links layer5')
-    write_shapefile(geojson_layer5_premises_sl_links,  exchange_name, 'links_sl_layer5_premises.shp')
+    # print('write links layer5')
+    # write_shapefile(geojson_layer5_premises_sl_links,  exchange_name, 'links_sl_layer5_premises.shp')
+    csv_writer(geojson_layer5_premises_sl_links, exchange_name, 'links_sl_layer5_premises.csv')
 
-    print('write links layer4')
-    write_shapefile(geojson_layer4_distributions_sl_links,  exchange_name, 'links_sl_layer4_distributions.shp')
+    # print('write links layer4')
+    # write_shapefile(geojson_layer4_distributions_sl_links,  exchange_name, 'links_sl_layer4_distributions.shp')
+    csv_writer(geojson_layer4_distributions_sl_links, exchange_name, 'links_sl_layer4_distributions.csv')
 
-    print('write links layer3')
-    write_shapefile(geojson_layer3_cabinets_sl_links,  exchange_name, 'links_sl_layer3_cabinets.shp')
+    # print('write links layer3')
+    # write_shapefile(geojson_layer3_cabinets_sl_links,  exchange_name, 'links_sl_layer3_cabinets.shp')
+    csv_writer(geojson_layer3_cabinets_sl_links, exchange_name, 'links_sl_layer3_cabinets.csv')
 
     print("script finished")
     #print("script took {} minutes to complete".format(round((end - start)/60, 2)))
 
+    
