@@ -16,19 +16,43 @@ DATA_PROCESSED = os.path.join(BASE_PATH, 'processed')
 
 def collect_results(selection, name):
 
-    results = []
+    paths = []
     for entry in selection:
-        results.append(os.path.join(DATA_INTERMEDIATE, entry, name))
+        paths.append(os.path.join(DATA_INTERMEDIATE, entry, name))
 
-    geojson_results = []
-    for result_file in results:
+    results = []
+
+    for path in paths:
         try:
-            with fiona.open(os.path.join(result_file), 'r') as source:
-                [geojson_results.append(entry) for entry in source]
+            with open(path, 'r') as system_file:
+                reader = csv.DictReader(system_file)
+                # next(reader, None)
+                for line in reader:
+                    results.append(dict(line))
         except:
-            print('Error: Cannot open results for ' + result_file)
+            print('Error: Cannot open results for ' + os.path.basename(path))
 
-    return geojson_results
+    return results
+
+def csv_writer(data, filename):
+
+    """
+    Write data to a CSV file path
+    """
+    fieldnames = []
+    for name, value in data[0].items():
+        fieldnames.append(name)
+
+    # Create path
+    directory = os.path.join(DATA_PROCESSED)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+        
+    name = os.path.join(directory, filename)
+    with open(name, 'w') as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
+        writer.writeheader()
+        writer.writerows(data) 
 
 def write_shapefile(data, filename):
 
@@ -77,39 +101,11 @@ def get_exchange_ids(key, value):
 
     return exchange_ids
 
-def cut_out_unwanted_premises_data(data):
-
-    premises_data = []
-
-    for premises in data:
-        premises_data.append(
-            {
-                'type': "Feature",
-                'geometry': {
-                    "type": "Point",
-                    "coordinates": premises['geometry']['coordinates'],
-                },
-                'properties': {
-                    'id': premises['properties']['id'], 
-                    'connection': premises['properties']['connection'],
-                    'FTTP': premises['properties']['FTTP'],
-                    'GFast': premises['properties']['GFast'],
-                    'FTTC': premises['properties']['FTTC'],
-                    'DOCSIS3': premises['properties']['DOCSIS3'],
-                    'ADSL':  premises['properties']['ADSL'],
-                    'wtp': premises['properties']['wtp'],
-                    'wta': premises['properties']['wta'],
-                    'lad': premises['properties']['lad']
-                }
-            })
-
-    return premises_data
-
 if __name__ == "__main__":
     selection = []
 
     if len(sys.argv) < 2:
-        selection = [item for item in os.listdir(DATA_INTERMEDIATE) if os.path.isdir(os.path.join(DATA_INTERMEDIATE, item)) and item != '.ipynb_checkpoints']
+        selection = [item for item in os.listdir(DATA_INTERMEDIATE) if os.path.isdir(os.path.join(DATA_INTERMEDIATE, item)) and item.startswith("exchange_")]
     elif sys.argv[1] == 'exchange_EACAM':
         selection = ['exchange_EACAM']
     elif sys.argv[1] == 'cambridge':
@@ -353,24 +349,30 @@ if __name__ == "__main__":
     elif sys.argv[1] == 'England':
         selection = get_exchange_ids('country', 'England')
 
-    links_layer3_cabinets = collect_results(selection, 'links_sl_layer3_cabinets.shp')
-    write_shapefile(links_layer3_cabinets, 'links_layer3_cabinets.shp')
+    links_layer3_cabinets = collect_results(selection, 'links_sl_layer3_cabinets.csv')
+    csv_writer(links_layer3_cabinets, 'links_layer3_cabinets.csv')
+    # write_shapefile(links_layer3_cabinets, 'links_layer3_cabinets.shp')
 
-    links_layer4_distributions = collect_results(selection, 'links_sl_layer4_distributions.shp')
-    write_shapefile(links_layer4_distributions, 'links_layer4_distributions.shp')
+    links_layer4_distributions = collect_results(selection, 'links_sl_layer4_distributions.csv')
+    csv_writer(links_layer4_distributions, 'links_layer4_distributions.csv')
+    # write_shapefile(links_layer4_distributions, 'links_layer4_distributions.shp')
 
-    links_layer5_premises = collect_results(selection, 'links_sl_layer5_premises.shp')
-    write_shapefile(links_layer5_premises, 'links_layer5_premises.shp')
+    links_layer5_premises = collect_results(selection, 'links_sl_layer5_premises.csv')
+    csv_writer(links_layer5_premises, 'links_layer5_premises.csv')
+    # write_shapefile(links_layer5_premises, 'links_layer5_premises.shp')
 
-    assets_layer2_exchanges = collect_results(selection, 'assets_layer2_exchanges.shp')
-    write_shapefile(assets_layer2_exchanges, 'assets_layer2_exchanges.shp')
+    assets_layer2_exchanges = collect_results(selection, 'assets_layer2_exchange.csv')
+    csv_writer(assets_layer2_exchanges, 'assets_layer2_exchanges.csv')
+    #write_shapefile(assets_layer2_exchanges, 'assets_layer2_exchange.shp')
 
-    assets_layer3_cabinets = collect_results(selection, 'assets_layer3_cabinets.shp')
-    write_shapefile(assets_layer3_cabinets, 'assets_layer3_cabinets.shp')
+    assets_layer3_cabinets = collect_results(selection, 'assets_layer3_cabinets.csv')
+    csv_writer(assets_layer3_cabinets, 'assets_layer3_cabinets.csv')
+    # write_shapefile(assets_layer3_cabinets, 'assets_layer3_cabinets.shp')
 
-    assets_layer4_distributions = collect_results(selection, 'assets_layer4_distributions.shp')
-    write_shapefile(assets_layer4_distributions, 'assets_layer4_distributions.shp')
+    assets_layer4_distributions = collect_results(selection, 'assets_layer4_distributions.csv')
+    csv_writer(assets_layer4_distributions, 'assets_layer4_distributions.csv')
+    # write_shapefile(assets_layer4_distributions, 'assets_layer4_distributions.shp')
 
-    assets_layer5_premises = collect_results(selection, 'assets_layer5_premises.shp')
-    assets_layer5_premises = cut_out_unwanted_premises_data(assets_layer5_premises)
-    write_shapefile(assets_layer5_premises, 'assets_layer5_premises.shp')
+    assets_layer5_premises = collect_results(selection, 'assets_layer5_premises.csv')
+    csv_writer(assets_layer5_premises, 'assets_layer5_premises.csv')
+    # write_shapefile(assets_layer5_premises, 'assets_layer5_premises.shp')
