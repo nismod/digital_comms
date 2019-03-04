@@ -414,3 +414,17 @@ def plot_length_data(data, exchange_name):
     # # # # Plot network statistics
     # # # print('plotting network statistics')
     # # # plot_length_data(length_data, exchange_name)
+
+
+    ###########################################################################################################
+    # # # # Write network statistics
+    # # # print('write link lengths to .csv')
+    # # # loop_length_fieldnames = ['premises_id','exchange_id','geotype','cab_link_length','dist_point_link_length','premises_link_length', 
+    # # #                             'd_side', 'total_link_length', 'length_type', 'premises_distance']
+    # # # csv_writer(length_data, '{}_link_lengths.csv'.format(exchange_abbr), loop_length_fieldnames)
+
+    # # # print('write link lengths to .csv')
+    # # # network_stats_fieldnames = ['exchange_id','geotype','distance_type','am_ave_lines_per_ex','total_lines','am_cabinets','total_cabinets',
+    # # #                             'am_ave_lines_per_cab', 'ave_lines_per_cab', 'am_distribution_points','total_dps', 
+    # # #                             'am_ave_lines_per_dist_point', 'ave_lines_per_dist_point', 'am_ave_line_length','ave_line_length']
+    # # # csv_writer(network_stats, '{}_network_statistics.csv'.format(exchange_abbr), network_stats_fieldnames)
