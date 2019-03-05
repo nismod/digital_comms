@@ -24,7 +24,7 @@ def links(rootdir):
     links = []
     links.extend(read_shapefile(os.path.join(rootdir, 'fixed_network', 'fixtures', 'links_layer5_premises.shp')))
     links.extend(read_shapefile(os.path.join(rootdir, 'fixed_network', 'fixtures', 'links_layer4_distributions.shp')))
-    links.extend(read_shapefile(os.path.join(rootdir, 'fixed_network', 'fixtures', 'links_layer3_cabinets.shp')))    
+    links.extend(read_shapefile(os.path.join(rootdir, 'fixed_network', 'fixtures', 'links_layer3_cabinets.shp')))
     return links
 
 @pytest.fixture
@@ -35,24 +35,29 @@ def parameters():
         'costs_assets_exchange_fttp': 50000,
         'costs_assets_exchange_gfast': 40000,
         'costs_assets_exchange_fttc': 30000,
+        'costs_assets_exchange_fttdp': 25000,
         'costs_assets_exchange_adsl': 20000,
         'costs_assets_cabinet_fttp_32_ports': 10,
         'costs_assets_cabinet_gfast': 4000,
         'costs_assets_cabinet_fttc': 3000,
+        'costs_assets_cabinet_fttdp': 2500,
         'costs_assets_cabinet_adsl': 2000,
         'costs_assets_distribution_fttp_32_ports': 10,
         'costs_assets_distribution_gfast_4_ports': 1500,
         'costs_assets_distribution_fttc': 300,
+        'costs_assets_distribution_fttdp_8_ports': 250,
         'costs_assets_distribution_adsl': 200,
         'costs_assets_premise_fttp_modem': 20,
         'costs_assets_premise_fttp_optical_network_terminator': 10,
         'costs_assets_premise_gfast_modem': 20,
         'costs_assets_premise_fttc_modem': 15,
+        'costs_assets_premise_fttdp_modem': 12,
         'costs_assets_premise_adsl_modem': 10,
         'benefits_assets_premise_fttp': 50,
         'benefits_assets_premise_gfast': 40,
         'benefits_assets_premise_fttc': 30,
-        'benefits_assets_premise_adsl': 20
+        'benefits_assets_premise_adsl': 20,
+        'planning_administration_cost': 10,
     }
 
 @pytest.fixture
