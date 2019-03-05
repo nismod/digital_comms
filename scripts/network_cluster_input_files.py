@@ -7,6 +7,7 @@ import fiona
 import numpy as np
 import random
 import glob
+import sys
 
 from shapely.geometry import shape, Point, LineString, Polygon, MultiPolygon, mapping
 from shapely.ops import unary_union, cascaded_union
@@ -30,6 +31,8 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 DATA_RAW_DATA = os.path.join(BASE_PATH, 'raw', 'a_fixed_model')
 DATA_RAW_SHAPES = os.path.join(BASE_PATH, 'raw', 'd_shapes')
 DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
+
+print('running network_cluster_input_files.py')
 
 #####################################
 # READ LOOK UP TABLE (LUT) DATA
@@ -218,21 +221,20 @@ def read_exchanges():
         next(reader)
     
         for line in reader:
-            if line[3] != 'Scotland':
-                exchanges.append({
-                    'type': "Feature",
-                    'geometry': {
-                        "type": "Point",
-                        "coordinates": [float(line[5]), float(line[6])]
-                    },
-                    'properties': {
-                        'id': 'exchange_' + line[1],
-                        'Name': line[2],
-                        'pcd': line[0],
-                        'Region': line[3],
-                        'County': line[4]
-                    }
-                })
+            exchanges.append({
+                'type': "Feature",
+                'geometry': {
+                    "type": "Point",
+                    "coordinates": [float(line[5]), float(line[6])]
+                },
+                'properties': {
+                    'id': 'exchange_' + line[1],
+                    'Name': line[2],
+                    'pcd': line[0],
+                    'Region': line[3],
+                    'County': line[4]
+                }
+            })
 
     return exchanges
 
@@ -331,20 +333,6 @@ def generate_exchange_area(exchanges, merge=True):
     for exchange, area in exchanges_by_group.items():
         print(exchange[0])
 
-    #print('generate_exchange_area - Generate multipolygons')
-    #exchange_areas = []
-    # for exchange in exchanges:
-    #     exchange_shape = exchanges_by_group[exchange['properties']['EX_ID']]
-    #     exchange_multipolygon = MultiPolygon(exchange_shape)     
-    #     exchange_areas.append({
-    #             'type': "Feature",
-    #             'geometry': mapping(exchange_multipolygon),
-    #             'properties': {
-    #                 'id': exchange['properties']['EX_ID'],
-    #                 'region': exchange['properties']['EX_REGION']
-    #             }
-    #         })
-    
     # Write Multipolygons per exchange
     print('generate_exchange_area - Generate multipolygons')
     exchange_areas = []
@@ -359,21 +347,6 @@ def generate_exchange_area(exchanges, merge=True):
             }
         })
 
-    # # Write Multipolygons per exchange
-    # print('generate_exchange_area - Generate multipolygons')
-    # exchange_areas = []
-    # for exchange in exchanges:
-    #     #exchange_multipolygon = MultiPolygon(area)
-    #     exchange_areas.append({
-    #         'type': "Feature",
-    #         'geometry': exchange['geometry'],
-    #         'properties': {
-    #             'id': exchange['properties']['EX_ID'],
-    #             'region': exchange['properties']['EX_REGION']
-    #         }
-    #     })
-
-    #print(exchange_areas)
     if merge:
         print('generate_exchange_area - Merge multipolygons into singlepolygons')
         # Merge MultiPolygons into single Polygon
@@ -470,11 +443,12 @@ def return_file_count(exchange_id):
 
     return len(files)
 
-#####################################
-# APPLY METHODS
+####################################
 #####################################
 
 if __name__ == "__main__":
+
+    selection = []
 
     SYSTEM_INPUT = os.path.join('data', 'digital_comms', 'raw')
 
@@ -505,9 +479,344 @@ if __name__ == "__main__":
         print('write exchange_areas')
         write_shapefile(geojson_exchange_areas, 'exchange_areas', '_exchange_areas.shp')
 
-    exchange_areas = read_exchange_area()
-    #print(exchange_areas)
-    #[print(exchange['properties']) for exchange in exchange_areas] 
-    #[print(exchange['properties']['id']) for exchange in exchange_areas if return_file_count(exchange['properties']['id']) < 11 and (exchange['properties']['region']) is not 'Scotland'] 
-    [print(exchange['properties']['id']) for exchange in exchange_areas if return_file_count(exchange['properties']['id']) < 11] 
+    
+    if len(sys.argv) < 2 or sys.argv[1] == 'national':
 
+        exchange_areas = read_exchange_area()
+        selection = [(exchange['properties']['id']) for exchange in exchange_areas if return_file_count(exchange['properties']['id']) < 11] 
+
+    elif sys.argv[1] == 'geotype_selection':
+        selection = [
+            'exchange_WEWPRI', # Primrose Hill (Inner London)
+            'exchange_MYCHA', # Chapeltown (Major City)
+            'exchange_STBNMTH', # Bournemouth (Minor City)
+            'exchange_EACAM', # Cambridge (>20,000)
+            'exchange_NEILB', # Ingleby Barwick(>10,000)
+            'exchange_STWINCH', #Winchester (>3,000)
+            'exchange_WWTORQ', #Torquay (>,1000)
+            'exchange_EACOM', #Comberton (<1000)
+        ]
+
+    elif sys.argv[1] == 'sample':
+        selection = [
+            'exchange_LNSTF',
+            'exchange_LNCNW',
+            'exchange_LSPUT',
+            'exchange_LVNOR',
+            'exchange_LVCEN',
+            'exchange_SSWES',
+            'exchange_LCSSH',
+            'exchange_LCPRE',
+            'exchange_NDHOO',
+            'exchange_MYWAK',
+            'exchange_SLBCC',
+            'exchange_LNBKG',
+            'exchange_ESLVB',
+            'exchange_LCSTA',
+            'exchange_SWQJA',
+            'exchange_WNOC',
+            'exchange_EAWTB',
+            'exchange_EMHURLE',
+            'exchange_SMSC',
+            'exchange_SMWHY',
+            'exchange_ESDUS',
+            'exchange_NSASR',
+            'exchange_NSHEL',
+            'exchange_ESPRM',
+        ]
+
+    elif sys.argv[1] == 'cambridge':
+        selection = [
+            'exchange_EAARR',
+            'exchange_EABTM',
+            'exchange_EABWL',
+            'exchange_EACAM',
+            'exchange_EACFH',
+            'exchange_EACOM',
+            'exchange_EACRH',
+            'exchange_EACTM',
+            'exchange_EAESW',
+            'exchange_EAFUL',
+            'exchange_EAGIR',
+            'exchange_EAHIS',
+            'exchange_EAHST',
+            'exchange_EALNT',
+            'exchange_EAMAD',
+            'exchange_EAMBN',
+            'exchange_EASCI',
+            'exchange_EASIX',
+            'exchange_EASST',
+            'exchange_EASWV',
+            'exchange_EATEV',
+            'exchange_EATRU',
+            'exchange_EAWLM',
+            'exchange_EAWTB'
+        ]
+
+    elif sys.argv[1] == 'oxford':
+        selection = [
+            'exchange_SMSLK',
+            'exchange_SMSNF',
+            'exchange_SMFRD',
+            'exchange_SMEY',
+            'exchange_SMWC',
+            'exchange_SMTAK',
+            'exchange_SMCNR',
+            'exchange_SMKI',
+            'exchange_SMBZ',
+            'exchange_SMCO',
+            'exchange_SMOF',
+            'exchange_SMAI',
+            'exchange_SMWHY',
+            'exchange_SMLW',
+            'exchange_SMFH',
+            'exchange_SMMCM',
+            'exchange_SMSNC',
+            'exchange_SMHD',
+            'exchange_SMWLY',
+            'exchange_SMICK',
+            'exchange_SMSM',
+            'exchange_SMSTJ',
+            'exchange_SMBRL',
+            'exchange_SMCHO',
+            'exchange_SMBTN',
+            'exchange_SMMSY',
+            'exchange_SMBI',
+            'exchange_SMWRB',
+            'exchange_SMCTN',
+            'exchange_SMSDM',
+            'exchange_SMNHM',
+            'exchange_SMGMT',
+            'exchange_SMGN',
+        ]
+
+    elif sys.argv[1] == 'leeds':
+        selection = [
+            'exchange_MYTAD',
+            'exchange_MYBOS',
+            'exchange_MYDHS',
+            'exchange_MYWEN',
+            'exchange_MYLS',
+            'exchange_MYLOF',
+            'exchange_MYPON',
+            'exchange_MYCHA',
+            'exchange_MYSEA',
+            'exchange_MYMOO',
+            'exchange_MYHRW',
+            'exchange_MYSPO',
+            'exchange_MYOAT',
+            'exchange_MYWEH',
+            'exchange_MYWEH',
+            'exchange_MYKKB',
+            'exchange_MYSLA',
+            'exchange_MYHON',
+            'exchange_MYBRE',
+            'exchange_MYFLO',
+            'exchange_MYMIL',
+            'exchange_MYHUD',
+            'exchange_MYMIR',
+            'exchange_MYELL',
+            'exchange_MYHEC',
+            'exchange_MYBRG',
+            'exchange_MYSOW',
+            'exchange_MYCLE',
+            'exchange_MYHOB',
+            'exchange_MYHAL',
+            'exchange_MYBAT',
+            'exchange_MYMOR',
+            'exchange_MYHIP',
+            'exchange_MYACO',
+            'exchange_MYLOW',
+            'exchange_MYILL',
+            'exchange_MYTOC',
+            'exchange_MYDUD',
+            'exchange_MYDLT',
+            'exchange_MYQUE',
+            'exchange_MYRUF',
+            'exchange_MYBD',
+            'exchange_MYARM',
+            'exchange_MYARM',
+            'exchange_MYHBK',
+            'exchange_MYTHT',
+            'exchange_MYDEW',
+            'exchange_SLADK',
+            'exchange_MYSEM',
+            'exchange_SLDR',
+            'exchange_SLRY',
+            'exchange_MYHMW',
+            'exchange_SLASK',
+            'exchange_MYWAK',
+            'exchange_MYPUD',
+            'exchange_MYSAN',
+            'exchange_MYLAI',
+            'exchange_MYMAN',
+            'exchange_MYCUL',
+            'exchange_MYNMN',
+            'exchange_MYWBG',
+            'exchange_MYCRF',
+            'exchange_MYUND',
+            'exchange_MYKNO',
+            'exchange_MYHEA',
+            'exchange_MYCAS',
+            'exchange_MYBIN',
+            'exchange_MYROT',
+            'exchange_MYHSF',
+            'exchange_MYSHI',
+            'exchange_MYGAT',
+            'exchange_MYIDL',
+            'exchange_MYHLT',
+            'exchange_MYRWD',
+            'exchange_MYHLT',
+            'exchange_MYADE',
+            'exchange_MYGRF',
+            'exchange_MYKEI',
+            'exchange_MYSML',
+            'exchange_MYGUI',
+            'exchange_MYHHL',
+            'exchange_MYART',
+            'exchange_MYCSG',
+            'exchange_MYART',
+            'exchange_MYSEL',
+            'exchange_MYBKA',
+            'exchange_MYCAW',
+            'exchange_MYSTE',
+            'exchange_MYBKE',
+            'exchange_MYBRW',
+            'exchange_MYOTL',
+            'exchange_MYTHR',
+            'exchange_MYILK',
+            'exchange_MYAPP',
+            'exchange_MYHUB',
+            'exchange_MYCOL',
+            'exchange_MYADD',
+        ]
+
+    elif sys.argv[1] == 'newcastle':
+        selection = [
+            'exchange_NENTE',
+            'exchange_NENT',
+            'exchange_NEW',
+            'exchange_NESS',
+            'exchange_NEDB',
+            'exchange_NEL',
+            'exchange_NEJ',
+            'exchange_NEGF',
+            'exchange_NENS',
+            'exchange_NEK',
+            'exchange_NEB',
+            'exchange_NEP',
+            'exchange_NEWHP',
+            'exchange_NEKI',
+            'exchange_NEWB',
+            'exchange_NEDUDL',
+            'exchange_NESVL',
+            'exchange_NEFN',
+            'exchange_NESTN',
+            'exchange_NEBEA',
+            'exchange_NEEHN',
+            'exchange_NEDP',
+            'exchange_NEBR',
+            'exchange_NEWAS',
+            'exchange_NEHYL',
+            'exchange_NESU',
+            'exchange_NEBUR',
+            'exchange_NERG',
+            'exchange_NELF',
+            'exchange_NEWK',
+            'exchange_NESUN',
+            'exchange_NECM',
+            'exchange_NEBO',
+            'exchange_NESGT',
+            'exchange_NEF',
+            'exchange_NEWN',
+            'exchange_NED',
+            'exchange_NED',
+            'exchange_NEBL',
+            'exchange_NEJW',
+            'exchange_NERT',
+            'exchange_NERT',
+            'exchange_NEGHD',
+            'exchange_NEWYL',
+            'exchange_NEWYL',
+            'exchange_NENTW',
+        ]
+        
+    elif sys.argv[1] == 'cambridgeshire':
+       selection = [
+           'exchange_EAARR',
+           'exchange_EABTM',
+           'exchange_EABWL',
+           'exchange_EACAM',
+           'exchange_EACAX',
+           'exchange_EACFH',
+           'exchange_EACHY',
+           'exchange_EACOM',
+           'exchange_EACRH',
+           'exchange_EACTM',
+           'exchange_EACTP',
+           'exchange_EAELY',
+           'exchange_EAESW',
+           'exchange_EAFDM',
+           'exchange_EAFOW',
+           'exchange_EAFUL',
+           'exchange_EAGIR',
+           'exchange_EAHDM',
+           'exchange_EAHIS',
+           'exchange_EAHST',
+           'exchange_EAKEN',
+           'exchange_EALNT',
+           'exchange_EALPT',
+           'exchange_EAMBN',
+           'exchange_EAPRI',
+           'exchange_EAPYM',
+           'exchange_EASCI',
+           'exchange_EASIX',
+           'exchange_EASMD',
+           'exchange_EASOH',
+           'exchange_EASRM',
+           'exchange_EASST',
+           'exchange_EASTW',
+           'exchange_EASUT',
+           'exchange_EASWV',
+           'exchange_EATEV',
+           'exchange_EATRU',
+           'exchange_EAWLM',
+           'exchange_EAWTB',
+           'exchange_EAWWR',
+           'exchange_EMABRIP',
+           'exchange_EMBENWI',
+           'exchange_EMBUCKD',
+           'exchange_EMBYTHO',
+           'exchange_EMCHATT',
+           'exchange_EMCHRIS',
+           'exchange_EMCROXT',
+           'exchange_EMDODDI',
+           'exchange_EMELTON',
+           'exchange_EMFRIDA',
+           'exchange_EMGUYHI',
+           'exchange_EMHNDON',
+           'exchange_EMKMBLT',
+           'exchange_EMMAARC',
+           'exchange_EMMANEA',
+           'exchange_EMMERES',
+           'exchange_EMNWTON',
+           'exchange_EMPADVE',
+           'exchange_EMPAPSA',
+           'exchange_EMRMSEY',
+           'exchange_EMSAWTR',
+           'exchange_EMSOSHM',
+           'exchange_EMSTIVE',
+           'exchange_EMSTNEO',
+           'exchange_EMTRVES',
+           'exchange_EMWARBY',
+           'exchange_EMWHITT',
+           'exchange_EMWINWI',
+           'exchange_EMWISSM',
+           'exchange_EMWOLEY',
+           'exchange_EMWSBCH',
+           'exchange_EMYXLEY',
+           'exchange_SMGA',
+           'exchange_SMGG',
+        ]
+
+    print(*selection, sep='\n')

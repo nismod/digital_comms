@@ -39,24 +39,29 @@ END_YEAR = 2021
 TIMESTEP_INCREMENT = 1
 TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
 
-def read_shapefile(file):
-    with fiona.open(file, 'r') as source:
-        return [f['properties'] for f in source]
+def read_csv(file):
+    results = []
+    with open(file, 'r') as system_file:
+        reader = csv.DictReader(system_file)
+        for line in reader:
+            results.append(dict(line))
+    
+    return results
 
 def read_assets():
     assets = {}
-    assets['premises'] = read_shapefile(os.path.join(DATA_PROCESSED_INPUTS, 'assets_layer5_premises.shp'))
-    assets['distributions'] = read_shapefile(os.path.join(DATA_PROCESSED_INPUTS, 'assets_layer4_distributions.shp'))
-    assets['cabinets'] = read_shapefile(os.path.join(DATA_PROCESSED_INPUTS, 'assets_layer3_cabinets.shp'))
-    assets['exchanges'] = read_shapefile(os.path.join(DATA_PROCESSED_INPUTS, 'assets_layer2_exchanges.shp'))
+    assets['premises'] = read_csv(os.path.join('data','digital_comms','processed', 'assets_layer5_premises.csv'))
+    assets['distributions'] = read_csv(os.path.join('data','digital_comms','processed', 'assets_layer4_distributions.csv'))
+    assets['cabinets'] = read_csv(os.path.join('data','digital_comms','processed', 'assets_layer3_cabinets.csv'))
+    assets['exchanges'] = read_csv(os.path.join('data','digital_comms', 'processed', 'assets_layer2_exchanges.csv'))
 
     return assets
     
 def read_links():
     links = []
-    links.extend(read_shapefile(os.path.join(DATA_PROCESSED_INPUTS, 'links_layer5_premises.shp')))
-    links.extend(read_shapefile(os.path.join(DATA_PROCESSED_INPUTS, 'links_layer4_distributions.shp')))
-    links.extend(read_shapefile(os.path.join(DATA_PROCESSED_INPUTS, 'links_layer3_cabinets.shp')))
+    links.extend(read_csv(os.path.join('data','digital_comms','processed','links_layer5_premises.csv')))
+    links.extend(read_csv(os.path.join('data','digital_comms','processed','links_layer4_distributions.csv')))
+    links.extend(read_csv(os.path.join('data','digital_comms','processed','links_layer3_cabinets.csv')))
 
     return links
 
@@ -245,7 +250,7 @@ if __name__ == "__main__": # allow the module to be executed directly
         assets = read_assets()
         links = read_links()
         parameters = read_parameters()
-
+        
         #get strategy policy string combination
         strategy_policy = strategy_tech + "_" + strategy_policy
 
@@ -261,11 +266,11 @@ if __name__ == "__main__": # allow the module to be executed directly
             #get the adoption rate for each time period (by scenario and technology)
             annual_adoption_rate = adoption_data[scenario][strategy_tech][year]
             logging.info("Annual scenario adoption rate is {}".format(annual_adoption_rate))
-
+            
             #get adoption desirability from previous timestep
             adoption_desirability = [premise for premise in system._premises if premise.adoption_desirability is True]
             total_premises = [premise for premise in system._premises]
-
+            
             #get adoption desirability percentage increase for this timestep
             adoption_desirability_percentage = (len(adoption_desirability) / len(total_premises) * 100)
             percentage_annual_increase = annual_adoption_rate - adoption_desirability_percentage
@@ -274,16 +279,16 @@ if __name__ == "__main__": # allow the module to be executed directly
             #update the number of premises wanting to adopt (adoption_desirability)
             system.update_adoption_desirability = update_adoption_desirability(system, percentage_annual_increase)
             premises_adoption_desirability_ids = system.update_adoption_desirability
-
+            
             #get total adoption desirability for this time step (has to be done after system.update_adoption_desirability)
             adoption_desirability_now = [premise for premise in system._premises if premise.adoption_desirability is True]
-            total_adoption_desirability_percentage = (len(adoption_desirability_now) / len(total_premises) * 100)
+            total_adoption_desirability_percentage = round((len(adoption_desirability_now) / len(total_premises) * 100),2)
             logging.info("Annual adoption desirability rate is {}%".format(round(total_adoption_desirability_percentage, 2)))
-
+            
             #calculate the maximum adoption level based on the scenario, to make sure the model doesn't overestimate
             MAXIMUM_ADOPTION = len(premises_adoption_desirability_ids) + sum(getattr(premise, strategy_tech) for premise in system._premises)
             logging.info("Maximum annual adoption rate is {}%".format(round(total_adoption_desirability_percentage, 2)))
-            
+
             #actually decide which interventions to build
             interventions, budget, spend, match_funding_spend, subsidised_spend = decide_interventions(
                 strategy_policy, budget, SERVICE_OBLIGATION_CAPACITY,  
