@@ -405,9 +405,8 @@ def merge_prems_and_housholds(premises_data, household_data):
 
     return result
 
-###########################################################################################################
+if __name__ == "__main__":
 
- # ####
     # # Integrate WTP and WTA household data into premises
     # print('Loading MSOA data')
     # MSOA_data = read_msoa_data(lad_ids)
