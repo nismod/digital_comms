@@ -4,7 +4,7 @@ virtualenv:
   system_site_packages: true
 env:
   matrix:
-  - DISTRIB="conda" PYTHON_VERSION="3.5" COVERAGE="true"
+  - DISTRIB="conda" COVERAGE="true"
 install:
 - source tests/travis_install.sh
 before_script:
