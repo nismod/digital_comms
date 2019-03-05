@@ -122,13 +122,6 @@ def read_parameters():
                     params['profit_margin'] = param['default_value']
     return params
 
-def _get_suffix(intervention_strategy):
-    suffix = '{}_strategy'.format(
-        intervention_strategy)
-    # for length, use 'base' for baseline scenarios
-    suffix = suffix.replace('baseline', 'base')
-    return suffix
-
 ################################################################
 # LOAD SCENARIO DATA
 ################################################################
@@ -176,7 +169,7 @@ def load_in_scenarios_and_strategies():
                 strategy_tech = narratives['technology_strategy'][0].split('_', 1)[0]
                 strategy_technologies.append(strategy_tech)                
                 scenario_data = data['scenarios']
-                scenarios.append(scenario_data['adoption'].split('_', 2)[1])
+                scenarios.append(scenario_data['adoption'].split('_', 2)[0])
                 strategy_policy = narratives['technology_strategy'][0].split('_', 1)[1]
                 strategy_policies.append(strategy_policy)
 
@@ -192,26 +185,22 @@ adoption_data = {}
 
 for scenario in scenarios:
     adoption_data[scenario] = {}
-    for strategy in strategy_technologies: 
-        adoption_data[scenario][strategy] = {}
-        #path = os.path.join(SCENARIO_DATA, '{}_{}_adoption.csv'.format(strategy, scenario))
-        path = os.path.join(SCENARIO_DATA, 'fttp_baseline_adoption_test.csv'.format(strategy, scenario))
-        with open(path, 'r') as scenario_file:
-            scenario_reader = csv.reader(scenario_file)
-            next(scenario_reader, None)
-            # Put the values in the dict
-            for year, region, interval, value in scenario_reader:
-                year = int(year)
-                if year in TIMESTEPS:
-                    adoption_data[scenario][strategy][year] = float(value)
+    path = os.path.join(SCENARIO_DATA, '{}_adoption.csv'.format(scenario))
+    with open(path, 'r') as scenario_file:
+        scenario_reader = csv.reader(scenario_file)
+        next(scenario_reader, None)
+        # Put the values in the dict
+        for year, region, interval, value in scenario_reader:
+            year = int(year)
+            if year in TIMESTEPS:
+                adoption_data[scenario][year] = float(value)
 
 ################################################################
 # WRITE RESULTS DATA
 ################################################################
 
-def write_decisions(decisions, year, intervention_strategy):
-    suffix = _get_suffix(intervention_strategy)
-    decisions_filename = os.path.join(RESULTS_DIRECTORY,  'decisions_{}.csv'.format(suffix))
+def write_decisions(decisions, year, strategy_technology, strategy_policy):
+    decisions_filename = os.path.join(RESULTS_DIRECTORY,  'decisions_{}_{}.csv'.format(strategy_technology, strategy_policy))
 
     if year == BASE_YEAR:
         decisions_file = open(decisions_filename, 'w', newline='')
@@ -243,6 +232,10 @@ if __name__ == "__main__": # allow the module to be executed directly
 
     for scenario, strategy_tech, strategy_policy in itertools.product(scenarios, strategy_technologies, strategy_policies):
 
+        # scenarios = low, baseline, high
+        # strategy_tech = fttdp, fttp, fwa
+        # strategy_policies = free_market, subsidy_s1, subsidy_s2  
+
         logging.info("--")
         logging.info("Running: {}, {}, {}".format(scenario, strategy_tech, strategy_policy))
         logging.info("--")
@@ -251,8 +244,8 @@ if __name__ == "__main__": # allow the module to be executed directly
         links = read_links()
         parameters = read_parameters()
         
-        #get strategy policy string combination
-        strategy_policy = strategy_tech + "_" + strategy_policy
+        # #get strategy policy string combination
+        # strategy_tech, strategy_policy = strategy_tech + "_" + strategy_tech, strategy_policy
 
         for year in TIMESTEPS:
             logging.info("-{}".format(year))
@@ -264,7 +257,7 @@ if __name__ == "__main__": # allow the module to be executed directly
                 system = ICTManager(assets, links, parameters)
 
             #get the adoption rate for each time period (by scenario and technology)
-            annual_adoption_rate = adoption_data[scenario][strategy_tech][year]
+            annual_adoption_rate = adoption_data[scenario][year]
             logging.info("Annual scenario adoption rate is {}".format(annual_adoption_rate))
             
             #get adoption desirability from previous timestep
@@ -291,18 +284,18 @@ if __name__ == "__main__": # allow the module to be executed directly
 
             #actually decide which interventions to build
             interventions, budget, spend, match_funding_spend, subsidised_spend = decide_interventions(
-                strategy_policy, budget, SERVICE_OBLIGATION_CAPACITY,  
+                strategy_tech, strategy_policy, budget, SERVICE_OBLIGATION_CAPACITY,  
                 system, year, MAXIMUM_ADOPTION, TELCO_MATCH_FUNDING, SUBSIDY)
-            
+
             #give the interventions to the system model
             system.upgrade(interventions)
             
             #write out the decisions
-            write_decisions(interventions, year, strategy_tech)
+            write_decisions(interventions, year, strategy_tech, strategy_policy)
 
-            #write_spend(strategy_tech, interventions, spend, year)
+            # write_spend(interventions, year, strategy_tech, strategy_policy, spend)
 
-            #write_pcd_results(system, year, pop_scenario, throughput_scenario,strategy_tech, cost_by_pcd)
+            # write_pcd_results(system, year, pop_scenario, throughput_scenario, strategy_tech, strategy_policy, cost_by_pcd)
             
             logging.info("--")
 

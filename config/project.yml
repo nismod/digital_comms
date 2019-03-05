@@ -2,7 +2,7 @@ name: NISMOD v2.0.0
 # ------------------------------------------------
 scenario_sets:
 - name: adoption
-  description: Adoption curves for FTTP
+  description: Adoption curves 
   facets:
   - name: adoption
     description: ''
@@ -11,9 +11,6 @@ region_definitions:
 - description: Broadband network distributions (Fixed network)
   filename: ../digital_comms/processed/assets_layer4_distributions.shp
   name: broadband_distributions
-- description: Broadband network cabinets (Fixed network)
-  filename: ../digital_comms/processed/assets_layer3_cabinets.shp
-  name: broadband_cabinets
 - description: Boundary of Great Britain
   filename: national.shp
   name: national
@@ -30,57 +27,30 @@ interval_definitions:
 units: units.txt
 # ------------------------------------------------
 scenarios:
-- name: fttp_baseline_adoption
-  description: Baseline FTTP adoption for the UK
+- name: low_adoption
+  description: Low adoption 
   scenario_set: adoption
   facets:
-  - name: adoption
-    filename: fttp_baseline_adoption.csv
+  - name: low_adoption
+    filename: low_adoption.csv
     spatial_resolution: national
     temporal_resolution: annual
     units: meters
-- name: fttp_high_adoption
-  description: High FTTP adoption for the UK
+- name: baseline_adoption
+  description: Baseline adoption
   scenario_set: adoption
   facets:
-  - name: adoption
-    filename: fttp_high_adoption.csv
+  - name: baseline_adoption
+    filename: baseline_adoption.csv
     spatial_resolution: national
     temporal_resolution: annual
     units: meters
-- name: fttp_low_adoption
-  description: Low FTTP adoption for the UK
+- name: high_adoption
+  description: High adoption
   scenario_set: adoption
   facets:
-  - name: adoption
-    filename: fttp_low_adoption.csv
-    spatial_resolution: national
-    temporal_resolution: annual
-    units: meters
-- name: fttdp_baseline_adoption
-  description: Baseline FTTDP adoption for the UK
-  scenario_set: adoption
-  facets:
-  - name: adoption
-    filename: fttdp_baseline_adoption.csv
-    spatial_resolution: national
-    temporal_resolution: annual
-    units: meters
-- name: fttdp_high_adoption
-  description: High FTTDP adoption for the UK
-  scenario_set: adoption
-  facets:
-  - name: adoption
-    filename: fttdp_high_adoption.csv
-    spatial_resolution: national
-    temporal_resolution: annual
-    units: meters
-- name: fttdp_low_adoption
-  description: Low FTTDP adoption for the UK
-  scenario_set: adoption
-  facets:
-  - name: adoption
-    filename: fttdp_low_adoption.csv
+  - name: high_adoption
+    filename: high_adoption.csv
     spatial_resolution: national
     temporal_resolution: annual
     units: meters
@@ -88,19 +58,27 @@ narrative_sets:
 - description: Picks a technology to roll out
   name: technology
 narratives:
-- name: fttp_rollout_per_distribution
+- name: fttp_s1_market_based_roll_out
   description: ''
-  filename: fttp_rollout_per_distribution.yml
+  filename: fttp_s1.yml
   narrative_set: technology_strategy
-- name: fttp_subsidised_rollout_per_distribution
+- name: fttp_s2_rural_based_subsidy
   description: ''
-  filename: fttp_subsidised_rollout_per_distribution.yml
+  filename: fttp_s2.yml
   narrative_set: technology_strategy
-- name: fttdp_rollout_per_distribution
+- name: fttp_s3_outside_in_subsidy
   description: ''
-  filename: fttdp_rollout_per_distribution.yml
+  filename: fttp_s3.yml
   narrative_set: technology_strategy
-- name: fttdp_subsidised_rollout_per_distribution
+- name: fttdp_s1_market_based_roll_out
   description: ''
-  filename: fttdp_subsidised_rollout_per_distribution.yml
+  filename: fttp_s1.yml
+  narrative_set: technology_strategy
+- name: fttdp_s2_rural_based_subsidy
+  description: ''
+  filename: fttp_s2.yml
+  narrative_set: technology_strategy
+- name: fttdp_s3_outside_in_subsidy
+  description: ''
+  filename: fttp_s3.yml
   narrative_set: technology_strategy
