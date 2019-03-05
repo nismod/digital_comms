@@ -1,24 +1,25 @@
+
 decision_module: ''
 description: ''
-name: digital_comms_l_fttp_s
+name: digital_comms_base_fttp_s2
 narratives:
   technology_strategy:
-  - fttp_subsidised_rollout_per_distribution
+  - fttp_s2_rural_based_subsidy
 scenarios:
-  adoption: fttp_low_adoption
+  adoption: baseline_adoption
 sos_model: digital_comms_only
 stamp: '2018-05-01T12:36:34.374Z'
 strategies: []
 timesteps:
 - 2019
 - 2020
-- 2021
-- 2022
-- 2023
-- 2024
-- 2025
-- 2026
-- 2027
-- 2028
-- 2029
-- 2030
+# - 2021
+# - 2022
+# - 2023
+# - 2024
+# - 2025
+# - 2026
+# - 2027
+# - 2028
+# - 2029
+# - 2030

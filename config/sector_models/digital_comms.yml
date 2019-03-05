@@ -38,7 +38,7 @@ outputs:
 - name: premises_by_distribution
   spatial_resolution: broadband_distributions
   temporal_resolution: annual
-  units: premises 
+  units: premises
 - name: premises_adoption_desirability
   spatial_resolution: national
   temporal_resolution: annual
@@ -54,7 +54,7 @@ outputs:
 - name: percentage_of_premises_passed_with_fttp
   spatial_resolution: national
   temporal_resolution: annual
-  units: premises 
+  units: premises
 - name: premises_connected_with_fttp
   spatial_resolution: national
   temporal_resolution: annual
@@ -62,7 +62,7 @@ outputs:
 - name: percentage_of_premises_connected_with_fttp
   spatial_resolution: national
   temporal_resolution: annual
-  units: premises 
+  units: premises
 - name: premises_passed_with_fttdp
   spatial_resolution: national
   temporal_resolution: annual
@@ -70,7 +70,7 @@ outputs:
 - name: percentage_of_premises_passed_with_fttdp
   spatial_resolution: national
   temporal_resolution: annual
-  units: premises 
+  units: premises
 - name: premises_connected_with_fttdp
   spatial_resolution: national
   temporal_resolution: annual
@@ -78,7 +78,7 @@ outputs:
 - name: percentage_of_premises_connected_with_fttdp
   spatial_resolution: national
   temporal_resolution: annual
-  units: premises   
+  units: premises
 - name: percentage_of_premises_with_fttc
   spatial_resolution: national
   temporal_resolution: annual
@@ -108,8 +108,8 @@ parameters:
   units: 'text'
 - absolute_range: (0, 1000)
   default_value: 10
-  description: The cost of installing a fiber link
-  name: costs_links_fiber_meter
+  description: The cost of installing a fibre link
+  name: costs_links_fibre_meter
   suggested_range: (0, 100)
   units: GBP
 - absolute_range: (0, 1000)

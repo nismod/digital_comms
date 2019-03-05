@@ -9,8 +9,12 @@ from math import ceil
 # MODEL
 #####################
 
-class ICTManager(object):
-    """Model controller class."""
+class NetworkManger(object):
+    """Model controller class.
+
+    TODO: Complete documentation
+
+    """
 
     def __init__(self, assets, links, parameters):
         self._links = {
@@ -83,15 +87,15 @@ class ICTManager(object):
 
     def upgrade(self, interventions):
 
-        for asset_id, action, costs in interventions:
+        for asset_id, technology, policy, delivery_type, cost in interventions:
 
             if asset_id.startswith('distribution'):
                 distribution = [distribution for distribution in self._distributions if distribution.id == asset_id][0]
-                distribution.upgrade(action)
+                distribution.upgrade(technology)
 
             if asset_id.startswith('cabinet'):
                 cabinet = [cabinet for cabinet in self._cabinets if cabinet.id == asset_id][0]
-                cabinet.upgrade(action)
+                cabinet.upgrade(technology)
 
     def update_adoption_desirability(self, adoption_desirability):
 
@@ -255,7 +259,11 @@ class ICTManager(object):
         return list(self._premises_by_lad.keys())
 
 class Exchange(object):
-    """Exchanges"""
+    """Exchanges
+
+    TODO: Complete documentation
+
+    """
 
     def __init__(self, data, clients, parameters):
         self.id = data["id"]
@@ -303,7 +311,11 @@ class Exchange(object):
 
 
 class Cabinet(object):
-    """Cabinets"""
+    """Cabinets
+
+    TODO: Complete documentation
+
+    """
     def __repr__(self):
         return "<Cabinet id:{}>".format(self.id)
 
@@ -332,17 +344,17 @@ class Cabinet(object):
             (self.parameters['costs_assets_upgrade_cabinet_fttp'] * ceil(len(self._clients) / 32)
              if self.fttp == 0 else 0)
             +
-            (self.link.upgrade_costs['fiber'] if self.link != None else 0)
+            (self.link.upgrade_costs['fibre'] if self.link != None else 0)
         )
         self.upgrade_costs['fttdp'] = (
             (self.parameters['costs_assets_cabinet_fttdp'] if self.fttdp == 0 else 0)
             +
-            (self.link.upgrade_costs['fiber'] if self.link != None else 0)
+            (self.link.upgrade_costs['fibre'] if self.link != None else 0)
         )
         self.upgrade_costs['fttc'] = (
             (self.parameters['costs_assets_cabinet_fttc'] if self.fttc == 0 else 0)
             +
-            (self.link.upgrade_costs['fiber'] if self.link != None else 0)
+            (self.link.upgrade_costs['fibre'] if self.link != None else 0)
         )
         self.upgrade_costs['adsl'] = (
             (self.parameters['costs_assets_cabinet_adsl'] if self.adsl == 0 else 0)
@@ -376,14 +388,14 @@ class Cabinet(object):
         if action == 'rollout_fttp':
             self.fttp = 1
             if self.link != None:
-                self.link.upgrade('fiber')
+                self.link.upgrade('fibre')
             for client in self._clients:
                 client.upgrade(action)
 
         if action == 'rollout_fttdp':
             self.fttp = 1
             if self.link != None:
-                self.link.upgrade('fiber')
+                self.link.upgrade('fibre')
             for client in self._clients:
                 client.upgrade(action)
 
@@ -391,7 +403,11 @@ class Cabinet(object):
 
 
 class Distribution(object):
-    """Distribution"""
+    """Distribution
+
+    TODO: Complete documentation
+
+    """
 
     def __init__(self, data, clients, link, parameters):
 
@@ -418,13 +434,13 @@ class Distribution(object):
             (self.parameters['costs_assets_premise_fttp_optical_connection_point'] * ceil(len(self._clients) / 32)
              if self.fttp == 0 else 0)
             +
-            (self.link.upgrade_costs['fiber'] if self.link != None else 0)
+            (self.link.upgrade_costs['fibre'] if self.link != None else 0)
         )
         self.upgrade_costs['fttdp'] = (
             (self.parameters['costs_assets_distribution_fttdp_8_ports'] * ceil(len(self._clients) / 8)
              if self.fttdp == 0 else 0)
             +
-            (self.link.upgrade_costs['fiber'] if self.link != None else 0)
+            (self.link.upgrade_costs['fibre'] if self.link != None else 0)
         )
         self.upgrade_costs['fttc'] = (
             (self.parameters['costs_assets_distribution_fttc'] if self.fttc == 0 else 0)
@@ -463,26 +479,30 @@ class Distribution(object):
 
     def upgrade(self, action):
 
-        if action in ('rollout_fttp', 'subsidised_fttp'):
-            action = 'rollout_fttp'
+        if action in ('fttp', 'fttp'):
+            action = 'fttp'
             self.fttp = 1
             if self.link != None:
-                self.link.upgrade('fiber')
+                self.link.upgrade('fibre')
             for client in self._clients:
                 client.upgrade(action)
 
-        if action in ('rollout_fttdp', 'subsidised_fttdp'):
-            action = 'rollout_fttdp'
+        if action in ('fttdp', 'fttdp'):
+            action = 'fttdp'
             self.fttdp = 1
             if self.link != None:
-                self.link.upgrade('fiber')
+                self.link.upgrade('fibre')
             for client in self._clients:
                 client.upgrade(action)
 
         self.compute()
 
 class Premise(object):
-    """Premise"""
+    """Premise
+
+    TODO: Complete documentation
+
+    """
 
     def __init__(self, data, link, parameters):
 
@@ -490,12 +510,12 @@ class Premise(object):
         self.id = data['id']
         self.connection = data['connection']
         self.fttp = 0 #data['FTTP']
-        self.fttdp = 0 #data['FTTdp'] # FTTdp indicator is incorrect. Probably counting DOCSIS. Using FTTP for now. 
+        self.fttdp = 0 #data['FTTdp'] # FTTdp indicator is incorrect. Probably counting DOCSIS. Using FTTP for now.
         self.fttc = data['FTTC']
         self.adsl = data['ADSL']
         self.lad = data['lad']
         self.wta = data['wta']
-        self.wtp = data['wtp'] 
+        self.wtp = data['wtp']
         self.adoption_desirability = False
 
         self.parameters = parameters
@@ -512,7 +532,7 @@ class Premise(object):
               (self.parameters['costs_assets_premise_fttp_modem'] if self.fttp == 0 else 0)
             + (self.parameters['costs_assets_premise_fttp_optical_network_terminator'] if self.fttp == 0 else 0)
             + (self.parameters['planning_administration_cost'] if self.fttp == 0 else 0)
-            + self.link.upgrade_costs['fiber']
+            + self.link.upgrade_costs['fibre']
         )
         self.upgrade_costs['fttdp'] = (
               (self.parameters['costs_assets_premise_fttdp_modem'] if self.fttdp == 0 else 0)
@@ -533,8 +553,8 @@ class Premise(object):
         self.rollout_costs['fttc'] = self.upgrade_costs['fttc']
         self.rollout_costs['adsl'] = self.upgrade_costs['adsl']
 
-        # Rollout benefits 
-        self.rollout_benefits = {} 
+        # Rollout benefits
+        self.rollout_benefits = {}
         self.rollout_benefits['fttp'] = (int(self.wtp) * self.parameters['months_per_year'] * self.parameters['payback_period'] * ((100-self.parameters['profit_margin'])/100)) if self.adoption_desirability else 0
         self.rollout_benefits['fttdp'] = (int(self.wtp) * self.parameters['months_per_year'] * self.parameters['payback_period'] * ((100-self.parameters['profit_margin'])/100)) if self.adoption_desirability else 0
         self.rollout_benefits['fttc'] = (int(self.wtp) * self.parameters['months_per_year'] * self.parameters['payback_period'] * ((100-self.parameters['profit_margin'])/100)) if self.adoption_desirability else 0
@@ -574,7 +594,7 @@ class Premise(object):
         if action in ('rollout_fttp', 'subsidised_fttp'):
             action = 'rollout_fttp'
             self.fttp = 1
-            self.link.upgrade('fiber')
+            self.link.upgrade('fibre')
         if action in ('rollout_fttdp', 'subsidised_fttdp'):
             action = 'rollout_fttdp'
             self.fttdp = 1
@@ -586,7 +606,11 @@ class Premise(object):
         self.adoption_desirability = True
 
 class Link(object):
-    """Links"""
+    """Links
+
+    TODO: Complete documentation
+
+    """
 
     def __init__(self, data, parameters):
         self.origin = data["origin"]
@@ -601,15 +625,15 @@ class Link(object):
 
         # Upgrade costs
         self.upgrade_costs = {}
-        self.upgrade_costs['fiber'] = self.parameters['costs_links_fiber_meter'] * float(self.length) if self.technology != 'fiber' else 0
+        self.upgrade_costs['fibre'] = self.parameters['costs_links_fibre_meter'] * float(self.length) if self.technology != 'fibre' else 0
         self.upgrade_costs['copper'] = self.parameters['costs_links_copper_meter'] * float(self.length) if self.technology != 'copper' else 0
 
     def __repr__(self):
         return "<Link origin:{} dest:{} length:{}>".format(self.origin, self.dest, self.length)
 
     def upgrade(self, technology):
-        if technology == 'fiber':
-            self.technology = 'fiber'
+        if technology == 'fibre':
+            self.technology = 'fibre'
 
         self.compute()
 
@@ -618,109 +642,3 @@ def _calculate_benefit_cost_ratio(benefits, costs):
         return benefits / costs
     except ZeroDivisionError:
         return 0
-
-
-if __name__ == '__main__':
-    
-    ASSETS = {
-        'premises':[{
-            'id': 'osgb5000005186077869', 
-            'lad': '1.84163492526694', 
-            'wta': '0.7322', 
-            'wtp': '20', 
-            'postcode': 'VCB00078', 
-            'CAB_ID': '{EACAM}{P100}', 
-            'connection': 'distribution_{EACAM}{795}', 
-            'FTTP': '0',
-            'GFast': '0', 
-            'FTTC': '0', 
-            'DOCSIS3': '0', 
-            'ADSL': '1',
-        }],
-        'distributions':[{
-            'id': 'distribution_{EACAM}{795}', 
-            'connection': 'cabinet_{EACAM}{P100}', 
-            'FTTP': '0', 
-            'GFast': '0', 
-            'FTTC': '0', 
-            'DOCSIS3': '0', 
-            'ADSL': '1', 
-            'name': 'distribution_{EACAM}{795}',
-        }],
-        'cabinets':[{
-            'id': 'cabinet_{EACAM}{P100}', 
-            'connection': 'exchange_EACAM', 
-            'FTTP': '0', 
-            'GFast': '0', 
-            'FTTC': '0', 
-            'DOCSIS3': '0', 
-            'ADSL': '1', 
-            'name': 'cabinet_{EACAM}{P100}',
-        }],
-        'exchanges':[{
-            'id': 'exchange_EACAM', 
-            'Name': 'Cambridge', 
-            'pcd': 'CB23ET', 
-            'Region': 'East', 
-            'County': 'Cambridgeshire', 
-            'FTTP': '0', 
-            'GFast': '0', 
-            'FTTC': '0', 
-            'DOCSIS3': '0', 
-            'ADSL': '1',
-        }]
-    }
-
-    LINKS = [
-        {
-        'origin': 'osgb5000005186077869', 
-        'dest': 'distribution_{EACAM}{795}', 
-        'length': '20', 
-        'technology': 'copper'
-        },
-        {
-        'origin': 'distribution_{EACAM}{795}', 
-        'dest': 'cabinet_{EACAM}{P100}', 
-        'length': '94', 
-        'technology': 'copper'
-        },
-        {
-        'origin': 'cabinet_{EACAM}{P100}', 
-        'dest': 'exchange_EACAM', 
-        'length': '1297', 
-        'technology': 'fiber'
-        },
-    ]
-
-    PARAMETERS = {
-        'costs_links_fiber_meter': 5,
-        'costs_links_copper_meter': 3,
-        'costs_assets_exchange_fttp': 50000,
-        'costs_assets_exchange_gfast': 40000,
-        'costs_assets_exchange_fttc': 30000,
-        'costs_assets_exchange_adsl': 20000,
-        'costs_assets_cabinet_fttp_32_ports': 10,
-        'costs_assets_cabinet_gfast': 4000,
-        'costs_assets_cabinet_fttc': 3000,
-        'costs_assets_cabinet_adsl': 2000,
-        'costs_assets_distribution_fttp_32_ports': 10,
-        'costs_assets_distribution_gfast_4_ports': 1500,
-        'costs_assets_distribution_fttc': 300,
-        'costs_assets_distribution_adsl': 200,
-        'costs_assets_premise_fttp_modem': 20,
-        'costs_assets_premise_fttp_optical_network_terminator': 10,
-        'costs_assets_premise_gfast_modem': 20,
-        'costs_assets_premise_fttc_modem': 15,
-        'costs_assets_premise_adsl_modem': 10,
-        'benefits_assets_premise_fttp': 50,
-        'benefits_assets_premise_gfast': 40,
-        'benefits_assets_premise_fttc': 30,
-        'benefits_assets_premise_adsl': 20,
-        'planning_administration_cost': 200,
-        'costs_assets_premise_fttdp_modem': 37,
-    }
-
-    system = ICTManager(ASSETS, LINKS, PARAMETERS)
-
-    #pprint([prem for prem in system._premises])
-

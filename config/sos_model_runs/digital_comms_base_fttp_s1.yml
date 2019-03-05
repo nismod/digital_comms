@@ -1,11 +1,12 @@
+
 decision_module: ''
 description: ''
-name: digital_comms_test
+name: digital_comms_base_fttp_s1
 narratives:
   technology_strategy:
-  - fttp_rollout_per_distribution
+  - fttp_s1_market_based_roll_out
 scenarios:
-  adoption: fttp_baseline_adoption
+  adoption: baseline_adoption
 sos_model: digital_comms_only
 stamp: '2018-05-01T12:36:34.374Z'
 strategies: []
