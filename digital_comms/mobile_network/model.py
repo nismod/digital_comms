@@ -12,7 +12,7 @@ class ICTManager(object):
     """Model controller class.
 
     Represents local area districts and postcode sectors with their assets, capacities and clutters.
-    
+
     Parameters
     ----------
     lads: :obj:`list` of :obj:`dict`
@@ -115,17 +115,20 @@ class ICTManager(object):
             lad_containing_pcd_sector = self.lads[lad_id]
             lad_containing_pcd_sector.add_pcd_sector(pcd_sector)
 
+    def results(self):
+        raise NotImplementedError("Mobile ICTManager results method not yet implemented")
+
 class LAD(object):
-    """Local area district. 
-    
-    Represents an area to be modelled, contains data for demand 
+    """Local area district.
+
+    Represents an area to be modelled, contains data for demand
     characterisation and assets for supply assessment.
 
     Arguments
     ---------
     data: dict
         Metadata and info for the LAD
-        
+
         * id: :obj:`int`
             Unique ID
         * name: :obj:`str`
@@ -227,7 +230,7 @@ class LAD(object):
 
         Returns
         -------
-        obj 
+        obj
             Demand of the local area district
 
         Notes
@@ -462,7 +465,7 @@ def lookup_clutter_geotype(clutter_lookup, population_density):
             Geotype ('Urban', ..)
 
     population_density: int
-        The population density in persons per square kilometer, that needs to be 
+        The population density in persons per square kilometer, that needs to be
         looked up in the clutter lookup table
 
     Returns
@@ -575,7 +578,7 @@ def interpolate(x0, y0, x1, y1, x):
 
     Parameters
     ----------
-    x0: int 
+    x0: int
         Lower x-value
     y0: int
         Lower y-value

@@ -3,7 +3,6 @@ fiona>=1.7
 matplotlib
 networkx>=2.1
 geopandas
-libspatialindex
 Rtree>=0.8.3
 pyproj
 pysftp

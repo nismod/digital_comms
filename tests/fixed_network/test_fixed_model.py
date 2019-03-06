@@ -10,8 +10,7 @@ def test_init(setup_fixed_network, assets, links):
     assert len(assets['cabinets']) == len(setup_fixed_network.assets['cabinets'])
     assert len(assets['exchanges']) == len(setup_fixed_network.assets['exchanges'])
 
-
-if __name__ == '__main__':
+    if __name__ == '__main__':
 
     ASSETS = {
         'premises':[{
@@ -84,7 +83,7 @@ if __name__ == '__main__':
     ]
 
     PARAMETERS = {
-        'costs_links_fiber_meter': 5,
+        'costs_links_fibre_meter': 5,
         'costs_links_copper_meter': 3,
         'costs_assets_exchange_fttp': 50000,
         'costs_assets_exchange_gfast': 40000,
@@ -111,6 +110,6 @@ if __name__ == '__main__':
         'costs_assets_premise_fttdp_modem': 37,
     }
 
-    system = NetworkManger(ASSETS, LINKS, PARAMETERS)
-
-    #pprint([prem for prem in system._premises])
+    system = NetworkManager(ASSETS, LINKS, PARAMETERS)
+=======
+        

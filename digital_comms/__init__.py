@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""Cambridge Communications Assessment Model
+"""
 from __future__ import division, print_function, absolute_import
 
 import pkg_resources
