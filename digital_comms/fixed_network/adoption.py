@@ -1,10 +1,10 @@
 
 """Decide who adopts
 """
+from logging import getLogger
 
-################################################################
-# Decide who adopts
-################################################################
+
+LOGGER = getLogger(__name__)
 
 def update_adoption_desirability(system, annual_adoption_rate):
     """
@@ -32,7 +32,8 @@ def update_adoption_desirability(system, annual_adoption_rate):
         if premise.adoption_desirability is True
     ]
     #rank premises based on household wta
-    premises_not_wanting_to_adopt = sorted(premises_not_wanting_to_adopt, key=lambda item: item.wta)
+    premises_not_wanting_to_adopt = sorted(
+        premises_not_wanting_to_adopt, key=lambda item: item.wta)
 
     #get number of premises to select = convert adopt rate into raw premises
     to_adopt = (len(system._premises) * annual_adoption_rate) / 100
@@ -40,9 +41,10 @@ def update_adoption_desirability(system, annual_adoption_rate):
     #select number of premises ready to adopt
     new_premises_wanting_to_adopt = premises_not_wanting_to_adopt[1:int(to_adopt)]
 
-    # logger.info("-- premises not wanting to connect {}".format(len(premises_not_wanting_to_adopt)))
-    # logger.info("-- premises wanting to connect {}".format(len(new_premises_wanting_to_adopt)))
-    # logger.info("-- total premises {}".format((len(premises_already_wanting_to_adopt) + len(premises_not_wanting_to_adopt))))
+    LOGGER.debug("-- premises not wanting to connect %s", len(premises_not_wanting_to_adopt))
+    LOGGER.debug("-- premises wanting to connect %s", len(new_premises_wanting_to_adopt))
+    LOGGER.debug("-- total premises %s",
+                 len(premises_already_wanting_to_adopt) + len(premises_not_wanting_to_adopt))
 
     premises_adoption = []
 

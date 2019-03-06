@@ -81,6 +81,11 @@ To lint for consistent type usage, install `mypy` and run:
     pip install mypy
     mpyp digital_comms
 
+To lint for general python style, install `pylint` and run:
+
+    pip install pylint
+    pylint digital_comms
+
 
 Background and funding
 ==========================
