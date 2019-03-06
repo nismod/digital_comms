@@ -15,30 +15,34 @@ The **Cambridge Communications Assessment Model** is a decision support tool to 
 Oughton, E.J. and Frias, Z. (2017) The Cost, Coverage and Rollout Implications of 5G Infrastructure
 in Britain. Telecommunications Policy. https://doi.org/10.1016/j.telpol.2017.07.009.
 
-Oughton, E.J., Z. Frias, T. Russell, D. Sicker, and D.D. Cleevely. 2018. Towards 5G: Scenario-Based Assessment of the Future Supply and Demand for Mobile Telecommunications Infrastructure. Technological Forecasting and Social Change, 133 (August): 141–55. https://doi.org/10.1016/j.techfore.2018.03.016.
+Oughton, E.J., Z. Frias, T. Russell, D. Sicker, and D.D. Cleevely. 2018. Towards 5G: Scenario-Based
+Assessment of the Future Supply and Demand for Mobile Telecommunications Infrastructure. Technological
+Forecasting and Social Change, 133 (August): 141–55. https://doi.org/10.1016/j.techfore.2018.03.016.
 
-Oughton, E.J., Frias, Z., van der Gaast, S. and van der Berg, R. (2019) Assessing the Capacity, Coverage and Cost of 5G Infrastructure Strategies: Analysis of The Netherlands. Telematics and Informatics (January). https://doi.org/10.1016/j.tele.2019.01.003.
+Oughton, E.J., Frias, Z., van der Gaast, S. and van der Berg, R. (2019) Assessing the Capacity,
+Coverage and Cost of 5G Infrastructure Strategies: Analysis of The Netherlands. Telematics and
+Informatics (January). https://doi.org/10.1016/j.tele.2019.01.003.
 ```
 
 Setup and configuration
 =======================
 
 All code for **The Cambridge Communications Assessment Model** is written in
-Python (Python>=3.6) and has a number of dependencies.
-See requirements.txt for a full list.
+Python (Python>=3.5) and has a number of dependencies.
+See `requirements.txt` for a full list.
 
 Using conda
 -----------
 
-The recommended installation method is to use `conda<http://www.conda.pydata.org/miniconda.html>`_,
-which handles packages and virtual environments, along with the conda-forge channel which has
-a host of pre-built libraries and packages.
+The recommended installation method is to use `conda
+<http://conda.pydata.org/miniconda.html>`_, which handles packages and virtual environments,
+along with the `conda-forge` channel which has a host of pre-built libraries and packages.
 
 Create a conda environment, using 'digital_comms' as a short reference for digital communications:
 
     conda create --name digital_comms python=3.6
 
-Activate it:
+Activate it (run each time you switch projects)::
 
     activate digital_comms
 
@@ -48,7 +52,7 @@ Run this command once per machine:
 
     python setup.py develop
 
-Windows users may need to additionally install Shapely as follows:
+Windows users may need to additionally install `Shapely` as follows:
 
     conda install shapely
 
@@ -60,7 +64,7 @@ To build the documentation:
 
     python setup.py docs
 
-Users may need to additionally install Sphinx as follows:
+Users may need to additionally install `Sphinx` as follows:
 
     conda install sphinx
 
