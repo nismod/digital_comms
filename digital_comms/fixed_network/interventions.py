@@ -77,9 +77,9 @@ def meet_most_beneficial_demand(system, timestep, technology, policy, annual_bud
 
     """
     return _suggest_interventions(
-        annual_budget, technology, policy, system, timestep, adoption_cap, telco_match_funding, subsidy)
+        system, timestep, technology, policy, annual_budget, adoption_cap, subsidy, telco_match_funding)
 
-def _suggest_interventions(system, timestep, technology, policy, annual_budget, adoption_cap, subsidy, telco_match_funding, threshold=None):
+def _suggest_interventions(system, timestep, technology, policy, annual_budget, adoption_cap, subsidy, telco_match_funding):
     """Given strategy parameters and a system, suggest the best potential interventions.
 
     Parameters
@@ -141,9 +141,9 @@ def _suggest_interventions(system, timestep, technology, policy, annual_budget, 
                 break
 
         if policy == 's2_rural_based_subsidy':
-            reverse_value = True
-        elif policy == 's3_outside_in_subsidy':
             reverse_value = False
+        elif policy == 's3_outside_in_subsidy':
+            reverse_value = True
         else:
             print('policy not recognised')
 

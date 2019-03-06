@@ -174,17 +174,17 @@ logging.info('Loading scenario data')
 
 def load_in_yml_parameters():
     """Load in digital_comms sector model .yml parameter data from digital_comms/config/sector_models.
-    This relates to ANNUAL_BUDGET, TELCO_MATCH_FUNDING, SUBSIDY and any SERVICE_OBLIGATION_CAPACITY
+    This relates to annual_budget, telco_match_funding, subsidy and any service_obligation_capacity
 
     Returns
     -------
-    ANNUAL_BUDGET : int
+    annual_budget : int
         Returns the annual budget capable of spending.
-    TELCO_MATCH_FUNDING : int
+    telco_match_funding : int
         Returns the annual budget capable of being match funded.
-    SUBSIDY : int
+    subsidy : int
         Returns the annual subsidy amount.
-    SERVICE_OBLIGATION_CAPACITY : int
+    service_obligation_capacity : int
         Returns the annual universal service obligation.
 
     """
@@ -194,21 +194,21 @@ def load_in_yml_parameters():
             parameters = data['parameters']
             for param in parameters:
                 if param['name'] == 'annual_budget':
-                    ANNUAL_BUDGET = param['default_value']
-                    logging.info("annual_budget is {}".format(ANNUAL_BUDGET))
-                if param['name'] == 'telco_match_funding':
-                    TELCO_MATCH_FUNDING = param['default_value']
-                    logging.info("telco match funding is {}".format(TELCO_MATCH_FUNDING))
+                    annual_budget = param['default_value']
+                    logging.info("annual_budget is {}".format(annual_budget))
                 if param['name'] == 'subsidy':
-                    SUBSIDY = param['default_value']
-                    logging.info("government subsidy is {}".format(SUBSIDY))
+                    subsidy = param['default_value']
+                    logging.info("government subsidy is {}".format(subsidy))
+                if param['name'] == 'telco_match_funding':
+                    telco_match_funding = param['default_value']
+                    logging.info("telco match funding is {}".format(telco_match_funding))
                 if param['name'] == 'service_obligation_capacity':
-                    SERVICE_OBLIGATION_CAPACITY = param['default_value']
-                    logging.info("USO is {}".format(SERVICE_OBLIGATION_CAPACITY))
+                    service_obligation_capacity = param['default_value']
+                    logging.info("USO is {}".format(service_obligation_capacity))
 
-    return ANNUAL_BUDGET, TELCO_MATCH_FUNDING, SUBSIDY, SERVICE_OBLIGATION_CAPACITY
+    return annual_budget, telco_match_funding, subsidy, service_obligation_capacity
 
-ANNUAL_BUDGET, TELCO_MATCH_FUNDING, SUBSIDY, SERVICE_OBLIGATION_CAPACITY = load_in_yml_parameters()
+annual_budget, subsidy, telco_match_funding, service_obligation_capacity = load_in_yml_parameters()
 
 def load_in_scenarios_and_strategies():
     """Load in each model run .yaml file from digital_comms/config/sos_model_runs,
@@ -337,7 +337,7 @@ if __name__ == "__main__": # allow the module to be executed directly
         for year in TIMESTEPS:
             logging.info("-{}".format(year))
 
-            budget = ANNUAL_BUDGET
+            budget = annual_budget
 
             # Simulate first year
             if year == BASE_YEAR:
@@ -366,13 +366,13 @@ if __name__ == "__main__": # allow the module to be executed directly
             #logging.info("Annual adoption desirability rate is {}%".format(round(total_adoption_desirability_percentage, 2)))
 
             #calculate the maximum adoption level based on the scenario, to make sure the model doesn't overestimate
-            MAXIMUM_ADOPTION = len(premises_adoption_desirability_ids) + sum(getattr(premise, technology) for premise in system._premises)
+            adoption_cap = len(premises_adoption_desirability_ids) + sum(getattr(premise, technology) for premise in system._premises)
             #logging.info("Maximum annual adoption rate is {}%".format(round(total_adoption_desirability_percentage, 2)))
 
             #actually decide which interventions to build
             built_interventions = decide_interventions(
-                                            system, year, technology, policy, budget, MAXIMUM_ADOPTION,
-                                            SUBSIDY, TELCO_MATCH_FUNDING,  SERVICE_OBLIGATION_CAPACITY)
+                                            system, year, technology, policy, budget, adoption_cap,
+                                            subsidy, telco_match_funding, service_obligation_capacity)
 
             #give the interventions to the system model
             system.upgrade(built_interventions)
