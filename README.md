@@ -13,15 +13,15 @@ The **Cambridge Communications Assessment Model** is a decision support tool to 
 ## Citations:
 ```
 Oughton, E.J. and Frias, Z. (2017) The Cost, Coverage and Rollout Implications of 5G Infrastructure
-in Britain. *Telecommunications Policy*. https://doi.org/10.1016/j.telpol.2017.07.009.
+in Britain. Telecommunications Policy. https://doi.org/10.1016/j.telpol.2017.07.009.
 
 Oughton, E.J., Z. Frias, T. Russell, D. Sicker, and D.D. Cleevely. 2018. Towards 5G: Scenario-Based
-Assessment of the Future Supply and Demand for Mobile Telecommunications Infrastructure. *Technological
-Forecasting and Social Change*, 133 (August): 141–55. https://doi.org/10.1016/j.techfore.2018.03.016.
+Assessment of the Future Supply and Demand for Mobile Telecommunications Infrastructure. Technological
+Forecasting and Social Change, 133 (August): 141–55. https://doi.org/10.1016/j.techfore.2018.03.016.
 
 Oughton, E.J., Frias, Z., van der Gaast, S. and van der Berg, R. (2019) Assessing the Capacity,
-Coverage and Cost of 5G Infrastructure Strategies: Analysis of The Netherlands. *Telematics and
-Informatics* (January). https://doi.org/10.1016/j.tele.2019.01.003.
+Coverage and Cost of 5G Infrastructure Strategies: Analysis of The Netherlands. Telematics and
+Informatics (January). https://doi.org/10.1016/j.tele.2019.01.003.
 ```
 
 Setup and configuration
