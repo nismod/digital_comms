@@ -59,7 +59,6 @@ def decide_interventions(system, timestep, technology, policy, annual_budget, ad
     Returns
     -------
     built_interventions : list of tuples
-<<<<<<< HEAD
         Contains the upgraded asset id with technology, policy, deployment type and affliated costs.
 
     """
@@ -105,10 +104,6 @@ def _suggest_interventions(system, timestep, technology, policy, annual_budget, 
     -------
     built_interventions : list of tuples
         Contains the upgraded asset id with technology, policy, deployment type and affliated costs.
-=======
-        Contains the upgraded asset id with technology, policy, deployment type and affliated
-        costs.
->>>>>>> c5226bdf82aac44e58192d3da4eeedf8ede8ca94
 
     TODO: revise subsidy code to be targetted at specific geotypes (e.g. rural).
 
