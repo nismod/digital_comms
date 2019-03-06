@@ -4,7 +4,7 @@ from pytest import fixture
 import fiona
 import os
 
-from digital_comms.fixed_network.model import ICTManager
+from digital_comms.fixed_network.model import NetworkManager
 
 def read_shapefile(file):
     with fiona.open(file, 'r') as source:
@@ -30,7 +30,7 @@ def links(rootdir):
 @pytest.fixture
 def parameters():
     return {
-        'costs_links_fiber_meter': 5,
+        'costs_links_fibre_meter': 5,
         'costs_links_copper_meter': 3,
         'costs_assets_exchange_fttp': 50000,
         'costs_assets_exchange_gfast': 40000,
@@ -62,4 +62,4 @@ def parameters():
 
 @pytest.fixture
 def setup_fixed_network(assets, links, parameters):
-    return ICTManager(assets, links, parameters)
+    return NetworkManager(assets, links, parameters)
