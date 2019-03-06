@@ -290,9 +290,31 @@ class NetworkManger(object):
         return list(self._premises_by_lad.keys())
 
 class Exchange(object):
-    """Exchanges
+    """Exchange object
 
-    TODO: Complete documentation
+    Parameters
+    ----------
+    data : dict
+        Contains asset data including, id, name, postcode, region, county and available technologies.
+    clients : list_of_objects
+        Contains all assets (Cabinets) served by an Exchange.
+    parameters : dict
+        Contains all parameters from 'digital_comms.yml'.
+
+    Attributes
+    ----------
+    id
+    fttp
+    fttdp
+    fttc
+    adsl
+    parameters
+    compute()
+
+    Methods
+    -------
+    compute
+        Calculates upgrade costs and benefits.
 
     """
 
@@ -342,9 +364,35 @@ class Exchange(object):
 
 
 class Cabinet(object):
-    """Cabinets
+    """Cabinet object
 
-    TODO: Complete documentation
+    Parameters
+    ----------
+    data : dict
+        Contains asset data including, id, name, connection and available technologies.
+    clients : list_of_objects
+        Contains all assets served.
+    link : TODO
+        TODO
+    parameters : dict
+        Contains all parameters from 'digital_comms.yml'.
+
+    Attributes
+    ----------
+    id
+    connection
+    fttp
+    fttdp
+    fttc
+    adsl
+    parameters
+    link
+    compute()
+
+    Methods
+    -------
+    compute
+        Calculates upgrade costs and benefits.
 
     """
     def __repr__(self):
@@ -434,9 +482,37 @@ class Cabinet(object):
 
 
 class Distribution(object):
-    """Distribution
+    """Distribution object
 
-    TODO: Complete documentation
+    Parameters
+    ----------
+    data : dict
+        Contains asset data including, id, name, connection and available technologies.
+    clients : list_of_objects
+        Contains all assets served.
+    link : TODO
+        TODO
+    parameters : dict
+        Contains all parameters from 'digital_comms.yml'.
+
+    Attributes
+    ----------
+    id
+    connection
+    fttp
+    fttdp
+    fttc
+    adsl
+    parameters
+    link
+    compute()
+
+    Methods
+    -------
+    compute
+        Calculates upgrade costs and benefits.
+    upgrade
+        Upgrades any links with new technology.
 
     """
 
@@ -529,9 +605,40 @@ class Distribution(object):
         self.compute()
 
 class Premise(object):
-    """Premise
+    """Premise object
 
-    TODO: Complete documentation
+    Parameters
+    ----------
+    data : dict
+        Contains asset data including, id, name, connection and available technologies.
+    link : TODO
+        TODO
+    parameters : dict
+        Contains all parameters from 'digital_comms.yml'.
+
+    Attributes
+    ----------
+    id
+    connection
+    fttp
+    fttdp
+    fttc
+    adsl
+    wta
+    wtp
+    adoption_desirability
+    parameters
+    link
+    compute()
+
+    Methods
+    -------
+    compute
+        Calculates upgrade costs and benefits.
+    upgrade
+        Upgrades any links with new technology.
+    update_desirability_to_adopt
+        Update premises desirability to adopt.
 
     """
 
@@ -637,9 +744,30 @@ class Premise(object):
         self.adoption_desirability = True
 
 class Link(object):
-    """Links
+    """Link object
 
-    TODO: Complete documentation
+    Parameters
+    ----------
+    data : list_of_dicts
+        TODO
+    parameters : dict
+        Contains all parameters from 'digital_comms.yml'.
+
+    Attributes
+    ----------
+    origin
+    dest
+    technology
+    length
+    parameters
+    compute()
+
+    Methods
+    -------
+    compute
+        Calculates upgrade costs and benefits.
+    upgrade
+        Upgrades any links with new technology.
 
     """
 

@@ -24,10 +24,10 @@ logging.basicConfig(filename='fixed_runner.py_logged_info', level=logging.INFO)
 # SETUP FILE LOCATIONS
 #####################################
 
-YAML_DIRECTORY = os.path.join(BASE_PATH, '..', '..','config')
-SCENARIO_DATA = os.path.join(BASE_PATH,'..', 'scenarios')
+YAML_DIRECTORY = os.path.join(BASE_PATH, '..', 'config')
+SCENARIO_DATA = os.path.join(BASE_PATH, 'scenarios')
 DATA_PROCESSED_INPUTS = os.path.join(BASE_PATH, 'processed')
-RESULTS_DIRECTORY = os.path.join(BASE_PATH, '..', '..','results')
+RESULTS_DIRECTORY = os.path.join(BASE_PATH, '..', 'results')
 
 #####################################
 # SETUP MODEL PARAMETERS
@@ -74,10 +74,10 @@ def read_assets():
 
     """
     assets = {}
-    assets['premises'] = read_csv(os.path.join('data','digital_comms','processed', 'assets_layer5_premises.csv'))
-    assets['distributions'] = read_csv(os.path.join('data','digital_comms','processed', 'assets_layer4_distributions.csv'))
-    assets['cabinets'] = read_csv(os.path.join('data','digital_comms','processed', 'assets_layer3_cabinets.csv'))
-    assets['exchanges'] = read_csv(os.path.join('data','digital_comms', 'processed', 'assets_layer2_exchanges.csv'))
+    assets['premises'] = read_csv(os.path.join('data','processed', 'assets_layer5_premises.csv'))
+    assets['distributions'] = read_csv(os.path.join('data','processed', 'assets_layer4_distributions.csv'))
+    assets['cabinets'] = read_csv(os.path.join('data','processed', 'assets_layer3_cabinets.csv'))
+    assets['exchanges'] = read_csv(os.path.join('data', 'processed', 'assets_layer2_exchanges.csv'))
 
     return assets
 
@@ -94,9 +94,9 @@ def read_links():
 
     """
     links = []
-    links.extend(read_csv(os.path.join('data','digital_comms','processed','links_layer5_premises.csv')))
-    links.extend(read_csv(os.path.join('data','digital_comms','processed','links_layer4_distributions.csv')))
-    links.extend(read_csv(os.path.join('data','digital_comms','processed','links_layer3_cabinets.csv')))
+    links.extend(read_csv(os.path.join('data','processed','links_layer5_premises.csv')))
+    links.extend(read_csv(os.path.join('data','processed','links_layer4_distributions.csv')))
+    links.extend(read_csv(os.path.join('data','processed','links_layer3_cabinets.csv')))
 
     return links
 
@@ -363,17 +363,17 @@ if __name__ == "__main__": # allow the module to be executed directly
             #get total adoption desirability for this time step (has to be done after system.update_adoption_desirability)
             adoption_desirability_now = [premise for premise in system._premises if premise.adoption_desirability is True]
             total_adoption_desirability_percentage = round((len(adoption_desirability_now) / len(total_premises) * 100),2)
-            logging.info("Annual adoption desirability rate is {}%".format(round(total_adoption_desirability_percentage, 2)))
+            #logging.info("Annual adoption desirability rate is {}%".format(round(total_adoption_desirability_percentage, 2)))
 
             #calculate the maximum adoption level based on the scenario, to make sure the model doesn't overestimate
             MAXIMUM_ADOPTION = len(premises_adoption_desirability_ids) + sum(getattr(premise, technology) for premise in system._premises)
-            logging.info("Maximum annual adoption rate is {}%".format(round(total_adoption_desirability_percentage, 2)))
+            #logging.info("Maximum annual adoption rate is {}%".format(round(total_adoption_desirability_percentage, 2)))
 
             #actually decide which interventions to build
             built_interventions = decide_interventions(
                                             system, year, technology, policy, budget, MAXIMUM_ADOPTION,
                                             SUBSIDY, TELCO_MATCH_FUNDING,  SERVICE_OBLIGATION_CAPACITY)
-            print(built_interventions)
+
             #give the interventions to the system model
             system.upgrade(built_interventions)
 
