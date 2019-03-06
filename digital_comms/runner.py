@@ -1,18 +1,20 @@
-print("Running fixed broadband runner.py")
-
-import fiona
-from operator import attrgetter
-import os
 import configparser
 import csv
-import yaml
 import glob
 import itertools
 import logging
+import os
+from operator import attrgetter
+
+import fiona  # type: ignore
+import yaml
 
 from digital_comms.fixed_network.model import NetworkManager
 from digital_comms.fixed_network.interventions import decide_interventions
 from digital_comms.fixed_network.adoption import update_adoption_desirability
+
+
+print("Running fixed broadband runner.py")
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), '..', 'scripts', 'script_config.ini'))
@@ -357,8 +359,8 @@ if __name__ == "__main__": # allow the module to be executed directly
             percentage_annual_increase = round(float(percentage_annual_increase), 1)
 
             #update the number of premises wanting to adopt (adoption_desirability)
-            system.update_adoption_desirability = update_adoption_desirability(system, percentage_annual_increase)
-            premises_adoption_desirability_ids = system.update_adoption_desirability
+            premises_adoption_desirability_ids = update_adoption_desirability(system, percentage_annual_increase)
+            system.update_adoption_desirability(premises_adoption_desirability_ids)
 
             #get total adoption desirability for this time step (has to be done after system.update_adoption_desirability)
             adoption_desirability_now = [premise for premise in system._premises if premise.adoption_desirability is True]

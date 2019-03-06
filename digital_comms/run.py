@@ -7,14 +7,14 @@ import os
 #from memory_profiler import profile
 #from pyinstrument import Profiler
 
-import fiona
-import numpy as np
+import fiona  # type: ignore
+import numpy as np  # type: ignore
 
-from digital_comms.fixed_network.model import ICTManager
+from digital_comms.fixed_network.model import NetworkManager
 from digital_comms.fixed_network.interventions import decide_interventions
 from digital_comms.fixed_network.adoption import update_adoption_desirability
 
-from smif.model.sector_model import SectorModel
+from smif.model.sector_model import SectorModel  # type: ignore
 
 # numpy options
 np.set_printoptions(threshold=np.nan)
@@ -96,7 +96,7 @@ class DigitalCommsWrapper(SectorModel):
         links.extend(read_shapefile(os.path.join(data_path, 'links_layer3_cabinets.shp')))
 
         self.logger.info("DigitalCommsWrapper - Intitialise system")
-        self.system = ICTManager(assets, links, parameters)
+        self.system = NetworkManager(assets, links, parameters)
 
         print('only distribution points with a benefit cost ratio > 1 can be upgraded')
         print('model rollout is constrained by the adoption desirability set by scenario')
@@ -135,7 +135,7 @@ class DigitalCommsWrapper(SectorModel):
         self.logger.info("DigitalCommsWrapper - Update adoption status on premises")
         self.system.update_adoption_desirability = update_adoption_desirability(self.system, percentage_annual_increase)
         premises_adoption_desirability_ids = self.system.update_adoption_desirability
-        
+
         MAXIMUM_ADOPTION = len(premises_adoption_desirability_ids) + sum(getattr(premise, TECH) for premise in self.system._premises)
         # print("// length of premises_adoption_desirability_ids is {}".format(len(premises_adoption_desirability_ids)+1))
         # print("// sum of premises by tech {}".format(sum(getattr(premise, TECH) for premise in self.system._premises)))
@@ -143,8 +143,8 @@ class DigitalCommsWrapper(SectorModel):
 
         self.logger.info("DigitalCommsWrapper - Decide interventions")
         interventions, budget, spend, match_funding_spend, subsidised_spend = decide_interventions(
-            STRATEGY, data_handle.get_parameter('annual_budget'), data_handle.get_parameter('service_obligation_capacity'), 
-            self.system, now, MAXIMUM_ADOPTION, data_handle.get_parameter('telco_match_funding'), 
+            STRATEGY, data_handle.get_parameter('annual_budget'), data_handle.get_parameter('service_obligation_capacity'),
+            self.system, now, MAXIMUM_ADOPTION, data_handle.get_parameter('telco_match_funding'),
             data_handle.get_parameter('subsidy'))
 
         self.logger.info("DigitalCommsWrapper - Upgrading system")
@@ -188,7 +188,7 @@ class DigitalCommsWrapper(SectorModel):
         #premises passed
         premises_passed = ('premises_passed_with_' + str(TECH))
         premises_passed = np.empty((1,1))
-        premises_passed[0, 0] = sum(getattr(premise, TECH) for premise in self.system._premises) 
+        premises_passed[0, 0] = sum(getattr(premise, TECH) for premise in self.system._premises)
         print("* {} premises passed {}".format(TECH, premises_passed))
         data_handle.set_results(('premises_passed_with_' + str(TECH)), premises_passed)
 
@@ -201,7 +201,7 @@ class DigitalCommsWrapper(SectorModel):
         #premises connected
         premises_connected = ('premises_connected_with_' + str(TECH))
         premises_connected = np.empty((1,1))
-        premises_connected[0, 0] = sum(getattr(premise, TECH) for premise in self.system._premises if premise.adoption_desirability == True) 
+        premises_connected[0, 0] = sum(getattr(premise, TECH) for premise in self.system._premises if premise.adoption_desirability == True)
         print("* {} premises connected {}".format(TECH, premises_connected))
         data_handle.set_results(('premises_connected_with_' + str(TECH)), premises_connected)
 
@@ -239,13 +239,13 @@ class DigitalCommsWrapper(SectorModel):
             config = configparser.ConfigParser()
             config.read(os.path.join(path_main, 'wrapperconfig.ini'))
             BASE_PATH = config['PATHS']['path_export_data']
-        
+
             def csv_writer(data, filename, fieldnames):
                 with open(os.path.join(BASE_PATH, filename),'w') as csv_file:
                     writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
                     writer.writeheader()
                     writer.writerows(data)
-        
+
             def write_out_upgrades(data):
                 export_data = []
                 for datum in data:
@@ -253,7 +253,7 @@ class DigitalCommsWrapper(SectorModel):
                         'id': datum.id,
                         'upgrade': datum.fttp,
                         'year': now
-                    })  
+                    })
                 return export_data
 
             #get exchanges
@@ -279,7 +279,7 @@ class DigitalCommsWrapper(SectorModel):
                     'adoption_desirability': premise.adoption_desirability,
                     'premises_passed': premise.fttp,
                     'year': now
-                })  
+                })
 
             #get exchange to cabinet links
             exchange_to_cabinet_links = [link for link in self.system._links_from_cabinets if link.dest == 'exchange_EACAM']
@@ -297,9 +297,9 @@ class DigitalCommsWrapper(SectorModel):
             premises_fieldnames = ['id','adoption_desirability','premises_passed','year']
 
             #write out
-            csv_writer(cabinet_export_data, ('cabinet_data{}.csv'.format(now)), generic_fieldnames)  
-            csv_writer(distribution_export_data, ('distribution_data{}.csv'.format(now)), generic_fieldnames)  
-            csv_writer(premises_export_data, ('premises_data{}.csv'.format(now)), premises_fieldnames)  
+            csv_writer(cabinet_export_data, ('cabinet_data{}.csv'.format(now)), generic_fieldnames)
+            csv_writer(distribution_export_data, ('distribution_data{}.csv'.format(now)), generic_fieldnames)
+            csv_writer(premises_export_data, ('premises_data{}.csv'.format(now)), premises_fieldnames)
 
         # ----
         # Exit

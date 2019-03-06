@@ -76,6 +76,12 @@ The run the tests:
 
     python setup.py test
 
+To lint for consistent type usage, install `mypy` and run:
+
+    pip install mypy
+    mpyp digital_comms
+
+
 Background and funding
 ==========================
 
