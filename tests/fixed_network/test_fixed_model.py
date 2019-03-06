@@ -10,8 +10,7 @@ def test_init(setup_fixed_network, assets, links):
     assert len(assets['cabinets']) == len(setup_fixed_network.assets['cabinets'])
     assert len(assets['exchanges']) == len(setup_fixed_network.assets['exchanges'])
 
-
-if __name__ == '__main__':
+    if __name__ == '__main__':
 
     ASSETS = {
         'premises':[{
@@ -112,3 +111,5 @@ if __name__ == '__main__':
     }
 
     system = NetworkManager(ASSETS, LINKS, PARAMETERS)
+=======
+        
