@@ -18,7 +18,7 @@ def get_distributions(system, technology, reverse_value):
     Parameters
     ----------
     system : object
-        This is an NetworkManger object containing the whole system.
+        This is an NetworkManager object containing the whole system.
     technology : string
         The current technology being deployed.
     reverse_value : string
@@ -39,7 +39,7 @@ def decide_interventions(system, timestep, technology, policy, annual_budget, ad
     Parameters
     ----------
     system : object
-        This is an NetworkManger object containing the whole system.
+        This is an NetworkManager object containing the whole system.
     timestep : int
         The current timestep.
     technology : string
@@ -85,7 +85,7 @@ def _suggest_interventions(system, timestep, technology, policy, annual_budget, 
     Parameters
     ----------
     system : object
-        This is an NetworkManger object containing the whole system.
+        This is an NetworkManager object containing the whole system.
     timestep : int
         The current timestep.
     technology : string

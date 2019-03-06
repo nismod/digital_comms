@@ -9,7 +9,7 @@ from math import ceil
 # MODEL
 #####################
 
-class NetworkManger(object):
+class NetworkManager(object):
     """Model controller class.
 
     Parameters

@@ -10,7 +10,7 @@ import glob
 import itertools
 import logging
 
-from digital_comms.fixed_network.model import NetworkManger
+from digital_comms.fixed_network.model import NetworkManager
 from digital_comms.fixed_network.interventions import decide_interventions
 from digital_comms.fixed_network.adoption import update_adoption_desirability
 
@@ -341,7 +341,7 @@ if __name__ == "__main__": # allow the module to be executed directly
 
             # Simulate first year
             if year == BASE_YEAR:
-                system = NetworkManger(assets, links, parameters)
+                system = NetworkManager(assets, links, parameters)
 
             #get the adoption rate for each time period (by scenario and technology)
             annual_adoption_rate = adoption_data[scenario][year]
