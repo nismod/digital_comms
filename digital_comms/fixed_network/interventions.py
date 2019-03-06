@@ -59,8 +59,51 @@ def decide_interventions(system, timestep, technology, policy, annual_budget, ad
     Returns
     -------
     built_interventions : list of tuples
-        Contains the upgraded asset id with technology, policy, deployment type and affliated
-        costs.
+        Contains the upgraded asset id with technology, policy, deployment type and affliated costs.
+
+    """
+    # Build to meet demand most beneficial demand
+    built_interventions = meet_most_beneficial_demand(system, timestep, technology, policy, annual_budget, adoption_cap,
+                                                        subsidy, telco_match_funding, service_obligation_capacity)
+
+    return built_interventions
+
+def meet_most_beneficial_demand(system, timestep, technology, policy, annual_budget, adoption_cap,
+                                subsidy, telco_match_funding, service_obligation_capacity):
+    """Given strategy parameters and a system, meet the most beneficial demand.
+
+    TODO: address service_obligation_capacity here.
+
+    """
+    return _suggest_interventions(
+        system, timestep, technology, policy, annual_budget, adoption_cap, subsidy, telco_match_funding)
+
+def _suggest_interventions(system, timestep, technology, policy, annual_budget, adoption_cap, subsidy, telco_match_funding):
+    """Given strategy parameters and a system, suggest the best potential interventions.
+
+    Parameters
+    ----------
+    system : object
+        This is an NetworkManger object containing the whole system.
+    timestep : int
+        The current timestep.
+    technology : string
+        The current technology being deployed.
+    policy : string
+        Policy used to determine how new technologies will be deployed.
+    annual_budget : int
+        The annual annual_budget capable of spending.
+    adoption_cap : int
+        Maximum annual adoption as exogenously specified by scenario.
+    subsidy : int
+        Annual subsidy amount.
+    telco_match_funding : int
+        Returns the annual budget capable of being match funded.
+
+    Returns
+    -------
+    built_interventions : list of tuples
+        Contains the upgraded asset id with technology, policy, deployment type and affliated costs.
 
     TODO: revise subsidy code to be targetted at specific geotypes (e.g. rural).
 
@@ -113,9 +156,9 @@ def decide_interventions(system, timestep, technology, policy, annual_budget, ad
                 break
 
         if policy == 's2_rural_based_subsidy':
-            reverse_value = True
-        elif policy == 's3_outside_in_subsidy':
             reverse_value = False
+        elif policy == 's3_outside_in_subsidy':
+            reverse_value = True
         else:
             print('policy not recognised')
 

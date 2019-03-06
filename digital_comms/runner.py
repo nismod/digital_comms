@@ -164,13 +164,13 @@ def load_in_yml_parameters():
 
     Returns
     -------
-    ANNUAL_BUDGET : int
+    annual_budget : int
         Returns the annual budget capable of spending.
-    TELCO_MATCH_FUNDING : int
+    telco_match_funding : int
         Returns the annual budget capable of being match funded.
-    SUBSIDY : int
+    subsidy : int
         Returns the annual subsidy amount.
-    SERVICE_OBLIGATION_CAPACITY : int
+    service_obligation_capacity : int
         Returns the annual universal service obligation.
 
     """
@@ -181,19 +181,20 @@ def load_in_yml_parameters():
             for param in parameters:
                 if param['name'] == 'annual_budget':
                     annual_budget = param['default_value']
-                    logging.info("annual_budget is %s", annual_budget)
-                if param['name'] == 'telco_match_funding':
-                    telco_match_funding = param['default_value']
-                    logging.info("telco match funding is %s", telco_match_funding)
+                    logging.info("annual_budget is {}".format(annual_budget))
                 if param['name'] == 'subsidy':
                     subsidy = param['default_value']
-                    logging.info("government subsidy is %s", subsidy)
+                    logging.info("government subsidy is {}".format(subsidy))
+                if param['name'] == 'telco_match_funding':
+                    telco_match_funding = param['default_value']
+                    logging.info("telco match funding is {}".format(telco_match_funding))
                 if param['name'] == 'service_obligation_capacity':
                     service_obligation_capacity = param['default_value']
-                    logging.info("USO is %s", service_obligation_capacity)
+                    logging.info("USO is {}".format(service_obligation_capacity))
 
     return annual_budget, telco_match_funding, subsidy, service_obligation_capacity
 
+annual_budget, subsidy, telco_match_funding, service_obligation_capacity = load_in_yml_parameters()
 
 def load_in_scenarios_and_strategies():
     """Load in each model run .yaml file from digital_comms/config/sos_model_runs,
@@ -330,7 +331,7 @@ def run():
         for year in TIMESTEPS:
             logging.info("-%s", year)
 
-            budget = ANNUAL_BUDGET
+            budget = annual_budget
 
             # Simulate first year
             if year == BASE_YEAR:
