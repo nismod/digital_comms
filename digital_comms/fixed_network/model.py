@@ -12,7 +12,38 @@ from math import ceil
 class NetworkManger(object):
     """Model controller class.
 
-    TODO: Complete documentation
+    Parameters
+    ----------
+    assets : dict
+        Contains keys for Premises, Distribution Points, Cabinets and Exchanges,
+        with each value constituting a list of respective assets.
+    links : list_of_dicts
+        Contains all links between Premises, Distribution Points, Cabinets and Exchanges.
+    parameters : dict
+        Contains all parameters from 'digital_comms.yml'.
+
+    Attributes
+    ----------
+    assets
+    links
+    number_of_assets
+    number_of_links
+    total_link_length
+    avg_link_length
+    lads
+
+    Methods
+    -------
+    upgrade
+        Takes intervention decisions and builds them.
+    update_adoption_desirability
+        Takes exogenously defined annual demand and updates premises adoption desirability.
+    coverage
+        Allocates premises-level technology technologies to a dict of coverage_results by Local Authority District.
+    aggregate_coverage
+        Calculates the sum and percentage coverage of premises-level technology by Local Authority District.
+    capacity
+        Calculates the average premises connection.
 
     """
 
