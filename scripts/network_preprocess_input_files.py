@@ -12,10 +12,10 @@ from shapely.ops import unary_union, cascaded_union
 from shapely.wkt import loads
 from shapely.prepared import prep
 from pyproj import Proj, transform
-from sklearn.cluster import KMeans #DBSCAN, 
+from sklearn.cluster import KMeans #DBSCAN,
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from rtree import index
-#from operator import itemgetter
+from operator import itemgetter
 
 from collections import OrderedDict, defaultdict, Counter
 
@@ -46,15 +46,11 @@ def read_exchange_area(exchange_name):
     exchange_area : iterable[dict]
     """
 
-    dirname = os.path.join(DATA_RAW_SHAPES, 'individual_exchange_areas')
-    pathlist = glob.iglob(dirname + '/*.shp', recursive=True)
-    filename = os.path.join(DATA_RAW_SHAPES, 'individual_exchange_areas', exchange_name + '.shp')
+    path = os.path.join(DATA_RAW_SHAPES, 'individual_exchange_areas', exchange_name + '.shp')
 
-    for path in pathlist:
-        if path == filename: 
-            with fiona.open(path, 'r') as source:
-                feature = next(source)
-    
+    with fiona.open(path, 'r') as source:
+        feature = next(source)
+
     return feature
 
 def get_area_ids(exchange_name, directory, prefix):
@@ -72,7 +68,7 @@ def get_area_ids(exchange_name, directory, prefix):
     filename = os.path.join(DATA_INTERMEDIATE, directory, prefix + exchange_name + '.csv')
 
     for path in pathlist:
-        if path == filename: 
+        if path == filename:
             with open(path, 'r') as system_file:
                 reader = csv.reader(system_file)
                 for line in reader:
@@ -95,7 +91,7 @@ def read_premises_data(exchange_area):
     def premises():
         i = 0
         for lad in lad_areas:
-            directory = os.path.join(DATA_BUILDING_DATA, 'prems_by_lad', lad)  
+            directory = os.path.join(DATA_BUILDING_DATA, 'prems_by_lad', lad)
             pathlist = glob.iglob(directory + '/*.csv', recursive=True)
             for path in pathlist:
                 if os.path.isfile(PATH):
@@ -126,7 +122,7 @@ def read_premises_data(exchange_area):
                                     }
                                     yield (i, geom_point.bounds, feature)
                                     i += 1
-    
+
     idx = index.Index(premises())
 
     output = []
@@ -137,7 +133,9 @@ def read_premises_data(exchange_area):
             #del n.object['representative_point']
             output.append(n.object)
 
-    return output 
+    check_data_length(output, 'read_premises_data')
+
+    return output
 
 def read_exchanges(exchange_area):
 
@@ -209,7 +207,7 @@ def read_exchanges(exchange_area):
 
 def read_pcd_to_exchange_lut(exchange_abbr):
     """
-    Loads a preprocessed list of all postcodes linked to this exchange. 
+    Loads a preprocessed list of all postcodes linked to this exchange.
 
     Data Schema
     ----------
@@ -223,20 +221,21 @@ def read_pcd_to_exchange_lut(exchange_abbr):
     pcd_to_exchange_data: List of dicts
     """
     pcd_to_exchange_data = []
-    
-    pathlist = glob.iglob(os.path.join(DATA_INTERMEDIATE, 'lut_pcd_to_exchange') + '/*.csv', recursive=True)
+
+    pathlist = glob.iglob(os.path.join(DATA_INTERMEDIATE, 'lut_exchange_to_pcd_area') + '/*.csv', recursive=True)
 
     filename = exchange_abbr + '.csv'
 
     for path in pathlist:
-        path_partition = os.path.basename(path)[10:]
+        path_partition = os.path.basename(path)[24:]
         if path_partition == filename:
             with open(path, 'r', encoding='utf8', errors='replace') as system_file:
                 reader = csv.reader(system_file)
                 #next(reader)
                 for line in reader:
-                    # print(line[0])
                     pcd_to_exchange_data.extend(line)
+
+    check_data_length(pcd_to_exchange_data, 'read_pcd_to_exchange_lut')
 
     return pcd_to_exchange_data
 
@@ -251,62 +250,59 @@ def read_pcd_to_cabinet_lut(exchange_abbr):
     * cabinet_id: 'string'
         Unique Cabinet ID
     * exchange_only_flag: 'int'
-        Exchange only binary. 1 = exchange only line, 0 = via cabinet asset. 
+        Exchange only binary. 1 = exchange only line, 0 = via cabinet asset.
 
     Returns
     -------
     pcp_data: list of dicts
     """
     pcp_data = defaultdict(list)
-    
-    pathlist = glob.iglob(os.path.join(DATA_INTERMEDIATE, 'lut_pcd_to_cabinet_by_exchange') + '/*.csv', recursive=True)
 
-    filename = exchange_abbr + '.csv'
-
-    for path in pathlist:
-        path_partition = os.path.basename(path)[11:]
-        if path_partition == filename:
-            with open(path, 'r', encoding='utf8', errors='replace') as system_file:
-                reader = csv.reader(system_file)
-                for line in reader:
-                    if line[2] == '0':
-                        pcp_data[line[0]].append(line[1])
+    path = os.path.join(DATA_INTERMEDIATE, 'lut_pcd_to_cabinet_by_exchange', 'pcd_to_cab_' + exchange_abbr + '.csv')
 
     unique_ouput = defaultdict(list)
 
-    for key, items in pcp_data.items():
-        unique_values = list(set(items))
-        for item in unique_values:
-            unique_ouput[key].append(item)
- 
+    if os.path.exists(path):
+        with open(path, 'r', encoding='utf8', errors='replace') as system_file:
+            reader = csv.reader(system_file)
+            for line in reader:
+                if line[2] == '0':
+                    pcp_data[line[0]].append(line[1])
+
+        for key, items in pcp_data.items():
+            unique_values = list(set(items))
+            for item in unique_values:
+                unique_ouput[key].append(item)
+
+    check_data_length(unique_ouput, 'read_pcd_to_cabinet_lut')
+
     return unique_ouput
 
 def find_intersecting_postcode_areas(exchange_abbr):
 
     pcd_areas = []
-    
+
     pathlist = glob.iglob(os.path.join(DATA_INTERMEDIATE, 'lut_exchange_to_pcd_area') + '/*.csv', recursive=True)
 
-    filename = exchange_abbr + '.csv'
+    filename = exchange_abbr.replace('exchange_', '') + '.csv'
 
     for path in pathlist:
-        path_partition = path.split("_area_")[1]
+        path_partition = path.split("_area_exchange_")[1]
         if path_partition == filename:
             with open(path, 'r', encoding='utf8', errors='replace') as system_file:
                 reader = csv.reader(system_file)
                 for line in reader:
                     for item in line:
                         pcd_areas.append(item)
-                        # pcd_areas.append({
-                        #     'postcode_area': item,
-                        #     })
+
+    check_data_length(pcd_areas, 'find_intersecting_postcode_areas')
 
     return pcd_areas
 
 def read_postcode_areas(exchange_area):
 
     """
-    Reads all postcodes shapes which have already been processed to 
+    Reads all postcodes shapes which have already been processed to
     remove vertical postcodes, merging verticals with the closest neighbour.
 
     Data Schema
@@ -322,25 +318,22 @@ def read_postcode_areas(exchange_area):
 
     exchange_geom = shape(exchange_area['geometry'])
 
-    intersecting_areas = find_intersecting_postcode_areas(exchange_area['properties']['id'])
-    intersecting_areas = list(set(intersecting_areas))
-
-    pathlist = glob.iglob(os.path.join(DATA_RAW_SHAPES, 'codepoint', 'codepoint-poly_2429451/**/*.shp'), recursive=True)
+    intersecting_areas = list(set(find_intersecting_postcode_areas(exchange_area['properties']['id'])))
 
     for area in intersecting_areas:
-        area = area.lower() + '.shp'
-        for path in pathlist:
-            if os.path.basename(path) == area:
-                with fiona.open(path, 'r') as source:
-                    for postcode in source:
-                        if exchange_geom.contains(shape(postcode['geometry'])):
-                            pcd_areas.append({
-                                'type': postcode['type'],
-                                'geometry': postcode['geometry'],
-                                'properties': {
-                                    'POSTCODE': postcode['properties']['POSTCODE'].replace(" ", "")
-                                }                               
-                            })
+        area = area.lower()
+        with fiona.open(os.path.join(DATA_RAW_SHAPES,'individual_postcode_areas_no_verticals',area + '.shp'), 'r') as source:
+            for postcode in source:
+                if exchange_geom.contains(shape(postcode['geometry'])):
+                    pcd_areas.append({
+                        'type': postcode['type'],
+                        'geometry': postcode['geometry'],
+                        'properties': {
+                            'POSTCODE': postcode['properties']['POSTCODE'].replace(" ", "")
+                        }
+                    })
+
+    check_data_length(pcd_areas, 'read_postcode_areas')
 
     return pcd_areas
 
@@ -351,13 +344,12 @@ def read_postcode_technology_lut(exchange_abbr):
     postcode_areas = find_intersecting_postcode_areas(exchange_abbr)
 
     postcode_technology_lut = []
-    
+
     for area in postcode_areas:
-        pcd_area = area['postcode_area']
         for filename in os.listdir(DATA_INITIAL_SYSTEM):
             path_partition = filename.split("_r02_")[1]
             path_partition = path_partition[:-4]
-            if path_partition == pcd_area:
+            if path_partition == area:
                 with open(os.path.join(DATA_INITIAL_SYSTEM, filename), 'r', encoding='utf8', errors='replace') as system_file:
                     reader = csv.reader(system_file)
                     next(reader)
@@ -373,6 +365,8 @@ def read_postcode_technology_lut(exchange_abbr):
                             'average_data_download_sfbb': line[34],
                             'average_data_download_ufbb': line[35],
                         })
+
+    check_data_length(postcode_technology_lut, 'read_postcode_technology_lut')
 
     return postcode_technology_lut
 
@@ -415,10 +409,10 @@ def add_cabinet_id_to_postcode_areas(postcode_areas, pcd_to_cabinet):
     for postcode_area in postcode_areas:
         if postcode_area['properties']['POSTCODE'] in pcd_to_cabinet:
             pcd = postcode_area['properties']['POSTCODE']
-            postcode_area['properties']['CAB_ID'] = pcd_to_cabinet[pcd][0]
+            postcode_area['properties']['cab_id'] = pcd_to_cabinet[pcd][0]
         else:
-            postcode_area['properties']['CAB_ID'] = ""
-    
+            postcode_area['properties']['cab_id'] = ""
+
     return postcode_areas
 
 def add_postcode_to_premises(premises, postcode_areas):
@@ -426,7 +420,7 @@ def add_postcode_to_premises(premises, postcode_areas):
     joined_premises = []
 
     def prems():
-        i = 0        
+        i = 0
         for prem in premises:
             geom = shape(prem['representative_point'])
             yield (i, geom.bounds, prem)
@@ -440,11 +434,11 @@ def add_postcode_to_premises(premises, postcode_areas):
         for n in idx.intersection((shape(postcode_area['geometry']).bounds), objects=True):
             postcode_area_shape = shape(postcode_area['geometry'])
             premise_shape = shape(n.object['geometry'])
-            if postcode_area_shape.contains(premise_shape):
+            if postcode_area_shape.intersects(premise_shape):
                 n.object['properties']['postcode'] = postcode_area['properties']['POSTCODE']
-                n.object['properties']['CAB_ID'] = postcode_area['properties']['CAB_ID']
+                n.object['properties']['cab_id'] = postcode_area['properties']['cab_id']
                 joined_premises.append(n.object)
-
+    check_data_length(joined_premises, 'add_postcode_to_premises')
     return joined_premises
 
 #####################################
@@ -457,7 +451,7 @@ def complement_postcode_cabinets(premises, exchange, postcode_areas, exchange_ab
     print('premises count in {} is {}'.format(exchange_abbr, sum_of_delivery_points))
 
     # Count number of existing cabinets
-    cabinets_in_data = [postcode_area['properties']['CAB_ID'] for postcode_area in postcode_areas]
+    cabinets_in_data = [postcode_area['properties']['cab_id'] for postcode_area in postcode_areas]
     count_cabinets_in_data = len(set(cabinets_in_data))
     print('existing cabinet count is {}'.format(count_cabinets_in_data))
 
@@ -479,12 +473,12 @@ def complement_postcode_cabinets(premises, exchange, postcode_areas, exchange_ab
     else:
         print('Geotype ' + exchange['properties']['geotype'] + ' is unknown')
         raise Exception()
-    
+
     print('expected cabinet count is {}'.format(expected_cabinets))
 
     # Cluster around premises
     # Remove premises that have cabinets defined
-    incomplete_postcode_areas = MultiPolygon([shape(postcode_area['geometry']) for postcode_area in postcode_areas if postcode_area['properties']['CAB_ID'] == ''])
+    incomplete_postcode_areas = MultiPolygon([shape(postcode_area['geometry']) for postcode_area in postcode_areas if postcode_area['properties']['cab_id'] == ''])
     cluster_premises = [premise for premise in premises if incomplete_postcode_areas.contains(shape(premise['geometry']))]
 
     # Generate cabinets
@@ -500,13 +494,13 @@ def complement_postcode_cabinets(premises, exchange, postcode_areas, exchange_ab
 
     point_coords = []
     for premise in cluster_premises:
-        point_geom = premise['representative_point']  
+        point_geom = premise['representative_point']
         coords = list(point_geom.coords)
         point_coords.append(coords)
     points = np.vstack(point_coords)
 
     kmeans = KMeans(n_clusters=generate_cabinets, n_init=1, max_iter=1, n_jobs=-1, random_state=0, ).fit(points)
-    
+
     for idx, cab_point_location in enumerate(kmeans.cluster_centers_):
         cabinets.append({
                 'type': "Feature",
@@ -517,7 +511,7 @@ def complement_postcode_cabinets(premises, exchange, postcode_areas, exchange_ab
                 'properties': {
                     "id": "{" + exchange_abbr + "}{GEN" + str(idx) + '}'
                 }
-            })     
+            })
 
     return cabinets
 
@@ -527,8 +521,8 @@ def allocate_to_cabinet(data, cabinets):
     [cabinets_idx.insert(0, shape(cabinet['geometry']).bounds, obj=cabinet['properties']['id']) for cabinet in cabinets]
 
     for datum in data:
-        if datum['properties']['CAB_ID'] == '':
-            datum['properties']['CAB_ID'] = [n for n in cabinets_idx.nearest(shape(datum['geometry']).bounds, objects='raw')][0]
+        if datum['properties']['cab_id'] == '':
+            datum['properties']['cab_id'] = [n for n in cabinets_idx.nearest(shape(datum['geometry']).bounds, objects='raw')][0]
 
     return data
 
@@ -539,8 +533,8 @@ def estimate_cabinet_locations(premises):
     cabinet_by_id_lut = defaultdict(list)
 
     for premise in premises:
-        cabinet_by_id_lut[premise['properties']['CAB_ID']].append(premise['representative_point'])
-    
+        cabinet_by_id_lut[premise['properties']['cab_id']].append(premise['representative_point'])
+
     cabinets = []
     for cabinet_id in cabinet_by_id_lut:
         if cabinet_id != "" and cabinet_id is not None:
@@ -599,7 +593,7 @@ def estimate_dist_points(premises, exchange_name, cachefile=None):
     number_of_clusters = int(points.shape[0] / 10)
 
     print('number of dist point clusters is {}'.format(number_of_clusters))
-    
+
     kmeans = KMeans(n_clusters=number_of_clusters, n_init=1, max_iter=1, n_jobs=-1, random_state=0, ).fit(points)
 
     for idx, dist_point_location in enumerate(kmeans.cluster_centers_):
@@ -660,7 +654,6 @@ def add_technology_to_premises(premises, postcode_areas):
     # Join the two
     joined_premises = []
     for postcode_area in postcode_areas:
-
         # Calculate number of fiber/coax/copper connections in postcode area
         number_of_premises = len(premises_by_postcode[postcode_area['properties']['POSTCODE']]) + 1
         fttp_avail = int(postcode_area['properties']['fttp_avail'])
@@ -670,24 +663,24 @@ def add_technology_to_premises(premises, postcode_areas):
 
         number_of_fttp= round((fttp_avail / 100) * number_of_premises)
         number_of_ufbb = round((ufbb_avail / 100) * number_of_premises)
-        number_of_fttc = round((sfbb_avail / 100) * (number_of_premises * 0.8)) # Todo calculate on national scale
-        number_of_docsis3 = round((sfbb_avail / 100) * (number_of_premises * 0.2))
+        number_of_fttc = round((sfbb_avail / 100) * (number_of_premises))
+        number_of_docsis3 = round((sfbb_avail / 100) * (number_of_premises))
         number_of_adsl = round((adsl_avail / 100) * number_of_premises)
 
-        technologies =  ['FTTP'] * number_of_fttp
-        technologies += ['GFast'] * number_of_ufbb
-        technologies += ['FTTC'] * number_of_fttc
-        technologies += ['DOCSIS3'] * number_of_docsis3
-        technologies += ['ADSL'] * number_of_adsl
+        technologies =  ['fttp'] * number_of_fttp
+        technologies += ['fttdp'] * number_of_ufbb
+        technologies += ['fttc'] * number_of_fttc
+        technologies += ['docsis3'] * number_of_docsis3
+        technologies += ['adsl'] * number_of_adsl
         random.shuffle(technologies)
 
         # Allocate broadband technology and final drop to premises
         for premise, technology in zip(premises_by_postcode[postcode_area['properties']['POSTCODE']], technologies):
-            premise['properties']['FTTP'] = 1 if technology == 'FTTP' else 0
-            premise['properties']['GFast'] = 1 if technology == 'GFast' else 0
-            premise['properties']['FTTC'] = 1 if technology == 'FTTC' else 0
-            premise['properties']['DOCSIS3'] = 1 if technology == 'DOCSIS3' else 0
-            premise['properties']['ADSL'] = 1 if technology == 'ADSL' else 0
+            premise['properties']['fttp'] = 1 if technology == 'fttp' else 0
+            premise['properties']['fttdp'] = 1 if technology == 'fttdp' else 0
+            premise['properties']['fttc'] = 1 if technology == 'fttc' else 0
+            premise['properties']['docsis3'] = 1 if technology == 'docsis3' else 0
+            premise['properties']['adsl'] = 1 if technology == 'adsl' else 0
 
             joined_premises.append(premise)
 
@@ -703,11 +696,11 @@ def add_technology_to_premises_link(premises, premise_links):
 
         technology = premises_technology_by_id[premise_link['properties']['origin']]
 
-        if technology in ['FTTP']:
+        if technology in ['fttp']:
             premise_link['properties']['technology'] = 'fiber'
-        elif technology in ['GFast', 'FTTC', 'ADSL']:
+        elif technology in ['fttdp', 'fttc', 'adsl']:
             premise_link['properties']['technology'] = 'copper'
-        elif technology in ['DOCSIS3']:
+        elif technology in ['docsis3']:
             premise_link['properties']['technology'] = 'coax'
 
     return premise_links
@@ -721,11 +714,11 @@ def add_technology_to_distributions(distributions, premises):
     for distribution in distributions:
         technologies_serving = premises_technology_by_distribution_id[distribution['properties']['id']]
 
-        distribution['properties']['FTTP'] = 1 if 'FTTP' in technologies_serving else 0
-        distribution['properties']['GFast'] = 1 if 'GFast' in technologies_serving else 0
-        distribution['properties']['FTTC'] = 1 if 'FTTC' in technologies_serving else 0
-        distribution['properties']['DOCSIS3'] = 1 if 'DOCSIS3' in technologies_serving else 0
-        distribution['properties']['ADSL'] = 1 if 'ADSL' in technologies_serving else 0
+        distribution['properties']['fttp'] = 1 if 'fttp' in technologies_serving else 0
+        distribution['properties']['fttdp'] = 1 if 'fttdp' in technologies_serving else 0
+        distribution['properties']['fttc'] = 1 if 'fttc' in technologies_serving else 0
+        distribution['properties']['docsis3'] = 1 if 'docsis3' in technologies_serving else 0
+        distribution['properties']['adsl'] = 1 if 'adsl' in technologies_serving else 0
 
     return distributions
 
@@ -733,26 +726,26 @@ def add_technology_to_link(assets, asset_links):
 
     assets_technology_by_id = defaultdict(set)
     for asset in assets:
-        if asset['properties']['FTTP'] == 1:
-            assets_technology_by_id[asset['properties']['id']].add('FTTP')
-        if asset['properties']['GFast'] == 1:
-            assets_technology_by_id[asset['properties']['id']].add('GFast')
-        if asset['properties']['FTTC'] == 1:
-            assets_technology_by_id[asset['properties']['id']].add('FTTC')
-        if asset['properties']['DOCSIS3'] == 1:
-            assets_technology_by_id[asset['properties']['id']].add('DOCSIS3')
-        if asset['properties']['ADSL'] == 1:
-            assets_technology_by_id[asset['properties']['id']].add('ADSL')
+        if asset['properties']['fttp'] == 1:
+            assets_technology_by_id[asset['properties']['id']].add('fttp')
+        if asset['properties']['fttdp'] == 1:
+            assets_technology_by_id[asset['properties']['id']].add('fttdp')
+        if asset['properties']['fttc'] == 1:
+            assets_technology_by_id[asset['properties']['id']].add('fttc')
+        if asset['properties']['docsis3'] == 1:
+            assets_technology_by_id[asset['properties']['id']].add('docsis3')
+        if asset['properties']['adsl'] == 1:
+            assets_technology_by_id[asset['properties']['id']].add('adsl')
 
     for asset_link in asset_links:
 
         technology = assets_technology_by_id[asset_link['properties']['origin']]
 
-        if 'FTTP' in technology:
+        if 'fttp' in technology:
             asset_link['properties']['technology'] = 'fiber'
-        elif 'GFast' or 'FTTC' or 'ADSL' in technology:
+        elif 'fttdp' or 'fttc' or 'adsl' in technology:
             asset_link['properties']['technology'] = 'copper'
-        elif 'DOCSIS3' in technology:
+        elif 'docsis3' in technology:
             asset_link['properties']['technology'] = 'coax'
 
     return asset_links
@@ -761,25 +754,25 @@ def add_technology_to_assets(assets, clients):
 
     clients_technology_by_asset_id = defaultdict(set)
     for client in clients:
-        if client['properties']['FTTP'] == 1:
-            clients_technology_by_asset_id[client['properties']['connection']].add('FTTP')
-        if client['properties']['GFast'] == 1:
-            clients_technology_by_asset_id[client['properties']['connection']].add('GFast')
-        if client['properties']['FTTC'] == 1:
-            clients_technology_by_asset_id[client['properties']['connection']].add('FTTC')
-        if client['properties']['DOCSIS3'] == 1:
-            clients_technology_by_asset_id[client['properties']['connection']].add('DOCSIS3')
-        if client['properties']['ADSL'] == 1:
-            clients_technology_by_asset_id[client['properties']['connection']].add('ADSL')
+        if client['properties']['fttp'] == 1:
+            clients_technology_by_asset_id[client['properties']['connection']].add('fttp')
+        if client['properties']['fttdp'] == 1:
+            clients_technology_by_asset_id[client['properties']['connection']].add('fttdp')
+        if client['properties']['fttc'] == 1:
+            clients_technology_by_asset_id[client['properties']['connection']].add('fttc')
+        if client['properties']['docsis3'] == 1:
+            clients_technology_by_asset_id[client['properties']['connection']].add('docsis3')
+        if client['properties']['adsl'] == 1:
+            clients_technology_by_asset_id[client['properties']['connection']].add('adsl')
 
     for asset in assets:
         technologies_serving = clients_technology_by_asset_id[asset['properties']['id']]
 
-        asset['properties']['FTTP'] = 1 if 'FTTP' in technologies_serving else 0
-        asset['properties']['GFast'] = 1 if 'GFast' in technologies_serving else 0
-        asset['properties']['FTTC'] = 1 if 'FTTC' in technologies_serving else 0
-        asset['properties']['DOCSIS3'] = 1 if 'DOCSIS3' in technologies_serving else 0
-        asset['properties']['ADSL'] = 1 if 'ADSL' in technologies_serving else 0
+        asset['properties']['fttp'] = 1 if 'fttp' in technologies_serving else 0
+        asset['properties']['fttdp'] = 1 if 'fttdp' in technologies_serving else 0
+        asset['properties']['fttc'] = 1 if 'fttc' in technologies_serving else 0
+        asset['properties']['docsis3'] = 1 if 'docsis3' in technologies_serving else 0
+        asset['properties']['adsl'] = 1 if 'adsl' in technologies_serving else 0
 
     return assets
 
@@ -1152,7 +1145,7 @@ def return_object_coordinates(object):
         origin_geom = object['representative_point']
         x = origin_geom.x
         y = origin_geom.y
-    elif object['geometry']['type'] == 'Point':   
+    elif object['geometry']['type'] == 'Point':
         x = object['geometry']['coordinates'][0]
         y = object['geometry']['coordinates'][1]
     else:
@@ -1260,6 +1253,57 @@ def copy_id_to_name(data):
         entry['properties']['name'] = entry['properties']['id']
     return data
 
+def aggregate_premises_by_dist_point(premises):
+    """Take premises information and aggregate based on distribution point.
+
+    """
+    all_distribution_points = []
+
+    for premise in premises:
+        all_distribution_points.append(premise['properties']['connection'])
+
+    unique_distribution_points = list(set(all_distribution_points))
+
+    aggregated_data = []
+
+    for distribution_point in unique_distribution_points:
+
+        wta = 0
+        wtp = 0
+        fttp = 0
+        fttdp = 0
+        fttc = 0
+        docsis3 = 0
+        adsl = 0
+
+        for premise in premises:
+            if distribution_point == premise['properties']['connection']:
+                lad = premise['properties']['lad']
+                wta += premise['properties']['wta']
+                wtp += premise['properties']['wtp']
+                cab_id = premise['properties']['cab_id']
+                fttp += premise['properties']['fttp']
+                fttdp += premise['properties']['fttdp']
+                fttc += premise['properties']['fttc']
+                docsis3 += premise['properties']['docsis3']
+                adsl += premise['properties']['adsl']
+
+        aggregated_data.append({
+            'id': distribution_point,
+            'lad': lad,
+            'wta': wta,
+            'wtp': wtp,
+            'cab_id': cab_id,
+            'fttp': fttp,
+            'fttdp': fttdp,
+            'fttc': fttc,
+            'docsis3': docsis3,
+            'adsl': adsl,
+        })
+
+    return aggregated_data
+
+
 #####################################
 # WRITE LUTS/ASSETS/LINKS
 #####################################
@@ -1307,12 +1351,34 @@ def csv_writer(data, exchange_name, filename):
 
     for entry in data:
         data_to_write.append(entry['properties'])
-        
+
     name = os.path.join(directory, filename)
     with open(name, 'w') as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
         writer.writeheader()
-        writer.writerows(data_to_write) 
+        writer.writerows(data_to_write)
+
+def write_dist_point_csv(data, exchange_name, filename):
+    """
+    Write data to a CSV file path
+    """
+    fieldnames = []
+    for name, value in data[0].items():
+        fieldnames.append(name)
+
+    # Create path
+    directory = os.path.join(DATA_INTERMEDIATE, exchange_name)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    with open(os.path.join(directory, filename), 'w') as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
+        writer.writeheader()
+        writer.writerows(data)
+
+def check_data_length(data, function_name):
+    if not data:
+        print('**MISSING DATA {} did not produce data'.format(function_name))
 
 #####################################
 # APPLY METHODS
@@ -1334,27 +1400,27 @@ if __name__ == "__main__":
 
     #####################################################################################################
     ### IMPORT MAIN DATA
-    print('Read exchange area') 
+    print('Read exchange area')
     exchange_area = read_exchange_area(exchange_name)
 
-    print('Reading premises data') 
+    print('Reading premises data')
     geojson_layer5_premises = read_premises_data(exchange_area)
 
-    print('Read exchanges') 
+    print('Read exchanges')
     geojson_layer2_exchange = read_exchanges(exchange_area)
 
-    print('Read postcode_areas') 
+    print('Read postcode_areas')
     geojson_postcode_areas = read_postcode_areas(exchange_area)
 
     #####################################################################################################
     ### IMPORT SUPPLEMETARY DATA AND PROCESS
-    print('Read pcd_to_exchange_lut') 
+    print('Read pcd_to_exchange_lut')
     lut_pcd_to_exchange = read_pcd_to_exchange_lut(exchange_abbr)
 
-    print('Read pcd_to_cabinet_lut') 
+    print('Read pcd_to_cabinet_lut')
     lut_pcd_to_cabinet = read_pcd_to_cabinet_lut(exchange_abbr)
 
-    print('Read pcd_technology_lut') 
+    print('Read pcd_technology_lut')
     lut_pcd_technology = read_postcode_technology_lut(exchange_abbr)
 
     #####################################################################################################
@@ -1375,7 +1441,7 @@ if __name__ == "__main__":
 
     print('allocating cabinet to premises')
     geojson_layer5_premises = allocate_to_cabinet(geojson_layer5_premises, geojson_layer3_cabinets)
-  
+
     print('allocating cabinet to pcd_areas')
     geojson_postcode_areas = allocate_to_cabinet(geojson_postcode_areas, geojson_layer3_cabinets)
 
@@ -1465,11 +1531,15 @@ if __name__ == "__main__":
     print('copy id to name (cabinets)')
     geojson_layer3_cabinets = copy_id_to_name(geojson_layer3_cabinets)
 
+    print('aggregate premises data to distribution points')
+    premises_by_distribution_point = aggregate_premises_by_dist_point(geojson_layer5_premises)
+
     ###########################################################################################################
     ### WRITE OUT
     ###########################################################################################################
-    
-    # # Write lookups (for debug purposes)
+
+    # # Write lookups:
+    #  debug purposes)
     # print('write postcode_areas')
     # write_shapefile(geojson_postcode_areas,  exchange_name, '_postcode_areas.shp')
 
@@ -1485,14 +1555,18 @@ if __name__ == "__main__":
     # write_shapefile(write_exchange_area,  exchange_name, '_exchange_area.shp')
 
     # Write assets
-    print('write premises')
+    # print('write premises')
+    # # write_shapefile(geojson_layer5_premises,  exchange_name, 'assets_layer5_premises.shp')
+    # csv_writer(geojson_layer5_premises, exchange_name, 'assets_layer5_premises.csv')
+
+    print('write premises by distribution point')
     # write_shapefile(geojson_layer5_premises,  exchange_name, 'assets_layer5_premises.shp')
-    csv_writer(geojson_layer5_premises, exchange_name, 'assets_layer5_premises.csv')
+    write_dist_point_csv(premises_by_distribution_point, exchange_name, 'premises_by_distribution_point.csv')
 
     # print('write distribution points')
     # write_shapefile(geojson_layer4_distributions,  exchange_name, 'assets_layer4_distributions.shp')
     csv_writer(geojson_layer4_distributions, exchange_name, 'assets_layer4_distributions.csv')
-    
+
     # print('write cabinets')
     # write_shapefile(geojson_layer3_cabinets,  exchange_name, 'assets_layer3_cabinets.shp')
     csv_writer(geojson_layer3_cabinets, exchange_name, 'assets_layer3_cabinets.csv')
@@ -1525,5 +1599,3 @@ if __name__ == "__main__":
 
     print("script finished")
     #print("script took {} minutes to complete".format(round((end - start)/60, 2)))
-
-    

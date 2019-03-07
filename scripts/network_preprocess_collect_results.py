@@ -47,12 +47,12 @@ def csv_writer(data, filename):
     directory = os.path.join(DATA_PROCESSED)
     if not os.path.exists(directory):
         os.makedirs(directory)
-        
+
     name = os.path.join(directory, filename)
     with open(name, 'w') as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
         writer.writeheader()
-        writer.writerows(data) 
+        writer.writerows(data)
 
 def write_shapefile(data, filename):
 
@@ -373,6 +373,10 @@ if __name__ == "__main__":
     csv_writer(assets_layer4_distributions, 'assets_layer4_distributions.csv')
     # write_shapefile(assets_layer4_distributions, 'assets_layer4_distributions.shp')
 
-    assets_layer5_premises = collect_results(selection, 'assets_layer5_premises.csv')
-    csv_writer(assets_layer5_premises, 'assets_layer5_premises.csv')
+    # assets_layer5_premises = collect_results(selection, 'assets_layer5_premises.csv')
+    # csv_writer(assets_layer5_premises, 'assets_layer5_premises.csv')
+    # # write_shapefile(assets_layer5_premises, 'assets_layer5_premises.shp')
+
+    premises_by_distribution_point = collect_results(selection, 'premises_by_distribution_point.csv')
+    csv_writer(premises_by_distribution_point, 'premises_by_distribution_point.csv')
     # write_shapefile(assets_layer5_premises, 'assets_layer5_premises.shp')
