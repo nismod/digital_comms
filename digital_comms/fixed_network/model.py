@@ -70,6 +70,7 @@ class NetworkManager():
                 self._links_from_exchanges.append(link)
 
         self._distributions = []
+        self._distributions_by_lad = defaultdict(list)
         self._distributions_by_cab = defaultdict(list)
         for distribution in assets['distributions']:
             distribution = Distribution(
@@ -78,6 +79,7 @@ class NetworkManager():
                 parameters
             )
             self._distributions.append(distribution)
+            self._distributions_by_lad[distribution.lad].append(distribution)
             self._distributions_by_cab[distribution.connection].append(distribution)
 
         self._cabinets = []
@@ -120,34 +122,34 @@ class NetworkManager():
     def update_adoption_desirability(self, adoption_desirability):
 
         for distribution_id, desirability_to_adopt in adoption_desirability:
-            print(distribution_id)
-            distribution = self._distributions_by_cab[distribution_id]
-
-            distribution.update_desirability_to_adopt(desirability_to_adopt)
+            for distribution in self._distributions:
+                if distribution_id == distribution.id:
+                    distribution.update_desirability_to_adopt(desirability_to_adopt)
 
     def coverage(self):
         """
         define coverage
         """
-        premises_per_lad = self._premises_by_lad
+        distributions_per_lad = self._distributions_by_lad
 
         # run statistics on each lad
         coverage_results = {}
 
-        for lad in premises_per_lad:
+        for lad in distributions_per_lad:
             # contain  list of premises objects in the lad
-            sum_of_fttp = sum(premise.fttp for premise in premises_per_lad[lad])
+            sum_of_fttp = sum(distribution.fttp for distribution in distributions_per_lad[lad])
 
             # contain  list of premises objects in the lad
-            sum_of_fttdp = sum(premise.fttdp for premise in premises_per_lad[lad])
+            sum_of_fttdp = sum(distribution.fttdp for distribution in distributions_per_lad[lad])
 
             # contain  list of premises objects in the lad
-            sum_of_fttc = sum(premise.fttc for premise in premises_per_lad[lad])
+            sum_of_fttc = sum(distribution.fttc for distribution in distributions_per_lad[lad])
 
             # contain  list of premises objects in the lad
-            sum_of_adsl = sum(premise.adsl for premise in premises_per_lad[lad])
+            sum_of_adsl = sum(distribution.adsl for distribution in distributions_per_lad[lad])
 
-            num_premises = len(premises_per_lad[lad])
+            # contain  list of premises objects in the lad
+            num_premises = sum(distribution.total_prems for distribution in distributions_per_lad[lad])
 
             coverage_results[lad] = {
                 'num_premises': num_premises,
@@ -163,15 +165,15 @@ class NetworkManager():
         """
         define aggregate coverage
         """
-        premises_per_lad = self._premises_by_lad
+        distributions_per_lad = self._distributions_by_lad
 
         coverage_results = []
-        for lad in premises_per_lad.keys():
-            sum_of_fttp = sum(premise.fttp for premise in premises_per_lad[lad])
-            sum_of_fttdp = sum(premise.fttdp for premise in premises_per_lad[lad])
-            sum_of_fttc = sum(premise.fttc for premise in premises_per_lad[lad])
-            sum_of_adsl = sum(premise.adsl for premise in premises_per_lad[lad])
-            sum_of_premises = len(premises_per_lad[lad])
+        for lad in distributions_per_lad.keys():
+            sum_of_fttp = sum(distribution.fttp for distribution in distributions_per_lad[lad])
+            sum_of_fttdp = sum(distribution.fttdp for distribution in distributions_per_lad[lad])
+            sum_of_fttc = sum(distribution.fttc for distribution in distributions_per_lad[lad])
+            sum_of_adsl = sum(distribution.adsl for distribution in distributions_per_lad[lad])
+            sum_of_premises = sum(distribution.total_prems for distribution in distributions_per_lad[lad])
 
             coverage_results.append({
                 'sum_of_fttp': sum_of_fttp,
@@ -551,14 +553,15 @@ class Distribution():
         # Asset parameters
         self.id = data["id"]
         self.lad = data["lad"]
-        self.connection = data["cab_id"]
-        self.fttp = data["fttp"]
-        self.fttdp = data["fttdp"]
-        self.fttc = data["fttc"]
-        self.docsis3 = data["docsis3"]
-        self.adsl = data["adsl"]
-        self.wta = data["wta"]
-        self.wtp = data["wtp"]
+        self.connection = data["connection"]
+        self.fttp = int(data["fttp"])
+        self.fttdp = int(data["fttdp"])
+        self.fttc = int(data["fttc"])
+        self.docsis3 = int(data["docsis3"])
+        self.adsl = int(data["adsl"])
+        self.total_prems = int(data['total_prems'])
+        self.wta = float(data["wta"])
+        self.wtp = int(data["wtp"])
         self.adoption_desirability = False
 
         self.parameters = parameters
@@ -573,18 +576,20 @@ class Distribution():
         # Upgrade costs
         self.upgrade_costs = {}
         self.upgrade_costs['fttp'] = (
-            (self.parameters['costs_assets_premise_fttp_modem']) +
+            (self.parameters['costs_assets_premise_fttp_modem'] * self.total_prems) +
             (self.parameters['costs_assets_premise_fttp_optical_network_terminator'] \
+                * self.total_prems if self.fttp == 0 else 0) +
+            (self.parameters['planning_administration_cost'] * self.total_prems \
                 if self.fttp == 0 else 0) +
-            (self.parameters['planning_administration_cost'] if self.fttp == 0 else 0) +
             (self.parameters['costs_assets_premise_fttp_optical_connection_point'] \
-                * ceil(len(self.fttp) / 32) if self.fttp == 0 else 0) +
+                * (-(-self.total_prems // 32)) if self.fttp == 0 else 0) + 
             (self.link.upgrade_costs['fibre'] if self.link is not None else 0)
         )
         self.upgrade_costs['fttdp'] = (
             (self.parameters['costs_assets_distribution_fttdp_8_ports'] \
-                * ceil(len(self.fttdp) / 8) if self.fttdp == 0 else 0) +
-            (self.parameters['costs_assets_premise_fttdp_modem'] if self.fttdp == 0 else 0) +
+                * (-(-self.total_prems // 8)) if self.fttdp == 0 else 0) +
+            (self.parameters['costs_assets_premise_fttdp_modem'] * self.total_prems \
+                if self.fttdp == 0 else 0) +
             (self.link.upgrade_costs['fibre'] if self.link is not None else 0)
         )
         self.upgrade_costs['fttc'] = (
@@ -608,6 +613,11 @@ class Distribution():
         # Rollout benefits
         self.rollout_benefits = {}
         if self.adoption_desirability:
+            # Problem: wtp is now aggregated to the distribution point
+            # But households will adopt at different times
+            # scenario adoption should really be done before the aggregation
+            # or a logic developed which relies on the overall attractiveness
+            # of the distribution point.
             self.rollout_benefits['fttp'] = (
                 int(self.wtp) \
                 * self.parameters['months_per_year'] \

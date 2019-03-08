@@ -7,10 +7,9 @@ import os
 
 import yaml
 
-from digital_comms.fixed_network.model import NetworkManager
-from digital_comms.fixed_network.interventions import decide_interventions
-from digital_comms.fixed_network.adoption import update_adoption_desirability
-
+from fixed_network.model import NetworkManager
+from fixed_network.interventions import decide_interventions
+from fixed_network.adoption import update_adoption_desirability
 
 def read_csv(file):
     """Read in a .csv file. Convert each line to single dict, and then append to a list.
@@ -283,7 +282,7 @@ def write_decisions(decisions, year, technology, policy):
         decisions_file = open(decisions_filename, 'w', newline='')
         decisions_writer = csv.writer(decisions_file)
         decisions_writer.writerow(
-            ('asset_id', 'year', 'strategy', 'cost'))
+            ('asset_id', 'year', 'technology', 'policy'))
     else:
         decisions_file = open(decisions_filename, 'a', newline='')
         decisions_writer = csv.writer(decisions_file)
@@ -292,19 +291,64 @@ def write_decisions(decisions, year, technology, policy):
     for intervention in decisions:
         # Output decisions
         asset_id = intervention[0]
-        strategy = intervention[1]
-        cost = intervention[2]
+        technology = intervention[1]
+        policy = intervention[2]
         year = year
 
         decisions_writer.writerow(
-            (asset_id, year, strategy, cost))
+            (asset_id, year, technology, policy))
+
+    decisions_file.close()
+
+def write_spend(decisions, year, technology, policy):
+    """Write out spending decisions made annually for each technology and policy.
+
+    Parameters
+    ----------
+    decisions : list_of_tuples
+        Contains the upgraded assets with the deployed technology and affliated costs
+    year : int
+        The year of deployment.
+    technology : string
+        The new technology deployed.
+    policy : string
+        The policy used to encourage deployment.
+    spend_type : string
+        Whether the spent capital was purely market delivered, or subsidised.
+    spend : int
+        The amount of capital spent (£).
+
+    """
+    decisions_filename = os.path.join(
+        RESULTS_DIRECTORY, 'spend_{}_{}.csv'.format(technology, policy))
+
+    if year == BASE_YEAR:
+        decisions_file = open(decisions_filename, 'w', newline='')
+        decisions_writer = csv.writer(decisions_file)
+        decisions_writer.writerow(
+            ('asset_id', 'year', 'technology', 'policy', 'spend_type', 'cost'))
+    else:
+        decisions_file = open(decisions_filename, 'a', newline='')
+        decisions_writer = csv.writer(decisions_file)
+
+    # output and report results for this timestep
+    for intervention in decisions:
+        # Output decisions
+        asset_id = intervention[0]
+        technology = intervention[1]
+        policy = intervention[2]
+        spend_type = intervention[3]
+        cost = intervention[4]
+        year = year
+
+        decisions_writer.writerow(
+            (asset_id, year, technology, policy, spend_type, cost))
 
     decisions_file.close()
 
 ################################################################
 # RUN MODEL
 ################################################################
-
 
 def run():
     """Run model over scenario/strategy combinations
@@ -368,8 +412,8 @@ def run():
 
             # calculate the maximum adoption level based on the scenario, to make sure the
             # model doesn't overestimate
-            adoption_cap = len(premises_adoption_desirability_ids) + \
-                sum(getattr(premise, technology) for premise in system._premises)
+            adoption_cap = len(distribution_adoption_desirability_ids) + \
+                sum(getattr(distribution, technology) for distribution in system._distributions)
             #logging.info("Maximum annual adoption rate is {}%".format(
             #   round(total_adoption_desirability_percentage, 2)))
 
@@ -384,7 +428,7 @@ def run():
             # write out the decisions
             write_decisions(built_interventions, year, technology, policy)
 
-            # write_spend(built_interventions, year, technology, policy, spend)
+            write_spend(built_interventions, year, technology, policy)
 
             # write_pcd_results(system, year, pop_scenario, throughput_scenario, technology,
             #                   policy, cost_by_pcd)

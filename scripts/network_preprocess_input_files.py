@@ -1252,6 +1252,41 @@ def copy_id_to_name(data):
         entry['properties']['name'] = entry['properties']['id']
     return data
 
+def aggregate_premises_links_by_dist_point(premises_links):
+    """Take premises link information and aggregate based on distribution point.
+
+    TODO: separate out existing fibre distribution points (although there aren't many)
+
+    """
+    all_premises_links = []
+
+    for premise_link in premises_links:
+        all_premises_links.append(premise_link['properties']['dest'])
+
+    unique_premises_links = list(set(all_premises_links))
+
+    aggregated_data = []
+
+    for unique_premises_link in unique_premises_links:
+
+        length = 0
+
+        for premises_link in premises_links:
+            if unique_premises_link == premises_link['properties']['dest']:
+                origin = premises_link['properties']['origin']
+                dest = premises_link['properties']['dest']
+                length += premises_link['properties']['length']
+                technology = premises_link['properties']['technology']
+
+        aggregated_data.append({
+            'origin': origin,
+            'dest': dest,
+            'length': int(round(length)),
+            'technology': technology, 
+        })
+    
+    return aggregated_data
+
 def aggregate_premises_by_dist_point(premises):
     """Take premises information and aggregate based on distribution point.
 
@@ -1274,34 +1309,36 @@ def aggregate_premises_by_dist_point(premises):
         fttc = 0
         docsis3 = 0
         adsl = 0
+        total_prems = 0
 
         for premise in premises:
             if distribution_point == premise['properties']['connection']:
                 lad = premise['properties']['lad']
+                connection = premise['properties']['connection']
                 wta += premise['properties']['wta']
                 wtp += premise['properties']['wtp']
-                cab_id = premise['properties']['cab_id']
                 fttp += premise['properties']['fttp']
                 fttdp += premise['properties']['fttdp']
                 fttc += premise['properties']['fttc']
                 docsis3 += premise['properties']['docsis3']
                 adsl += premise['properties']['adsl']
+                total_prems += 1
 
         aggregated_data.append({
             'id': distribution_point,
+            'connection': connection,
             'lad': lad,
             'wta': wta,
             'wtp': wtp,
-            'cab_id': cab_id,
             'fttp': fttp,
             'fttdp': fttdp,
             'fttc': fttc,
             'docsis3': docsis3,
             'adsl': adsl,
+            'total_prems': total_prems, 
         })
-
+    
     return aggregated_data
-
 
 #####################################
 # WRITE LUTS/ASSETS/LINKS
@@ -1332,48 +1369,38 @@ def write_shapefile(data, exchange_name, filename):
     with fiona.open(os.path.join(directory, filename), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         [sink.write(feature) for feature in data]
 
-def csv_writer(data, exchange_name, filename):
-
+def csv_writer(data, exchange_name, filename, geojson):
     """
     Write data to a CSV file path
-    """
-    fieldnames = []
-    for name, value in data[0]['properties'].items():
-        fieldnames.append(name)
 
+    """
     # Create path
     directory = os.path.join(DATA_INTERMEDIATE, exchange_name)
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    data_to_write = []
-
-    for entry in data:
-        data_to_write.append(entry['properties'])
-
-    name = os.path.join(directory, filename)
-    with open(name, 'w') as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
-        writer.writeheader()
-        writer.writerows(data_to_write)
-
-def write_dist_point_csv(data, exchange_name, filename):
-    """
-    Write data to a CSV file path
-    """
     fieldnames = []
-    for name, value in data[0].items():
-        fieldnames.append(name)
+    if geojson == 1:
+        for name, value in data[0]['properties'].items():
+            fieldnames.append(name)
 
-    # Create path
-    directory = os.path.join(DATA_INTERMEDIATE, exchange_name)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+        data_to_write = []
+        for entry in data:
+            data_to_write.append(entry['properties'])
 
-    with open(os.path.join(directory, filename), 'w') as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
-        writer.writeheader()
-        writer.writerows(data)
+        with open(os.path.join(directory, filename), 'w') as csv_file:
+            writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
+            writer.writeheader()
+            writer.writerows(data_to_write)
+    
+    elif geojson == 0:        
+        for name, value in data[0].items():
+            fieldnames.append(name)
+
+        with open(os.path.join(directory, filename), 'w') as csv_file:
+            writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
+            writer.writeheader()
+            writer.writerows(data)
 
 def check_data_length(data, function_name):
     if not data:
@@ -1533,14 +1560,15 @@ if __name__ == "__main__":
     print('aggregate premises data to distribution points')
     premises_by_distribution_point = aggregate_premises_by_dist_point(geojson_layer5_premises)
 
-    ###########################################################################################################
-    ### WRITE OUT
-    ###########################################################################################################
+    print('aggregate link premises data to distribution points')
+    premises_links_by_distribution_point = aggregate_premises_links_by_dist_point(geojson_layer5_premises_links)
 
-    # # Write lookups:
-    #  debug purposes)
-    # print('write postcode_areas')
-    # write_shapefile(geojson_postcode_areas,  exchange_name, '_postcode_areas.shp')
+    ########
+    ### WRITE OUT
+    ###########_link################################################################################################
+####
+    # #    #  debug pupremises_links('write postcode_areas')
+    ######## write_shapefile(geojson_postcode_areas,  exchange_name, '_postcode_areas.shp')
 
     # print('write distribution_areas')
     # write_shapefile(geojson_distribution_areas,  exchange_name, '_distribution_areas.shp')
@@ -1560,19 +1588,19 @@ if __name__ == "__main__":
 
     print('write premises by distribution point')
     # write_shapefile(geojson_layer5_premises,  exchange_name, 'assets_layer5_premises.shp')
-    write_dist_point_csv(premises_by_distribution_point, exchange_name, 'premises_by_distribution_point.csv')
+    csv_writer(premises_by_distribution_point, exchange_name, 'premises_by_distribution_point.csv', 0)
 
     # print('write distribution points')
     # write_shapefile(geojson_layer4_distributions,  exchange_name, 'assets_layer4_distributions.shp')
-    csv_writer(geojson_layer4_distributions, exchange_name, 'assets_layer4_distributions.csv')
+    csv_writer(geojson_layer4_distributions, exchange_name, 'assets_layer4_distributions.csv', 1)
 
     # print('write cabinets')
     # write_shapefile(geojson_layer3_cabinets,  exchange_name, 'assets_layer3_cabinets.shp')
-    csv_writer(geojson_layer3_cabinets, exchange_name, 'assets_layer3_cabinets.csv')
+    csv_writer(geojson_layer3_cabinets, exchange_name, 'assets_layer3_cabinets.csv', 1)
 
     # print('write exchanges')
     # write_shapefile(geojson_layer2_exchange,  exchange_name, 'assets_layer2_exchange.shp')
-    csv_writer(geojson_layer2_exchange, exchange_name, 'assets_layer2_exchange.csv')
+    csv_writer(geojson_layer2_exchange, exchange_name, 'assets_layer2_exchange.csv', 1)
 
     # # Write links
     # print('write links layer5')
@@ -1586,15 +1614,19 @@ if __name__ == "__main__":
 
     # print('write links layer5')
     # write_shapefile(geojson_layer5_premises_sl_links,  exchange_name, 'links_sl_layer5_premises.shp')
-    csv_writer(geojson_layer5_premises_sl_links, exchange_name, 'links_sl_layer5_premises.csv')
+    csv_writer(geojson_layer5_premises_sl_links, exchange_name, 'links_sl_layer5_premises.csv', 1)
+
+    # print('write aggregated links layer5')
+    # write_shapefile(geojson_layer5_premises_sl_links,  exchange_name, 'links_sl_layer5_premises.shp')
+    csv_writer(premises_links_by_distribution_point, exchange_name, 'links_premises_by_distribution_point.csv', 0)
 
     # print('write links layer4')
     # write_shapefile(geojson_layer4_distributions_sl_links,  exchange_name, 'links_sl_layer4_distributions.shp')
-    csv_writer(geojson_layer4_distributions_sl_links, exchange_name, 'links_sl_layer4_distributions.csv')
+    csv_writer(geojson_layer4_distributions_sl_links, exchange_name, 'links_sl_layer4_distributions.csv', 1)
 
     # print('write links layer3')
     # write_shapefile(geojson_layer3_cabinets_sl_links,  exchange_name, 'links_sl_layer3_cabinets.shp')
-    csv_writer(geojson_layer3_cabinets_sl_links, exchange_name, 'links_sl_layer3_cabinets.csv')
+    csv_writer(geojson_layer3_cabinets_sl_links, exchange_name, 'links_sl_layer3_cabinets.csv', 1)
 
     print("script finished")
     #print("script took {} minutes to complete".format(round((end - start)/60, 2)))

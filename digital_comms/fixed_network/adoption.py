@@ -31,20 +31,34 @@ def update_adoption_desirability(system, annual_adoption_rate):
         distribution for distribution in system._distributions
         if distribution.adoption_desirability is True
     ]
-    #rank premises based on household wta
+
+    #rank distributions based on household wta
     distributions_not_wanting_to_adopt = sorted(
         distributions_not_wanting_to_adopt, key=lambda item: item.wta)
+    
+    #get total premises needing to be served in current system
+    total_premises = 0
+    for distribution in system._distributions:
+        total_premises += distribution.total_prems
 
-    #get number of premises to select = convert adopt rate into raw premises
-    to_adopt = (len(system._distributions) * annual_adoption_rate) / 100
+    raw_annual_premises_adoption = round(total_premises*(annual_adoption_rate/100))
+    
+    new_distributions_wanting_to_adopt = []
+    premises_wanting_to_adopt = 0
+    for distribution in system._distributions:
+        if premises_wanting_to_adopt + distribution.total_prems <= raw_annual_premises_adoption:
+            new_distributions_wanting_to_adopt.append(distribution)
+            premises_wanting_to_adopt += distribution.total_prems
+        else:
+            break
 
-    #select number of premises ready to adopt
-    new_distributions_wanting_to_adopt = distributions_not_wanting_to_adopt[1:int(to_adopt)]
-
-    LOGGER.debug("-- distributions not wanting to connect %s", len(distributions_not_wanting_to_adopt))
-    LOGGER.debug("-- distributions wanting to connect %s", len(new_distributions_wanting_to_adopt))
-    LOGGER.debug("-- total distributions %s",
-                 len(distributions_already_wanting_to_adopt) + len(distributions_not_wanting_to_adopt))
+    LOGGER.debug("-- premises not wanting to connect %s", 
+        len([dist.total_prems for dist in distributions_not_wanting_to_adopt]))
+    LOGGER.debug("-- premises wanting to connect %s", 
+        sum([dist.total_prems for dist in new_distributions_wanting_to_adopt]))
+    LOGGER.debug("-- total premises %s",
+        sum([dist.total_prems for dist in distributions_already_wanting_to_adopt]) + 
+        sum([dist.total_prems for dist in distributions_not_wanting_to_adopt]))
 
     distribution_adoption = []
 

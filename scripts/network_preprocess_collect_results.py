@@ -353,8 +353,12 @@ if __name__ == "__main__":
     csv_writer(links_layer3_cabinets, 'links_layer3_cabinets.csv')
     # write_shapefile(links_layer3_cabinets, 'links_layer3_cabinets.shp')
 
-    links_layer4_distributions = collect_results(selection, 'links_sl_layer4_distributions.csv')
-    csv_writer(links_layer4_distributions, 'links_layer4_distributions.csv')
+    # links_layer4_distributions = collect_results(selection, 'links_sl_layer4_distributions.csv')
+    # csv_writer(links_layer4_distributions, 'links_layer4_distributions.csv')
+    # # write_shapefile(links_layer4_distributions, 'links_layer4_distributions.shp')
+
+    links_layer4_distributions = collect_results(selection, 'links_premises_by_distribution_point.csv')
+    csv_writer(links_layer4_distributions, 'links_premises_by_distribution_point.csv')
     # write_shapefile(links_layer4_distributions, 'links_layer4_distributions.shp')
 
     links_layer5_premises = collect_results(selection, 'links_sl_layer5_premises.csv')

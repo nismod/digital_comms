@@ -114,7 +114,7 @@ def _suggest_interventions(system, timestep, technology, policy, annual_budget, 
     if policy == 's1_market_based_roll_out':
         distributions = get_distributions(system, technology, False)
         for distribution in distributions:
-            if (premises_passed + len(distribution._clients)) < adoption_cap:
+            if (premises_passed + distribution.total_prems) < adoption_cap:
                 if distribution.rollout_costs[technology] < annual_budget:
                     annual_budget -= distribution.rollout_costs[technology]
                     deployment_type = 'market_based'
@@ -127,7 +127,7 @@ def _suggest_interventions(system, timestep, technology, policy, annual_budget, 
                             distribution.rollout_costs[technology],
                         )
                     )
-                    premises_passed += len(distribution._clients)
+                    premises_passed += distribution.total_prems
                 else:
                     break
             else:
@@ -137,7 +137,7 @@ def _suggest_interventions(system, timestep, technology, policy, annual_budget, 
         distributions = get_distributions(system, technology, False)
         deployment_type = 'market_based'
         for distribution in distributions:
-            if (premises_passed + len(distribution._clients)) < adoption_cap:
+            if (premises_passed + distribution.total_prems) < adoption_cap:
                 if distribution.rollout_costs[technology] < annual_budget:
                     annual_budget -= distribution.rollout_costs[technology]
                     built_interventions.append(
@@ -149,7 +149,7 @@ def _suggest_interventions(system, timestep, technology, policy, annual_budget, 
                             distribution.rollout_costs[technology],
                         )
                     )
-                    premises_passed += len(distribution._clients)
+                    premises_passed += distribution.total_prems
                 else:
                     break
             else:
@@ -189,7 +189,7 @@ def _suggest_interventions(system, timestep, technology, policy, annual_budget, 
                         distribution.rollout_costs[technology],
                     )
                 )
-                premises_passed += len(distribution._clients)
+                premises_passed += distribution.total_prems
             else:
                 break
 
