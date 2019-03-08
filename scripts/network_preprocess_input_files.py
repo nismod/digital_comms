@@ -15,7 +15,6 @@ from pyproj import Proj, transform
 from sklearn.cluster import KMeans #DBSCAN,
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from rtree import index
-from operator import itemgetter
 
 from collections import OrderedDict, defaultdict, Counter
 

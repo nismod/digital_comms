@@ -50,10 +50,8 @@ def read_assets():
 
     """
     assets = {}
-    assets['premises'] = read_csv(os.path.join(
-        'data', 'processed', 'assets_layer5_premises.csv'))
     assets['distributions'] = read_csv(os.path.join(
-        'data', 'processed', 'assets_layer4_distributions.csv'))
+        'data', 'processed', 'premises_by_distribution_point.csv'))
     assets['cabinets'] = read_csv(os.path.join(
         'data', 'processed', 'assets_layer3_cabinets.csv'))
     assets['exchanges'] = read_csv(os.path.join(
@@ -94,7 +92,7 @@ def read_parameters():
     """
     params = {}
 
-    path = os.path.join(YAML_DIRECTORY, 'sector_models', 'digital_comms.yml')
+    path = os.path.join('config', 'sector_models', 'digital_comms.yml')
     with open(path, 'r') as ymlfile:
         for data in yaml.load_all(ymlfile):
             parameters = data['parameters']
@@ -154,7 +152,6 @@ def read_parameters():
 # LOAD SCENARIO DATA
 ################################################################
 
-
 def load_in_yml_parameters():
     """Load in digital_comms sector model .yml parameter data from
     digital_comms/config/sector_models.
@@ -174,7 +171,7 @@ def load_in_yml_parameters():
         Returns the annual universal service obligation.
 
     """
-    path = os.path.join(YAML_DIRECTORY, 'sector_models', 'digital_comms.yml')
+    path = os.path.join('config', 'sector_models', 'digital_comms.yml')
     with open(path, 'r') as ymlfile:
         for data in yaml.load_all(ymlfile):
             parameters = data['parameters']
@@ -214,7 +211,7 @@ def load_in_scenarios_and_strategies():
     strategy_technologies = []
     strategy_policies = []
     pathlist = glob.iglob(os.path.join(
-        YAML_DIRECTORY, 'sos_model_runs') + '/*.yml', recursive=True)
+        'config', 'sos_model_runs') + '/*.yml', recursive=True)
     for path in pathlist:
         with open(path, 'r') as ymlfile:
             for data in yaml.load_all(ymlfile):
@@ -342,21 +339,23 @@ def run():
             logging.info("Annual scenario adoption rate is %s", annual_adoption_rate)
 
             # get adoption desirability from previous timestep
+            #TODO: this needs to count the premises, not the distributions
             adoption_desirability = [
-                premise for premise in system._premises if premise.adoption_desirability]
-            total_premises = [premise for premise in system._premises]
+                distribution for distribution in system._distributions if distribution.adoption_desirability]
+            total_distributions = [distribution for distribution in system._distributions]
 
             # get adoption desirability percentage increase for this timestep
+            #TODO get number of premises here, rather than the length of distribution points
             adoption_desirability_percentage = (
-                len(adoption_desirability) / len(total_premises) * 100)
+                len(adoption_desirability) / len(total_distributions) * 100)
             percentage_annual_increase = annual_adoption_rate - \
                 adoption_desirability_percentage
             percentage_annual_increase = round(float(percentage_annual_increase), 1)
 
             # update the number of premises wanting to adopt (adoption_desirability)
-            premises_adoption_desirability_ids = update_adoption_desirability(
+            distribution_adoption_desirability_ids = update_adoption_desirability(
                 system, percentage_annual_increase)
-            system.update_adoption_desirability(premises_adoption_desirability_ids)
+            system.update_adoption_desirability(distribution_adoption_desirability_ids)
 
             # get total adoption desirability for this time step (has to be done after
             # system.update_adoption_desirability)
@@ -407,7 +406,6 @@ if __name__ == "__main__":
     # SETUP FILE LOCATIONS
     #####################################
 
-    YAML_DIRECTORY = os.path.join(BASE_PATH, '..', 'config')
     SCENARIO_DATA = os.path.join(BASE_PATH, 'scenarios')
     DATA_PROCESSED_INPUTS = os.path.join(BASE_PATH, 'processed')
     RESULTS_DIRECTORY = os.path.join(BASE_PATH, '..', 'results')

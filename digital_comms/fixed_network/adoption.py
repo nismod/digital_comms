@@ -22,39 +22,39 @@ def update_adoption_desirability(system, annual_adoption_rate):
 
     """
 
-    premises_not_wanting_to_adopt = [
-        premise for premise in system._premises
-        if premise.adoption_desirability is not True
+    distributions_not_wanting_to_adopt = [
+        distribution for distribution in system._distributions
+        if distribution.adoption_desirability is not True
     ]
 
-    premises_already_wanting_to_adopt = [
-        premise for premise in system._premises
-        if premise.adoption_desirability is True
+    distributions_already_wanting_to_adopt = [
+        distribution for distribution in system._distributions
+        if distribution.adoption_desirability is True
     ]
     #rank premises based on household wta
-    premises_not_wanting_to_adopt = sorted(
-        premises_not_wanting_to_adopt, key=lambda item: item.wta)
+    distributions_not_wanting_to_adopt = sorted(
+        distributions_not_wanting_to_adopt, key=lambda item: item.wta)
 
     #get number of premises to select = convert adopt rate into raw premises
-    to_adopt = (len(system._premises) * annual_adoption_rate) / 100
+    to_adopt = (len(system._distributions) * annual_adoption_rate) / 100
 
     #select number of premises ready to adopt
-    new_premises_wanting_to_adopt = premises_not_wanting_to_adopt[1:int(to_adopt)]
+    new_distributions_wanting_to_adopt = distributions_not_wanting_to_adopt[1:int(to_adopt)]
 
-    LOGGER.debug("-- premises not wanting to connect %s", len(premises_not_wanting_to_adopt))
-    LOGGER.debug("-- premises wanting to connect %s", len(new_premises_wanting_to_adopt))
-    LOGGER.debug("-- total premises %s",
-                 len(premises_already_wanting_to_adopt) + len(premises_not_wanting_to_adopt))
+    LOGGER.debug("-- distributions not wanting to connect %s", len(distributions_not_wanting_to_adopt))
+    LOGGER.debug("-- distributions wanting to connect %s", len(new_distributions_wanting_to_adopt))
+    LOGGER.debug("-- total distributions %s",
+                 len(distributions_already_wanting_to_adopt) + len(distributions_not_wanting_to_adopt))
 
-    premises_adoption = []
+    distribution_adoption = []
 
     #cycle through number of premises
-    for premises in new_premises_wanting_to_adopt:
+    for distribution in new_distributions_wanting_to_adopt:
 
         #turn adoption_desirability to True
-        premises.adoption_desirability = True
+        distribution.adoption_desirability = True
 
         #append adopted premises to list
-        premises_adoption.append((premises.id, premises.adoption_desirability))
+        distribution_adoption.append((distribution.id, distribution.adoption_desirability))
 
-    return premises_adoption
+    return distribution_adoption
