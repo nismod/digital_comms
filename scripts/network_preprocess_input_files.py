@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 import configparser
 import csv
 import fiona
@@ -17,7 +18,6 @@ from scipy.spatial import Voronoi, voronoi_plot_2d
 from rtree import index
 
 from collections import OrderedDict, defaultdict, Counter
-
 import osmnx as ox, networkx as nx, geopandas as gpd
 
 CONFIG = configparser.ConfigParser()
@@ -228,7 +228,7 @@ def read_pcd_to_exchange_lut(exchange_abbr):
     for path in pathlist:
         path_partition = os.path.basename(path)[24:]
         if path_partition == filename:
-            with open(path, 'r', encoding='utf8', errors='replace') as system_file:
+            with open(path, 'r', errors='replace') as system_file:
                 reader = csv.reader(system_file)
                 #next(reader)
                 for line in reader:
@@ -262,7 +262,7 @@ def read_pcd_to_cabinet_lut(exchange_abbr):
     unique_ouput = defaultdict(list)
 
     if os.path.exists(path):
-        with open(path, 'r', encoding='utf8', errors='replace') as system_file:
+        with open(path, 'r', errors='replace') as system_file:
             reader = csv.reader(system_file)
             for line in reader:
                 if line[2] == '0':
@@ -288,7 +288,7 @@ def find_intersecting_postcode_areas(exchange_abbr):
     for path in pathlist:
         path_partition = path.split("_area_exchange_")[1]
         if path_partition == filename:
-            with open(path, 'r', encoding='utf8', errors='replace') as system_file:
+            with open(path, 'r', errors='replace') as system_file:
                 reader = csv.reader(system_file)
                 for line in reader:
                     for item in line:
@@ -349,7 +349,8 @@ def read_postcode_technology_lut(exchange_abbr):
             path_partition = filename.split("_r02_")[1]
             path_partition = path_partition[:-4]
             if path_partition == area:
-                with open(os.path.join(DATA_INITIAL_SYSTEM, filename), 'r', encoding='utf8', errors='replace') as system_file:
+                with open(os.path.join(DATA_INITIAL_SYSTEM, filename),
+                    'r', errors='replace') as system_file:
                     reader = csv.reader(system_file)
                     next(reader)
                     for line in reader:
@@ -1282,9 +1283,9 @@ def aggregate_premises_links_by_dist_point(premises_links):
             'origin': origin,
             'dest': dest,
             'length': int(round(length)),
-            'technology': technology, 
+            'technology': technology,
         })
-    
+
     return aggregated_data
 
 def aggregate_premises_by_dist_point(premises):
@@ -1335,9 +1336,9 @@ def aggregate_premises_by_dist_point(premises):
             'fttc': fttc,
             'docsis3': docsis3,
             'adsl': adsl,
-            'total_prems': total_prems, 
+            'total_prems': total_prems,
         })
-    
+
     return aggregated_data
 
 #####################################
@@ -1380,7 +1381,7 @@ def csv_writer(data, exchange_name, filename, geojson):
         os.makedirs(directory)
 
     fieldnames = []
-    if geojson == 1:
+    if geojson:
         for name, value in data[0]['properties'].items():
             fieldnames.append(name)
 
@@ -1392,8 +1393,8 @@ def csv_writer(data, exchange_name, filename, geojson):
             writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
             writer.writeheader()
             writer.writerows(data_to_write)
-    
-    elif geojson == 0:        
+
+    if not geojson:
         for name, value in data[0].items():
             fieldnames.append(name)
 
