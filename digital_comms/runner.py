@@ -26,11 +26,9 @@ def read_csv(file):
         dict
 
     """
-    results = []
     with open(file, 'r') as system_file:
         reader = csv.DictReader(system_file)
-        for line in reader:
-            results.append(dict(line))
+        results = list(reader)
 
     return results
 
