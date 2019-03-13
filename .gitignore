@@ -56,3 +56,6 @@ data/*
 results/*
 scripts/script_config.ini
 cache
+
+# logger
+fixed_runner.py_logged_info

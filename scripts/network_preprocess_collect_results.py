@@ -349,38 +349,20 @@ if __name__ == "__main__":
     elif sys.argv[1] == 'England':
         selection = get_exchange_ids('country', 'England')
 
-    links_layer3_cabinets = collect_results(selection, 'links_sl_layer3_cabinets.csv')
-    csv_writer(links_layer3_cabinets, 'links_layer3_cabinets.csv')
-    # write_shapefile(links_layer3_cabinets, 'links_layer3_cabinets.shp')
+    links_exchanges = collect_results(selection, 'links_sl_exchanges.csv')
+    csv_writer(links_exchanges, 'links_exchanges.csv')
 
-    # links_layer4_distributions = collect_results(selection, 'links_sl_layer4_distributions.csv')
-    # csv_writer(links_layer4_distributions, 'links_layer4_distributions.csv')
-    # # write_shapefile(links_layer4_distributions, 'links_layer4_distributions.shp')
+    links_cabinets = collect_results(selection, 'links_sl_cabinets.csv')
+    csv_writer(links_cabinets, 'links_cabinets.csv')
 
-    links_layer4_distributions = collect_results(selection, 'links_premises_by_distribution_point.csv')
-    csv_writer(links_layer4_distributions, 'links_premises_by_distribution_point.csv')
-    # write_shapefile(links_layer4_distributions, 'links_layer4_distributions.shp')
+    links_distribution_points = collect_results(selection, 'links_sl_distribution_points.csv')
+    csv_writer(links_distribution_points, 'links_distribution_points.csv')
 
-    links_layer5_premises = collect_results(selection, 'links_sl_layer5_premises.csv')
-    csv_writer(links_layer5_premises, 'links_layer5_premises.csv')
-    # write_shapefile(links_layer5_premises, 'links_layer5_premises.shp')
+    assets_exchanges = collect_results(selection, 'assets_exchange.csv')
+    csv_writer(assets_exchanges, 'assets_exchanges.csv')
 
-    assets_layer2_exchanges = collect_results(selection, 'assets_layer2_exchange.csv')
-    csv_writer(assets_layer2_exchanges, 'assets_layer2_exchanges.csv')
-    #write_shapefile(assets_layer2_exchanges, 'assets_layer2_exchange.shp')
+    assets_cabinets = collect_results(selection, 'assets_cabinets.csv')
+    csv_writer(assets_cabinets, 'assets_cabinets.csv')
 
-    assets_layer3_cabinets = collect_results(selection, 'assets_layer3_cabinets.csv')
-    csv_writer(assets_layer3_cabinets, 'assets_layer3_cabinets.csv')
-    # write_shapefile(assets_layer3_cabinets, 'assets_layer3_cabinets.shp')
-
-    assets_layer4_distributions = collect_results(selection, 'assets_layer4_distributions.csv')
-    csv_writer(assets_layer4_distributions, 'assets_layer4_distributions.csv')
-    # write_shapefile(assets_layer4_distributions, 'assets_layer4_distributions.shp')
-
-    # assets_layer5_premises = collect_results(selection, 'assets_layer5_premises.csv')
-    # csv_writer(assets_layer5_premises, 'assets_layer5_premises.csv')
-    # # write_shapefile(assets_layer5_premises, 'assets_layer5_premises.shp')
-
-    premises_by_distribution_point = collect_results(selection, 'premises_by_distribution_point.csv')
-    csv_writer(premises_by_distribution_point, 'premises_by_distribution_point.csv')
-    # write_shapefile(assets_layer5_premises, 'assets_layer5_premises.shp')
+    assets_distribution_points = collect_results(selection, 'assets_distribution_points.csv')
+    csv_writer(assets_distribution_points, 'assets_distribution_points.csv')
