@@ -14,8 +14,6 @@ class TestNetworkManager():
 
 def test_init(setup_system, assets):
 
-    print(len([d for d in setup_system['distributions']]))
-
     assert len([d for d in assets['distributions']]) == len([
         dist for dist in setup_system['distributions']])
     assert len(assets['cabinets']) == len(setup_system.assets['cabinets'])
