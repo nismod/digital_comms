@@ -7,9 +7,9 @@ import os
 
 import yaml
 
-from digital_comms.fixed_network.model import NetworkManager
-from digital_comms.fixed_network.interventions import decide_interventions
-from digital_comms.fixed_network.adoption import update_adoption_desirability
+from fixed_network.model import NetworkManager
+from fixed_network.interventions import decide_interventions
+from fixed_network.adoption import update_adoption_desirability
 
 
 def read_csv(file):
@@ -27,58 +27,53 @@ def read_csv(file):
         dict
 
     """
-    results = []
     with open(file, 'r') as system_file:
         reader = csv.DictReader(system_file)
-        for line in reader:
-            results.append(dict(line))
+        results = list(reader)
 
     return results
 
 
 def read_assets():
     """Read in all assets required to run the model:
-        - Premises
-        - Distribution Points
-        - Cabinets
         - Exchanges
+        - Cabinets
+        - Distribution Points
 
     Returns
     -------
     dict
-        Returns a dict containing all Premises, Distribution Points, Cabinets and Exchanges.
+        Returns a dict containing all Exchanges, Cabinets and Distribution Points.
 
     """
     assets = {}
-    assets['premises'] = read_csv(os.path.join(
-        'data', 'processed', 'assets_layer5_premises.csv'))
-    assets['distributions'] = read_csv(os.path.join(
-        'data', 'processed', 'assets_layer4_distributions.csv'))
-    assets['cabinets'] = read_csv(os.path.join(
-        'data', 'processed', 'assets_layer3_cabinets.csv'))
     assets['exchanges'] = read_csv(os.path.join(
-        'data', 'processed', 'assets_layer2_exchanges.csv'))
+        'data', 'processed', 'assets_exchanges.csv'))
+    assets['cabinets'] = read_csv(os.path.join(
+        'data', 'processed', 'assets_cabinets.csv'))
+    assets['distributions'] = read_csv(os.path.join(
+        'data', 'processed', 'assets_distribution_points.csv'))
 
     return assets
 
 
 def read_links():
     """Read in all links required to run the model:
-        - Premises to Distribution Point,
-        - Distribution Point to Cabinet,
-        - Cabinet to Exchange.
+        - Exchange to Cabinets
+        - Cabinets to Distribution Points
+        - Distribution Points to Premises in aggregated form
 
     Returns
     -------
     list_of_dicts
-        Returns a list_of_dicts containing all links between Premises, Distribution Points,
-        Cabinets and Exchanges.
+        Returns a list_of_dicts containing all links between Exchanges, Cabinets and
+        Distribution Points.
 
     """
     links = []
-    links.extend(read_csv(os.path.join('data', 'processed', 'links_layer5_premises.csv')))
-    links.extend(read_csv(os.path.join('data', 'processed', 'links_layer4_distributions.csv')))
-    links.extend(read_csv(os.path.join('data', 'processed', 'links_layer3_cabinets.csv')))
+    links.extend(read_csv(os.path.join('data', 'processed', 'links_distribution_points.csv')))
+    links.extend(read_csv(os.path.join('data', 'processed', 'links_cabinets.csv')))
+    links.extend(read_csv(os.path.join('data', 'processed', 'links_exchanges.csv')))
 
     return links
 
@@ -94,7 +89,7 @@ def read_parameters():
     """
     params = {}
 
-    path = os.path.join(YAML_DIRECTORY, 'sector_models', 'digital_comms.yml')
+    path = os.path.join('config', 'sector_models', 'digital_comms.yml')
     with open(path, 'r') as ymlfile:
         for data in yaml.load_all(ymlfile):
             parameters = data['parameters']
@@ -154,7 +149,6 @@ def read_parameters():
 # LOAD SCENARIO DATA
 ################################################################
 
-
 def load_in_yml_parameters():
     """Load in digital_comms sector model .yml parameter data from
     digital_comms/config/sector_models.
@@ -174,7 +168,7 @@ def load_in_yml_parameters():
         Returns the annual universal service obligation.
 
     """
-    path = os.path.join(YAML_DIRECTORY, 'sector_models', 'digital_comms.yml')
+    path = os.path.join('config', 'sector_models', 'digital_comms.yml')
     with open(path, 'r') as ymlfile:
         for data in yaml.load_all(ymlfile):
             parameters = data['parameters']
@@ -194,7 +188,6 @@ def load_in_yml_parameters():
 
     return annual_budget, telco_match_funding, subsidy, service_obligation_capacity
 
-annual_budget, subsidy, telco_match_funding, service_obligation_capacity = load_in_yml_parameters()
 
 def load_in_scenarios_and_strategies():
     """Load in each model run .yaml file from digital_comms/config/sos_model_runs,
@@ -214,7 +207,7 @@ def load_in_scenarios_and_strategies():
     strategy_technologies = []
     strategy_policies = []
     pathlist = glob.iglob(os.path.join(
-        YAML_DIRECTORY, 'sos_model_runs') + '/*.yml', recursive=True)
+        'config', 'sos_model_runs') + '/*.yml', recursive=True)
     for path in pathlist:
         with open(path, 'r') as ymlfile:
             for data in yaml.load_all(ymlfile):
@@ -286,7 +279,7 @@ def write_decisions(decisions, year, technology, policy):
         decisions_file = open(decisions_filename, 'w', newline='')
         decisions_writer = csv.writer(decisions_file)
         decisions_writer.writerow(
-            ('asset_id', 'year', 'strategy', 'cost'))
+            ('asset_id', 'year', 'technology', 'policy'))
     else:
         decisions_file = open(decisions_filename, 'a', newline='')
         decisions_writer = csv.writer(decisions_file)
@@ -295,19 +288,64 @@ def write_decisions(decisions, year, technology, policy):
     for intervention in decisions:
         # Output decisions
         asset_id = intervention[0]
-        strategy = intervention[1]
-        cost = intervention[2]
+        technology = intervention[1]
+        policy = intervention[2]
         year = year
 
         decisions_writer.writerow(
-            (asset_id, year, strategy, cost))
+            (asset_id, year, technology, policy))
+
+    decisions_file.close()
+
+def write_spend(decisions, year, technology, policy):
+    """Write out spending decisions made annually for each technology and policy.
+
+    Parameters
+    ----------
+    decisions : list_of_tuples
+        Contains the upgraded assets with the deployed technology and affliated costs
+    year : int
+        The year of deployment.
+    technology : string
+        The new technology deployed.
+    policy : string
+        The policy used to encourage deployment.
+    spend_type : string
+        Whether the spent capital was purely market delivered, or subsidised.
+    spend : int
+        The amount of capital spent (£).
+
+    """
+    decisions_filename = os.path.join(
+        RESULTS_DIRECTORY, 'spend_{}_{}.csv'.format(technology, policy))
+
+    if year == BASE_YEAR:
+        decisions_file = open(decisions_filename, 'w', newline='')
+        decisions_writer = csv.writer(decisions_file)
+        decisions_writer.writerow(
+            ('asset_id', 'year', 'technology', 'policy', 'spend_type', 'cost'))
+    else:
+        decisions_file = open(decisions_filename, 'a', newline='')
+        decisions_writer = csv.writer(decisions_file)
+
+    # output and report results for this timestep
+    for intervention in decisions:
+        # Output decisions
+        asset_id = intervention[0]
+        technology = intervention[1]
+        policy = intervention[2]
+        spend_type = intervention[3]
+        cost = intervention[4]
+        year = year
+
+        decisions_writer.writerow(
+            (asset_id, year, technology, policy, spend_type, cost))
 
     decisions_file.close()
 
 ################################################################
 # RUN MODEL
 ################################################################
-
 
 def run():
     """Run model over scenario/strategy combinations
@@ -331,7 +369,7 @@ def run():
         for year in TIMESTEPS:
             logging.info("-%s", year)
 
-            budget = annual_budget
+            budget = ANNUAL_BUDGET
 
             # Simulate first year
             if year == BASE_YEAR:
@@ -343,36 +381,37 @@ def run():
 
             # get adoption desirability from previous timestep
             adoption_desirability = [
-                premise for premise in system._premises if premise.adoption_desirability]
-            total_premises = [premise for premise in system._premises]
+                distribution for distribution in system._distributions
+                if distribution.adoption_desirability]
 
-            # get adoption desirability percentage increase for this timestep
+            total_distributions = [distribution for distribution in system._distributions]
+
             adoption_desirability_percentage = (
-                len(adoption_desirability) / len(total_premises) * 100)
-            percentage_annual_increase = annual_adoption_rate - \
-                adoption_desirability_percentage
-            percentage_annual_increase = round(float(percentage_annual_increase), 1)
+                len([dist.total_prems for dist in adoption_desirability]) /
+                len([dist.total_prems for dist in total_distributions]) * 100)
+
+            percentage_annual_increase = round(float(annual_adoption_rate - \
+                adoption_desirability_percentage), 1)
 
             # update the number of premises wanting to adopt (adoption_desirability)
-            premises_adoption_desirability_ids = update_adoption_desirability(
+            distribution_adoption_desirability_ids = update_adoption_desirability(
                 system, percentage_annual_increase)
-            system.update_adoption_desirability(premises_adoption_desirability_ids)
+
+            system.update_adoption_desirability(distribution_adoption_desirability_ids)
 
             # get total adoption desirability for this time step (has to be done after
             # system.update_adoption_desirability)
-            # adoption_desirability_now = [
-            #     premise for premise in system._premises if premise.adoption_desirability]
-            # total_adoption_desirability_percentage = round(
-            #     (len(adoption_desirability_now) / len(total_premises) * 100), 2)
-            # logging.info("Annual adoption desirability rate is {}%".format(
-            #     round(total_adoption_desirability_percentage, 2)))
+            adoption_desirability_now = [
+                dist for dist in system._distributions if dist.adoption_desirability]
+
+            total_adoption_desirability_percentage = round(
+                (len([dist.total_prems for dist in adoption_desirability_now]) /
+                len([dist.total_prems for dist in total_distributions]) * 100), 2)
 
             # calculate the maximum adoption level based on the scenario, to make sure the
             # model doesn't overestimate
-            adoption_cap = len(premises_adoption_desirability_ids) + \
-                sum(getattr(premise, technology) for premise in system._premises)
-            #logging.info("Maximum annual adoption rate is {}%".format(
-            #   round(total_adoption_desirability_percentage, 2)))
+            adoption_cap = len(distribution_adoption_desirability_ids) + \
+                sum(getattr(distribution, technology) for distribution in system._distributions)
 
             # actually decide which interventions to build
             built_interventions = decide_interventions(
@@ -385,10 +424,8 @@ def run():
             # write out the decisions
             write_decisions(built_interventions, year, technology, policy)
 
-            # write_spend(built_interventions, year, technology, policy, spend)
+            write_spend(built_interventions, year, technology, policy)
 
-            # write_pcd_results(system, year, pop_scenario, throughput_scenario, technology,
-            #                   policy, cost_by_pcd)
 
             logging.info("--")
 
@@ -407,7 +444,6 @@ if __name__ == "__main__":
     # SETUP FILE LOCATIONS
     #####################################
 
-    YAML_DIRECTORY = os.path.join(BASE_PATH, '..', 'config')
     SCENARIO_DATA = os.path.join(BASE_PATH, 'scenarios')
     DATA_PROCESSED_INPUTS = os.path.join(BASE_PATH, 'processed')
     RESULTS_DIRECTORY = os.path.join(BASE_PATH, '..', 'results')

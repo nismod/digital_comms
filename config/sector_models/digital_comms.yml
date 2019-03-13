@@ -126,7 +126,7 @@ parameters:
   units: GBP
 - absolute_range: (0, 100000)
   default_value: 20000
-  description: The costs to enable an exchange to service GFast
+  description: The costs to enable an exchange to service fttdp
   name: costs_assets_exchange_fttdp
   suggested_range: (0, 100000)
   units: GBP
@@ -150,7 +150,7 @@ parameters:
   units: GBP
 - absolute_range: (0, 100000)
   default_value: 2000
-  description: The costs to enable a cabinet to service GFast
+  description: The costs to enable a cabinet to service fttdp
   name: costs_assets_cabinet_fttdp
   suggested_range: (0, 100000)
   units: GBP
@@ -168,7 +168,7 @@ parameters:
   units: GBP
 - absolute_range: (0, 100000)
   default_value: 400
-  description: The costs to enable a distribution to service GFast
+  description: The costs to enable a distribution to service fttdp
   name: costs_assets_distribution_fttdp_8_ports
   suggested_range: (0, 100000)
   units: GBP
@@ -210,7 +210,7 @@ parameters:
   units: GBP
 - absolute_range: (0, 100000)
   default_value: 37
-  description: The costs to enable a premise to receive GFast
+  description: The costs to enable a premise to receive fttdp
   name: costs_assets_premise_fttdp_modem
   suggested_range: (0, 100000)
   units: GBP
@@ -234,7 +234,7 @@ parameters:
 #   units: GBP
 # - absolute_range: (0, 100000)
 #   default_value: 10000
-#   description: The benefits to enable a premise to receive GFast
+#   description: The benefits to enable a premise to receive fttdp
 #   name: benefits_assets_premise_fttdp
 #   suggested_range: (0, 100000)
 #   units: GBP
