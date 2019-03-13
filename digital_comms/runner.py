@@ -7,9 +7,10 @@ import os
 
 import yaml
 
-from fixed_network.model import NetworkManager
-from fixed_network.interventions import decide_interventions
-from fixed_network.adoption import update_adoption_desirability
+from digital_comms.fixed_network.model import NetworkManager
+from digital_comms.fixed_network.interventions import decide_interventions
+from digital_comms.fixed_network.adoption import update_adoption_desirability
+
 
 def read_csv(file):
     """Read in a .csv file. Convert each line to single dict, and then append to a list.
@@ -26,11 +27,9 @@ def read_csv(file):
         dict
 
     """
-    results = []
     with open(file, 'r') as system_file:
         reader = csv.DictReader(system_file)
-        for line in reader:
-            results.append(dict(line))
+        results = list(reader)
 
     return results
 

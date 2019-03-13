@@ -9,13 +9,19 @@ class TestNetworkManager():
 
     def test_create(self, assets, links, parameters):
 
-        Manager = NetworkManager(assets, links, parameters)
+        NetworkManager(assets, links, parameters)
 
 
 def test_init(setup_system, assets):
 
+<<<<<<< HEAD
     assert len([d for d in assets['distributions']]) == len([
         dist for dist in setup_system['distributions']])
+=======
+    print(len(setup_system._distributions))
+
+    assert len(assets['distributions']) == len(setup_system._distributions)
+>>>>>>> 78ff86f5286aa16e1758c7ae1151754de256356a
     assert len(assets['cabinets']) == len(setup_system.assets['cabinets'])
     assert len(assets['exchanges']) == len(setup_system.assets['exchanges'])
 
