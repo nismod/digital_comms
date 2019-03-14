@@ -221,15 +221,15 @@ def write_points_to_csv(filename, data):
         writer.writerows(data)
 
 distribution_points = [
-    {'id': 'distribution_{EACAM}{1}', 'connection': 'cabinet_{EACAM}{1}', 'wta': 0.1, 
+    {'id': 'distribution_{EACAM}{1}', 'connection': 'cabinet_{EACAM}{1}', 'wta': 0.1,
     'wtp': 200, 'fttp': 0, 'fttdp': 0, 'fttc': 18, 'docsis3': 15, 'adsl': 20, 'total_prems': 20},
-    {'id': 'distribution_{EACAM}{2}', 'connection': 'cabinet_{EACAM}{1}', 'wta': 0.2, 
+    {'id': 'distribution_{EACAM}{2}', 'connection': 'cabinet_{EACAM}{1}', 'wta': 0.2,
     'wtp': 200, 'fttp': 0, 'fttdp': 0, 'fttc': 18, 'docsis3': 15, 'adsl': 20, 'total_prems': 20},
-    {'id': 'distribution_{EACAM}{3}', 'connection': 'cabinet_{EACAM}{1}', 'wta': 0.3, 
+    {'id': 'distribution_{EACAM}{3}', 'connection': 'cabinet_{EACAM}{1}', 'wta': 0.3,
     'wtp': 200, 'fttp': 0, 'fttdp': 0, 'fttc': 18, 'docsis3': 15, 'adsl': 20, 'total_prems': 20},
-    {'id': 'distribution_{EACAM}{4}', 'connection': 'cabinet_{EACAM}{1}', 'wta': 0.4, 
+    {'id': 'distribution_{EACAM}{4}', 'connection': 'cabinet_{EACAM}{1}', 'wta': 0.4,
     'wtp': 200, 'fttp': 5, 'fttdp': 5, 'fttc': 18, 'docsis3': 15, 'adsl': 20, 'total_prems': 20},
-    {'id': 'distribution_{EACAM}{5}', 'connection': 'cabinet_{EACAM}{1}', 'wta': 0.5, 
+    {'id': 'distribution_{EACAM}{5}', 'connection': 'cabinet_{EACAM}{1}', 'wta': 0.5,
     'wtp': 200, 'fttp': 10, 'fttdp': 10, 'fttc': 18, 'docsis3': 15, 'adsl': 20, 'total_prems': 20},
 ]
 
@@ -244,4 +244,4 @@ distribution_point_links = [
 write_points_to_csv(os.path.join(WRITE_DIRECTORY, 'dummy_dists.csv'), distribution_points)
 write_points_to_csv(os.path.join(WRITE_DIRECTORY, 'dummy_links.csv'), distribution_point_links)
 
-print('Done... Files are generated')dists
+print('Done... Files are generated')

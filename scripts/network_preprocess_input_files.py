@@ -113,7 +113,7 @@ def read_premises_data(exchange_area):
                                             'id': line[2],
                                             #'household_id': line[4],
                                             #'res_count': line[6],
-                                            'lad': line[13],
+                                            'lad': line[12],
                                             #'oa': line[17],
                                             'wta': round(random.uniform(0, 1), 4),
                                             'wtp': round(int(random.uniform(20, 60))),
