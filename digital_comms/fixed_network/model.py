@@ -146,6 +146,9 @@ class NetworkManager():
             sum_of_fttc = sum(distribution.fttc for distribution in distributions_per_lad[lad])
 
             # contain  list of premises objects in the lad
+            sum_of_docsis3 = sum(distribution.docsis3 for distribution in distributions_per_lad[lad])
+
+            # contain  list of premises objects in the lad
             sum_of_adsl = sum(distribution.adsl for distribution in distributions_per_lad[lad])
 
             # contain  list of premises objects in the lad
@@ -156,6 +159,7 @@ class NetworkManager():
                 'num_fttp': sum_of_fttp,
                 'num_fttdp': sum_of_fttdp,
                 'num_fttc': sum_of_fttc,
+                'num_docsis3': sum_of_docsis3,
                 'num_adsl': sum_of_adsl
             }
 
@@ -172,6 +176,7 @@ class NetworkManager():
             sum_of_fttp = sum(distribution.fttp for distribution in distributions_per_lad[lad])
             sum_of_fttdp = sum(distribution.fttdp for distribution in distributions_per_lad[lad])
             sum_of_fttc = sum(distribution.fttc for distribution in distributions_per_lad[lad])
+            sum_of_docsis3 = sum(distribution.docsis3 for distribution in distributions_per_lad[lad])
             sum_of_adsl = sum(distribution.adsl for distribution in distributions_per_lad[lad])
             sum_of_premises = sum(distribution.total_prems for distribution in distributions_per_lad[lad])
 
@@ -179,6 +184,7 @@ class NetworkManager():
                 'sum_of_fttp': sum_of_fttp,
                 'sum_of_fttdp': sum_of_fttdp,
                 'sum_of_fttc': sum_of_fttc,
+                'sum_of_docsis3': sum_of_docsis3,
                 'sum_of_adsl': sum_of_adsl,
                 'sum_of_premises': sum_of_premises
             })
@@ -189,14 +195,16 @@ class NetworkManager():
             aggregate_fttp = sum(item['sum_of_fttp'] for item in coverage_results)
             aggregate_fttdp = sum(item['sum_of_fttdp'] for item in coverage_results)
             aggregate_fttc = sum(item['sum_of_fttc'] for item in coverage_results)
+            aggregate_docsis3 = sum(item['sum_of_docsis3'] for item in coverage_results)
             aggregate_adsl = sum(item['sum_of_adsl'] for item in coverage_results)
             aggregate_premises = sum(item['sum_of_premises'] for item in coverage_results)
 
             output.append({
-                'percentage_of_premises_with_fttp': aggregate_fttp,
-                'percentage_of_premises_with_fttdp': aggregate_fttdp,
-                'percentage_of_premises_with_fttc': aggregate_fttc,
-                'percentage_of_premises_with_adsl': aggregate_adsl,
+                'percentage_of_premises_with_fttp': aggregate_fttp / aggregate_premises * 100,
+                'percentage_of_premises_with_fttdp': aggregate_fttdp / aggregate_premises * 100,
+                'percentage_of_premises_with_fttc': aggregate_fttc / aggregate_premises * 100,
+                'percentage_of_premises_with_docsis3': aggregate_docsis3 / aggregate_premises * 100,
+                'percentage_of_premises_with_adsl': aggregate_adsl / aggregate_premises * 100,
                 'sum_of_premises': aggregate_premises
             })
 
@@ -208,15 +216,39 @@ class NetworkManager():
         """
 
         # group premises by lads
-        premises_per_lad = self._premises_by_lad
+        distributions_by_lad = self._distributions_by_lad
 
         capacity_results = defaultdict(dict)
 
-        for lad in premises_per_lad.keys():
-            summed_capacity = sum(
-                premise.connection_capacity
-                for premise in premises_per_lad[lad])
-            number_of_connections = len(premises_per_lad[lad])
+        technologies = ['fttp', 'fttdp', 'fttc', 'docsis3', 'adsl']
+
+        for lad in distributions_by_lad.keys():
+
+            capacity_by_technology = []
+
+            for distribution_point in distributions_by_lad[lad]:
+                for technology in technologies:
+                    number_of_premises_with_technology = getattr(
+                        distribution_point, technology)
+                    if technology == 'adsl':
+
+                        fttp = getattr(distribution_point, 'fttp')
+                        fttdp = getattr(distribution_point, 'fttdp')
+                        fttc = getattr(distribution_point, 'fttc')
+                        docsis3 = getattr(distribution_point, 'docsis3')
+                        total_prems = getattr(distribution_point, 'total_prems')
+
+                        number_of_premises_with_technology = total_prems - (
+                            fttp + fttdp + fttc + docsis3
+                        )
+
+                    technology_capacity = distribution_point.connection_capacity(technology)
+                    capacity = technology_capacity * number_of_premises_with_technology
+                    capacity_by_technology.append(capacity)
+
+            summed_capacity = sum(capacity_by_technology)
+
+            number_of_connections = sum([dist.total_prems for dist in distributions_by_lad[lad]])
 
             capacity_results[lad] = {
                 'average_capacity': round(summed_capacity / number_of_connections, 2),
@@ -582,7 +614,7 @@ class Distribution():
             (self.parameters['planning_administration_cost'] * self.total_prems \
                 if self.fttp == 0 else 0) +
             (self.parameters['costs_assets_premise_fttp_optical_connection_point'] \
-                * (-(-self.total_prems // 32)) if self.fttp == 0 else 0) + 
+                * (-(-self.total_prems // 32)) if self.fttp == 0 else 0) +
             (self.link.upgrade_costs['fibre'] if self.link is not None else 0)
         )
         self.upgrade_costs['fttdp'] = (
@@ -659,25 +691,21 @@ class Distribution():
         self.rollout_bcr['adsl'] = _calculate_benefit_cost_ratio(
             self.rollout_benefits['adsl'], self.rollout_costs['adsl'])
 
-        # determine best_connection:
-        if self.fttp == 1:
-            self.best_connection = 'fttp'
-        elif self.fttdp == 1:
-            self.best_connection = 'fttdp'
-        elif self.fttc == 1:
-            self.best_connection = 'fttc'
-        else:
-            self.best_connection = 'adsl'
+    def connection_capacity(self, technology):
 
         # determine connection_capacity
-        if self.best_connection == 'fttp':
-            self.connection_capacity = 250
-        elif self.best_connection == 'fttdp':
-            self.connection_capacity = 100
-        elif self.best_connection == 'fttc':
-            self.connection_capacity = 50
+        if technology == 'fttp':
+            connection_capacity = 1000
+        elif technology == 'fttdp':
+            connection_capacity = 300
+        elif technology == 'fttc':
+            connection_capacity = 80
+        elif technology == 'docsis3':
+            connection_capacity = 150
         else:
-            self.connection_capacity = 10
+            connection_capacity = 24
+
+        return connection_capacity
 
     def __repr__(self):
         return "<Distribution id:{}>".format(self.id)

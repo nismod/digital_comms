@@ -13,131 +13,144 @@ class TestNetworkManager():
 
 
 def test_init(setup_system, assets):
-
-<<<<<<< HEAD
-    assert len([d for d in assets['distributions']]) == len([
-        dist for dist in setup_system['distributions']])
-=======
-    print(len(setup_system._distributions))
+    """merely check the number of assets we load in is correct
+    """
 
     assert len(assets['distributions']) == len(setup_system._distributions)
->>>>>>> 78ff86f5286aa16e1758c7ae1151754de256356a
     assert len(assets['cabinets']) == len(setup_system.assets['cabinets'])
     assert len(assets['exchanges']) == len(setup_system.assets['exchanges'])
 
-# def test_update_adoption_desirability(setup_system, setup_annual_adoption_rate):
+def test_init_from_data():
 
-#     assert
+    # setup phase
+    assets = {
+        'distributions':[{
+            'id': 'distribution_{EACAM}{795}',
+            'lad': 'ABABA',
+            'connection': 'cabinet_{EACAM}{P100}',
+            'fttp': 1,
+            'fttdp': 1,
+            'fttc': 5,
+            'docsis3': 5,
+            'adsl': 20,
+            'total_prems': 20,
+            'wta': 2.333,
+            'wtp': 200,
+            'name': 'distribution_{EACAM}{795}',
+        }],
+        'cabinets':[{
+            'id': 'cabinet_{EACAM}{P100}',
+            'connection': 'exchange_EACAM',
+            'fttp': '0',
+            'fttdp': '0',
+            'fttc': '0',
+            'docsis3': '0',
+            'adsl': '1',
+            'name': 'cabinet_{EACAM}{P100}',
+        }],
+        'exchanges':[{
+            'id': 'exchange_EACAM',
+            'Name': 'Cambridge',
+            'pcd': 'CB23ET',
+            'Region': 'East',
+            'County': 'Cambridgeshire',
+            'fttp': '0',
+            'fttdp': '0',
+            'fttc': '0',
+            'docsis3': '0',
+            'adsl': '1',
+        }]
+    }
 
+    links = [
+        {
+        'origin': 'osgb5000005186077869',
+        'dest': 'distribution_{EACAM}{795}',
+        'length': '20',
+        'technology': 'copper'
+        },
+        {
+        'origin': 'distribution_{EACAM}{795}',
+        'dest': 'cabinet_{EACAM}{P100}',
+        'length': '94',
+        'technology': 'copper'
+        },
+        {
+        'origin': 'cabinet_{EACAM}{P100}',
+        'dest': 'exchange_EACAM',
+        'length': '1297',
+        'technology': 'fiber'
+        },
+    ]
 
-# def test_decide_interventions(setup_system, setup_timestep, setup_technology,
-#     setup_policy, setup_annual_budget, setup_adoption_cap, setup_subsidy,
-#     setup_telco_match_funding, setup_service_obligation_capacity):
+    parameters = {
+        'costs_links_fibre_meter': 5,
+        'costs_links_copper_meter': 3,
+        'costs_assets_exchange_fttp': 50000,
+        'costs_assets_exchange_fttdp': 40000,
+        'costs_assets_exchange_fttc': 30000,
+        'costs_assets_exchange_fttdp': 25000,
+        'costs_assets_exchange_adsl': 20000,
+        'costs_assets_cabinet_fttp_32_ports': 10,
+        'costs_assets_cabinet_fttdp': 4000,
+        'costs_assets_cabinet_fttc': 3000,
+        'costs_assets_cabinet_fttdp': 2500,
+        'costs_assets_cabinet_adsl': 2000,
+        'costs_assets_distribution_fttp_32_ports': 10,
+        'costs_assets_distribution_fttdp_4_ports': 1500,
+        'costs_assets_distribution_fttc': 300,
+        'costs_assets_distribution_fttdp_8_ports': 250,
+        'costs_assets_distribution_adsl': 200,
+        'costs_assets_premise_fttp_modem': 20,
+        'costs_assets_premise_fttp_optical_network_terminator': 10,
+        'costs_assets_premise_fttp_optical_connection_point': 37,
+        'costs_assets_premise_fttdp_modem': 20,
+        'costs_assets_premise_fttc_modem': 15,
+        'costs_assets_premise_fttdp_modem': 12,
+        'costs_assets_premise_adsl_modem': 10,
+        'benefits_assets_premise_fttp': 50,
+        'benefits_assets_premise_fttdp': 40,
+        'benefits_assets_premise_fttc': 30,
+        'benefits_assets_premise_adsl': 20,
+        'planning_administration_cost': 10,
+    }
 
-#     assert
+    expected_coverage = {
+        'ABABA':{
+            'num_premises': 20,
+            'num_fttp': 1,
+            'num_fttdp': 1,
+            'num_fttc': 5,
+            'num_docsis3': 5,
+            'num_adsl': 20
+        }
+    }
 
+    expected_aggregate_coverage = [{
+        'percentage_of_premises_with_fttp': 5.0,
+        'percentage_of_premises_with_fttdp': 5.0,
+        'percentage_of_premises_with_fttc': 25.0,
+        'percentage_of_premises_with_docsis3': 25.0,
+        'percentage_of_premises_with_adsl': 100.0,
+        'sum_of_premises': 20
+    }]
 
+    expected_capacity = {
+        'ABABA':{
+                'average_capacity': 132.1,
+        }
+    }
 
+    system = NetworkManager(assets, links, parameters)
 
+    actual_coverage = system.coverage()
 
-# if __name__ == '__main__':
+    assert expected_coverage == actual_coverage
 
-#     ASSETS = {
-#         'premises':[{
-#             'id': 'osgb5000005186077869',
-#             'lad': '1.84163492526694',
-#             'wta': '0.7322',
-#             'wtp': '20',
-#             'postcode': 'VCB00078',
-#             'CAB_ID': '{EACAM}{P100}',
-#             'connection': 'distribution_{EACAM}{795}',
-#             'FTTP': '0',
-#             'GFast': '0',
-#             'FTTC': '0',
-#             'DOCSIS3': '0',
-#             'ADSL': '1',
-#         }],
-#         'distributions':[{
-#             'id': 'distribution_{EACAM}{795}',
-#             'connection': 'cabinet_{EACAM}{P100}',
-#             'FTTP': '0',
-#             'GFast': '0',
-#             'FTTC': '0',
-#             'DOCSIS3': '0',
-#             'ADSL': '1',
-#             'name': 'distribution_{EACAM}{795}',
-#         }],
-#         'cabinets':[{
-#             'id': 'cabinet_{EACAM}{P100}',
-#             'connection': 'exchange_EACAM',
-#             'FTTP': '0',
-#             'GFast': '0',
-#             'FTTC': '0',
-#             'DOCSIS3': '0',
-#             'ADSL': '1',
-#             'name': 'cabinet_{EACAM}{P100}',
-#         }],
-#         'exchanges':[{
-#             'id': 'exchange_EACAM',
-#             'Name': 'Cambridge',
-#             'pcd': 'CB23ET',
-#             'Region': 'East',
-#             'County': 'Cambridgeshire',
-#             'FTTP': '0',
-#             'GFast': '0',
-#             'FTTC': '0',
-#             'DOCSIS3': '0',
-#             'ADSL': '1',
-#         }]
-#     }
+    actual_aggregate_coverage = system.aggregate_coverage()
 
-#     LINKS = [
-#         {
-#         'origin': 'osgb5000005186077869',
-#         'dest': 'distribution_{EACAM}{795}',
-#         'length': '20',
-#         'technology': 'copper'
-#         },
-#         {
-#         'origin': 'distribution_{EACAM}{795}',
-#         'dest': 'cabinet_{EACAM}{P100}',
-#         'length': '94',
-#         'technology': 'copper'
-#         },
-#         {
-#         'origin': 'cabinet_{EACAM}{P100}',
-#         'dest': 'exchange_EACAM',
-#         'length': '1297',
-#         'technology': 'fiber'
-#         },
-#     ]
+    assert expected_aggregate_coverage == actual_aggregate_coverage
 
-#     PARAMETERS = {
-#         'costs_links_fibre_meter': 5,
-#         'costs_links_copper_meter': 3,
-#         'costs_assets_exchange_fttp': 50000,
-#         'costs_assets_exchange_gfast': 40000,
-#         'costs_assets_exchange_fttc': 30000,
-#         'costs_assets_exchange_adsl': 20000,
-#         'costs_assets_cabinet_fttp_32_ports': 10,
-#         'costs_assets_cabinet_gfast': 4000,
-#         'costs_assets_cabinet_fttc': 3000,
-#         'costs_assets_cabinet_adsl': 2000,
-#         'costs_assets_distribution_fttp_32_ports': 10,
-#         'costs_assets_distribution_gfast_4_ports': 1500,
-#         'costs_assets_distribution_fttc': 300,
-#         'costs_assets_distribution_adsl': 200,
-#         'costs_assets_premise_fttp_modem': 20,
-#         'costs_assets_premise_fttp_optical_network_terminator': 10,
-#         'costs_assets_premise_gfast_modem': 20,
-#         'costs_assets_premise_fttc_modem': 15,
-#         'costs_assets_premise_adsl_modem': 10,
-#         'benefits_assets_premise_fttp': 50,
-#         'benefits_assets_premise_gfast': 40,
-#         'benefits_assets_premise_fttc': 30,
-#         'benefits_assets_premise_adsl': 20,
-#         'planning_administration_cost': 200,
-#         'costs_assets_premise_fttdp_modem': 37,
-#     }
+    actual_capacity = system.capacity()
 
-#     system = NetworkManager(ASSETS, LINKS, PARAMETERS)
+    assert expected_capacity == actual_capacity

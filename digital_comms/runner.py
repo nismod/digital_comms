@@ -7,9 +7,9 @@ import os
 
 import yaml
 
-from fixed_network.model import NetworkManager
-from fixed_network.interventions import decide_interventions
-from fixed_network.adoption import update_adoption_desirability
+from digital_comms.fixed_network.model import NetworkManager
+from digital_comms.fixed_network.interventions import decide_interventions
+from digital_comms.fixed_network.adoption import update_adoption_desirability
 
 
 def read_csv(file):
