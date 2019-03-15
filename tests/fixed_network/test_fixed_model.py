@@ -13,10 +13,9 @@ class TestNetworkManager():
 
 
 def test_init(setup_system, assets):
-    """merely check the number of assets we load in is correct
+    """Check the number of assets we load in is correct
     """
-
-    assert len(assets['distributions']) == len(setup_system._distributions)
+    assert len(assets['distributions']) == len(setup_system.assets['distributions'])
     assert len(assets['cabinets']) == len(setup_system.assets['cabinets'])
     assert len(assets['exchanges']) == len(setup_system.assets['exchanges'])
 
