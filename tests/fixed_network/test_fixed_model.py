@@ -136,7 +136,9 @@ def test_init_from_data():
 
     expected_capacity = {
         'ABABA':{
-                'average_capacity': 132.1,
+            #  fttp       fttdp     fttc     docsis3   adsl
+            # ((1*1000) + (1*300) + (5*80) + (5*150) + (8*24)) / 20 == 132.1
+            'average_capacity': 132.1,
         }
     }
 
