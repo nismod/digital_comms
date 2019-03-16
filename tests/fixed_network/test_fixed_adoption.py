@@ -1,8 +1,5 @@
-"""Skeleton test
-"""
 from digital_comms.fixed_network.model import NetworkManager
 from digital_comms.fixed_network.adoption import update_adoption_desirability
-
 
 def test_init_from_data():
     """ update_adoption_desirability takes the system and annual adoption rate,

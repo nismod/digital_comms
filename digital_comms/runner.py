@@ -369,7 +369,7 @@ def run():
         for year in TIMESTEPS:
             logging.info("-%s", year)
 
-            budget = ANNUAL_BUDGET
+            annual_budget = ANNUAL_BUDGET
 
             # Simulate first year
             if year == BASE_YEAR:
@@ -397,37 +397,37 @@ def run():
             distribution_adoption_desirability_ids = update_adoption_desirability(
                 system, percentage_annual_increase)
 
-            system.update_adoption_desirability(distribution_adoption_desirability_ids)
+            # system.update_adoption_desirability(distribution_adoption_desirability_ids)
 
-            # get total adoption desirability for this time step (has to be done after
-            # system.update_adoption_desirability)
-            adoption_desirability_now = [
-                dist for dist in system._distributions if dist.adoption_desirability]
+            # # get total adoption desirability for this time step (has to be done after
+            # # system.update_adoption_desirability)
+            # adoption_desirability_now = [
+            #     dist for dist in system._distributions if dist.adoption_desirability]
 
-            total_adoption_desirability_percentage = round(
-                (len([dist.total_prems for dist in adoption_desirability_now]) /
-                len([dist.total_prems for dist in total_distributions]) * 100), 2)
+            # total_adoption_desirability_percentage = round(
+            #     (len([dist.total_prems for dist in adoption_desirability_now]) /
+            #     len([dist.total_prems for dist in total_distributions]) * 100), 2)
 
-            # calculate the maximum adoption level based on the scenario, to make sure the
-            # model doesn't overestimate
-            adoption_cap = len(distribution_adoption_desirability_ids) + \
-                sum(getattr(distribution, technology) for distribution in system._distributions)
+            # # calculate the maximum adoption level based on the scenario, to make sure the
+            # # model doesn't overestimate
+            # adoption_cap = len(distribution_adoption_desirability_ids) + \
+            #     sum(getattr(distribution, technology) for distribution in system._distributions)
 
-            # actually decide which interventions to build
-            built_interventions = decide_interventions(
-                system, year, technology, policy, budget, adoption_cap,
-                SUBSIDY, TELCO_MATCH_FUNDING, SERVICE_OBLIGATION_CAPACITY)
+            # # actually decide which interventions to build
+            # built_interventions = decide_interventions(
+            #     system, year, technology, policy, annual_budget, adoption_cap,
+            #     SUBSIDY, TELCO_MATCH_FUNDING, SERVICE_OBLIGATION_CAPACITY)
 
-            # give the interventions to the system model
-            system.upgrade(built_interventions)
+            # # give the interventions to the system model
+            # system.upgrade(built_interventions)
 
-            # write out the decisions
-            write_decisions(built_interventions, year, technology, policy)
+            # # write out the decisions
+            # write_decisions(built_interventions, year, technology, policy)
 
-            write_spend(built_interventions, year, technology, policy)
+            # write_spend(built_interventions, year, technology, policy)
 
 
-            logging.info("--")
+            # logging.info("--")
 
 
 if __name__ == "__main__":

@@ -31,7 +31,7 @@ def get_distributions(system, technology, reverse_value):
         key=lambda item: item.rollout_bcr[technology], reverse=reverse_value)
 
 
-def decide_interventions(system, timestep, technology, policy, annual_budget, adoption_cap,
+def decide_interventions(system, year, technology, policy, annual_budget, adoption_cap,
                          subsidy, telco_match_funding, service_obligation_capacity):
     """Given strategy parameters and a system, decide the best potential interventions.
 
@@ -39,8 +39,8 @@ def decide_interventions(system, timestep, technology, policy, annual_budget, ad
     ----------
     system : object
         This is an NetworkManager object containing the whole system.
-    timestep : int
-        The current timestep.
+    year : int
+        The current year.
     technology : string
         The current technology being deployed.
     policy : string
@@ -63,12 +63,12 @@ def decide_interventions(system, timestep, technology, policy, annual_budget, ad
 
     """
     # Build to meet demand most beneficial demand
-    built_interventions = meet_most_beneficial_demand(system, timestep, technology, policy, annual_budget, adoption_cap,
+    built_interventions = meet_most_beneficial_demand(system, year, technology, policy, annual_budget, adoption_cap,
                                                         subsidy, telco_match_funding, service_obligation_capacity)
 
     return built_interventions
 
-def meet_most_beneficial_demand(system, timestep, technology, policy, annual_budget, adoption_cap,
+def meet_most_beneficial_demand(system, year, technology, policy, annual_budget, adoption_cap,
                                 subsidy, telco_match_funding, service_obligation_capacity):
     """Given strategy parameters and a system, meet the most beneficial demand.
 
@@ -76,17 +76,17 @@ def meet_most_beneficial_demand(system, timestep, technology, policy, annual_bud
 
     """
     return _suggest_interventions(
-        system, timestep, technology, policy, annual_budget, adoption_cap, subsidy, telco_match_funding)
+        system, year, technology, policy, annual_budget, adoption_cap, subsidy, telco_match_funding)
 
-def _suggest_interventions(system, timestep, technology, policy, annual_budget, adoption_cap, subsidy, telco_match_funding):
+def _suggest_interventions(system, year, technology, policy, annual_budget, adoption_cap, subsidy, telco_match_funding):
     """Given strategy parameters and a system, suggest the best potential interventions.
 
     Parameters
     ----------
     system : object
         This is an NetworkManger object containing the whole system.
-    timestep : int
-        The current timestep.
+    year : int
+        The current year.
     technology : string
         The current technology being deployed.
     policy : string
@@ -113,6 +113,7 @@ def _suggest_interventions(system, timestep, technology, policy, annual_budget, 
 
     if policy == 's1_market_based_roll_out':
         distributions = get_distributions(system, technology, False)
+        print(distributions)
         for distribution in distributions:
             if (premises_passed + distribution.total_prems) < adoption_cap:
                 if distribution.rollout_costs[technology] < annual_budget:

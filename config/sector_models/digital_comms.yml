@@ -1,7 +1,6 @@
 classname: DigitalCommsWrapper
 description: The Cambridge Communications Assessment Model provides analytics for
-  decision-makers on (i) capacity-demand and (ii) risk, vulnerability and resilience.
-  The fixed, wireless and satellite sectors are currently under development.
+  decision-makers on the capacity, coverage and cost of digital infrastructure strategies.
 initial_conditions: []
 inputs:
 - name: adoption
