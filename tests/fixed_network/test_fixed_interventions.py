@@ -1,4 +1,5 @@
 from digital_comms.fixed_network.model import NetworkManager
+from digital_comms.fixed_network.adoption import update_adoption_desirability
 from digital_comms.fixed_network.interventions import decide_interventions
 
 def test_init_from_data():
@@ -11,14 +12,14 @@ def test_init_from_data():
             'id': 'distribution_{EACAM}{1}',
             'lad': 'E07000008',
             'connection': 'cabinet_{EACAM}{P100}',
-            'fttp': 1,
-            'fttdp': 1,
+            'fttp': 0,
+            'fttdp': 0,
             'fttc': 5,
             'docsis3': 5,
             'adsl': 20,
             'total_prems': 20,
             'wta': 0.4,
-            'wtp': 200,
+            'wtp': 800,
             'name': 'distribution_{EACAM}{1}',
             'adoption_desirability': True
         },
@@ -26,14 +27,14 @@ def test_init_from_data():
             'id': 'distribution_{EACAM}{2}',
             'lad': 'E07000008',
             'connection': 'cabinet_{EACAM}{P100}',
-            'fttp': 1,
-            'fttdp': 1,
+            'fttp': 0,
+            'fttdp': 0,
             'fttc': 5,
             'docsis3': 5,
             'adsl': 20,
             'total_prems': 20,
             'wta': 1.0,
-            'wtp': 200,
+            'wtp': 700,
             'name': 'distribution_{EACAM}{2}',
             'adoption_desirability': True
         },
@@ -41,14 +42,14 @@ def test_init_from_data():
             'id': 'distribution_{EACAM}{3}',
             'lad': 'E07000008',
             'connection': 'cabinet_{EACAM}{P100}',
-            'fttp': 1,
-            'fttdp': 1,
+            'fttp': 0,
+            'fttdp': 0,
             'fttc': 5,
             'docsis3': 5,
             'adsl': 20,
             'total_prems': 20,
             'wta': 1.5,
-            'wtp': 200,
+            'wtp': 600,
             'name': 'distribution_{EACAM}{3}',
             'adoption_desirability': True
         },
@@ -56,14 +57,14 @@ def test_init_from_data():
             'id': 'distribution_{EACOM}{4}',
             'lad': 'E07000012',
             'connection': 'cabinet_{EACOM}{P200}',
-            'fttp': 1,
-            'fttdp': 1,
+            'fttp': 0,
+            'fttdp': 0,
             'fttc': 5,
             'docsis3': 5,
             'adsl': 20,
             'total_prems': 20,
             'wta': 0.3,
-            'wtp': 200,
+            'wtp': 500,
             'name': 'distribution_{EACOM}{4}',
             'adoption_desirability': True
         },
@@ -71,14 +72,14 @@ def test_init_from_data():
             'id': 'distribution_{EACOM}{5}',
             'lad': 'E07000012',
             'connection': 'cabinet_{EACOM}{P200}',
-            'fttp': 1,
-            'fttdp': 1,
+            'fttp': 0,
+            'fttdp': 0,
             'fttc': 5,
             'docsis3': 5,
             'adsl': 20,
             'total_prems': 20,
             'wta': 0.2,
-            'wtp': 200,
+            'wtp': 600,
             'name': 'distribution_{EACOM}{5}',
             'adoption_desirability': True
         }
@@ -131,22 +132,34 @@ def test_init_from_data():
 
     links = [
         {
-        'origin': 'osgb5000005186077869',
-        'dest': 'distribution_{EACAM}{795}',
-        'length': '20',
+        'origin': 'distribution_{EACAM}{1}',
+        'dest': 'distribution_{EACAM}{100}',
+        'length': 200,
         'technology': 'copper'
         },
         {
-        'origin': 'distribution_{EACAM}{795}',
-        'dest': 'cabinet_{EACAM}{P100}',
-        'length': '94',
+        'origin': 'distribution_{EACAM}{2}',
+        'dest': 'distribution_{EACAM}{100}',
+        'length': 250,
         'technology': 'copper'
         },
         {
-        'origin': 'cabinet_{EACAM}{P100}',
-        'dest': 'exchange_EACAM',
-        'length': '1297',
-        'technology': 'fiber'
+        'origin': 'distribution_{EACAM}{3}',
+        'dest': 'distribution_{EACAM}{100}',
+        'length': 300,
+        'technology': 'copper'
+        },
+        {
+        'origin': 'distribution_{EACOM}{4}',
+        'dest': 'cabinet_{EACOM}{P200}',
+        'length': 350,
+        'technology': 'copper'
+        },
+        {
+        'origin': 'distribution_{EACOM}{5}',
+        'dest': 'cabinet_{EACOM}{P200}',
+        'length': 400,
+        'technology': 'copper'
         },
     ]
 
@@ -182,24 +195,106 @@ def test_init_from_data():
         'planning_administration_cost': 10,
     }
 
+    #####################################################
+    #TEST S1
+    #####################################################
 
     year = 2019
     technology = 'fttp'
     policy = 's1_market_based_roll_out'
-    annual_budget = 10000
+    annual_budget = 2000
     adoption_cap = 40
-    subsidy = 10000
-    telco_match_funding = 10000
+    subsidy = 2000
+    telco_match_funding = 2000
     service_obligation_capacity = 10
 
-    expected_built_interventions = [
-        ('distribution_{EACAM}{1}', 'fttp', 's1_market_based_roll_out', 'market_based', 400)
+    s1_expected_built_interventions = [
+        ('distribution_{EACAM}{1}', 'fttp', 's1_market_based_roll_out', 'market_based', 1837)
     ]
 
     system = NetworkManager(assets, links, parameters)
 
-    built_interventions = decide_interventions(
+    #40% want to adopt in total
+    distribution_adoption_desirability_ids = update_adoption_desirability(system, 40)
+
+    #update model adoption desirability
+    system.update_adoption_desirability(distribution_adoption_desirability_ids)
+
+    #Total cost should be £1837
+    #fttp modem: £20 * 20 = £400
+    #optical network terminal: £10 * 20 = £200
+    #planning cost: £10 * 20 = £200
+    #optical connection point: £37 * 1 = £37 (32 premises per connection point)
+    #fibre upgrade cost: £5 * 200 = 1000
+
+    #build interventions
+    s1_built_interventions = decide_interventions(
         system, year, technology, policy, annual_budget, adoption_cap,
         subsidy, telco_match_funding, service_obligation_capacity)
 
-    assert built_interventions == expected_built_interventions
+    assert s1_built_interventions == s1_expected_built_interventions
+
+
+    #####################################################
+    #TEST S2
+    #####################################################
+
+    year = 2019
+    technology = 'fttp'
+    policy = 's2_rural_based_subsidy'
+    annual_budget = 2500
+    adoption_cap = 40
+    subsidy = 2500
+    telco_match_funding = 2500
+    service_obligation_capacity = 10
+
+    s2_expected_built_interventions = [
+        ('distribution_{EACAM}{1}', 'fttp', 's2_rural_based_subsidy', 'market_based', 1837),
+        ('distribution_{EACAM}{2}', 'fttp', 's2_rural_based_subsidy', 'subsidy_based', 2087)
+        ]
+
+    #Total cost should be 2837
+    #fttp modem: £20 * 20 = £400
+    #optical network terminal: £10 * 20 = £200
+    #planning cost: £10 * 20 = £200
+    #optical connection point: £37 * 1 = £37 (32 premises per connection point)
+    #fibre upgrade cost: £5 * 400 = 2000
+
+    #build interventions
+    s2_built_interventions = decide_interventions(
+        system, year, technology, policy, annual_budget, adoption_cap,
+        subsidy, telco_match_funding, service_obligation_capacity)
+
+    assert s2_built_interventions == s2_expected_built_interventions
+
+    #####################################################
+    #TEST S3
+    #####################################################
+
+    year = 2019
+    technology = 'fttp'
+    policy = 's3_outside_in_subsidy'
+    annual_budget = 4000
+    adoption_cap = 40
+    subsidy = 4000
+    telco_match_funding = 4000
+    service_obligation_capacity = 10
+
+    s3_expected_built_interventions = [
+        ('distribution_{EACAM}{1}', 'fttp', 's3_outside_in_subsidy', 'market_based', 1837),
+        ('distribution_{EACOM}{5}', 'fttp', 's3_outside_in_subsidy', 'subsidy_based', 2837)
+        ]
+
+    #Total cost should be 2837
+    #fttp modem: £20 * 20 = £400
+    #optical network terminal: £10 * 20 = £200
+    #planning cost: £10 * 20 = £200
+    #optical connection point: £37 * 1 = £37 (32 premises per connection point)
+    #fibre upgrade cost: £5 * 400 = 2000
+
+    #build interventions
+    s3_built_interventions = decide_interventions(
+        system, year, technology, policy, annual_budget, adoption_cap,
+        subsidy, telco_match_funding, service_obligation_capacity)
+
+    assert s3_built_interventions == s3_expected_built_interventions

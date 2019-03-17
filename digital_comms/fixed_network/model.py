@@ -757,7 +757,7 @@ class Link():
         self.origin = data["origin"]
         self.dest = data["dest"]
         self.technology = data["technology"]
-        self.length = data["length"]
+        self.length = int(round(float(data["length"])))
 
         self.parameters = parameters
         self.compute()

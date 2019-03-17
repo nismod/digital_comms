@@ -7,7 +7,7 @@
 ################################################################
 
 
-def get_distributions(system, technology, reverse_value):
+def get_all_distributions_ranked(system, ranking_variable, technology, reverse_value):
     """Specifically obtain and rank Distribution Points by technology and policy.
 
     Parameters
@@ -26,9 +26,16 @@ def get_distributions(system, technology, reverse_value):
         preference.
 
     """
-    return sorted(
-        system._distributions,
-        key=lambda item: item.rollout_bcr[technology], reverse=reverse_value)
+    if ranking_variable == 'rollout_benefits':
+        distributions = sorted(system._distributions,
+            key=lambda item: item.rollout_benefits[technology], reverse=reverse_value)
+    elif ranking_variable == 'rollout_costs':
+        distributions = sorted(system._distributions,
+            key=lambda item: item.rollout_costs[technology], reverse=reverse_value)
+    else:
+        print('Did not recognise ranking preference variable')
+
+    return distributions
 
 
 def decide_interventions(system, year, technology, policy, annual_budget, adoption_cap,
@@ -109,52 +116,56 @@ def _suggest_interventions(system, year, technology, policy, annual_budget, adop
 
     """
     built_interventions = []
+    upgraded_ids = []
     premises_passed = 0
 
     if policy == 's1_market_based_roll_out':
-        distributions = get_distributions(system, technology, False)
-        print(distributions)
+        distributions = get_all_distributions_ranked(system, 'rollout_benefits', technology, False)
         for distribution in distributions:
-            if (premises_passed + distribution.total_prems) < adoption_cap:
-                if distribution.rollout_costs[technology] < annual_budget:
-                    annual_budget -= distribution.rollout_costs[technology]
-                    deployment_type = 'market_based'
-                    built_interventions.append(
-                        (
-                            distribution.id,
-                            technology,
-                            policy,
-                            deployment_type,
-                            distribution.rollout_costs[technology],
+            if distribution.id not in upgraded_ids:
+                if (premises_passed + distribution.total_prems) < adoption_cap:
+                    if distribution.rollout_costs[technology] < annual_budget:
+                        annual_budget -= distribution.rollout_costs[technology]
+                        deployment_type = 'market_based'
+                        built_interventions.append(
+                            (
+                                distribution.id,
+                                technology,
+                                policy,
+                                deployment_type,
+                                distribution.rollout_costs[technology],
+                            )
                         )
-                    )
-                    premises_passed += distribution.total_prems
+                        upgraded_ids.append(distribution.id)
+                        premises_passed += distribution.total_prems
+                    else:
+                        break
                 else:
                     break
-            else:
-                break
 
     elif policy == 's2_rural_based_subsidy' or 's3_outside_in_subsidy':
-        distributions = get_distributions(system, technology, False)
+        distributions = get_all_distributions_ranked(system, 'rollout_benefits',technology, False)
         deployment_type = 'market_based'
         for distribution in distributions:
-            if (premises_passed + distribution.total_prems) < adoption_cap:
-                if distribution.rollout_costs[technology] < annual_budget:
-                    annual_budget -= distribution.rollout_costs[technology]
-                    built_interventions.append(
-                        (
-                            distribution.id,
-                            technology,
-                            policy,
-                            deployment_type,
-                            distribution.rollout_costs[technology],
+            if distribution.id not in upgraded_ids:
+                if (premises_passed + distribution.total_prems) < adoption_cap:
+                    if distribution.rollout_costs[technology] < annual_budget:
+                        annual_budget -= distribution.rollout_costs[technology]
+                        built_interventions.append(
+                            (
+                                distribution.id,
+                                technology,
+                                policy,
+                                deployment_type,
+                                distribution.rollout_costs[technology],
+                            )
                         )
-                    )
-                    premises_passed += distribution.total_prems
+                        upgraded_ids.append(distribution.id)
+                        premises_passed += distribution.total_prems
+                    else:
+                        break
                 else:
                     break
-            else:
-                break
 
         if policy == 's2_rural_based_subsidy':
             reverse_value = False
@@ -163,7 +174,7 @@ def _suggest_interventions(system, year, technology, policy, annual_budget, adop
         else:
             print('policy not recognised')
 
-        subsidised_distributions = get_distributions(system, technology, reverse_value)
+        subsidised_distributions = get_all_distributions_ranked(system, 'rollout_costs', technology, reverse_value)
 
         # # get the bottom third of the distribution cutoff point
         # subsidy_cutoff = math.floor(len(subsidised_distributions) * 0.66)
@@ -173,28 +184,27 @@ def _suggest_interventions(system, year, technology, policy, annual_budget, adop
 
         deployment_type = 'subsidy_based'
         for distribution in subsidised_distributions:
-            if distribution.rollout_costs[technology] < telco_match_funding:
-                subsidy_required_per_distribution_point = \
-                    distribution.rollout_costs[technology] \
-                    - distribution.rollout_benefits[technology]
-                telco_match_funding -= distribution.rollout_costs[technology]
-                distribution.rollout_costs[technology] = \
-                    distribution.rollout_costs[technology] \
-                    + subsidy_required_per_distribution_point
-                built_interventions.append(
-                    (
-                        distribution.id,
-                        technology,
-                        policy,
-                        deployment_type,
-                        distribution.rollout_costs[technology],
+            if distribution.id not in upgraded_ids:
+                if distribution.rollout_costs[technology] < telco_match_funding:
+                    telco_match_funding -= distribution.rollout_costs[technology]
+                    distribution.rollout_costs[technology] = \
+                        distribution.rollout_costs[technology]
+                    built_interventions.append(
+                        (
+                            distribution.id,
+                            technology,
+                            policy,
+                            deployment_type,
+                            distribution.rollout_costs[technology],
+                        )
                     )
-                )
-                premises_passed += distribution.total_prems
-            else:
-                break
+                    upgraded_ids.append(distribution.id)
+                    premises_passed += distribution.total_prems
+                else:
+                    break
+
 
     else:
         print("'policy not recognised. No upgrades built")
 
-    return built_interventions  # , spend, match_funding_spend, subsidised_spend
+    return built_interventions
