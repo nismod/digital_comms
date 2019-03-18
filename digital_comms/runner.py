@@ -93,56 +93,8 @@ def read_parameters():
     with open(path, 'r') as ymlfile:
         for data in yaml.load_all(ymlfile):
             parameters = data['parameters']
-            for param in parameters:
-                if param['name'] == 'costs_assets_exchange_fttp':
-                    params['costs_assets_exchange_fttp'] = param['default_value']
-                if param['name'] == 'costs_assets_exchange_fttdp':
-                    params['costs_assets_exchange_fttdp'] = param['default_value']
-                if param['name'] == 'costs_assets_exchange_fttc':
-                    params['costs_assets_exchange_fttc'] = param['default_value']
-                if param['name'] == 'costs_assets_exchange_adsl':
-                    params['costs_assets_exchange_adsl'] = param['default_value']
-                if param['name'] == 'costs_assets_upgrade_cabinet_fttp':
-                    params['costs_assets_upgrade_cabinet_fttp'] = param['default_value']
-                if param['name'] == 'costs_assets_cabinet_fttdp':
-                    params['costs_assets_cabinet_fttdp'] = param['default_value']
-                if param['name'] == 'costs_assets_cabinet_fttc':
-                    params['costs_assets_cabinet_fttc'] = param['default_value']
-                if param['name'] == 'costs_assets_cabinet_adsl':
-                    params['costs_assets_cabinet_adsl'] = param['default_value']
-                if param['name'] == 'costs_assets_premise_fttp_optical_connection_point':
-                    params['costs_assets_premise_fttp_optical_connection_point'] = \
-                        param['default_value']
-                if param['name'] == 'costs_assets_distribution_fttdp_8_ports':
-                    params['costs_assets_distribution_fttdp_8_ports'] = param['default_value']
-                if param['name'] == 'costs_assets_distribution_fttc':
-                    params['costs_assets_distribution_fttc'] = param['default_value']
-                if param['name'] == 'costs_assets_distribution_adsl':
-                    params['costs_assets_distribution_adsl'] = param['default_value']
-                if param['name'] == 'costs_links_fibre_meter':
-                    params['costs_links_fibre_meter'] = param['default_value']
-                if param['name'] == 'costs_links_copper_meter':
-                    params['costs_links_copper_meter'] = param['default_value']
-                if param['name'] == 'costs_assets_premise_fttp_modem':
-                    params['costs_assets_premise_fttp_modem'] = param['default_value']
-                if param['name'] == 'costs_assets_premise_fttp_optical_network_terminator':
-                    params['costs_assets_premise_fttp_optical_network_terminator'] = \
-                        param['default_value']
-                if param['name'] == 'planning_administration_cost':
-                    params['planning_administration_cost'] = param['default_value']
-                if param['name'] == 'costs_assets_premise_fttdp_modem':
-                    params['costs_assets_premise_fttdp_modem'] = param['default_value']
-                if param['name'] == 'costs_assets_premise_fttc_modem':
-                    params['costs_assets_premise_fttc_modem'] = param['default_value']
-                if param['name'] == 'costs_assets_premise_adsl_modem':
-                    params['costs_assets_premise_adsl_modem'] = param['default_value']
-                # revenue aspects
-                if param['name'] == 'months_per_year':
-                    params['months_per_year'] = param['default_value']
-                if param['name'] == 'payback_period':
-                    params['payback_period'] = param['default_value']
-                if param['name'] == 'profit_margin':
-                    params['profit_margin'] = param['default_value']
+            for name, param in parameters.items():
+                parameters[name] = param['default_value']
     return params
 
 ################################################################
