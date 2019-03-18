@@ -12,12 +12,12 @@ from digital_comms.fixed_network.interventions import decide_interventions
 from digital_comms.fixed_network.adoption import update_adoption_desirability
 
 
-def read_csv(file):
+def read_csv(filepath):
     """Read in a .csv file. Convert each line to single dict, and then append to a list.
 
     Parameters
     ----------
-    file : string
+    filepath : string
         This is a directory string to point to the desired file from the BASE_PATH.
 
     Returns
@@ -27,18 +27,25 @@ def read_csv(file):
         dict
 
     """
-    with open(file, 'r') as system_file:
-        reader = csv.DictReader(system_file)
+    with open(filepath, 'r') as csvfile:
+        reader = csv.DictReader(csvfile)
         results = list(reader)
 
     return results
 
 
 def read_assets(data_path):
-    """Read in all assets required to run the model:
+    """Read in all assets required to run the model
+
+    Reads in data for
         - Exchanges
         - Cabinets
         - Distribution Points
+
+    Arguments
+    ---------
+    data_path : str
+        Path to folder which contains the asset files
 
     Returns
     -------
@@ -58,10 +65,17 @@ def read_assets(data_path):
 
 
 def read_links(data_path):
-    """Read in all links required to run the model:
+    """Read in all links required to run the model
+
+    Reads in
         - Exchange to Cabinets
         - Cabinets to Distribution Points
         - Distribution Points to Premises in aggregated form
+
+    Arguments
+    ---------
+    data_path : str
+        Path to folder which contains the asset files
 
     Returns
     -------
@@ -71,9 +85,11 @@ def read_links(data_path):
 
     """
     links = []
-    links.extend(read_csv(os.path.join(data_path, 'links_distribution_points.csv')))
-    links.extend(read_csv(os.path.join(data_path, 'links_cabinets.csv')))
-    links.extend(read_csv(os.path.join(data_path, 'links_exchanges.csv')))
+    files = ['links_distribution_points.csv',
+             'links_cabinets.csv',
+             'links_exchanges.csv']
+    for filename in files:
+        links.extend(read_csv(os.path.join(data_path, filename)))
 
     return links
 
@@ -299,6 +315,7 @@ def write_spend(decisions, year, technology, policy):
 # RUN MODEL
 ################################################################
 
+
 def run():
     """Run model over scenario/strategy combinations
     """
@@ -314,8 +331,9 @@ def run():
         logging.info("Running: %s, %s, %s", scenario, technology, policy)
         logging.info("--")
 
-        assets = read_assets()
-        links = read_links()
+        data_path = os.path.join('data', 'processed')
+        assets = read_assets(data_path)
+        links = read_links(data_path)
         parameters = read_parameters()
 
         for year in TIMESTEPS:
