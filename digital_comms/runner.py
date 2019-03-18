@@ -34,7 +34,7 @@ def read_csv(file):
     return results
 
 
-def read_assets():
+def read_assets(data_path):
     """Read in all assets required to run the model:
         - Exchanges
         - Cabinets
@@ -48,16 +48,16 @@ def read_assets():
     """
     assets = {}
     assets['exchanges'] = read_csv(os.path.join(
-        'data', 'processed', 'assets_exchanges.csv'))
+        data_path, 'assets_exchanges.csv'))
     assets['cabinets'] = read_csv(os.path.join(
-        'data', 'processed', 'assets_cabinets.csv'))
+        data_path, 'assets_cabinets.csv'))
     assets['distributions'] = read_csv(os.path.join(
-        'data', 'processed', 'assets_distribution_points.csv'))
+        data_path, 'assets_distribution_points.csv'))
 
     return assets
 
 
-def read_links():
+def read_links(data_path):
     """Read in all links required to run the model:
         - Exchange to Cabinets
         - Cabinets to Distribution Points
@@ -71,9 +71,9 @@ def read_links():
 
     """
     links = []
-    links.extend(read_csv(os.path.join('data', 'processed', 'links_distribution_points.csv')))
-    links.extend(read_csv(os.path.join('data', 'processed', 'links_cabinets.csv')))
-    links.extend(read_csv(os.path.join('data', 'processed', 'links_exchanges.csv')))
+    links.extend(read_csv(os.path.join(data_path, 'links_distribution_points.csv')))
+    links.extend(read_csv(os.path.join(data_path, 'links_cabinets.csv')))
+    links.extend(read_csv(os.path.join(data_path, 'links_exchanges.csv')))
 
     return links
 
