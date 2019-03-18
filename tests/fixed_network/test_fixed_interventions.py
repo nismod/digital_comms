@@ -253,12 +253,19 @@ def test_init_from_data():
         ('distribution_{EACAM}{2}', 'fttp', 's2_rural_based_subsidy', 'subsidy_based', 2087)
         ]
 
-    #Total cost should be 2837
+    #Total cost should be £1837
     #fttp modem: £20 * 20 = £400
     #optical network terminal: £10 * 20 = £200
     #planning cost: £10 * 20 = £200
     #optical connection point: £37 * 1 = £37 (32 premises per connection point)
-    #fibre upgrade cost: £5 * 400 = 2000
+    #fibre upgrade cost: £5 * 200 = 1000
+
+    #Total cost should be 2087
+    #fttp modem: £20 * 20 = £400
+    #optical network terminal: £10 * 20 = £200
+    #planning cost: £10 * 20 = £200
+    #optical connection point: £37 * 1 = £37 (32 premises per connection point)
+    #fibre upgrade cost: £5 * 250 = 1250
 
     #build interventions
     s2_built_interventions = decide_interventions(
@@ -284,6 +291,13 @@ def test_init_from_data():
         ('distribution_{EACAM}{1}', 'fttp', 's3_outside_in_subsidy', 'market_based', 1837),
         ('distribution_{EACOM}{5}', 'fttp', 's3_outside_in_subsidy', 'subsidy_based', 2837)
         ]
+
+    #Total cost should be £1837
+    #fttp modem: £20 * 20 = £400
+    #optical network terminal: £10 * 20 = £200
+    #planning cost: £10 * 20 = £200
+    #optical connection point: £37 * 1 = £37 (32 premises per connection point)
+    #fibre upgrade cost: £5 * 200 = 1000
 
     #Total cost should be 2837
     #fttp modem: £20 * 20 = £400
