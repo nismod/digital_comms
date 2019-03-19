@@ -266,7 +266,7 @@ def small_system_80(base_system):
 
     return base_system
 
-def test_get_all_distributions_ranked(small_system_40):
+def test_ranking_using_benefits(small_system_40):
 
     actual_ranking_by_benefit = get_all_distributions_ranked(small_system_40,
         'rollout_benefits', 'fttp', False)
@@ -283,6 +283,8 @@ def test_get_all_distributions_ranked(small_system_40):
 
     assert expectation_ranking_by_benefit == actual_ranking_by_benefit_ids
 
+def test_ranking_using_costs(small_system_40):
+
     actual_ranking_by_cost = get_all_distributions_ranked(small_system_40,
         'rollout_costs', 'fttp', False)
 
@@ -297,6 +299,8 @@ def test_get_all_distributions_ranked(small_system_40):
     ]
 
     assert expectation_ranking_by_cost == actual_ranking_by_cost_ids
+
+def test_ranking_using_an_unknown(small_system_40):
 
     with pytest.raises(ValueError) as ex:
         get_all_distributions_ranked(small_system_40, 'unknown', 'fttp', False)
@@ -530,45 +534,7 @@ def test_budget(small_system_80):
 
     #build interventions
     budget_constrained_interventions = decide_interventions(
-        small_system_40, year, technology, policy, annual_budget, adoption_cap,
+        small_system_80, year, technology, policy, annual_budget, adoption_cap,
         subsidy, telco_match_funding, service_obligation_capacity)
 
     assert budget_constrained_interventions == expected_budget_constrained_interventions
-
-# @pytest.mark.skip
-# def test_fttp_s2(small_system_40):
-
-#     year = 2019
-#     technology = 'fttp'
-#     policy = 's2_rural_based_subsidy'
-#     annual_budget = 2500
-#     adoption_cap = 40
-#     subsidy = 2500
-#     telco_match_funding = 2500
-#     service_obligation_capacity = 10
-
-#     fttp_s2_expected_built_interventions = [
-#         ('distribution_{EACAM}{1}', 'fttp', 's2_rural_based_subsidy', 'market_based', 1837),
-#         ('distribution_{EACAM}{2}', 'fttp', 's2_rural_based_subsidy', 'subsidy_based', 2087)
-#         ]
-
-#     #Total cost should be £1837
-#     #fttp modem: £20 * 20 = £400
-#     #optical network terminal: £10 * 20 = £200
-#     #planning cost: £10 * 20 = £200
-#     #optical connection point: £37 * 1 = £37 (32 premises per connection point)
-#     #fibre upgrade cost: £5 * 200 = 1000
-
-#     #Total cost should be 2087
-#     #fttp modem: £20 * 20 = £400
-#     #optical network terminal: £10 * 20 = £200
-#     #planning cost: £10 * 20 = £200
-#     #optical connection point: £37 * 1 = £37 (32 premises per connection point)
-#     #fibre upgrade cost: £5 * 250 = 1250
-
-#     #build interventions
-#     fttp_s2_built_interventions = decide_interventions(
-#         small_system_40, year, technology, policy, annual_budget, adoption_cap,
-#         subsidy, telco_match_funding, service_obligation_capacity)
-
-#     assert fttp_s2_built_interventions == fttp_s2_expected_built_interventions
