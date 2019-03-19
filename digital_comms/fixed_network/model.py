@@ -686,11 +686,11 @@ class Distribution():
 
         if action in ('fttp'):
             action = 'fttp'
-            self.fttp = 1
+            self.fttp = self.total_prems
             self.link.upgrade('fibre')
         if action in ('fttdp'):
             action = 'fttdp'
-            self.fttdp = 1
+            self.fttdp = self.total_prems
 
         self.compute()
 

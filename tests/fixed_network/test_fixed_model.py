@@ -19,9 +19,9 @@ def test_init(setup_system, assets):
     assert len(assets['cabinets']) == len(setup_system.assets['cabinets'])
     assert len(assets['exchanges']) == len(setup_system.assets['exchanges'])
 
-def test_init_from_data():
+@pytest.fixture
+def base_system():
 
-    # setup phase
     assets = {
         'distributions':[{
             'id': 'distribution_{EACAM}{795}',
@@ -110,6 +110,23 @@ def test_init_from_data():
         'planning_administration_cost': 10,
     }
 
+    system = NetworkManager(assets, links, parameters)
+
+    return system
+
+@pytest.fixture
+def small_system(base_system):
+
+    #40% want to adopt in total
+    distribution_adoption_desirability_ids = update_adoption_desirability(base_system, 40)
+
+    #update model adoption desirability
+    base_system.update_adoption_desirability(distribution_adoption_desirability_ids)
+
+    return base_system
+
+def test_coverage(small_system):
+
     expected_coverage = {
         'ABABA':{
             'num_premises': 20,
@@ -121,6 +138,12 @@ def test_init_from_data():
         }
     }
 
+    actual_coverage = small_system.coverage()
+
+    assert expected_coverage == actual_coverage
+
+def test_aggregate_coverage(small_system):
+
     expected_aggregate_coverage = [{
         'percentage_of_premises_with_fttp': 0.0,
         'percentage_of_premises_with_fttdp': 0.0,
@@ -130,6 +153,12 @@ def test_init_from_data():
         'sum_of_premises': 20
     }]
 
+    actual_aggregate_coverage = small_system.aggregate_coverage()
+
+    assert expected_aggregate_coverage == actual_aggregate_coverage
+
+def test_capacity(small_system):
+
     expected_capacity = {
         'ABABA':{
             #  fttp       fttdp     fttc     docsis3   adsl
@@ -138,22 +167,13 @@ def test_init_from_data():
         }
     }
 
-    system = NetworkManager(assets, links, parameters)
-
-    actual_coverage = system.coverage()
-
-    assert expected_coverage == actual_coverage
-
-    actual_aggregate_coverage = system.aggregate_coverage()
-
-    assert expected_aggregate_coverage == actual_aggregate_coverage
-
-    actual_capacity = system.capacity()
+    actual_capacity = small_system.capacity()
 
     assert expected_capacity == actual_capacity
 
-    #get actual costs
-    actual_total_costs = system.get_total_upgrade_costs_by_distribution_point('fttp')
+def test_fttp_costs(small_system):
+
+    actual_total_costs = small_system.get_total_upgrade_costs_by_distribution_point('fttp')
 
     #### dist_point to premises = £1837.0 ###
     #costs_assets_premise_fttp_modem: 20 * 20 = 400
@@ -173,8 +193,10 @@ def test_init_from_data():
 
     assert actual_total_costs['distribution_{EACAM}{795}'] == expected_total_costs
 
+def test_fttdp_costs(small_system):
+
     #get actual costs
-    actual_total_costs = system.get_total_upgrade_costs_by_distribution_point('fttdp')
+    actual_total_costs = small_system.get_total_upgrade_costs_by_distribution_point('fttdp')
 
     #### dist_point to premises = £1150.0 ###
     #'costs_assets_premise_fttdp_modem': 20 * 20 = 400,
@@ -190,3 +212,69 @@ def test_init_from_data():
     expected_total_costs = (1150.0, 2970.0, 25000.0)
 
     assert actual_total_costs['distribution_{EACAM}{795}'] == expected_total_costs
+
+def test_fttp_upgrade(small_system):
+
+    year = 2019
+    technology = 'fttp'
+    policy = 's1_market_based_roll_out'
+    annual_budget = 2000
+    adoption_cap = 40
+    subsidy = 2000
+    telco_match_funding = 2000
+    service_obligation_capacity = 10
+
+    #build interventions
+    built_interventions = decide_interventions(
+        small_system, year, technology, policy, annual_budget, adoption_cap,
+        subsidy, telco_match_funding, service_obligation_capacity)
+
+    small_system.upgrade(built_interventions)
+
+    actual_coverage = small_system.coverage()
+
+    expected_coverage = {
+        'ABABA':{
+            'num_premises': 20,
+            'num_fttp': 20,
+            'num_fttdp': 0,
+            'num_fttc': 5,
+            'num_docsis3': 5,
+            'num_adsl': 20
+        }
+    }
+
+    assert expected_coverage == actual_coverage
+
+def test_fttdp_upgrade(small_system):
+
+    year = 2019
+    technology = 'fttdp'
+    policy = 's1_market_based_roll_out'
+    annual_budget = 2000
+    adoption_cap = 40
+    subsidy = 2000
+    telco_match_funding = 2000
+    service_obligation_capacity = 10
+
+    #build interventions
+    built_interventions = decide_interventions(
+        small_system, year, technology, policy, annual_budget, adoption_cap,
+        subsidy, telco_match_funding, service_obligation_capacity)
+
+    small_system.upgrade(built_interventions)
+
+    actual_coverage = small_system.coverage()
+
+    expected_coverage = {
+        'ABABA':{
+            'num_premises': 20,
+            'num_fttp': 0,
+            'num_fttdp': 20,
+            'num_fttc': 5,
+            'num_docsis3': 5,
+            'num_adsl': 20
+        }
+    }
+
+    assert expected_coverage == actual_coverage
