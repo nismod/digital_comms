@@ -60,12 +60,12 @@ class NetworkManager():
             link = Link(link_dict, parameters)
             destination = link.dest
             self._links[destination] = link
-            if destination.startswith('premises'):
-                self._links_from_premises.append(link)
-            elif destination.startswith('distribution'):
+            if destination.startswith('distribution'):
                 self._links_from_distributions.append(link)
             elif destination.startswith('cabinet'):
                 self._links_from_cabinets.append(link)
+            elif destination.startswith('exchange'):
+                self._links_from_exchanges.append(link)
 
         self._distributions = []
         self._distributions_by_lad = defaultdict(list)
@@ -103,7 +103,10 @@ class NetworkManager():
 
     def upgrade(self, interventions):
 
-        for asset_id, technology, policy, delivery_type, cost in interventions:
+        for intervention in interventions:
+
+            asset_id = intervention[0]
+            technology = intervention[1]
 
             if asset_id.startswith('distribution'):
                 distribution = [
@@ -111,11 +114,8 @@ class NetworkManager():
                     for distribution in self._distributions
                     if distribution.id == asset_id
                 ][0]
-                distribution.upgrade(technology)
 
-            if asset_id.startswith('cabinet'):
-                cabinet = [cabinet for cabinet in self._cabinets if cabinet.id == asset_id][0]
-                cabinet.upgrade(technology)
+                distribution.upgrade(technology)
 
     def update_adoption_desirability(self, adoption_desirability):
 
@@ -286,56 +286,10 @@ class NetworkManager():
     def links(self):
         """Returns a certain subset of links"""
         return {
-            'premises':         self._links_from_premises,
             'distributions':    self._links_from_distributions,
             'cabinets':         self._links_from_cabinets,
             'exchanges':        self._links_from_exchanges
         }
-
-    @property
-    def number_of_assets(self):
-        """obj: Number of assets in the model
-        """
-        return {
-            'distributions':    len(self.assets['distributions']),
-            'cabinets':         len(self.assets['cabinets']),
-            'exchanges':        len(self.assets['exchanges']),
-        }
-
-    @property
-    def number_of_links(self):
-        """obj: Number of links in the model
-        """
-        return {
-            'distributions':    len(self.links['distributions']),
-            'cabinets':         len(self.links['cabinets']),
-            'exchanges':        len(self.links['exchanges']),
-        }
-
-    @property
-    def total_link_length(self):
-        """obj: Total link length in the model
-        """
-        return {
-            'premises':    sum(link.length for link in self.links['premises']),
-            'distributions':    sum(link.length for link in self.links['distributions']),
-            'cabinets':         sum(link.length for link in self.links['cabinets'])
-        }
-
-    @property
-    def avg_link_length(self):
-        return {
-            'distributions': self.total_link_length['distributions'] \
-                             / self.number_of_links['distributions'],
-            'cabinets': self.total_link_length['cabinets'] / self.number_of_links['cabinets']
-        }
-
-    @property
-    def lads(self):
-        """Returns a list of lads which have distribution points
-        """
-        return list(self._distributions_by_lad.keys())
-
 
 class Exchange():
     """Exchange object
