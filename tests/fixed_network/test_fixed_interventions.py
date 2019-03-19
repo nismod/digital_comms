@@ -309,7 +309,6 @@ def test_ranking_using_an_unknown(small_system_40):
 
     assert msg in str(ex)
 
-@pytest.mark.skip
 def test_fttp_s1(small_system_40):
 
     year = 2019
@@ -339,7 +338,6 @@ def test_fttp_s1(small_system_40):
 
     assert fttp_s1_built_interventions == fttp_s1_expected_built_interventions
 
-@pytest.mark.skip
 def test_fttp_s2(small_system_40):
 
     year = 2019
@@ -377,7 +375,6 @@ def test_fttp_s2(small_system_40):
 
     assert fttp_s2_built_interventions == fttp_s2_expected_built_interventions
 
-@pytest.mark.skip
 def test_fttp_s3(small_system_40):
 
     year = 2019
@@ -424,91 +421,88 @@ def test_fttp_s3(small_system_40):
 
     assert msg in str(ex)
 
-@pytest.mark.skip
-def test_fttdp_s1(small_system_40):
+# def test_fttdp_s1(small_system_40):
 
-    year = 2019
-    technology = 'fttdp'
-    policy = 's1_market_based_roll_out'
-    annual_budget = 2000
-    adoption_cap = 40
-    subsidy = 2000
-    telco_match_funding = 2000
-    service_obligation_capacity = 10
+#     year = 2019
+#     technology = 'fttdp'
+#     policy = 's1_market_based_roll_out'
+#     annual_budget = 2000
+#     adoption_cap = 40
+#     subsidy = 2000
+#     telco_match_funding = 2000
+#     service_obligation_capacity = 10
 
-    fttdp_s1_expected_built_interventions = [
-        ('distribution_{EACAM}{1}', 'fttdp', 's1_market_based_roll_out', 'market_based', 1837)
-    ]
+#     fttdp_s1_expected_built_interventions = [
+#         ('distribution_{EACAM}{1}', 'fttdp', 's1_market_based_roll_out', 'market_based', 1837)
+#     ]
 
-    #Total cost should be £2150
-    #fttdp modem: £20 * 20 = £400
-    #costs_assets_distribution_fttdp_8_ports: £250 * 3 = £750
-    #fibre from cab to dist: £5 * 200 = £1000
+#     #Total cost should be £2150
+#     #fttdp modem: £20 * 20 = £400
+#     #costs_assets_distribution_fttdp_8_ports: £250 * 3 = £750
+#     #fibre from cab to dist: £5 * 200 = £1000
 
-    #build interventions
-    fttdp_s1_built_interventions = decide_interventions(
-        small_system_40, year, technology, policy, annual_budget, adoption_cap,
-        subsidy, telco_match_funding, service_obligation_capacity)
+#     #build interventions
+#     fttdp_s1_built_interventions = decide_interventions(
+#         small_system_40, year, technology, policy, annual_budget, adoption_cap,
+#         subsidy, telco_match_funding, service_obligation_capacity)
 
-    assert fttdp_s1_built_interventions == fttdp_s1_expected_built_interventions
+#     assert fttdp_s1_built_interventions == fttdp_s1_expected_built_interventions
 
-@pytest.mark.skip
-def test_fttdp_s2(small_system_40):
+# def test_fttdp_s2(small_system_40):
 
-    year = 2019
-    technology = 'fttdp'
-    policy = 's2_rural_based_subsidy'
-    annual_budget = 2500
-    adoption_cap = 40
-    subsidy = 2500
-    telco_match_funding = 2500
-    service_obligation_capacity = 10
+#     year = 2019
+#     technology = 'fttdp'
+#     policy = 's2_rural_based_subsidy'
+#     annual_budget = 2500
+#     adoption_cap = 40
+#     subsidy = 2500
+#     telco_match_funding = 2500
+#     service_obligation_capacity = 10
 
-    fttdp_s2_expected_built_interventions = [
-        ('distribution_{EACAM}{1}', 'fttp', 's2_rural_based_subsidy', 'market_based', 1837),
-        ('distribution_{EACAM}{2}', 'fttp', 's2_rural_based_subsidy', 'subsidy_based', 2087)
-        ]
+#     fttdp_s2_expected_built_interventions = [
+#         ('distribution_{EACAM}{1}', 'fttdp', 's2_rural_based_subsidy', 'market_based', 1837),
+#         ('distribution_{EACAM}{2}', 'fttdp', 's2_rural_based_subsidy', 'subsidy_based', 2087)
+#         ]
 
-    #Total cost should be £2150
-    #fttdp modem: £20 * 20 = £400
-    #costs_assets_distribution_fttdp_8_ports: £250 * 3 = £750
-    #fibre from cab to dist: £5 * 200 = £1000
+#     #Total cost should be £2150
+#     #fttdp modem: £20 * 20 = £400
+#     #costs_assets_distribution_fttdp_8_ports: £250 * 3 = £750
+#     #fibre from cab to dist: £5 * 200 = £1000
 
-    #Total cost should be £2400
-    #fttdp modem: £20 * 20 = £400
-    #costs_assets_distribution_fttdp_8_ports: £250 * 3 = £750
-    #fibre from cab to dist: £5 * 250 = £1250
+#     #Total cost should be £2400
+#     #fttdp modem: £20 * 20 = £400
+#     #costs_assets_distribution_fttdp_8_ports: £250 * 3 = £750
+#     #fibre from cab to dist: £5 * 250 = £1250
 
-    #build interventions
-    fttdp_s2_built_interventions = decide_interventions(
-        small_system_40, year, technology, policy, annual_budget, adoption_cap,
-        subsidy, telco_match_funding, service_obligation_capacity)
+#     #build interventions
+#     fttdp_s2_built_interventions = decide_interventions(
+#         small_system_40, year, technology, policy, annual_budget, adoption_cap,
+#         subsidy, telco_match_funding, service_obligation_capacity)
 
-    assert fttdp_s2_built_interventions == fttdp_s2_expected_built_interventions
+#     assert fttdp_s2_built_interventions == fttdp_s2_expected_built_interventions
 
-@pytest.mark.skip
-def test_fttdp_s3(small_system_40):
+# def test_fttdp_s3(small_system_40):
 
-    year = 2019
-    technology = 'fttdp'
-    policy = 's3_outside_in_subsidy'
-    annual_budget = 4000
-    adoption_cap = 40
-    subsidy = 4000
-    telco_match_funding = 4000
-    service_obligation_capacity = 10
+#     year = 2019
+#     technology = 'fttdp'
+#     policy = 's3_outside_in_subsidy'
+#     annual_budget = 4000
+#     adoption_cap = 40
+#     subsidy = 4000
+#     telco_match_funding = 4000
+#     service_obligation_capacity = 10
 
-    fttdp_s3_expected_built_interventions = [
-        ('distribution_{EACAM}{1}', 'fttp', 's3_outside_in_subsidy', 'market_based', 1837),
-        ('distribution_{EACOM}{5}', 'fttp', 's3_outside_in_subsidy', 'subsidy_based', 2837)
-        ]
+#     fttdp_s3_expected_built_interventions = [
+#         ('distribution_{EACAM}{1}', 'fttdp', 's3_outside_in_subsidy', 'market_based', 1837),
+#         ('distribution_{EACOM}{5}', 'fttdp', 's3_outside_in_subsidy', 'subsidy_based', 2837)
+#         ]
 
-    #build interventions
-    fttdp_s3_built_interventions = decide_interventions(
-        small_system_40, year, technology, policy, annual_budget, adoption_cap,
-        subsidy, telco_match_funding, service_obligation_capacity)
-
-    assert fttdp_s3_built_interventions == fttdp_s3_expected_built_interventions
+#     #build interventions
+#     fttdp_s3_built_interventions = decide_interventions(
+#         small_system_40, year, technology, policy, annual_budget, adoption_cap,
+#         subsidy, telco_match_funding, service_obligation_capacity)
+#     print(fttdp_s3_built_interventions)
+#     assert fttdp_s3_built_interventions == fttdp_s3_expected_built_interventions
 
 def test_budget(small_system_80):
 
