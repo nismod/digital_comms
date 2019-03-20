@@ -58,15 +58,13 @@ class NetworkManager():
         self._links_from_exchanges = []
         for link_dict in links:
             link = Link(link_dict, parameters)
-            origin = link.origin
-            self._links[origin] = link
-            if origin.startswith('premise'):
-                self._links_from_premises.append(link)
-            elif origin.startswith('distribution'):
+            destination = link.dest
+            self._links[destination] = link
+            if destination.startswith('distribution'):
                 self._links_from_distributions.append(link)
-            elif origin.startswith('cabinet'):
+            elif destination.startswith('cabinet'):
                 self._links_from_cabinets.append(link)
-            elif origin.startswith('exchange'):
+            elif destination.startswith('exchange'):
                 self._links_from_exchanges.append(link)
 
         self._distributions = []
@@ -105,7 +103,10 @@ class NetworkManager():
 
     def upgrade(self, interventions):
 
-        for asset_id, technology, policy, delivery_type, cost in interventions:
+        for intervention in interventions:
+
+            asset_id = intervention[0]
+            technology = intervention[1]
 
             if asset_id.startswith('distribution'):
                 distribution = [
@@ -113,11 +114,8 @@ class NetworkManager():
                     for distribution in self._distributions
                     if distribution.id == asset_id
                 ][0]
-                distribution.upgrade(technology)
 
-            if asset_id.startswith('cabinet'):
-                cabinet = [cabinet for cabinet in self._cabinets if cabinet.id == asset_id][0]
-                cabinet.upgrade(technology)
+                distribution.upgrade(technology)
 
     def update_adoption_desirability(self, adoption_desirability):
 
@@ -125,6 +123,25 @@ class NetworkManager():
             for distribution in self._distributions:
                 if distribution_id == distribution.id:
                     distribution.update_desirability_to_adopt(desirability_to_adopt)
+
+    def get_total_upgrade_costs_by_distribution_point(self, tech):
+        upgrade_costs = {}
+
+        #find upgrade costs for dist, cab, exchange
+        for exchange in self._exchanges:
+            exchange_id = exchange.id
+            exchange_cost = exchange.upgrade_costs[tech]
+            cabs = self._cabinets_by_exchange[exchange_id]
+            for cab in cabs:
+                cab_id = cab.id
+                cab_cost = cab.upgrade_costs[tech]
+                dps = self._distributions_by_cab[cab_id]
+                for dp in dps:
+                    dp_id = dp.id
+                    dp_cost = dp.upgrade_costs[tech]
+                    upgrade_costs[dp_id] = (dp_cost, cab_cost, exchange_cost)
+
+        return upgrade_costs
 
     def coverage(self):
         """
@@ -273,50 +290,6 @@ class NetworkManager():
             'cabinets':         self._links_from_cabinets,
             'exchanges':        self._links_from_exchanges
         }
-
-    @property
-    def number_of_assets(self):
-        """obj: Number of assets in the model
-        """
-        return {
-            'distributions':    len(self.assets['distributions']),
-            'cabinets':         len(self.assets['cabinets']),
-            'exchanges':        len(self.assets['exchanges']),
-        }
-
-    @property
-    def number_of_links(self):
-        """obj: Number of links in the model
-        """
-        return {
-            'distributions':    len(self.links['distributions']),
-            'cabinets':         len(self.links['cabinets']),
-            'exchanges':        len(self.links['exchanges']),
-        }
-
-    @property
-    def total_link_length(self):
-        """obj: Total link length in the model
-        """
-        return {
-            'distributions':    sum(link.length for link in self.links['distributions']),
-            'cabinets':         sum(link.length for link in self.links['cabinets'])
-        }
-
-    @property
-    def avg_link_length(self):
-        return {
-            'distributions': self.total_link_length['distributions'] \
-                             / self.number_of_links['distributions'],
-            'cabinets': self.total_link_length['cabinets'] / self.number_of_links['cabinets']
-        }
-
-    @property
-    def lads(self):
-        """Returns a list of lads which have premises
-        """
-        return list(self._premises_by_lad.keys())
-
 
 class Exchange():
     """Exchange object
@@ -621,8 +594,7 @@ class Distribution():
             (self.parameters['costs_assets_distribution_fttdp_8_ports'] \
                 * (-(-self.total_prems // 8)) if self.fttdp == 0 else 0) +
             (self.parameters['costs_assets_premise_fttdp_modem'] * self.total_prems \
-                if self.fttdp == 0 else 0) +
-            (self.link.upgrade_costs['fibre'] if self.link is not None else 0)
+                if self.fttdp == 0 else 0)
         )
         self.upgrade_costs['fttc'] = (
             (self.parameters['costs_assets_distribution_fttc'] if self.fttc == 0 else 0) +
@@ -714,11 +686,11 @@ class Distribution():
 
         if action in ('fttp'):
             action = 'fttp'
-            self.fttp = 1
+            self.fttp = self.total_prems
             self.link.upgrade('fibre')
         if action in ('fttdp'):
             action = 'fttdp'
-            self.fttdp = 1
+            self.fttdp = self.total_prems
 
         self.compute()
 

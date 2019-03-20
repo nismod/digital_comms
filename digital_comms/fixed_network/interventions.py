@@ -26,6 +26,7 @@ def get_all_distributions_ranked(distributions, ranking_variable, technology, re
         preference.
 
     """
+
     if ranking_variable == 'rollout_benefits':
         distributions = sorted(distributions,
                                key=lambda item: item.rollout_benefits[technology],
@@ -35,7 +36,7 @@ def get_all_distributions_ranked(distributions, ranking_variable, technology, re
                                key=lambda item: item.rollout_costs[technology],
                                reverse=reverse_value)
     else:
-        print('Did not recognise ranking preference variable')
+        raise ValueError('Did not recognise ranking preference variable')
 
     return distributions
 
@@ -176,7 +177,7 @@ def _suggest_interventions(distributions, year, technology, policy, annual_budge
         elif policy == 's3_outside_in_subsidy':
             reverse_value = True
         else:
-            print('policy not recognised')
+            raise ValueError('Did not recognise stipulated policy')
 
         subsidised_distributions = get_all_distributions_ranked(distributions, 'rollout_costs', technology, reverse_value)
 
@@ -206,9 +207,7 @@ def _suggest_interventions(distributions, year, technology, policy, annual_budge
                     premises_passed += distribution.total_prems
                 else:
                     break
-
-
     else:
-        print("'policy not recognised. No upgrades built")
+        raise ValueError('Did not recognise stipulated policy')
 
     return built_interventions

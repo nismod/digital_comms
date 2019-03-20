@@ -19,16 +19,16 @@ def test_init(setup_system, assets):
     assert len(assets['cabinets']) == len(setup_system.assets['cabinets'])
     assert len(assets['exchanges']) == len(setup_system.assets['exchanges'])
 
-def test_init_from_data():
+@pytest.fixture
+def base_system():
 
-    # setup phase
     assets = {
         'distributions':[{
             'id': 'distribution_{EACAM}{795}',
             'lad': 'ABABA',
             'connection': 'cabinet_{EACAM}{P100}',
-            'fttp': 1,
-            'fttdp': 1,
+            'fttp': 0,
+            'fttdp': 0,
             'fttc': 5,
             'docsis3': 5,
             'adsl': 20,
@@ -40,11 +40,11 @@ def test_init_from_data():
         'cabinets':[{
             'id': 'cabinet_{EACAM}{P100}',
             'connection': 'exchange_EACAM',
-            'fttp': '0',
-            'fttdp': '0',
-            'fttc': '0',
-            'docsis3': '0',
-            'adsl': '1',
+            'fttp': 0,
+            'fttdp': 0,
+            'fttc': 1,
+            'docsis3': 0,
+            'adsl': 1,
             'name': 'cabinet_{EACAM}{P100}',
         }],
         'exchanges':[{
@@ -53,32 +53,32 @@ def test_init_from_data():
             'pcd': 'CB23ET',
             'Region': 'East',
             'County': 'Cambridgeshire',
-            'fttp': '0',
-            'fttdp': '0',
-            'fttc': '0',
-            'docsis3': '0',
-            'adsl': '1',
+            'fttp': 0,
+            'fttdp': 0,
+            'fttc': 1,
+            'docsis3': 0,
+            'adsl': 1,
         }]
     }
 
     links = [
         {
-        'origin': 'osgb5000005186077869',
+        'origin': 'premises_aggregated',
         'dest': 'distribution_{EACAM}{795}',
-        'length': '20',
+        'length': 200,
         'technology': 'copper'
         },
         {
         'origin': 'distribution_{EACAM}{795}',
         'dest': 'cabinet_{EACAM}{P100}',
-        'length': '94',
+        'length': 94,
         'technology': 'copper'
         },
         {
         'origin': 'cabinet_{EACAM}{P100}',
         'dest': 'exchange_EACAM',
-        'length': '1297',
-        'technology': 'fiber'
+        'length': 1297,
+        'technology': 'copper'
         },
     ]
 
@@ -86,26 +86,22 @@ def test_init_from_data():
         'costs_links_fibre_meter': 5,
         'costs_links_copper_meter': 3,
         'costs_assets_exchange_fttp': 50000,
-        'costs_assets_exchange_fttdp': 40000,
-        'costs_assets_exchange_fttc': 30000,
         'costs_assets_exchange_fttdp': 25000,
+        'costs_assets_exchange_fttc': 30000,
         'costs_assets_exchange_adsl': 20000,
-        'costs_assets_cabinet_fttp_32_ports': 10,
-        'costs_assets_cabinet_fttdp': 4000,
-        'costs_assets_cabinet_fttc': 3000,
+        'costs_assets_upgrade_cabinet_fttp': 50,
         'costs_assets_cabinet_fttdp': 2500,
+        'costs_assets_cabinet_fttc': 3000,
         'costs_assets_cabinet_adsl': 2000,
         'costs_assets_distribution_fttp_32_ports': 10,
-        'costs_assets_distribution_fttdp_4_ports': 1500,
-        'costs_assets_distribution_fttc': 300,
         'costs_assets_distribution_fttdp_8_ports': 250,
+        'costs_assets_distribution_fttc': 300,
         'costs_assets_distribution_adsl': 200,
         'costs_assets_premise_fttp_modem': 20,
         'costs_assets_premise_fttp_optical_network_terminator': 10,
         'costs_assets_premise_fttp_optical_connection_point': 37,
         'costs_assets_premise_fttdp_modem': 20,
         'costs_assets_premise_fttc_modem': 15,
-        'costs_assets_premise_fttdp_modem': 12,
         'costs_assets_premise_adsl_modem': 10,
         'benefits_assets_premise_fttp': 50,
         'benefits_assets_premise_fttdp': 40,
@@ -114,44 +110,171 @@ def test_init_from_data():
         'planning_administration_cost': 10,
     }
 
+    system = NetworkManager(assets, links, parameters)
+
+    return system
+
+@pytest.fixture
+def small_system(base_system):
+
+    #40% want to adopt in total
+    distribution_adoption_desirability_ids = update_adoption_desirability(base_system._distributions, 40)
+
+    #update model adoption desirability
+    base_system.update_adoption_desirability(distribution_adoption_desirability_ids)
+
+    return base_system
+
+def test_coverage(small_system):
+
     expected_coverage = {
         'ABABA':{
             'num_premises': 20,
-            'num_fttp': 1,
-            'num_fttdp': 1,
+            'num_fttp': 0,
+            'num_fttdp': 0,
             'num_fttc': 5,
             'num_docsis3': 5,
             'num_adsl': 20
         }
     }
 
+    actual_coverage = small_system.coverage()
+
+    assert expected_coverage == actual_coverage
+
+def test_aggregate_coverage(small_system):
+
     expected_aggregate_coverage = [{
-        'percentage_of_premises_with_fttp': 5.0,
-        'percentage_of_premises_with_fttdp': 5.0,
+        'percentage_of_premises_with_fttp': 0.0,
+        'percentage_of_premises_with_fttdp': 0.0,
         'percentage_of_premises_with_fttc': 25.0,
         'percentage_of_premises_with_docsis3': 25.0,
         'percentage_of_premises_with_adsl': 100.0,
         'sum_of_premises': 20
     }]
 
-    expected_capacity = {
-        'ABABA':{
-            #  fttp       fttdp     fttc     docsis3   adsl
-            # ((1*1000) + (1*300) + (5*80) + (5*150) + (8*24)) / 20 == 132.1
-            'average_capacity': 132.1,
-        }
-    }
-
-    system = NetworkManager(assets, links, parameters)
-
-    actual_coverage = system.coverage()
-
-    assert expected_coverage == actual_coverage
-
-    actual_aggregate_coverage = system.aggregate_coverage()
+    actual_aggregate_coverage = small_system.aggregate_coverage()
 
     assert expected_aggregate_coverage == actual_aggregate_coverage
 
-    actual_capacity = system.capacity()
+def test_capacity(small_system):
+
+    expected_capacity = {
+        'ABABA':{
+            #  fttp       fttdp     fttc     docsis3   adsl
+            # ((0*1000) + (0*300) + (5*80) + (5*150) + (10*24)) / 20 == 69.5
+            'average_capacity': 69.5,
+        }
+    }
+
+    actual_capacity = small_system.capacity()
 
     assert expected_capacity == actual_capacity
+
+def test_fttp_costs(small_system):
+
+    actual_total_costs = small_system.get_total_upgrade_costs_by_distribution_point('fttp')
+
+    #### dist_point to premises = £1837.0 ###
+    #costs_assets_premise_fttp_modem: 20 * 20 = 400
+    #costs_assets_premise_fttp_optical_network_terminator = 10 * 20 = 200
+    #planning administation code = £10 * 20 = £200
+    #costs_assets_premise_fttp_optical_connection_point: 37 * 1 = 37
+    #fibre = £5 * 200 = £1000
+
+    #### cabinet to dist_point = £520.0 ###
+    #fibre = £5 * 94 = £470
+    #costs_assets_upgrade_cabinet_fttp = £50
+
+    #### exchange to cabinet = £50000 ###
+    #costs_assets_upgrade_exchange_fttp = £50000
+
+    expected_total_costs = (1837.0, 520.0, 50000.0)
+
+    assert actual_total_costs['distribution_{EACAM}{795}'] == expected_total_costs
+
+def test_fttdp_costs(small_system):
+
+    #get actual costs
+    actual_total_costs = small_system.get_total_upgrade_costs_by_distribution_point('fttdp')
+
+    #### dist_point to premises = £1150.0 ###
+    #'costs_assets_premise_fttdp_modem': 20 * 20 = 400,
+    #'costs_assets_distribution_fttdp_8_ports': 250 * 3 = £750,
+
+    #### cabinet to dist_point = £2970.0 ###
+    #fibre = £5 * 94 = £470,
+    #'costs_assets_cabinet_fttdp': 2500,
+
+    #### exchange to cabinet = 25000.0 ###
+    #'costs_assets_exchange_fttdp': 40000,
+
+    expected_total_costs = (1150.0, 2970.0, 25000.0)
+
+    assert actual_total_costs['distribution_{EACAM}{795}'] == expected_total_costs
+
+def test_fttp_upgrade(small_system):
+
+    year = 2019
+    technology = 'fttp'
+    policy = 's1_market_based_roll_out'
+    annual_budget = 2000
+    adoption_cap = 40
+    subsidy = 2000
+    telco_match_funding = 2000
+    service_obligation_capacity = 10
+
+    #build interventions
+    built_interventions = decide_interventions(
+        small_system._distributions, year, technology, policy, annual_budget, adoption_cap,
+        subsidy, telco_match_funding, service_obligation_capacity)
+
+    small_system.upgrade(built_interventions)
+
+    actual_coverage = small_system.coverage()
+
+    expected_coverage = {
+        'ABABA':{
+            'num_premises': 20,
+            'num_fttp': 20,
+            'num_fttdp': 0,
+            'num_fttc': 5,
+            'num_docsis3': 5,
+            'num_adsl': 20
+        }
+    }
+
+    assert expected_coverage == actual_coverage
+
+def test_fttdp_upgrade(small_system):
+
+    year = 2019
+    technology = 'fttdp'
+    policy = 's1_market_based_roll_out'
+    annual_budget = 2000
+    adoption_cap = 40
+    subsidy = 2000
+    telco_match_funding = 2000
+    service_obligation_capacity = 10
+
+    #build interventions
+    built_interventions = decide_interventions(
+        small_system._distributions, year, technology, policy, annual_budget, adoption_cap,
+        subsidy, telco_match_funding, service_obligation_capacity)
+
+    small_system.upgrade(built_interventions)
+
+    actual_coverage = small_system.coverage()
+
+    expected_coverage = {
+        'ABABA':{
+            'num_premises': 20,
+            'num_fttp': 0,
+            'num_fttdp': 20,
+            'num_fttc': 5,
+            'num_docsis3': 5,
+            'num_adsl': 20
+        }
+    }
+
+    assert expected_coverage == actual_coverage
