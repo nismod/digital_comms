@@ -47,25 +47,26 @@ class NetworkManager():
         Calculates the average premises connection.
 
     """
-
     def __init__(self, assets, links, parameters):
-        self._links = {
-        }
 
-        self._links_from_premises = []
-        self._links_from_distributions = []
-        self._links_from_cabinets = []
-        self._links_from_exchanges = []
+        self._links = {}
+
+        self._links_distributions = []
+        self._links_cabinets = []
+        self._links_exchanges = []
+
         for link_dict in links:
             link = Link(link_dict, parameters)
+
             destination = link.dest
             self._links[destination] = link
+
             if destination.startswith('distribution'):
-                self._links_from_distributions.append(link)
+                self._links_distributions.append(link)
             elif destination.startswith('cabinet'):
-                self._links_from_cabinets.append(link)
+                self._links_cabinets.append(link)
             elif destination.startswith('exchange'):
-                self._links_from_exchanges.append(link)
+                self._links_exchanges.append(link)
 
         self._distributions = []
         self._distributions_by_lad = defaultdict(list)
@@ -74,7 +75,7 @@ class NetworkManager():
             distribution = Distribution(
                 distribution,
                 self._links.get(distribution['id'], None),
-                parameters
+                parameters,
             )
             self._distributions.append(distribution)
             self._distributions_by_lad[distribution.lad].append(distribution)
@@ -101,7 +102,7 @@ class NetworkManager():
             )
             self._exchanges.append(exchange)
 
-    def upgrade(self, interventions):
+    def upgrade(self, interventions, asset_type):
 
         for intervention in interventions:
 
@@ -116,6 +117,14 @@ class NetworkManager():
                 ][0]
 
                 distribution.upgrade(technology)
+
+            if asset_id.startswith('cabinet'):
+                cabinet = [cabinet for cabinet in self._cabinets if cabinet.id == asset_id][0]
+                cabinet.upgrade(technology)
+
+            if asset_id.startswith('exchange'):
+                exchange = [exchange for exchange in self._exchanges if exchange.id == asset_id][0]
+                exchange.upgrade(technology)
 
     def update_adoption_desirability(self, adoption_desirability):
 
@@ -286,9 +295,9 @@ class NetworkManager():
     def links(self):
         """Returns a certain subset of links"""
         return {
-            'distributions':    self._links_from_distributions,
-            'cabinets':         self._links_from_cabinets,
-            'exchanges':        self._links_from_exchanges
+            'distributions':    self._links_distributions,
+            'cabinets':         self._links_cabinets,
+            'exchanges':        self._links_exchanges,
         }
 
 class Exchange():
@@ -428,6 +437,7 @@ class Cabinet():
 
         # Link parameters
         self._clients = clients
+
         self.link = link
 
         self.compute()

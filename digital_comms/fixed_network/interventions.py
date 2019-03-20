@@ -7,7 +7,7 @@
 ################################################################
 
 
-def get_all_distributions_ranked(system, ranking_variable, technology, reverse_value):
+def get_all_assets_ranked(system, ranking_variable, technology, reverse_value):
     """Specifically obtain and rank Distribution Points by technology and policy.
 
     Parameters
@@ -26,13 +26,26 @@ def get_all_distributions_ranked(system, ranking_variable, technology, reverse_v
         preference.
 
     """
+    distributions = []
 
     if ranking_variable == 'rollout_benefits':
         distributions = sorted(system._distributions,
             key=lambda item: item.rollout_benefits[technology], reverse=reverse_value)
-    elif ranking_variable == 'rollout_costs':
-        distributions = sorted(system._distributions,
-            key=lambda item: item.rollout_costs[technology], reverse=reverse_value)
+    elif ranking_variable == 'max_rollout_costs':
+
+        #get distribution ranking by total upgrade costs
+        total_upgrade_costs = system.get_total_upgrade_costs_by_distribution_point(technology)
+        total_upgrade_costs = {k:(sum(j for j in v),) for k,v in total_upgrade_costs.items()}
+        total_upgrade_costs = sorted(total_upgrade_costs, key=lambda item: item, reverse=reverse_value)
+
+        #get_distributions
+        unranked_distributions = []
+        for distribution in system._distributions:
+            unranked_distributions.append(distribution)
+
+        #rank the distribution objects based on the total_upgrade_costs list
+        distributions = [x for _, x in sorted(zip(total_upgrade_costs,unranked_distributions))]
+
     else:
         raise ValueError('Did not recognise ranking preference variable')
 
@@ -121,7 +134,7 @@ def _suggest_interventions(system, year, technology, policy, annual_budget, adop
     premises_passed = 0
 
     if policy == 's1_market_based_roll_out':
-        distributions = get_all_distributions_ranked(system, 'rollout_benefits', technology, False)
+        distributions = get_all_assets_ranked(system, 'rollout_benefits', technology, False)
         for distribution in distributions:
             if distribution.id not in upgraded_ids:
                 if (premises_passed + distribution.total_prems) < adoption_cap:
@@ -145,7 +158,7 @@ def _suggest_interventions(system, year, technology, policy, annual_budget, adop
                     break
 
     elif policy == 's2_rural_based_subsidy' or 's3_outside_in_subsidy':
-        distributions = get_all_distributions_ranked(system, 'rollout_benefits',technology, False)
+        distributions = get_all_assets_ranked(system, 'rollout_benefits',technology, False)
         deployment_type = 'market_based'
         for distribution in distributions:
             if distribution.id not in upgraded_ids:
@@ -175,7 +188,7 @@ def _suggest_interventions(system, year, technology, policy, annual_budget, adop
         else:
             raise ValueError('Did not recognise stipulated policy')
 
-        subsidised_distributions = get_all_distributions_ranked(system, 'rollout_costs', technology, reverse_value)
+        subsidised_distributions = get_all_assets_ranked(system, 'max_rollout_costs', technology, reverse_value)
 
         # # get the bottom third of the distribution cutoff point
         # subsidy_cutoff = math.floor(len(subsidised_distributions) * 0.66)
