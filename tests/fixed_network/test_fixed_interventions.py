@@ -263,7 +263,7 @@ def test_init_from_data():
     system = NetworkManager(assets, links, parameters)
 
     #40% want to adopt in total
-    distribution_adoption_desirability_ids = update_adoption_desirability(system, 40)
+    distribution_adoption_desirability_ids = update_adoption_desirability(system._distributions, 40)
 
     #update model adoption desirability
     system.update_adoption_desirability(distribution_adoption_desirability_ids)

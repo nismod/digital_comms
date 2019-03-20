@@ -117,6 +117,7 @@ def read_parameters():
 # LOAD SCENARIO DATA
 ################################################################
 
+
 def load_in_yml_parameters():
     """Load in digital_comms sector model .yml parameter data from
     digital_comms/config/sector_models.
