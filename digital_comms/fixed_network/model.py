@@ -98,6 +98,7 @@ class NetworkManager():
             exchange = Exchange(
                 exchange,
                 self._cabinets_by_exchange[exchange['id']],
+                self._links.get(exchange['id'], None),
                 parameters
             )
             self._exchanges.append(exchange)
@@ -133,7 +134,13 @@ class NetworkManager():
                 if distribution_id == distribution.id:
                     distribution.update_desirability_to_adopt(desirability_to_adopt)
 
-    def get_total_upgrade_costs_by_distribution_point(self, tech):
+        for cabinet in self._cabinets:
+            cabinet.compute()
+
+        for exchange in self._exchanges:
+            exchange.compute()
+
+    def get_total_upgrade_costs(self, tech):
         upgrade_costs = {}
 
         #find upgrade costs for dist, cab, exchange
@@ -330,29 +337,38 @@ class Exchange():
 
     """
 
-    def __init__(self, data, clients, parameters):
+    def __init__(self, data, clients, link, parameters):
         self.id = data["id"]
         self.fttp = data["fttp"]
         self.fttdp = data["fttdp"]
         self.fttc = data["fttc"]
         self.adsl = data["adsl"]
+        self.total_prems = [prem.total_prems for prem in clients]
 
         self.parameters = parameters
         self._clients = clients
+
+        self.link = link
 
         self.compute()
 
     def compute(self):
         # Upgrade costs
         self.upgrade_costs = {}
-        self.upgrade_costs['fttp'] = \
-            self.parameters['costs_assets_exchange_fttp'] if self.fttp == 0 else 0
-        self.upgrade_costs['fttdp'] = \
-            self.parameters['costs_assets_exchange_fttdp'] if self.fttdp == 0 else 0
-        self.upgrade_costs['fttc'] = \
-            self.parameters['costs_assets_exchange_fttc'] if self.fttc == 0 else 0
-        self.upgrade_costs['adsl'] = \
-            self.parameters['costs_assets_exchange_adsl'] if self.adsl == 0 else 0
+        self.upgrade_costs['fttp'] = (
+            (self.parameters['costs_assets_exchange_fttp'] if self.fttp == 0 else 0)
+            +
+            (self.link.upgrade_costs['fibre'] if self.link is not None else 0))
+        self.upgrade_costs['fttdp'] = (
+            (self.parameters['costs_assets_exchange_fttdp'] if self.fttdp == 0 else 0)
+            +
+            (self.link.upgrade_costs['fibre'] if self.link is not None else 0))
+        self.upgrade_costs['fttc'] = (
+            (self.parameters['costs_assets_exchange_fttc'] if self.fttc == 0 else 0)
+            +
+            (self.link.upgrade_costs['fibre'] if self.link is not None else 0))
+        self.upgrade_costs['adsl'] = (
+            self.parameters['costs_assets_exchange_adsl'] if self.adsl == 0 else 0)
 
         # Rollout costs
         self.rollout_costs = {}
@@ -389,6 +405,23 @@ class Exchange():
 
     def __repr__(self):
         return "<Exchange id:{}>".format(self.id)
+    
+    def upgrade(self, action):
+
+        if action == 'fttp':
+            self.fttp = self.total_prems
+            if self.link is not None:
+                self.link.upgrade('fibre')
+            for client in self._clients:
+                client.upgrade(action)
+
+        if action == 'fttdp':
+            self.fttdp = self.total_prems
+            if self.link is not None:
+                self.link.upgrade('fibre')
+            for client in self._clients:
+                client.upgrade(action)
+
 
 
 class Cabinet():
@@ -441,7 +474,7 @@ class Cabinet():
         self.link = link
 
         self.compute()
-
+        
     def __repr__(self):
         return "<Cabinet id:{}>".format(self.id)
 
@@ -451,7 +484,7 @@ class Cabinet():
         self.upgrade_costs = {}
         self.upgrade_costs['fttp'] = (
             (
-                self.parameters['costs_assets_upgrade_cabinet_fttp'] \
+                self.parameters['costs_assets_cabinet_fttp'] \
                 * ceil(len(self._clients) / 32) \
                 if self.fttp == 0 else 0
             )
@@ -506,18 +539,20 @@ class Cabinet():
             self.rollout_benefits['fttc'], self.rollout_costs['fttc'])
         self.rollout_bcr['adsl'] = _calculate_benefit_cost_ratio(
             self.rollout_benefits['adsl'], self.rollout_costs['adsl'])
-
+ 
+        self.total_prems = sum([prem.total_prems for prem in self._clients])
+        
     def upgrade(self, action):
 
-        if action == 'rollout_fttp':
-            self.fttp = 1
+        if action == 'fttp':
+            self.fttp = self.total_prems
             if self.link is not None:
                 self.link.upgrade('fibre')
             for client in self._clients:
                 client.upgrade(action)
 
-        if action == 'rollout_fttdp':
-            self.fttp = 1
+        if action == 'fttdp':
+            self.fttdp = self.total_prems
             if self.link is not None:
                 self.link.upgrade('fibre')
             for client in self._clients:
@@ -626,6 +661,7 @@ class Distribution():
 
         # Rollout benefits
         self.rollout_benefits = {}
+        
         if self.adoption_desirability:
             # Problem: wtp is now aggregated to the distribution point
             # But households will adopt at different times
@@ -706,6 +742,7 @@ class Distribution():
 
     def update_desirability_to_adopt(self, desirability_to_adopt):
         self.adoption_desirability = desirability_to_adopt
+        self.compute()
 
 class Link():
     """Link object

@@ -212,7 +212,7 @@ def base_system():
         'costs_assets_exchange_fttdp': 25000,
         'costs_assets_exchange_fttc': 30000,
         'costs_assets_exchange_adsl': 20000,
-        'costs_assets_upgrade_cabinet_fttp': 50,
+        'costs_assets_cabinet_fttp': 50,
         'costs_assets_cabinet_fttdp': 2500,
         'costs_assets_cabinet_fttc': 3000,
         'costs_assets_cabinet_adsl': 2000,
@@ -231,6 +231,9 @@ def base_system():
         'benefits_assets_premise_fttc': 30,
         'benefits_assets_premise_adsl': 20,
         'planning_administration_cost': 10,
+        'months_per_year': 12,
+        'payback_period': 4,
+        'profit_margin': 20,
     }
 
     #create system using network manager
@@ -255,24 +258,106 @@ def small_system_40(base_system):
 
     return base_system
 
-# @pytest.fixture
-# def small_system_80(base_system):
+@pytest.fixture
+def small_system_80(base_system):
 
-#     #40% want to adopt in total
-#     distribution_adoption_desirability_ids = update_adoption_desirability(base_system, 80)
+    #40% want to adopt in total
+    distribution_adoption_desirability_ids = update_adoption_desirability(base_system, 80)
 
-#     #update model adoption desirability
-#     base_system.update_adoption_desirability(distribution_adoption_desirability_ids)
+    #update model adoption desirability
+    base_system.update_adoption_desirability(distribution_adoption_desirability_ids)
 
-#     return base_system
+    return base_system
 
 
-def test_ranking_using_benefits(small_system_40):
+def test_ranking_benefits_by_exchange(small_system_40):
+
+    #my_list = [600, 100, 200, 300]
+    #print(sorted(my_list, reverse=True))
+    # [600, 300, 200, 100]
 
     actual_ranking_by_benefit = get_all_assets_ranked(small_system_40,
-        'rollout_benefits', 'fttp', False)
+        'rollout_benefits', 'exchange', 'fttp', True)
 
-    actual_ranking_by_benefit_ids = [dist.id for dist in actual_ranking_by_benefit]
+    actual_ranking_by_benefit_ids = [asset.id for asset in actual_ranking_by_benefit]
+
+
+    expectation_ranking_by_benefit = [
+        'exchange_EACAM',
+        'exchange_EACOM',
+    ]
+    
+    assert expectation_ranking_by_benefit == actual_ranking_by_benefit_ids
+
+def test_ranking_benefits_by_exchange(small_system_40):
+
+    #my_list = [600, 100, 200, 300]
+    #print(sorted(my_list, reverse=False))
+    # [100, 200, 300, 600]
+
+    actual_ranking_by_benefit = get_all_assets_ranked(small_system_40,
+        'rollout_benefits', 'exchange', 'fttp', False)
+
+    actual_ranking_by_benefit_ids = [asset.id for asset in actual_ranking_by_benefit]
+
+    expectation_ranking_by_benefit = [
+        'exchange_EACOM',
+        'exchange_EACAM',
+    ]
+    
+    assert expectation_ranking_by_benefit == actual_ranking_by_benefit_ids
+
+def test_ranking_benefits_by_cabinet(small_system_40):
+
+    actual_ranking_by_benefit = get_all_assets_ranked(small_system_40,
+        'rollout_benefits', 'cabinet', 'fttp', True)
+
+    actual_ranking_by_benefit_ids = [asset.id for asset in actual_ranking_by_benefit]
+
+    expectation_ranking_by_benefit = [
+        'cabinet_{EACAM}{P100}',
+        'cabinet_{EACOM}{P200}',
+    ]
+    
+    assert expectation_ranking_by_benefit == actual_ranking_by_benefit_ids
+
+def test_ranking_benefits_by_exchange(small_system_40):
+
+    actual_ranking_by_benefit = get_all_assets_ranked(small_system_40,
+        'rollout_benefits', 'cabinet', 'fttp', False)
+
+    actual_ranking_by_benefit_ids = [asset.id for asset in actual_ranking_by_benefit]
+
+    expectation_ranking_by_benefit = [
+        'cabinet_{EACOM}{P200}',
+        'cabinet_{EACAM}{P100}',
+    ]
+    
+    assert expectation_ranking_by_benefit == actual_ranking_by_benefit_ids
+
+def test_ranking_benefits_by_distribution(small_system_40):
+
+    actual_ranking_by_benefit = get_all_assets_ranked(small_system_40,
+        'rollout_benefits', 'distribution', 'fttp', True)
+    
+    actual_ranking_by_cost_ids = [asset.id for asset in actual_ranking_by_benefit]
+
+    expectation_ranking_by_benefit = [
+        'distribution_{EACAM}{2}',
+        'distribution_{EACAM}{3}',
+        'distribution_{EACAM}{1}',
+        'distribution_{EACOM}{4}',
+        'distribution_{EACOM}{5}',
+    ]
+    
+    assert expectation_ranking_by_benefit == actual_ranking_by_benefit_ids
+
+def test_ranking_benefits_by_distribution(small_system_80):
+
+    actual_ranking_by_benefit = get_all_assets_ranked(small_system_80,
+        'rollout_benefits', 'distribution', 'fttp', True)
+
+    actual_ranking_by_benefit_ids = [asset.id for asset in actual_ranking_by_benefit]
 
     expectation_ranking_by_benefit = [
         'distribution_{EACAM}{1}',
@@ -281,15 +366,69 @@ def test_ranking_using_benefits(small_system_40):
         'distribution_{EACOM}{4}',
         'distribution_{EACOM}{5}',
     ]
-
+    
     assert expectation_ranking_by_benefit == actual_ranking_by_benefit_ids
+
+def test_system_level_using_an_unknown(small_system_40):
+
+    with pytest.raises(ValueError) as ex:
+        get_all_assets_ranked(small_system_40, 'rollout_benefits', 'unknown', 'fttp', False)
+
+    msg = 'Did not recognise asset_variable'
+
+    assert msg in str(ex)
+
+def test_ranking_using_rollout_costs_at_exchange_level(small_system_40):
+
+    actual_ranking_by_cost = get_all_assets_ranked(small_system_40,
+        'rollout_costs', 'exchange', 'fttp', True) #True equals most expensive at the top
+
+    actual_ranking_by_cost_ids = [asset.id for asset in actual_ranking_by_cost]
+
+    expectation_ranking_by_cost = [
+        'exchange_EACOM',
+        'exchange_EACAM',
+    ]
+    
+    assert expectation_ranking_by_cost == actual_ranking_by_cost_ids
+
+def test_ranking_using_rollout_costs_at_cabinet_level(small_system_40):
+
+    actual_ranking_by_cost = get_all_assets_ranked(small_system_40,
+        'rollout_costs', 'cabinet', 'fttp', True) #True equals most expensive at the top
+
+    actual_ranking_by_cost_ids = [asset.id for asset in actual_ranking_by_cost]
+
+    expectation_ranking_by_cost = [
+        'cabinet_{EACOM}{P200}',
+        'cabinet_{EACAM}{P100}',
+    ]
+    
+    assert expectation_ranking_by_cost == actual_ranking_by_cost_ids
+
+def test_ranking_using_rollout_costs(small_system_40):
+
+    actual_ranking_by_cost = get_all_assets_ranked(small_system_40,
+        'rollout_costs', 'distribution', 'fttp', True)
+
+    actual_ranking_by_cost_ids = [asset.id for asset in actual_ranking_by_cost]
+
+    expectation_ranking_by_cost = [
+        'distribution_{EACOM}{5}',
+        'distribution_{EACOM}{4}',
+        'distribution_{EACAM}{3}',
+        'distribution_{EACAM}{2}',
+        'distribution_{EACAM}{1}',   
+    ]
+    
+    assert expectation_ranking_by_cost == actual_ranking_by_cost_ids
 
 def test_ranking_using_max_costs(small_system_40):
 
     actual_ranking_by_cost = get_all_assets_ranked(small_system_40,
-        'max_rollout_costs', 'fttp', False)
+        'max_rollout_costs', 'distribution', 'fttp', False)
 
-    actual_ranking_by_cost_ids = [dist.id for dist in actual_ranking_by_cost]
+    actual_ranking_by_cost_ids = [asset.id for asset in actual_ranking_by_cost]
 
     expectation_ranking_by_cost = [
         'distribution_{EACAM}{1}',
@@ -298,32 +437,31 @@ def test_ranking_using_max_costs(small_system_40):
         'distribution_{EACOM}{4}',
         'distribution_{EACOM}{5}',
     ]
-
+    
     assert expectation_ranking_by_cost == actual_ranking_by_cost_ids
 
-def test_ranking_using_reversed_max_costs(small_system_40):
+
+def test_reverse_ranking_using_max_costs(small_system_40):
 
     actual_ranking_by_cost = get_all_assets_ranked(small_system_40,
-        'max_rollout_costs', 'fttp', True)
+        'max_rollout_costs', 'distribution', 'fttp', True)
 
-    actual_ranking_by_cost_ids = [dist.id for dist in actual_ranking_by_cost]
-
+    actual_ranking_by_cost_ids = [asset.id for asset in actual_ranking_by_cost]
+    
     expectation_ranking_by_cost = [
-        'distribution_{EACAM}{1}',
-        'distribution_{EACAM}{2}',
-        'distribution_{EACAM}{3}',
-        'distribution_{EACOM}{4}',
         'distribution_{EACOM}{5}',
+        'distribution_{EACOM}{4}',
+        'distribution_{EACAM}{3}',
+        'distribution_{EACAM}{2}',
+        'distribution_{EACAM}{1}',
     ]
-
-    expectation_ranking_by_cost.reverse()
-
+    
     assert expectation_ranking_by_cost == actual_ranking_by_cost_ids
 
 def test_ranking_using_an_unknown(small_system_40):
 
     with pytest.raises(ValueError) as ex:
-        get_all_assets_ranked(small_system_40, 'unknown', 'fttp', False)
+        get_all_assets_ranked(small_system_40, 'unknown', 'exchange', 'fttp', False)
 
     msg = 'Did not recognise ranking preference variable'
 
