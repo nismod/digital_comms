@@ -289,7 +289,7 @@ def test_ranking_benefits_by_exchange(small_system_40):
     
     assert expectation_ranking_by_benefit == actual_ranking_by_benefit_ids
 
-def test_ranking_benefits_by_exchange(small_system_40):
+def test_ranking_benefits_by_exchange_reversed(small_system_40):
 
     #my_list = [600, 100, 200, 300]
     #print(sorted(my_list, reverse=False))
