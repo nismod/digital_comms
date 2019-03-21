@@ -366,7 +366,7 @@ def run():
 
             # update the number of premises wanting to adopt (adoption_desirability)
             distribution_adoption_desirability_ids = update_adoption_desirability(
-                system, percentage_annual_increase)
+                system._distributions, percentage_annual_increase)
 
             # system.update_adoption_desirability(distribution_adoption_desirability_ids)
 
