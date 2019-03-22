@@ -95,6 +95,9 @@ def base_system():
         'benefits_assets_premise_fttc': 30,
         'benefits_assets_premise_adsl': 20,
         'planning_administration_cost': 10,
+        'months_per_year': 12,
+        'payback_period': 4,
+        'profit_margin': 20,
     }
 
     system = NetworkManager(assets, links, parameters)
@@ -178,7 +181,7 @@ def test_fttp_costs(small_system):
     #fibre = £5 * 1297 = £6485
 
     expected_total_costs = (1837.0, 520.0, 56485.0)
-    
+
     assert actual_total_costs['distribution_{EACAM}{795}'] == expected_total_costs
 
 def test_fttdp_costs(small_system):
@@ -202,23 +205,23 @@ def test_fttdp_costs(small_system):
 
     assert actual_total_costs['distribution_{EACAM}{795}'] == expected_total_costs
 
-def test_fttp_upgrade(small_system):
+def test_fttp_upgrade_exchanges(small_system):
 
     year = 2019
     technology = 'fttp'
     policy = 's1_market_based_roll_out'
-    annual_budget = 2000
+    annual_budget = 100000
     adoption_cap = 40
-    subsidy = 2000
-    telco_match_funding = 2000
+    subsidy = 10000
+    telco_match_funding = 10000
     service_obligation_capacity = 10
 
     #build interventions
     built_interventions = decide_interventions(
         small_system, year, technology, policy, annual_budget, adoption_cap,
-        subsidy, telco_match_funding, service_obligation_capacity)
+        subsidy, telco_match_funding, service_obligation_capacity, 'exchange')
 
-    small_system.upgrade(built_interventions, 'distribution')
+    small_system.upgrade(built_interventions)
 
     actual_coverage = small_system.coverage()
 
@@ -235,7 +238,73 @@ def test_fttp_upgrade(small_system):
 
     assert expected_coverage == actual_coverage
 
-def test_fttdp_upgrade(small_system):
+def test_fttp_upgrade_cabinets(small_system):
+
+    year = 2019
+    technology = 'fttp'
+    policy = 's1_market_based_roll_out'
+    annual_budget = 3000
+    adoption_cap = 40
+    subsidy = 3000
+    telco_match_funding = 3000
+    service_obligation_capacity = 10
+
+    #build interventions
+    built_interventions = decide_interventions(
+        small_system, year, technology, policy, annual_budget, adoption_cap,
+        subsidy, telco_match_funding, service_obligation_capacity, 'cabinet')
+
+    small_system.upgrade(built_interventions)
+
+    actual_coverage = small_system.coverage()
+
+    expected_coverage = {
+        'ABABA':{
+            'num_premises': 20,
+            'num_fttp': 20,
+            'num_fttdp': 0,
+            'num_fttc': 5,
+            'num_docsis3': 5,
+            'num_adsl': 20
+        }
+    }
+
+    assert expected_coverage == actual_coverage
+
+def test_fttp_upgrade_distributions(small_system):
+
+    year = 2019
+    technology = 'fttp'
+    policy = 's1_market_based_roll_out'
+    annual_budget = 2000
+    adoption_cap = 40
+    subsidy = 2000
+    telco_match_funding = 2000
+    service_obligation_capacity = 10
+
+    #build interventions
+    built_interventions = decide_interventions(
+        small_system, year, technology, policy, annual_budget, adoption_cap,
+        subsidy, telco_match_funding, service_obligation_capacity, 'distribution')
+
+    small_system.upgrade(built_interventions)
+
+    actual_coverage = small_system.coverage()
+
+    expected_coverage = {
+        'ABABA':{
+            'num_premises': 20,
+            'num_fttp': 20,
+            'num_fttdp': 0,
+            'num_fttc': 5,
+            'num_docsis3': 5,
+            'num_adsl': 20
+        }
+    }
+
+    assert expected_coverage == actual_coverage
+
+def test_fttdp_upgrade_distributions(small_system):
 
     year = 2019
     technology = 'fttdp'
@@ -249,9 +318,9 @@ def test_fttdp_upgrade(small_system):
     #build interventions
     built_interventions = decide_interventions(
         small_system, year, technology, policy, annual_budget, adoption_cap,
-        subsidy, telco_match_funding, service_obligation_capacity)
+        subsidy, telco_match_funding, service_obligation_capacity, 'distribution')
 
-    small_system.upgrade(built_interventions, 'distribution')
+    small_system.upgrade(built_interventions)
 
     actual_coverage = small_system.coverage()
 

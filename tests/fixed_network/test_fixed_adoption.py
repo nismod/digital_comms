@@ -188,6 +188,9 @@ def test_init_from_data():
         'benefits_assets_premise_fttc': 30,
         'benefits_assets_premise_adsl': 20,
         'planning_administration_cost': 10,
+        'months_per_year': 12,
+        'payback_period': 4,
+        'profit_margin': 20,
     }
 
     expected_adoption_year_1 = [
