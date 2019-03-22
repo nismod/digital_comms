@@ -26,8 +26,6 @@ def get_all_assets_ranked(system, ranking_variable, asset_variable, technology, 
         preference.
 
     """
-    distributions = []
-    
     if asset_variable == 'exchange':
         system_level = system._exchanges
     elif asset_variable == 'cabinet':
@@ -40,17 +38,25 @@ def get_all_assets_ranked(system, ranking_variable, asset_variable, technology, 
     if ranking_variable == 'rollout_benefits':
         assets = sorted(system_level,
             key=lambda item: item.rollout_benefits[technology], reverse=reverse_value)
-        
+
     elif ranking_variable == 'rollout_costs':
         assets = sorted(system_level,
             key=lambda item: item.rollout_costs[technology], reverse=reverse_value)
-        
+
+    elif ranking_variable == 'rollout_bcr':
+        assets = sorted(system_level,
+            key=lambda item: item.rollout_bcr[technology], reverse=reverse_value)
+
+    elif ranking_variable == 'total_potential_bcr':
+        assets = sorted(system_level,
+            key=lambda item: item.total_potential_bcr[technology], reverse=reverse_value)
+
     elif ranking_variable == 'max_rollout_costs':
         #get distribution ranking by total upgrade costs
         total_upgrade_costs = system.get_total_upgrade_costs(technology)
         total_upgrade_costs = {k:(sum(j for j in v),) for k,v in total_upgrade_costs.items()}
         total_upgrade_costs = sorted(total_upgrade_costs, key=lambda item: item, reverse=reverse_value)
-        
+
         #get_distributions
         unranked_distributions = []
         for asset in system_level:
@@ -58,15 +64,16 @@ def get_all_assets_ranked(system, ranking_variable, asset_variable, technology, 
 
         #rank the distribution objects based on the total_upgrade_costs list
         assets = [x for _, x in sorted(zip(total_upgrade_costs,unranked_distributions))]
-        
+
     else:
         raise ValueError('Did not recognise ranking preference variable')
 
     return assets
 
 
-def decide_interventions(system, year, technology, policy, annual_budget, adoption_cap,
-                         subsidy, telco_match_funding, service_obligation_capacity):
+def decide_interventions(system, year, technology, policy, annual_budget,
+                        adoption_cap, subsidy, telco_match_funding,
+                        service_obligation_capacity, asset_variable):
     """Given strategy parameters and a system, decide the best potential interventions.
 
     Parameters
@@ -97,22 +104,29 @@ def decide_interventions(system, year, technology, policy, annual_budget, adopti
 
     """
     # Build to meet demand most beneficial demand
-    built_interventions = meet_most_beneficial_demand(system, year, technology, policy, annual_budget, adoption_cap,
-                                                        subsidy, telco_match_funding, service_obligation_capacity)
+    built_interventions = meet_most_beneficial_demand(system, year, technology,
+                                                    policy, annual_budget,
+                                                    adoption_cap, subsidy,
+                                                    telco_match_funding,
+                                                    service_obligation_capacity,
+                                                    asset_variable)
 
     return built_interventions
 
-def meet_most_beneficial_demand(system, year, technology, policy, annual_budget, adoption_cap,
-                                subsidy, telco_match_funding, service_obligation_capacity):
+def meet_most_beneficial_demand(system, year, technology, policy, annual_budget,
+                                adoption_cap, subsidy, telco_match_funding,
+                                service_obligation_capacity, asset_variable):
     """Given strategy parameters and a system, meet the most beneficial demand.
 
     TODO: address service_obligation_capacity here.
 
     """
     return _suggest_interventions(
-        system, year, technology, policy, annual_budget, adoption_cap, subsidy, telco_match_funding)
+        system, year, technology, policy, annual_budget,
+        adoption_cap, subsidy, telco_match_funding, asset_variable)
 
-def _suggest_interventions(system, year, technology, policy, annual_budget, adoption_cap, subsidy, telco_match_funding):
+def _suggest_interventions(system, year, technology, policy, annual_budget, adoption_cap,
+    subsidy, telco_match_funding, asset_variable):
     """Given strategy parameters and a system, suggest the best potential interventions.
 
     Parameters
@@ -147,61 +161,67 @@ def _suggest_interventions(system, year, technology, policy, annual_budget, adop
     premises_passed = 0
 
     if policy == 's1_market_based_roll_out':
-        distributions = get_all_assets_ranked(system, 'rollout_benefits', 'distribution', technology, True)
-        for distribution in distributions:
-            if distribution.id not in upgraded_ids:
-                if (premises_passed + distribution.total_prems) < adoption_cap:
-                    if distribution.rollout_costs[technology] < annual_budget:
-                        annual_budget -= distribution.rollout_costs[technology]
+        assets = get_all_assets_ranked(system, 'rollout_bcr', asset_variable, technology, True)
+        for asset in assets:
+            if asset.id not in upgraded_ids:
+                if (premises_passed + asset.total_prems) < adoption_cap:
+                    if asset.rollout_costs[technology] < annual_budget:
+                        annual_budget -= asset.rollout_costs[technology]
                         deployment_type = 'market_based'
                         built_interventions.append(
                             (
-                                distribution.id,
+                                asset.id,
                                 technology,
                                 policy,
                                 deployment_type,
-                                distribution.rollout_costs[technology],
+                                asset.rollout_benefits[technology],
+                                asset.rollout_costs[technology],
+                                asset.rollout_bcr[technology],
                             )
                         )
-                        upgraded_ids.append(distribution.id)
-                        premises_passed += distribution.total_prems
+                        upgraded_ids.append(asset.id)
+                        premises_passed += asset.total_prems
                     else:
                         break
                 else:
                     break
 
     elif policy == 's2_rural_based_subsidy' or 's3_outside_in_subsidy':
-        distributions = get_all_assets_ranked(system, 'rollout_benefits',technology, False)
+        assets = get_all_assets_ranked(
+            system, 'rollout_bcr', asset_variable, technology, True
+            )
         deployment_type = 'market_based'
-        for distribution in distributions:
-            if distribution.id not in upgraded_ids:
-                if (premises_passed + distribution.total_prems) < adoption_cap:
-                    if distribution.rollout_costs[technology] < annual_budget:
-                        annual_budget -= distribution.rollout_costs[technology]
+        for asset in assets:
+            if asset.id not in upgraded_ids:
+                if (premises_passed + asset.total_prems) < adoption_cap:
+                    if asset.rollout_costs[technology] < annual_budget:
+                        annual_budget -= asset.rollout_costs[technology]
                         built_interventions.append(
                             (
-                                distribution.id,
+                                asset.id,
                                 technology,
                                 policy,
                                 deployment_type,
-                                distribution.rollout_costs[technology],
+                                asset.rollout_benefits[technology],
+                                asset.rollout_costs[technology],
+                                asset.rollout_bcr[technology],
                             )
                         )
-                        upgraded_ids.append(distribution.id)
-                        premises_passed += distribution.total_prems
+                        upgraded_ids.append(asset.id)
+                        premises_passed += asset.total_prems
                     else:
                         break
                 else:
                     break
 
         if policy == 's2_rural_based_subsidy':
-            reverse_value = False
-        elif policy == 's3_outside_in_subsidy':
             reverse_value = True
+        elif policy == 's3_outside_in_subsidy':
+            reverse_value = False
         else:
             raise ValueError('Did not recognise stipulated policy')
 
-        subsidised_distributions = get_all_assets_ranked(system, 'max_rollout_costs', technology, reverse_value)
+        subsidised_assets = get_all_assets_ranked(system, 'rollout_bcr', asset_variable, technology, reverse_value)
 
         # # get the bottom third of the distribution cutoff point
         # subsidy_cutoff = math.floor(len(subsidised_distributions) * 0.66)
@@ -210,23 +230,25 @@ def _suggest_interventions(system, year, technology, policy, annual_budget, adop
         # subsidised_distributions = subsidised_distributions[subsidy_cutoff:]
 
         deployment_type = 'subsidy_based'
-        for distribution in subsidised_distributions:
-            if distribution.id not in upgraded_ids:
-                if distribution.rollout_costs[technology] < telco_match_funding:
-                    telco_match_funding -= distribution.rollout_costs[technology]
-                    distribution.rollout_costs[technology] = \
-                        distribution.rollout_costs[technology]
+        for asset in subsidised_assets:
+            if asset.id not in upgraded_ids:
+                if asset.rollout_costs[technology] < telco_match_funding:
+                    telco_match_funding -= asset.rollout_costs[technology]
+                    asset.rollout_costs[technology] = \
+                        asset.rollout_costs[technology]
                     built_interventions.append(
                         (
-                            distribution.id,
+                            asset.id,
                             technology,
                             policy,
                             deployment_type,
-                            distribution.rollout_costs[technology],
+                            asset.rollout_benefits[technology],
+                            asset.rollout_costs[technology],
+                            asset.rollout_bcr[technology],
                         )
                     )
-                    upgraded_ids.append(distribution.id)
-                    premises_passed += distribution.total_prems
+                    upgraded_ids.append(asset.id)
+                    premises_passed += asset.total_prems
                 else:
                     break
     else:
