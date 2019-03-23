@@ -117,7 +117,8 @@ def meet_most_beneficial_demand(system, year, technology, policy, annual_budget,
                                 adoption_cap, subsidy, telco_match_funding,
                                 service_obligation_capacity, asset_variable):
     """Given strategy parameters and a system, meet the most beneficial demand.
-=======
+    """
+
     built_interventions = meet_most_beneficial_demand(distributions, year, technology, policy, annual_budget,
                                                       adoption_cap, subsidy, telco_match_funding,
                                                       service_obligation_capacity)
