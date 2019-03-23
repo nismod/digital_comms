@@ -12,12 +12,12 @@ from digital_comms.fixed_network.interventions import decide_interventions
 from digital_comms.fixed_network.adoption import update_adoption_desirability
 
 
-def read_csv(file):
+def read_csv(filepath):
     """Read in a .csv file. Convert each line to single dict, and then append to a list.
 
     Parameters
     ----------
-    file : string
+    filepath : string
         This is a directory string to point to the desired file from the BASE_PATH.
 
     Returns
@@ -27,18 +27,25 @@ def read_csv(file):
         dict
 
     """
-    with open(file, 'r') as system_file:
-        reader = csv.DictReader(system_file)
+    with open(filepath, 'r') as csvfile:
+        reader = csv.DictReader(csvfile)
         results = list(reader)
 
     return results
 
 
-def read_assets():
-    """Read in all assets required to run the model:
+def read_assets(data_path):
+    """Read in all assets required to run the model
+
+    Reads in data for
         - Exchanges
         - Cabinets
         - Distribution Points
+
+    Arguments
+    ---------
+    data_path : str
+        Path to folder which contains the asset files
 
     Returns
     -------
@@ -48,20 +55,27 @@ def read_assets():
     """
     assets = {}
     assets['exchanges'] = read_csv(os.path.join(
-        'data', 'processed', 'assets_exchanges.csv'))
+        data_path, 'assets_exchanges.csv'))
     assets['cabinets'] = read_csv(os.path.join(
-        'data', 'processed', 'assets_cabinets.csv'))
+        data_path, 'assets_cabinets.csv'))
     assets['distributions'] = read_csv(os.path.join(
-        'data', 'processed', 'assets_distribution_points.csv'))
+        data_path, 'assets_distribution_points.csv'))
 
     return assets
 
 
-def read_links():
-    """Read in all links required to run the model:
+def read_links(data_path):
+    """Read in all links required to run the model
+
+    Reads in
         - Exchange to Cabinets
         - Cabinets to Distribution Points
         - Distribution Points to Premises in aggregated form
+
+    Arguments
+    ---------
+    data_path : str
+        Path to folder which contains the asset files
 
     Returns
     -------
@@ -71,9 +85,11 @@ def read_links():
 
     """
     links = []
-    links.extend(read_csv(os.path.join('data', 'processed', 'links_distribution_points.csv')))
-    links.extend(read_csv(os.path.join('data', 'processed', 'links_cabinets.csv')))
-    links.extend(read_csv(os.path.join('data', 'processed', 'links_exchanges.csv')))
+    files = ['links_distribution_points.csv',
+             'links_cabinets.csv',
+             'links_exchanges.csv']
+    for filename in files:
+        links.extend(read_csv(os.path.join(data_path, filename)))
 
     return links
 
@@ -93,61 +109,14 @@ def read_parameters():
     with open(path, 'r') as ymlfile:
         for data in yaml.load_all(ymlfile):
             parameters = data['parameters']
-            for param in parameters:
-                if param['name'] == 'costs_assets_exchange_fttp':
-                    params['costs_assets_exchange_fttp'] = param['default_value']
-                if param['name'] == 'costs_assets_exchange_fttdp':
-                    params['costs_assets_exchange_fttdp'] = param['default_value']
-                if param['name'] == 'costs_assets_exchange_fttc':
-                    params['costs_assets_exchange_fttc'] = param['default_value']
-                if param['name'] == 'costs_assets_exchange_adsl':
-                    params['costs_assets_exchange_adsl'] = param['default_value']
-                if param['name'] == 'costs_assets_upgrade_cabinet_fttp':
-                    params['costs_assets_upgrade_cabinet_fttp'] = param['default_value']
-                if param['name'] == 'costs_assets_cabinet_fttdp':
-                    params['costs_assets_cabinet_fttdp'] = param['default_value']
-                if param['name'] == 'costs_assets_cabinet_fttc':
-                    params['costs_assets_cabinet_fttc'] = param['default_value']
-                if param['name'] == 'costs_assets_cabinet_adsl':
-                    params['costs_assets_cabinet_adsl'] = param['default_value']
-                if param['name'] == 'costs_assets_premise_fttp_optical_connection_point':
-                    params['costs_assets_premise_fttp_optical_connection_point'] = \
-                        param['default_value']
-                if param['name'] == 'costs_assets_distribution_fttdp_8_ports':
-                    params['costs_assets_distribution_fttdp_8_ports'] = param['default_value']
-                if param['name'] == 'costs_assets_distribution_fttc':
-                    params['costs_assets_distribution_fttc'] = param['default_value']
-                if param['name'] == 'costs_assets_distribution_adsl':
-                    params['costs_assets_distribution_adsl'] = param['default_value']
-                if param['name'] == 'costs_links_fibre_meter':
-                    params['costs_links_fibre_meter'] = param['default_value']
-                if param['name'] == 'costs_links_copper_meter':
-                    params['costs_links_copper_meter'] = param['default_value']
-                if param['name'] == 'costs_assets_premise_fttp_modem':
-                    params['costs_assets_premise_fttp_modem'] = param['default_value']
-                if param['name'] == 'costs_assets_premise_fttp_optical_network_terminator':
-                    params['costs_assets_premise_fttp_optical_network_terminator'] = \
-                        param['default_value']
-                if param['name'] == 'planning_administration_cost':
-                    params['planning_administration_cost'] = param['default_value']
-                if param['name'] == 'costs_assets_premise_fttdp_modem':
-                    params['costs_assets_premise_fttdp_modem'] = param['default_value']
-                if param['name'] == 'costs_assets_premise_fttc_modem':
-                    params['costs_assets_premise_fttc_modem'] = param['default_value']
-                if param['name'] == 'costs_assets_premise_adsl_modem':
-                    params['costs_assets_premise_adsl_modem'] = param['default_value']
-                # revenue aspects
-                if param['name'] == 'months_per_year':
-                    params['months_per_year'] = param['default_value']
-                if param['name'] == 'payback_period':
-                    params['payback_period'] = param['default_value']
-                if param['name'] == 'profit_margin':
-                    params['profit_margin'] = param['default_value']
+            for name, param in parameters.items():
+                parameters[name] = param['default_value']
     return params
 
 ################################################################
 # LOAD SCENARIO DATA
 ################################################################
+
 
 def load_in_yml_parameters():
     """Load in digital_comms sector model .yml parameter data from
@@ -347,6 +316,7 @@ def write_spend(decisions, year, technology, policy):
 # RUN MODEL
 ################################################################
 
+
 def run():
     """Run model over scenario/strategy combinations
     """
@@ -362,8 +332,9 @@ def run():
         logging.info("Running: %s, %s, %s", scenario, technology, policy)
         logging.info("--")
 
-        assets = read_assets()
-        links = read_links()
+        data_path = os.path.join('data', 'processed')
+        assets = read_assets(data_path)
+        links = read_links(data_path)
         parameters = read_parameters()
 
         for year in TIMESTEPS:
@@ -395,7 +366,7 @@ def run():
 
             # update the number of premises wanting to adopt (adoption_desirability)
             distribution_adoption_desirability_ids = update_adoption_desirability(
-                system, percentage_annual_increase)
+                system._distributions, percentage_annual_increase)
 
             # system.update_adoption_desirability(distribution_adoption_desirability_ids)
 

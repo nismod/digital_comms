@@ -7,16 +7,16 @@
 ################################################################
 
 
-def get_all_distributions_ranked(system, ranking_variable, technology, reverse_value):
+def get_all_distributions_ranked(distributions, ranking_variable, technology, reverse_value):
     """Specifically obtain and rank Distribution Points by technology and policy.
 
     Parameters
     ----------
-    system : object
-        This is an NetworkManager object containing the whole system.
-    technology : string
+    distributions : list of digital_comms.fixed_network.model.Distribution
+        A list of distribution points
+    technology : str
         The current technology being deployed.
-    reverse_value : boolean
+    reverse_value : bool
         Used as an argument in 'sorted' to rank how assets will be deployed.
 
     Returns
@@ -28,25 +28,27 @@ def get_all_distributions_ranked(system, ranking_variable, technology, reverse_v
     """
 
     if ranking_variable == 'rollout_benefits':
-        distributions = sorted(system._distributions,
-            key=lambda item: item.rollout_benefits[technology], reverse=reverse_value)
+        distributions = sorted(distributions,
+                               key=lambda item: item.rollout_benefits[technology],
+                               reverse=reverse_value)
     elif ranking_variable == 'rollout_costs':
-        distributions = sorted(system._distributions,
-            key=lambda item: item.rollout_costs[technology], reverse=reverse_value)
+        distributions = sorted(distributions,
+                               key=lambda item: item.rollout_costs[technology],
+                               reverse=reverse_value)
     else:
         raise ValueError('Did not recognise ranking preference variable')
 
     return distributions
 
 
-def decide_interventions(system, year, technology, policy, annual_budget, adoption_cap,
+def decide_interventions(distributions, year, technology, policy, annual_budget, adoption_cap,
                          subsidy, telco_match_funding, service_obligation_capacity):
     """Given strategy parameters and a system, decide the best potential interventions.
 
     Parameters
     ----------
-    system : object
-        This is an NetworkManager object containing the whole system.
+    distributions : list of digital_comms.fixed_network.model.Distribution
+        A list of distribution points
     year : int
         The current year.
     technology : string
@@ -71,28 +73,30 @@ def decide_interventions(system, year, technology, policy, annual_budget, adopti
 
     """
     # Build to meet demand most beneficial demand
-    built_interventions = meet_most_beneficial_demand(system, year, technology, policy, annual_budget, adoption_cap,
-                                                        subsidy, telco_match_funding, service_obligation_capacity)
+    built_interventions = meet_most_beneficial_demand(distributions, year, technology, policy, annual_budget,
+                                                      adoption_cap, subsidy, telco_match_funding,
+                                                      service_obligation_capacity)
 
     return built_interventions
 
-def meet_most_beneficial_demand(system, year, technology, policy, annual_budget, adoption_cap,
+def meet_most_beneficial_demand(distributions, year, technology, policy, annual_budget, adoption_cap,
                                 subsidy, telco_match_funding, service_obligation_capacity):
-    """Given strategy parameters and a system, meet the most beneficial demand.
+    """Given strategy parameters and a list of distribution points, meet the most beneficial demand.
 
     TODO: address service_obligation_capacity here.
 
     """
     return _suggest_interventions(
-        system, year, technology, policy, annual_budget, adoption_cap, subsidy, telco_match_funding)
+        distributions, year, technology, policy, annual_budget, adoption_cap, subsidy, telco_match_funding)
 
-def _suggest_interventions(system, year, technology, policy, annual_budget, adoption_cap, subsidy, telco_match_funding):
+def _suggest_interventions(distributions, year, technology, policy, annual_budget, adoption_cap, subsidy,
+                           telco_match_funding):
     """Given strategy parameters and a system, suggest the best potential interventions.
 
     Parameters
     ----------
-    system : object
-        This is an NetworkManger object containing the whole system.
+    distributions : list of digital_comms.fixed_network.model.Distribution
+        A list of distribution points
     year : int
         The current year.
     technology : string
@@ -121,7 +125,7 @@ def _suggest_interventions(system, year, technology, policy, annual_budget, adop
     premises_passed = 0
 
     if policy == 's1_market_based_roll_out':
-        distributions = get_all_distributions_ranked(system, 'rollout_benefits', technology, False)
+        distributions = get_all_distributions_ranked(distributions, 'rollout_benefits', technology, False)
         for distribution in distributions:
             if distribution.id not in upgraded_ids:
                 if (premises_passed + distribution.total_prems) < adoption_cap:
@@ -145,9 +149,9 @@ def _suggest_interventions(system, year, technology, policy, annual_budget, adop
                     break
 
     elif policy == 's2_rural_based_subsidy' or 's3_outside_in_subsidy':
-        distributions = get_all_distributions_ranked(system, 'rollout_benefits',technology, False)
+        ranked_distributions = get_all_distributions_ranked(distributions, 'rollout_benefits',technology, False)
         deployment_type = 'market_based'
-        for distribution in distributions:
+        for distribution in ranked_distributions:
             if distribution.id not in upgraded_ids:
                 if (premises_passed + distribution.total_prems) < adoption_cap:
                     if distribution.rollout_costs[technology] < annual_budget:
@@ -175,7 +179,7 @@ def _suggest_interventions(system, year, technology, policy, annual_budget, adop
         else:
             raise ValueError('Did not recognise stipulated policy')
 
-        subsidised_distributions = get_all_distributions_ranked(system, 'rollout_costs', technology, reverse_value)
+        subsidised_distributions = get_all_distributions_ranked(distributions, 'rollout_costs', technology, reverse_value)
 
         # # get the bottom third of the distribution cutoff point
         # subsidy_cutoff = math.floor(len(subsidised_distributions) * 0.66)

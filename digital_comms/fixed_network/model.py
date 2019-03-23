@@ -697,6 +697,7 @@ class Distribution():
     def update_desirability_to_adopt(self, desirability_to_adopt):
         self.adoption_desirability = desirability_to_adopt
 
+
 class Link():
     """Link object
 

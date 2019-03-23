@@ -214,7 +214,7 @@ def test_init_from_data():
     #'distribution_{EACOM}{4}' = 0.3
     #'distribution_{EACOM}{5}' = 0.2
 
-    actual_adoption_year_1 = update_adoption_desirability(system, 40)
+    actual_adoption_year_1 = update_adoption_desirability(system._distributions, 40)
 
     #actual_adoption_year_1 = [
     #('distribution_{EACAM}{3}', True), ('distribution_{EACAM}{2}', True)
@@ -222,7 +222,7 @@ def test_init_from_data():
 
     assert actual_adoption_year_1 == expected_adoption_year_1
 
-    actual_adoption_year_2 = update_adoption_desirability(system, 60)
+    actual_adoption_year_2 = update_adoption_desirability(system._distributions, 60)
 
     #actual_adoption_year_2 = [
     #('distribution_{EACAM}{2}', True)
@@ -230,17 +230,17 @@ def test_init_from_data():
 
     assert actual_adoption_year_2 == expected_adoption_year_2
 
-    actual_adoption_year_3 = update_adoption_desirability(system, 70)
+    actual_adoption_year_3 = update_adoption_desirability(system._distributions, 70)
 
     assert actual_adoption_year_3 == expected_adoption_year_3
 
-    actual_adoption_year_3 = update_adoption_desirability(system, 70)
+    actual_adoption_year_3 = update_adoption_desirability(system._distributions, 70)
 
     #actual_adoption_year_3 = []
 
     assert actual_adoption_year_3 == expected_adoption_year_3
 
-    actual_adoption_year_4 = update_adoption_desirability(system, 80)
+    actual_adoption_year_4 = update_adoption_desirability(system._distributions, 80)
 
     #actual_adoption_year_4 = [
     #('distribution_{EACOM}{4}', True)

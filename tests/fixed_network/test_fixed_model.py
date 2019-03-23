@@ -118,7 +118,7 @@ def base_system():
 def small_system(base_system):
 
     #40% want to adopt in total
-    distribution_adoption_desirability_ids = update_adoption_desirability(base_system, 40)
+    distribution_adoption_desirability_ids = update_adoption_desirability(base_system._distributions, 40)
 
     #update model adoption desirability
     base_system.update_adoption_desirability(distribution_adoption_desirability_ids)
@@ -226,7 +226,7 @@ def test_fttp_upgrade(small_system):
 
     #build interventions
     built_interventions = decide_interventions(
-        small_system, year, technology, policy, annual_budget, adoption_cap,
+        small_system._distributions, year, technology, policy, annual_budget, adoption_cap,
         subsidy, telco_match_funding, service_obligation_capacity)
 
     small_system.upgrade(built_interventions)
@@ -259,7 +259,7 @@ def test_fttdp_upgrade(small_system):
 
     #build interventions
     built_interventions = decide_interventions(
-        small_system, year, technology, policy, annual_budget, adoption_cap,
+        small_system._distributions, year, technology, policy, annual_budget, adoption_cap,
         subsidy, telco_match_funding, service_obligation_capacity)
 
     small_system.upgrade(built_interventions)
