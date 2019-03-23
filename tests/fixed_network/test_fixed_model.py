@@ -5,19 +5,6 @@ from digital_comms.fixed_network.model import NetworkManager
 from digital_comms.fixed_network.adoption import update_adoption_desirability
 from digital_comms.fixed_network.interventions import decide_interventions
 
-class TestNetworkManager():
-
-    def test_create(self, assets, links, parameters):
-
-        NetworkManager(assets, links, parameters)
-
-
-def test_init(setup_system, assets):
-    """Check the number of assets we load in is correct
-    """
-    assert len(assets['distributions']) == len(setup_system.assets['distributions'])
-    assert len(assets['cabinets']) == len(setup_system.assets['cabinets'])
-    assert len(assets['exchanges']) == len(setup_system.assets['exchanges'])
 
 @pytest.fixture
 def base_system():
@@ -89,7 +76,7 @@ def base_system():
         'costs_assets_exchange_fttdp': 25000,
         'costs_assets_exchange_fttc': 30000,
         'costs_assets_exchange_adsl': 20000,
-        'costs_assets_upgrade_cabinet_fttp': 50,
+        'costs_assets_cabinet_fttp': 50,
         'costs_assets_cabinet_fttdp': 2500,
         'costs_assets_cabinet_fttc': 3000,
         'costs_assets_cabinet_adsl': 2000,
@@ -108,6 +95,9 @@ def base_system():
         'benefits_assets_premise_fttc': 30,
         'benefits_assets_premise_adsl': 20,
         'planning_administration_cost': 10,
+        'months_per_year': 12,
+        'payback_period': 4,
+        'profit_margin': 20,
     }
 
     system = NetworkManager(assets, links, parameters)
@@ -173,7 +163,7 @@ def test_capacity(small_system):
 
 def test_fttp_costs(small_system):
 
-    actual_total_costs = small_system.get_total_upgrade_costs_by_distribution_point('fttp')
+    actual_total_costs = small_system.get_total_upgrade_costs('fttp')
 
     #### dist_point to premises = £1837.0 ###
     #costs_assets_premise_fttp_modem: 20 * 20 = 400
@@ -186,17 +176,18 @@ def test_fttp_costs(small_system):
     #fibre = £5 * 94 = £470
     #costs_assets_upgrade_cabinet_fttp = £50
 
-    #### exchange to cabinet = £50000 ###
+    #### exchange to cabinet = £56485 ###
     #costs_assets_upgrade_exchange_fttp = £50000
+    #fibre = £5 * 1297 = £6485
 
-    expected_total_costs = (1837.0, 520.0, 50000.0)
+    expected_total_costs = (1837.0, 520.0, 56485.0)
 
     assert actual_total_costs['distribution_{EACAM}{795}'] == expected_total_costs
 
 def test_fttdp_costs(small_system):
 
     #get actual costs
-    actual_total_costs = small_system.get_total_upgrade_costs_by_distribution_point('fttdp')
+    actual_total_costs = small_system.get_total_upgrade_costs('fttdp')
 
     #### dist_point to premises = £1150.0 ###
     #'costs_assets_premise_fttdp_modem': 20 * 20 = 400,
@@ -208,26 +199,27 @@ def test_fttdp_costs(small_system):
 
     #### exchange to cabinet = 25000.0 ###
     #'costs_assets_exchange_fttdp': 40000,
+    #fibre = £5 * 1297 = £6485
 
-    expected_total_costs = (1150.0, 2970.0, 25000.0)
+    expected_total_costs = (1150.0, 2970.0, 31485.0)
 
     assert actual_total_costs['distribution_{EACAM}{795}'] == expected_total_costs
 
-def test_fttp_upgrade(small_system):
+def test_fttp_upgrade_exchanges(small_system):
 
     year = 2019
     technology = 'fttp'
     policy = 's1_market_based_roll_out'
-    annual_budget = 2000
+    annual_budget = 100000
     adoption_cap = 40
-    subsidy = 2000
-    telco_match_funding = 2000
+    subsidy = 10000
+    telco_match_funding = 10000
     service_obligation_capacity = 10
 
     #build interventions
     built_interventions = decide_interventions(
-        small_system._distributions, year, technology, policy, annual_budget, adoption_cap,
-        subsidy, telco_match_funding, service_obligation_capacity)
+        small_system, year, technology, policy, annual_budget, adoption_cap,
+        subsidy, telco_match_funding, service_obligation_capacity, 'exchange')
 
     small_system.upgrade(built_interventions)
 
@@ -246,7 +238,73 @@ def test_fttp_upgrade(small_system):
 
     assert expected_coverage == actual_coverage
 
-def test_fttdp_upgrade(small_system):
+def test_fttp_upgrade_cabinets(small_system):
+
+    year = 2019
+    technology = 'fttp'
+    policy = 's1_market_based_roll_out'
+    annual_budget = 3000
+    adoption_cap = 40
+    subsidy = 3000
+    telco_match_funding = 3000
+    service_obligation_capacity = 10
+
+    #build interventions
+    built_interventions = decide_interventions(
+        small_system, year, technology, policy, annual_budget, adoption_cap,
+        subsidy, telco_match_funding, service_obligation_capacity, 'cabinet')
+
+    small_system.upgrade(built_interventions)
+
+    actual_coverage = small_system.coverage()
+
+    expected_coverage = {
+        'ABABA':{
+            'num_premises': 20,
+            'num_fttp': 20,
+            'num_fttdp': 0,
+            'num_fttc': 5,
+            'num_docsis3': 5,
+            'num_adsl': 20
+        }
+    }
+
+    assert expected_coverage == actual_coverage
+
+def test_fttp_upgrade_distributions(small_system):
+
+    year = 2019
+    technology = 'fttp'
+    policy = 's1_market_based_roll_out'
+    annual_budget = 2000
+    adoption_cap = 40
+    subsidy = 2000
+    telco_match_funding = 2000
+    service_obligation_capacity = 10
+
+    #build interventions
+    built_interventions = decide_interventions(
+        small_system, year, technology, policy, annual_budget, adoption_cap,
+        subsidy, telco_match_funding, service_obligation_capacity, 'distribution')
+
+    small_system.upgrade(built_interventions)
+
+    actual_coverage = small_system.coverage()
+
+    expected_coverage = {
+        'ABABA':{
+            'num_premises': 20,
+            'num_fttp': 20,
+            'num_fttdp': 0,
+            'num_fttc': 5,
+            'num_docsis3': 5,
+            'num_adsl': 20
+        }
+    }
+
+    assert expected_coverage == actual_coverage
+
+def test_fttdp_upgrade_distributions(small_system):
 
     year = 2019
     technology = 'fttdp'
@@ -259,8 +317,8 @@ def test_fttdp_upgrade(small_system):
 
     #build interventions
     built_interventions = decide_interventions(
-        small_system._distributions, year, technology, policy, annual_budget, adoption_cap,
-        subsidy, telco_match_funding, service_obligation_capacity)
+        small_system, year, technology, policy, annual_budget, adoption_cap,
+        subsidy, telco_match_funding, service_obligation_capacity, 'distribution')
 
     small_system.upgrade(built_interventions)
 

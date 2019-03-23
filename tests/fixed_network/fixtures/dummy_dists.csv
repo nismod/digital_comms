@@ -1,6 +1,0 @@
-id,connection,wta,wtp,fttp,fttdp,fttc,docsis3,adsl,total_prems
-distribution_{EACAM}{1},cabinet_{EACAM}{1},0.1,200,0,0,18,15,20,20
-distribution_{EACAM}{2},cabinet_{EACAM}{1},0.2,200,0,0,18,15,20,20
-distribution_{EACAM}{3},cabinet_{EACAM}{1},0.3,200,0,0,18,15,20,20
-distribution_{EACAM}{4},cabinet_{EACAM}{1},0.4,200,5,5,18,15,20,20
-distribution_{EACAM}{5},cabinet_{EACAM}{1},0.5,200,10,10,18,15,20,20

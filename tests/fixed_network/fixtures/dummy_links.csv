@@ -1,6 +1,0 @@
-origin,dest,length,technology
-premises_1,distribution_{EACAM}{1},20,copper
-premises_2,distribution_{EACAM}{2},40,copper
-premises_3,distribution_{EACAM}{3},60,copper
-premises_4,distribution_{EACAM}{4},80,fibre
-premises_5,distribution_{EACAM}{5},100,fibre
