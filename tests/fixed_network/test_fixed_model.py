@@ -218,7 +218,7 @@ def test_fttp_upgrade_exchanges(small_system):
 
     #build interventions
     built_interventions = decide_interventions(
-        small_system, year, technology, policy, annual_budget, adoption_cap,
+        small_system._exchanges, year, technology, policy, annual_budget, adoption_cap,
         subsidy, telco_match_funding, service_obligation_capacity, 'exchange')
 
     small_system.upgrade(built_interventions)
@@ -251,7 +251,7 @@ def test_fttp_upgrade_cabinets(small_system):
 
     #build interventions
     built_interventions = decide_interventions(
-        small_system, year, technology, policy, annual_budget, adoption_cap,
+        small_system._cabinets, year, technology, policy, annual_budget, adoption_cap,
         subsidy, telco_match_funding, service_obligation_capacity, 'cabinet')
 
     small_system.upgrade(built_interventions)
@@ -284,7 +284,7 @@ def test_fttp_upgrade_distributions(small_system):
 
     #build interventions
     built_interventions = decide_interventions(
-        small_system, year, technology, policy, annual_budget, adoption_cap,
+        small_system._distributions, year, technology, policy, annual_budget, adoption_cap,
         subsidy, telco_match_funding, service_obligation_capacity, 'distribution')
 
     small_system.upgrade(built_interventions)
@@ -317,7 +317,7 @@ def test_fttdp_upgrade_distributions(small_system):
 
     #build interventions
     built_interventions = decide_interventions(
-        small_system, year, technology, policy, annual_budget, adoption_cap,
+        small_system._distributions, year, technology, policy, annual_budget, adoption_cap,
         subsidy, telco_match_funding, service_obligation_capacity, 'distribution')
 
     small_system.upgrade(built_interventions)
