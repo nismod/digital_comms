@@ -109,8 +109,57 @@ def read_parameters():
     with open(path, 'r') as ymlfile:
         for data in yaml.load_all(ymlfile):
             parameters = data['parameters']
-            for name, param in parameters.items():
-                parameters[name] = param['default_value']
+            for param in parameters:
+                if param['name'] == 'costs_assets_exchange_fttp':
+                    params['costs_assets_exchange_fttp'] = param['default_value']
+                if param['name'] == 'costs_assets_exchange_fttdp':
+                    params['costs_assets_exchange_fttdp'] = param['default_value']
+                if param['name'] == 'costs_assets_exchange_fttc':
+                    params['costs_assets_exchange_fttc'] = param['default_value']
+                if param['name'] == 'costs_assets_exchange_adsl':
+                    params['costs_assets_exchange_adsl'] = param['default_value']
+                if param['name'] == 'costs_assets_upgrade_cabinet_fttp':
+                    params['costs_assets_upgrade_cabinet_fttp'] = param['default_value']
+                if param['name'] == 'costs_assets_cabinet_fttdp':
+                    params['costs_assets_cabinet_fttdp'] = param['default_value']
+                if param['name'] == 'costs_assets_cabinet_fttc':
+                    params['costs_assets_cabinet_fttc'] = param['default_value']
+                if param['name'] == 'costs_assets_cabinet_adsl':
+                    params['costs_assets_cabinet_adsl'] = param['default_value']
+                if param['name'] == 'costs_assets_premise_fttp_optical_connection_point':
+                    params['costs_assets_premise_fttp_optical_connection_point'] = \
+                        param['default_value']
+                if param['name'] == 'costs_assets_distribution_fttdp_8_ports':
+                    params['costs_assets_distribution_fttdp_8_ports'] = param['default_value']
+                if param['name'] == 'costs_assets_distribution_fttc':
+                    params['costs_assets_distribution_fttc'] = param['default_value']
+                if param['name'] == 'costs_assets_distribution_adsl':
+                    params['costs_assets_distribution_adsl'] = param['default_value']
+                if param['name'] == 'costs_links_fibre_meter':
+                    params['costs_links_fibre_meter'] = param['default_value']
+                if param['name'] == 'costs_links_copper_meter':
+                    params['costs_links_copper_meter'] = param['default_value']
+                if param['name'] == 'costs_assets_premise_fttp_modem':
+                    params['costs_assets_premise_fttp_modem'] = param['default_value']
+                if param['name'] == 'costs_assets_premise_fttp_optical_network_terminator':
+                    params['costs_assets_premise_fttp_optical_network_terminator'] = \
+                        param['default_value']
+                if param['name'] == 'planning_administration_cost':
+                    params['planning_administration_cost'] = param['default_value']
+                if param['name'] == 'costs_assets_premise_fttdp_modem':
+                    params['costs_assets_premise_fttdp_modem'] = param['default_value']
+                if param['name'] == 'costs_assets_premise_fttc_modem':
+                    params['costs_assets_premise_fttc_modem'] = param['default_value']
+                if param['name'] == 'costs_assets_premise_adsl_modem':
+                    params['costs_assets_premise_adsl_modem'] = param['default_value']
+                # revenue aspects
+                if param['name'] == 'months_per_year':
+                    params['months_per_year'] = param['default_value']
+                if param['name'] == 'payback_period':
+                    params['payback_period'] = param['default_value']
+                if param['name'] == 'profit_margin':
+                    params['profit_margin'] = param['default_value']
+
     return params
 
 ################################################################
@@ -240,7 +289,6 @@ def write_decisions(decisions, year, technology, policy):
         The policy used to encourage deployment.
 
     """
-
     decisions_filename = os.path.join(
         RESULTS_DIRECTORY, 'decisions_{}_{}.csv'.format(technology, policy))
 
@@ -292,7 +340,9 @@ def write_spend(decisions, year, technology, policy):
         decisions_file = open(decisions_filename, 'w', newline='')
         decisions_writer = csv.writer(decisions_file)
         decisions_writer.writerow(
-            ('asset_id', 'year', 'technology', 'policy', 'spend_type', 'cost'))
+            ('asset_id', 'year', 'technology', 'policy', 'spend_type',
+            'revenue', 'cost', 'bcr_ratio'))
+
     else:
         decisions_file = open(decisions_filename, 'a', newline='')
         decisions_writer = csv.writer(decisions_file)
@@ -304,11 +354,13 @@ def write_spend(decisions, year, technology, policy):
         technology = intervention[1]
         policy = intervention[2]
         spend_type = intervention[3]
-        cost = intervention[4]
+        revenue = intervention[4]
+        cost = intervention[5]
+        bcr_ratio = intervention[6]
         year = year
 
         decisions_writer.writerow(
-            (asset_id, year, technology, policy, spend_type, cost))
+            (asset_id, year, technology, policy, spend_type, revenue, cost, bcr_ratio))
 
     decisions_file.close()
 
@@ -368,34 +420,34 @@ def run():
             distribution_adoption_desirability_ids = update_adoption_desirability(
                 system._distributions, percentage_annual_increase)
 
-            # system.update_adoption_desirability(distribution_adoption_desirability_ids)
+            system.update_adoption_desirability(distribution_adoption_desirability_ids)
 
-            # # get total adoption desirability for this time step (has to be done after
-            # # system.update_adoption_desirability)
-            # adoption_desirability_now = [
-            #     dist for dist in system._distributions if dist.adoption_desirability]
+            # get total adoption desirability for this time step (has to be done after
+            # system.update_adoption_desirability)
+            adoption_desirability_now = [
+                dist for dist in system._distributions if dist.adoption_desirability]
 
-            # total_adoption_desirability_percentage = round(
-            #     (len([dist.total_prems for dist in adoption_desirability_now]) /
-            #     len([dist.total_prems for dist in total_distributions]) * 100), 2)
+            total_adoption_desirability_percentage = round(
+                (len([dist.total_prems for dist in adoption_desirability_now]) /
+                len([dist.total_prems for dist in total_distributions]) * 100), 2)
 
-            # # calculate the maximum adoption level based on the scenario, to make sure the
-            # # model doesn't overestimate
-            # adoption_cap = len(distribution_adoption_desirability_ids) + \
-            #     sum(getattr(distribution, technology) for distribution in system._distributions)
+            # calculate the maximum adoption level based on the scenario, to make sure the
+            # model doesn't overestimate
+            adoption_cap = len(distribution_adoption_desirability_ids) + \
+                sum(getattr(distribution, technology) for distribution in system._distributions)
 
-            # # actually decide which interventions to build
-            # built_interventions = decide_interventions(
-            #     system, year, technology, policy, annual_budget, adoption_cap,
-            #     SUBSIDY, TELCO_MATCH_FUNDING, SERVICE_OBLIGATION_CAPACITY)
+            # actually decide which interventions to build
+            built_interventions = decide_interventions(
+                system._exchanges, year, technology, policy, annual_budget, adoption_cap,
+                SUBSIDY, TELCO_MATCH_FUNDING, SERVICE_OBLIGATION_CAPACITY, 'exchange')
 
-            # # give the interventions to the system model
-            # system.upgrade(built_interventions)
+            # give the interventions to the system model
+            system.upgrade(built_interventions)
 
-            # # write out the decisions
-            # write_decisions(built_interventions, year, technology, policy)
+            # write out the decisions
+            write_decisions(built_interventions, year, technology, policy)
 
-            # write_spend(built_interventions, year, technology, policy)
+            write_spend(built_interventions, year, technology, policy)
 
 
             # logging.info("--")
