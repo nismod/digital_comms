@@ -879,6 +879,7 @@ class Distribution():
         self.adoption_desirability = desirability_to_adopt
         self.compute()
 
+
 class Link():
     """Link object
 

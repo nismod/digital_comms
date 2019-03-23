@@ -12,11 +12,11 @@ def get_all_assets_ranked(system, ranking_variable, asset_variable, technology, 
 
     Parameters
     ----------
-    system : object
-        This is an NetworkManager object containing the whole system.
-    technology : string
+    distributions : list of digital_comms.fixed_network.model.Distribution
+        A list of distribution points
+    technology : str
         The current technology being deployed.
-    reverse_value : boolean
+    reverse_value : bool
         Used as an argument in 'sorted' to rank how assets will be deployed.
 
     Returns
@@ -64,7 +64,6 @@ def get_all_assets_ranked(system, ranking_variable, asset_variable, technology, 
 
         #rank the distribution objects based on the total_upgrade_costs list
         assets = [x for _, x in sorted(zip(total_upgrade_costs,unranked_distributions))]
-
     else:
         raise ValueError('Did not recognise ranking preference variable')
 
@@ -78,8 +77,8 @@ def decide_interventions(system, year, technology, policy, annual_budget,
 
     Parameters
     ----------
-    system : object
-        This is an NetworkManager object containing the whole system.
+    distributions : list of digital_comms.fixed_network.model.Distribution
+        A list of distribution points
     year : int
         The current year.
     technology : string
@@ -104,6 +103,7 @@ def decide_interventions(system, year, technology, policy, annual_budget,
 
     """
     # Build to meet demand most beneficial demand
+
     built_interventions = meet_most_beneficial_demand(system, year, technology,
                                                     policy, annual_budget,
                                                     adoption_cap, subsidy,
@@ -117,22 +117,21 @@ def meet_most_beneficial_demand(system, year, technology, policy, annual_budget,
                                 adoption_cap, subsidy, telco_match_funding,
                                 service_obligation_capacity, asset_variable):
     """Given strategy parameters and a system, meet the most beneficial demand.
+=======
+    built_interventions = meet_most_beneficial_demand(distributions, year, technology, policy, annual_budget,
+                                                      adoption_cap, subsidy, telco_match_funding,
+                                                      service_obligation_capacity)
 
-    TODO: address service_obligation_capacity here.
+    return built_interventions
 
-    """
-    return _suggest_interventions(
-        system, year, technology, policy, annual_budget,
-        adoption_cap, subsidy, telco_match_funding, asset_variable)
-
-def _suggest_interventions(system, year, technology, policy, annual_budget, adoption_cap,
-    subsidy, telco_match_funding, asset_variable):
+def meet_most_beneficial_demand(distributions, year, technology, policy, annual_budget, adoption_cap,
+                                subsidy, telco_match_funding, service_obligation_capacity):
     """Given strategy parameters and a system, suggest the best potential interventions.
 
     Parameters
     ----------
-    system : object
-        This is an NetworkManger object containing the whole system.
+    distributions : list of digital_comms.fixed_network.model.Distribution
+        A list of distribution points
     year : int
         The current year.
     technology : string
@@ -161,6 +160,7 @@ def _suggest_interventions(system, year, technology, policy, annual_budget, adop
     premises_passed = 0
 
     if policy == 's1_market_based_roll_out':
+
         assets = get_all_assets_ranked(system, 'rollout_bcr', asset_variable, technology, True)
         for asset in assets:
             if asset.id not in upgraded_ids:
@@ -187,6 +187,7 @@ def _suggest_interventions(system, year, technology, policy, annual_budget, adop
                     break
 
     elif policy == 's2_rural_based_subsidy' or 's3_outside_in_subsidy':
+
         assets = get_all_assets_ranked(
             system, 'rollout_bcr', asset_variable, technology, True
             )

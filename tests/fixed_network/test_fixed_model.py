@@ -108,7 +108,7 @@ def base_system():
 def small_system(base_system):
 
     #40% want to adopt in total
-    distribution_adoption_desirability_ids = update_adoption_desirability(base_system, 40)
+    distribution_adoption_desirability_ids = update_adoption_desirability(base_system._distributions, 40)
 
     #update model adoption desirability
     base_system.update_adoption_desirability(distribution_adoption_desirability_ids)

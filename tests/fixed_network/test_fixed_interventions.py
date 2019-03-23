@@ -4,85 +4,100 @@ from digital_comms.fixed_network.adoption import update_adoption_desirability
 from digital_comms.fixed_network.interventions import get_all_assets_ranked
 from digital_comms.fixed_network.interventions import decide_interventions
 
-@pytest.fixture
-def base_system():
+from pytest import fixture
 
-    assets = {
-        'distributions':[{
-            'id': 'distribution_{EACAM}{1}',
-            'lad': 'E07000008',
-            'connection': 'cabinet_{EACAM}{P100}',
-            'fttp': 0,
-            'fttdp': 0,
-            'fttc': 5,
-            'docsis3': 5,
-            'adsl': 20,
-            'total_prems': 20,
-            'wta': 0.4,
-            'wtp': 800,
-            'name': 'distribution_{EACAM}{1}',
-            'adoption_desirability': True
-        },
-        {
-            'id': 'distribution_{EACAM}{2}',
-            'lad': 'E07000008',
-            'connection': 'cabinet_{EACAM}{P100}',
-            'fttp': 0,
-            'fttdp': 0,
-            'fttc': 5,
-            'docsis3': 5,
-            'adsl': 20,
-            'total_prems': 20,
-            'wta': 1.0,
-            'wtp': 700,
-            'name': 'distribution_{EACAM}{2}',
-            'adoption_desirability': True
-        },
-        {
-            'id': 'distribution_{EACAM}{3}',
-            'lad': 'E07000008',
-            'connection': 'cabinet_{EACAM}{P100}',
-            'fttp': 0,
-            'fttdp': 0,
-            'fttc': 5,
-            'docsis3': 5,
-            'adsl': 20,
-            'total_prems': 20,
-            'wta': 1.5,
-            'wtp': 600,
-            'name': 'distribution_{EACAM}{3}',
-            'adoption_desirability': True
-        },
-        {
-            'id': 'distribution_{EACOM}{4}',
-            'lad': 'E07000012',
-            'connection': 'cabinet_{EACOM}{P200}',
-            'fttp': 0,
-            'fttdp': 0,
-            'fttc': 5,
-            'docsis3': 5,
-            'adsl': 20,
-            'total_prems': 20,
-            'wta': 0.3,
-            'wtp': 500,
-            'name': 'distribution_{EACOM}{4}',
-            'adoption_desirability': True
-        },
-        {
-            'id': 'distribution_{EACOM}{5}',
-            'lad': 'E07000012',
-            'connection': 'cabinet_{EACOM}{P200}',
-            'fttp': 0,
-            'fttdp': 0,
-            'fttc': 5,
-            'docsis3': 5,
-            'adsl': 20,
-            'total_prems': 20,
-            'wta': 0.2,
-            'wtp': 600,
-            'name': 'distribution_{EACOM}{5}',
-            'adoption_desirability': True
-        }
+
+class TestInitFromData():
+    """import decide_interventions and test function.
+
+    S1 = FTTP, market_based_roll_out
+    S2 = FTTP, rural_based_subsidy
+    S3 = FTTP, outside_in_subsidy
+    S4 = FTTdp, market_based_roll_out
+    S5 = FTTdp, rural_based_subsidy
+    S6 = FTTdp, outside_in_subsidy
+
+    """
+
+    @pytest.fixture(scope='function')
+    def base_system(self):
+
+        assets = {
+            'distributions':[{
+                'id': 'distribution_{EACAM}{1}',
+                'lad': 'E07000008',
+                'connection': 'cabinet_{EACAM}{P100}',
+                'fttp': 0,
+                'fttdp': 0,
+                'fttc': 5,
+                'docsis3': 5,
+                'adsl': 20,
+                'total_prems': 20,
+                'wta': 0.4,
+                'wtp': 800,
+                'name': 'distribution_{EACAM}{1}',
+                'adoption_desirability': True
+            },
+            {
+                'id': 'distribution_{EACAM}{2}',
+                'lad': 'E07000008',
+                'connection': 'cabinet_{EACAM}{P100}',
+                'fttp': 0,
+                'fttdp': 0,
+                'fttc': 5,
+                'docsis3': 5,
+                'adsl': 20,
+                'total_prems': 20,
+                'wta': 1.0,
+                'wtp': 700,
+                'name': 'distribution_{EACAM}{2}',
+                'adoption_desirability': True
+            },
+            {
+                'id': 'distribution_{EACAM}{3}',
+                'lad': 'E07000008',
+                'connection': 'cabinet_{EACAM}{P100}',
+                'fttp': 0,
+                'fttdp': 0,
+                'fttc': 5,
+                'docsis3': 5,
+                'adsl': 20,
+                'total_prems': 20,
+                'wta': 1.5,
+                'wtp': 600,
+                'name': 'distribution_{EACAM}{3}',
+                'adoption_desirability': True
+            },
+            {
+                'id': 'distribution_{EACOM}{4}',
+                'lad': 'E07000012',
+                'connection': 'cabinet_{EACOM}{P200}',
+                'fttp': 0,
+                'fttdp': 0,
+                'fttc': 5,
+                'docsis3': 5,
+                'adsl': 20,
+                'total_prems': 20,
+                'wta': 0.3,
+                'wtp': 500,
+                'name': 'distribution_{EACOM}{4}',
+                'adoption_desirability': True
+            },
+            {
+                'id': 'distribution_{EACOM}{5}',
+                'lad': 'E07000012',
+                'connection': 'cabinet_{EACOM}{P200}',
+                'fttp': 0,
+                'fttdp': 0,
+                'fttc': 5,
+                'docsis3': 5,
+                'adsl': 20,
+                'total_prems': 20,
+                'wta': 0.2,
+                'wtp': 600,
+                'name': 'distribution_{EACOM}{5}',
+                'adoption_desirability': True
+            }
         ],
         'cabinets':[{
             'id': 'cabinet_{EACAM}{P100}',
@@ -594,8 +609,8 @@ def test_fttp_s1_from_cabinet(small_system_40):
         small_system_40, year, technology, policy, annual_budget, adoption_cap,
         subsidy, telco_match_funding, service_obligation_capacity, 'cabinet')
 
-    assert fttp_s1_built_interventions == fttp_s1_expected_built_interventions
 
+        assert expectation_ranking_by_benefit == actual_ranking_by_benefit_ids
 
 def test_fttp_s2_from_exchange(small_system_40):
 
