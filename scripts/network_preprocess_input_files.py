@@ -1274,7 +1274,7 @@ def aggregate_premises_links_by_dist_point(premises_links):
 
         for premises_link in premises_links:
             if unique_premises_link == premises_link['properties']['dest']:
-                origin = premises_link['properties']['origin']
+                origin = 'premises_aggregated'
                 dest = premises_link['properties']['dest']
                 length += premises_link['properties']['length']
                 technology = premises_link['properties']['technology']
@@ -1288,20 +1288,25 @@ def aggregate_premises_links_by_dist_point(premises_links):
 
     return aggregated_data
 
-def aggregate_premises_by_dist_point(premises):
+def aggregate_premises_by_dist_point(premises, distributions):
     """Take premises information and aggregate based on distribution point.
 
     """
-    all_distribution_points = []
+    #all_distribution_points = []
+    all_distribution_to_cabinet_connections = []
 
-    for premise in premises:
-        all_distribution_points.append(premise['properties']['connection'])
+    for distribution in distributions:
+        #all_distribution_points.append(distribution['properties']['connection'])
+        all_distribution_to_cabinet_connections.append({
+            'id': distribution['properties']['id'],
+            'connection': distribution['properties']['connection'],
+        })
 
-    unique_distribution_points = list(set(all_distribution_points))
+    #unique_distribution_points = list(set(all_distribution_points))
 
     aggregated_data = []
 
-    for distribution_point in unique_distribution_points:
+    for distribution_point in all_distribution_to_cabinet_connections:
 
         wta = 0
         wtp = 0
@@ -1313,9 +1318,9 @@ def aggregate_premises_by_dist_point(premises):
         total_prems = 0
 
         for premise in premises:
-            if distribution_point == premise['properties']['connection']:
+            if distribution_point['id'] == premise['properties']['connection']:
                 lad = premise['properties']['lad']
-                connection = premise['properties']['connection']
+                connection = distribution_point['connection']
                 wta += premise['properties']['wta']
                 wtp += premise['properties']['wtp']
                 fttp += premise['properties']['fttp']
@@ -1326,7 +1331,7 @@ def aggregate_premises_by_dist_point(premises):
                 total_prems += 1
 
         aggregated_data.append({
-            'id': distribution_point,
+            'id': distribution_point['id'],
             'connection': connection,
             'lad': lad,
             'wta': wta,
@@ -1559,7 +1564,7 @@ if __name__ == "__main__":
     cabinets = copy_id_to_name(cabinets)
 
     print('aggregate premises data to distribution points')
-    premises_by_distribution_point = aggregate_premises_by_dist_point(premises)
+    premises_by_distribution_point = aggregate_premises_by_dist_point(premises, distributions)
 
     print('aggregate link premises data to distribution points')
     premises_links_by_distribution_point = aggregate_premises_links_by_dist_point(premises_links)
