@@ -105,10 +105,17 @@ def base_system():
     return system
 
 @pytest.fixture
-def small_system(base_system):
+def technology():
+
+    return 'fttp'
+
+@pytest.fixture
+def small_system(base_system, technology):
 
     #40% want to adopt in total
-    distribution_adoption_desirability_ids = update_adoption_desirability(base_system._distributions, 40)
+    distribution_adoption_desirability_ids = update_adoption_desirability(
+        base_system._distributions, 40, technology
+    )
 
     #update model adoption desirability
     base_system.update_adoption_desirability(distribution_adoption_desirability_ids)
@@ -135,6 +142,7 @@ def test_coverage(small_system):
 def test_aggregate_coverage(small_system):
 
     expected_aggregate_coverage = [{
+        'id': 'ABABA',
         'percentage_of_premises_with_fttp': 0.0,
         'percentage_of_premises_with_fttdp': 0.0,
         'percentage_of_premises_with_fttc': 25.0,
@@ -143,21 +151,20 @@ def test_aggregate_coverage(small_system):
         'sum_of_premises': 20
     }]
 
-    actual_aggregate_coverage = small_system.aggregate_coverage()
+    actual_aggregate_coverage = small_system.aggregate_coverage('lad')
 
     assert expected_aggregate_coverage == actual_aggregate_coverage
 
 def test_capacity(small_system):
 
-    expected_capacity = {
-        'ABABA':{
-            #  fttp       fttdp     fttc     docsis3   adsl
-            # ((0*1000) + (0*300) + (5*80) + (5*150) + (10*24)) / 20 == 69.5
-            'average_capacity': 69.5,
-        }
-    }
+    expected_capacity = [{
+        'id': 'ABABA',
+        #  fttp       fttdp     fttc     docsis3   adsl
+        # ((0*1000) + (0*300) + (5*80) + (5*150) + (10*24)) / 20 == round(69.5)
+        'average_capacity': 70,
+    }]
 
-    actual_capacity = small_system.capacity()
+    actual_capacity = small_system.capacity('lad')
 
     assert expected_capacity == actual_capacity
 
@@ -230,9 +237,9 @@ def test_fttp_upgrade_exchanges(small_system):
             'num_premises': 20,
             'num_fttp': 20,
             'num_fttdp': 0,
-            'num_fttc': 5,
-            'num_docsis3': 5,
-            'num_adsl': 20
+            'num_fttc': 0,
+            'num_docsis3': 0,
+            'num_adsl': 0
         }
     }
 
@@ -263,9 +270,9 @@ def test_fttp_upgrade_cabinets(small_system):
             'num_premises': 20,
             'num_fttp': 20,
             'num_fttdp': 0,
-            'num_fttc': 5,
-            'num_docsis3': 5,
-            'num_adsl': 20
+            'num_fttc': 0,
+            'num_docsis3': 0,
+            'num_adsl': 0
         }
     }
 
@@ -296,9 +303,9 @@ def test_fttp_upgrade_distributions(small_system):
             'num_premises': 20,
             'num_fttp': 20,
             'num_fttdp': 0,
-            'num_fttc': 5,
-            'num_docsis3': 5,
-            'num_adsl': 20
+            'num_fttc': 0,
+            'num_docsis3': 0,
+            'num_adsl': 0
         }
     }
 
@@ -329,10 +336,87 @@ def test_fttdp_upgrade_distributions(small_system):
             'num_premises': 20,
             'num_fttp': 0,
             'num_fttdp': 20,
-            'num_fttc': 5,
-            'num_docsis3': 5,
-            'num_adsl': 20
+            'num_fttc': 0,
+            'num_docsis3': 0,
+            'num_adsl': 0
         }
     }
 
     assert expected_coverage == actual_coverage
+
+# def upgrade_exchange_with_fttp(small_system):
+
+#     year = 2019
+#     technology = 'fttp'
+#     policy = 's1_market_based_roll_out'
+#     annual_budget = 1000000
+#     adoption_cap = 70
+#     subsidy = 2000
+#     telco_match_funding = 2000
+#     service_obligation_capacity = 10
+
+#     #build interventions
+#     fttp_s1_built_interventions = decide_interventions(
+#         small_system._distributions, year, technology, policy, annual_budget, adoption_cap,
+#         subsidy, telco_match_funding, service_obligation_capacity, 'exchange')
+#     print(fttp_s1_built_interventions)
+#     assert fttp_s1_built_interventions == 'fail'
+
+
+def test_enhanced_fttp_capacity_at_lad(small_system):
+
+    year = 2019
+    technology = 'fttp'
+    policy = 's1_market_based_roll_out'
+    annual_budget = 10000000
+    adoption_cap = 40
+    subsidy = 2000
+    telco_match_funding = 2000
+    service_obligation_capacity = 10
+
+    #build interventions
+    built_interventions = decide_interventions(
+        small_system._exchanges, year, technology, policy, annual_budget, adoption_cap,
+        subsidy, telco_match_funding, service_obligation_capacity, 'exchange')
+
+    small_system.upgrade(built_interventions)
+
+    expected_capacity = [{
+        'id': 'ABABA',
+        #  fttp       fttdp     fttc     docsis3   adsl
+        # ((20*1000) + (0*300) + (5*80) + (5*150) + (0*24)) / 20 == round(69.5)
+        'average_capacity': 1000,
+    }]
+
+    actual_capacity = small_system.capacity('lad')
+
+    assert expected_capacity == actual_capacity
+
+def test_enhanced_fttp_capacity_at_exchange(small_system):
+
+    year = 2019
+    technology = 'fttp'
+    policy = 's1_market_based_roll_out'
+    annual_budget = 10000000
+    adoption_cap = 40
+    subsidy = 2000
+    telco_match_funding = 2000
+    service_obligation_capacity = 10
+
+    #build interventions
+    built_interventions = decide_interventions(
+        small_system._exchanges, year, technology, policy, annual_budget, adoption_cap,
+        subsidy, telco_match_funding, service_obligation_capacity, 'exchange')
+
+    small_system.upgrade(built_interventions)
+
+    expected_capacity = [{
+        'id': 'exchange_EACAM',
+        #  fttp       fttdp     fttc     docsis3   adsl
+        # ((20*1000) + (0*300) + (5*80) + (5*150) + (0*24)) / 20 == round(69.5)
+        'average_capacity': 1000,
+    }]
+
+    actual_capacity = small_system.capacity('exchange')
+
+    assert expected_capacity == actual_capacity
