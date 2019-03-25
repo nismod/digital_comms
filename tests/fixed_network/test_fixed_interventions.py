@@ -242,11 +242,16 @@ def base_system():
     return system
 
 @pytest.fixture
-def small_system_40(base_system):
+def technology():
+
+    return 'fttp'
+
+@pytest.fixture
+def small_system_40(base_system, technology):
 
     #40% want to adopt in total
     distribution_adoption_desirability_ids = update_adoption_desirability(
-        base_system._distributions, 40
+        base_system._distributions, 40, technology
     )
 
     #update model adoption desirability
@@ -259,7 +264,7 @@ def small_system_80(base_system):
 
     #40% want to adopt in total
     distribution_adoption_desirability_ids = update_adoption_desirability(
-        base_system._distributions, 80
+        base_system._distributions, 80, technology
     )
 
     #update model adoption desirability
@@ -273,7 +278,7 @@ def test_ranking_benefits_by_exchange(small_system_40):
     #print(sorted(my_list, reverse=False))
     # [100, 200, 300, 600]
 
-    actual_ranking_by_benefit = get_all_assets_ranked(small_system_40,
+    actual_ranking_by_benefit = get_all_assets_ranked(small_system_40._exchanges,
         'rollout_benefits', 'exchange', 'fttp', False)
 
     actual_ranking_by_benefit_ids = [asset.id for asset in actual_ranking_by_benefit]
@@ -291,7 +296,7 @@ def test_ranking_benefits_by_exchange_reversed(small_system_40):
     #print(sorted(my_list, reverse=True))
     # [600, 300, 200, 100]
 
-    actual_ranking_by_benefit = get_all_assets_ranked(small_system_40,
+    actual_ranking_by_benefit = get_all_assets_ranked(small_system_40._exchanges,
         'rollout_benefits', 'exchange', 'fttp', True)
 
     actual_ranking_by_benefit_ids = [asset.id for asset in actual_ranking_by_benefit]
@@ -311,7 +316,7 @@ def test_benefits_calculation_by_exchange(small_system_40):
     #£26880 = 700 * 12 * 4 * (100-20)/100)
     #£23040 = 600 * 12 * 4 * (100-20)/100)
 
-    actual_ranking_by_benefit = get_all_assets_ranked(small_system_40,
+    actual_ranking_by_benefit = get_all_assets_ranked(small_system_40._exchanges,
         'rollout_benefits', 'exchange', 'fttp', False)
 
     actual_benefits_calculation = [asset.rollout_benefits['fttp'] for asset in actual_ranking_by_benefit]
@@ -322,7 +327,7 @@ def test_benefits_calculation_by_exchange(small_system_40):
 
 def test_ranking_benefits_by_cabinet(small_system_40):
 
-    actual_ranking_by_benefit = get_all_assets_ranked(small_system_40,
+    actual_ranking_by_benefit = get_all_assets_ranked(small_system_40._cabinets,
         'rollout_benefits', 'cabinet', 'fttp', False)
 
     actual_ranking_by_benefit_ids = [asset.id for asset in actual_ranking_by_benefit]
@@ -336,7 +341,7 @@ def test_ranking_benefits_by_cabinet(small_system_40):
 
 def test_ranking_benefits_by_cabinet_reversed(small_system_40):
 
-    actual_ranking_by_benefit = get_all_assets_ranked(small_system_40,
+    actual_ranking_by_benefit = get_all_assets_ranked(small_system_40._cabinets,
         'rollout_benefits', 'cabinet', 'fttp', True)
 
     actual_ranking_by_benefit_ids = [asset.id for asset in actual_ranking_by_benefit]
@@ -350,7 +355,7 @@ def test_ranking_benefits_by_cabinet_reversed(small_system_40):
 
 def test_ranking_benefits_by_distribution(small_system_80):
 
-    actual_ranking_by_benefit = get_all_assets_ranked(small_system_80,
+    actual_ranking_by_benefit = get_all_assets_ranked(small_system_80._distributions,
         'rollout_benefits', 'distribution', 'fttp', True)
 
     actual_ranking_by_benefit_ids = [asset.id for asset in actual_ranking_by_benefit]
@@ -365,18 +370,20 @@ def test_ranking_benefits_by_distribution(small_system_80):
 
     assert expectation_ranking_by_benefit == actual_ranking_by_benefit_ids
 
-def test_system_level_using_an_unknown(small_system_40):
+# def test_system_level_using_an_unknown(small_system_40):
 
-    with pytest.raises(ValueError) as ex:
-        get_all_assets_ranked(small_system_40, 'rollout_benefits', 'unknown', 'fttp', False)
+#     with pytest.raises(ValueError) as ex:
+#         get_all_assets_ranked(
+#             small_system_40._distributions, 'rollout_benefits', 'unknown', 'fttp', False
+#         )
 
-    msg = 'Did not recognise asset_variable'
+#     msg = 'Did not recognise asset_variable'
 
-    assert msg in str(ex)
+#     assert msg in str(ex)
 
 def test_rollout_costs_calculation(small_system_40):
 
-    actual_rollout_costs_exchange = get_all_assets_ranked(small_system_40,
+    actual_rollout_costs_exchange = get_all_assets_ranked(small_system_40._exchanges,
         'rollout_costs', 'exchange', 'fttp', True) #True equals most expensive at the top
 
     # [{'id': 'exchange_EACAM', 'costs_assets_exchange_fttp': 50000, 'link_upgrade_costs': 0, 'total_cost': 50000}]
@@ -388,7 +395,7 @@ def test_rollout_costs_calculation(small_system_40):
 
     assert actual_rollout_costs_exchange_values == expected_rollout_costs_exchange
 
-    actual_rollout_costs_cabinet = get_all_assets_ranked(small_system_40,
+    actual_rollout_costs_cabinet = get_all_assets_ranked(small_system_40._cabinets,
         'rollout_costs', 'cabinet', 'fttp', True) #True equals most expensive at the top
 
     # [{'id': 'cabinet_{EACAM}{P100}', 'costs_assets_cabinet_fttp': 50, 'link_upgrade_costs': 1500.0, 'total_cost': 1550.0}]
@@ -402,7 +409,7 @@ def test_rollout_costs_calculation(small_system_40):
 
     assert actual_rollout_costs_cabinet_values == expected_rollout_costs_cabinet
 
-    actual_rollout_costs_distribution = get_all_assets_ranked(small_system_40,
+    actual_rollout_costs_distribution = get_all_assets_ranked(small_system_40._distributions,
         'rollout_costs', 'distribution', 'fttp', True) #True equals the least beneficial at the top
 
     # [{'id': 'distribution_{EACAM}{1}', 'costs_assets_premise_fttp_modem': 400, 'costs_assets_premise_fttp_optical_network_terminator': 200, 'planning_administration_cost': 200, 'costs_assets_premise_fttp_optical_connection_point': 37, 'link_upgrade_costs': 1000.0, 'total_cost': 1837.0}]
@@ -421,7 +428,7 @@ def test_rollout_costs_calculation(small_system_40):
 
 def test_ranking_using_rollout_costs_at_exchange_level(small_system_40):
 
-    actual_ranking_by_cost = get_all_assets_ranked(small_system_40,
+    actual_ranking_by_cost = get_all_assets_ranked(small_system_40._exchanges,
         'rollout_costs', 'exchange', 'fttp', True) #True equals most expensive at the top
 
     actual_ranking_by_cost_ids = [asset.id for asset in actual_ranking_by_cost]
@@ -435,7 +442,7 @@ def test_ranking_using_rollout_costs_at_exchange_level(small_system_40):
 
 def test_ranking_using_rollout_costs_at_cabinet_level(small_system_40):
 
-    actual_ranking_by_cost = get_all_assets_ranked(small_system_40,
+    actual_ranking_by_cost = get_all_assets_ranked(small_system_40._cabinets,
         'rollout_costs', 'cabinet', 'fttp', True) #True equals most expensive at the top
 
     actual_ranking_by_cost_ids = [asset.id for asset in actual_ranking_by_cost]
@@ -449,43 +456,8 @@ def test_ranking_using_rollout_costs_at_cabinet_level(small_system_40):
 
 def test_ranking_using_rollout_costs(small_system_40):
 
-    actual_ranking_by_cost = get_all_assets_ranked(small_system_40,
+    actual_ranking_by_cost = get_all_assets_ranked(small_system_40._distributions,
         'rollout_costs', 'distribution', 'fttp', True)
-
-    actual_ranking_by_cost_ids = [asset.id for asset in actual_ranking_by_cost]
-
-    expectation_ranking_by_cost = [
-        'distribution_{EACOM}{5}',
-        'distribution_{EACOM}{4}',
-        'distribution_{EACAM}{3}',
-        'distribution_{EACAM}{2}',
-        'distribution_{EACAM}{1}',
-    ]
-
-    assert expectation_ranking_by_cost == actual_ranking_by_cost_ids
-
-def test_ranking_using_max_costs(small_system_40):
-
-    actual_ranking_by_cost = get_all_assets_ranked(small_system_40,
-        'max_rollout_costs', 'distribution', 'fttp', False)
-
-    actual_ranking_by_cost_ids = [asset.id for asset in actual_ranking_by_cost]
-
-    expectation_ranking_by_cost = [
-        'distribution_{EACAM}{1}',
-        'distribution_{EACAM}{2}',
-        'distribution_{EACAM}{3}',
-        'distribution_{EACOM}{4}',
-        'distribution_{EACOM}{5}',
-    ]
-
-    assert expectation_ranking_by_cost == actual_ranking_by_cost_ids
-
-
-def test_reverse_ranking_using_max_costs(small_system_40):
-
-    actual_ranking_by_cost = get_all_assets_ranked(small_system_40,
-        'max_rollout_costs', 'distribution', 'fttp', True)
 
     actual_ranking_by_cost_ids = [asset.id for asset in actual_ranking_by_cost]
 
@@ -502,7 +474,7 @@ def test_reverse_ranking_using_max_costs(small_system_40):
 def test_ranking_using_an_unknown(small_system_40):
 
     with pytest.raises(ValueError) as ex:
-        get_all_assets_ranked(small_system_40, 'unknown', 'exchange', 'fttp', False)
+        get_all_assets_ranked(small_system_40._exchanges, 'unknown', 'exchange', 'fttp', False)
 
     msg = 'Did not recognise ranking preference variable'
 
@@ -513,7 +485,7 @@ def test_fttp_s1(small_system_40):
     year = 2019
     technology = 'fttp'
     policy = 's1_market_based_roll_out'
-    annual_budget = 10000
+    annual_budget = 3000
     adoption_cap = 40
     subsidy = 2000
     telco_match_funding = 2000
@@ -533,7 +505,7 @@ def test_fttp_s1(small_system_40):
 
     #build interventions
     fttp_s1_built_interventions = decide_interventions(
-        small_system_40, year, technology, policy, annual_budget, adoption_cap,
+        small_system_40._distributions, year, technology, policy, annual_budget, adoption_cap,
         subsidy, telco_match_funding, service_obligation_capacity, 'distribution')
 
     assert fttp_s1_built_interventions == fttp_s1_expected_built_interventions
@@ -543,7 +515,7 @@ def test_fttp_s1_from_exchange(small_system_40):
     year = 2019
     technology = 'fttp'
     policy = 's1_market_based_roll_out'
-    annual_budget = 100000
+    annual_budget = 60000
     adoption_cap = 70
     subsidy = 2000
     telco_match_funding = 2000
@@ -562,7 +534,7 @@ def test_fttp_s1_from_exchange(small_system_40):
 
     #build interventions
     fttp_s1_built_interventions = decide_interventions(
-        small_system_40, year, technology, policy, annual_budget, adoption_cap,
+        small_system_40._exchanges, year, technology, policy, annual_budget, adoption_cap,
         subsidy, telco_match_funding, service_obligation_capacity, 'exchange')
 
     assert fttp_s1_built_interventions == fttp_s1_expected_built_interventions
@@ -572,7 +544,7 @@ def test_fttp_s1_from_cabinet(small_system_40):
     year = 2019
     technology = 'fttp'
     policy = 's1_market_based_roll_out'
-    annual_budget = 100000
+    annual_budget = 8000
     adoption_cap = 70
     subsidy = 2000
     telco_match_funding = 2000
@@ -589,9 +561,8 @@ def test_fttp_s1_from_cabinet(small_system_40):
 
     #build interventions
     fttp_s1_built_interventions = decide_interventions(
-        small_system_40, year, technology, policy, annual_budget, adoption_cap,
+        small_system_40._cabinets, year, technology, policy, annual_budget, adoption_cap,
         subsidy, telco_match_funding, service_obligation_capacity, 'cabinet')
-
 
     assert fttp_s1_expected_built_interventions == fttp_s1_built_interventions
 
@@ -602,8 +573,8 @@ def test_fttp_s2_from_exchange(small_system_40):
     policy = 's2_rural_based_subsidy'
     annual_budget = 60000
     adoption_cap = 80
-    subsidy = 60000
-    telco_match_funding = 60000
+    subsidy = 30000
+    telco_match_funding = 30000
     service_obligation_capacity = 10
 
     fttp_s2_expected_built_interventions = [
@@ -613,9 +584,9 @@ def test_fttp_s2_from_exchange(small_system_40):
 
     #build interventions
     fttp_s2_built_interventions = decide_interventions(
-        small_system_40, year, technology, policy, annual_budget, adoption_cap,
+        small_system_40._exchanges, year, technology, policy, annual_budget, adoption_cap,
         subsidy, telco_match_funding, service_obligation_capacity, 'exchange')
-
+    print(fttp_s2_built_interventions)
     assert fttp_s2_built_interventions == fttp_s2_expected_built_interventions
 
 def test_fttp_s3(small_system_40):
@@ -625,8 +596,8 @@ def test_fttp_s3(small_system_40):
     policy = 's3_outside_in_subsidy'
     annual_budget = 60000
     adoption_cap = 80
-    subsidy = 60000
-    telco_match_funding = 60000
+    subsidy = 30000
+    telco_match_funding = 30000
     service_obligation_capacity = 10
 
     fttp_s3_expected_built_interventions = [
@@ -650,130 +621,74 @@ def test_fttp_s3(small_system_40):
 
     #build interventions
     fttp_s3_built_interventions = decide_interventions(
-        small_system_40, year, technology, policy, annual_budget, adoption_cap,
+        small_system_40._exchanges, year, technology, policy, annual_budget, adoption_cap,
         subsidy, telco_match_funding, service_obligation_capacity, 'exchange')
 
     assert fttp_s3_built_interventions == fttp_s3_expected_built_interventions
 
     with pytest.raises(ValueError) as ex:
         decide_interventions(
-        small_system_40, year, technology, 'unknown_policy', annual_budget, adoption_cap,
+        small_system_40._exchanges, year, technology, 'unknown_policy', annual_budget, adoption_cap,
         subsidy, telco_match_funding, service_obligation_capacity, 'exchange')
 
     msg = 'Did not recognise stipulated policy'
 
     assert msg in str(ex)
 
-# def test_fttdp_s1_from_exchange(small_system_40):
+def test_fttdp_s1_from_exchange(small_system_40):
 
-#     year = 2019
-#     technology = 'fttdp'
-#     policy = 's1_market_based_roll_out'
-#     annual_budget = 60000
-#     adoption_cap = 80
-#     subsidy = 2000
-#     telco_match_funding = 2000
-#     service_obligation_capacity = 10
+    year = 2019
+    technology = 'fttdp'
+    policy = 's1_market_based_roll_out'
+    annual_budget = 60000
+    adoption_cap = 80
+    subsidy = 2000
+    telco_match_funding = 2000
+    service_obligation_capacity = 10
 
-#     fttdp_s1_expected_built_interventions = [
-#         ('exchange_EACAM', 'fttdp', 's1_market_based_roll_out', 'market_based',  49920, 32450, 2),
-#     ]
+    fttdp_s1_expected_built_interventions = [
+        ('exchange_EACAM', 'fttdp', 's1_market_based_roll_out', 'market_based',  49920, 32450, 2),
+    ]
 
-#     #Total cost should be £32400
-#     #fttdp modem: £20 * 20 = £400
-#     #costs_assets_distribution_fttdp_8_ports: £250 * 3 = £750
-#     #fibre from cab to dist: £5 * (200+250+300) = £3750
-#     #cabinet upgrade = £2500
-#     #exchange upgrade = £25000
+    #Total cost should be £32400
+    #fttdp modem: £20 * 20 = £400
+    #costs_assets_distribution_fttdp_8_ports: £250 * 3 = £750
+    #fibre from cab to dist: £5 * (200+250+300) = £3750
+    #cabinet upgrade = £2500
+    #exchange upgrade = £25000
 
-#     #build interventions
-#     fttdp_s1_built_interventions = decide_interventions(
-#         small_system_40, year, technology, policy, annual_budget, adoption_cap,
-#         subsidy, telco_match_funding, service_obligation_capacity, 'exchange')
+    #build interventions
+    fttdp_s1_built_interventions = decide_interventions(
+        small_system_40._exchanges, year, technology, policy, annual_budget, adoption_cap,
+        subsidy, telco_match_funding, service_obligation_capacity, 'exchange')
 
-#     assert fttdp_s1_built_interventions == fttdp_s1_expected_built_interventions
+    assert fttdp_s1_built_interventions == fttdp_s1_expected_built_interventions
 
-# def test_fttdp_s2(small_system_40):
+def test_budget(small_system_80):
 
-#     year = 2019
-#     technology = 'fttdp'
-#     policy = 's2_rural_based_subsidy'
-#     annual_budget = 2500
-#     adoption_cap = 40
-#     subsidy = 2500
-#     telco_match_funding = 2500
-#     service_obligation_capacity = 10
+    year = 2019
+    technology = 'fttp'
+    policy = 's1_market_based_roll_out'
+    annual_budget = 2000
+    adoption_cap = 40
+    subsidy = 1000
+    telco_match_funding = 1000
+    service_obligation_capacity = 10
 
-#     fttdp_s2_expected_built_interventions = [
-#         ('distribution_{EACAM}{1}', 'fttdp', 's2_rural_based_subsidy', 'market_based', 1837),
-#         ('distribution_{EACAM}{2}', 'fttdp', 's2_rural_based_subsidy', 'subsidy_based', 2087)
-#         ]
+    expected_budget_constrained_interventions = [
+        ('distribution_{EACAM}{1}', 'fttp', 's1_market_based_roll_out', 'market_based', 30720, 1837, 17)
+    ]
 
-#     #Total cost should be £2150
-#     #fttdp modem: £20 * 20 = £400
-#     #costs_assets_distribution_fttdp_8_ports: £250 * 3 = £750
-#     #fibre from cab to dist: £5 * 200 = £1000
+    #Total cost should be £1837
+    #fttp modem: £20 * 20 = £400
+    #optical network terminal: £10 * 20 = £200
+    #planning cost: £10 * 20 = £200
+    #optical connection point: £37 * 1 = £37 (32 premises per connection point)
+    #fibre upgrade cost: £5 * 200 = 1000
 
-#     #Total cost should be £2400
-#     #fttdp modem: £20 * 20 = £400
-#     #costs_assets_distribution_fttdp_8_ports: £250 * 3 = £750
-#     #fibre from cab to dist: £5 * 250 = £1250
+    #build interventions
+    budget_constrained_interventions = decide_interventions(
+        small_system_80._distributions, year, technology, policy, annual_budget, adoption_cap,
+        subsidy, telco_match_funding, service_obligation_capacity, 'distribution')
 
-#     #build interventions
-#     fttdp_s2_built_interventions = decide_interventions(
-#         small_system_40, year, technology, policy, annual_budget, adoption_cap,
-#         subsidy, telco_match_funding, service_obligation_capacity)
-
-#     assert fttdp_s2_built_interventions == fttdp_s2_expected_built_interventions
-
-# def test_fttdp_s3(small_system_40):
-
-#     year = 2019
-#     technology = 'fttdp'
-#     policy = 's3_outside_in_subsidy'
-#     annual_budget = 4000
-#     adoption_cap = 40
-#     subsidy = 4000
-#     telco_match_funding = 4000
-#     service_obligation_capacity = 10
-
-#     fttdp_s3_expected_built_interventions = [
-#         ('distribution_{EACAM}{1}', 'fttdp', 's3_outside_in_subsidy', 'market_based', 1837),
-#         ('distribution_{EACOM}{5}', 'fttdp', 's3_outside_in_subsidy', 'subsidy_based', 2837)
-#         ]
-
-#     #build interventions
-#     fttdp_s3_built_interventions = decide_interventions(
-#         small_system_40, year, technology, policy, annual_budget, adoption_cap,
-#         subsidy, telco_match_funding, service_obligation_capacity)
-#     print(fttdp_s3_built_interventions)
-#     assert fttdp_s3_built_interventions == fttdp_s3_expected_built_interventions
-
-# def test_budget(small_system_80):
-
-#     year = 2019
-#     technology = 'fttp'
-#     policy = 's1_market_based_roll_out'
-#     annual_budget = 2000
-#     adoption_cap = 40
-#     subsidy = 2000
-#     telco_match_funding = 2000
-#     service_obligation_capacity = 10
-
-#     expected_budget_constrained_interventions = [
-#         ('distribution_{EACAM}{1}', 'fttp', 's1_market_based_roll_out', 'market_based', 1837)
-#     ]
-
-#     #Total cost should be £1837
-#     #fttp modem: £20 * 20 = £400
-#     #optical network terminal: £10 * 20 = £200
-#     #planning cost: £10 * 20 = £200
-#     #optical connection point: £37 * 1 = £37 (32 premises per connection point)
-#     #fibre upgrade cost: £5 * 200 = 1000
-
-#     #build interventions
-#     budget_constrained_interventions = decide_interventions(
-#         small_system_80, year, technology, policy, annual_budget, adoption_cap,
-#         subsidy, telco_match_funding, service_obligation_capacity)
-
-#     assert budget_constrained_interventions == expected_budget_constrained_interventions
+    assert budget_constrained_interventions == expected_budget_constrained_interventions
