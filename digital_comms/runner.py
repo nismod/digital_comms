@@ -118,8 +118,8 @@ def read_parameters():
                     params['costs_assets_exchange_fttc'] = param['default_value']
                 if param['name'] == 'costs_assets_exchange_adsl':
                     params['costs_assets_exchange_adsl'] = param['default_value']
-                if param['name'] == 'costs_assets_upgrade_cabinet_fttp':
-                    params['costs_assets_upgrade_cabinet_fttp'] = param['default_value']
+                if param['name'] == 'costs_assets_cabinet_fttp':
+                    params['costs_assets_cabinet_fttp'] = param['default_value']
                 if param['name'] == 'costs_assets_cabinet_fttdp':
                     params['costs_assets_cabinet_fttdp'] = param['default_value']
                 if param['name'] == 'costs_assets_cabinet_fttc':
@@ -364,6 +364,86 @@ def write_spend(decisions, year, technology, policy):
 
     decisions_file.close()
 
+def write_exchange_results(system, year, technology, policy):
+
+    results_filename = os.path.join(
+        RESULTS_DIRECTORY, 'exchange_{}_{}.csv'.format(technology, policy))
+
+    if year == BASE_YEAR:
+        results_file = open(results_filename, 'w', newline='')
+        results_writer = csv.writer(results_file)
+        results_writer.writerow(
+            ('exchange', 'year', 'technology', 'policy', 'average_capacity', 'fttp',
+            'fttdp', 'fttc', 'docsis3', 'adsl', 'total_prems'))
+
+    else:
+        results_file = open(results_filename, 'a', newline='')
+        results_writer = csv.writer(results_file)
+
+    coverage = system.aggregate_coverage('exchange')
+    capacity = system.capacity('exchange')
+
+    for area_dict in coverage:
+        for area_dict_2 in capacity:
+            if area_dict['id'] == area_dict_2['id']:
+                results_writer.writerow(
+                    (
+                        area_dict['id'],
+                        year,
+                        technology,
+                        policy,
+                        area_dict_2['average_capacity'],
+                        area_dict['percentage_of_premises_with_fttp'],
+                        area_dict['percentage_of_premises_with_fttdp'],
+                        area_dict['percentage_of_premises_with_fttc'],
+                        area_dict['percentage_of_premises_with_docsis3'],
+                        area_dict['percentage_of_premises_with_adsl'],
+                        area_dict['sum_of_premises'],
+                    )
+                )
+
+    results_file.close()
+
+def write_lad_results(system, year, technology, policy):
+
+    results_filename = os.path.join(
+        RESULTS_DIRECTORY, 'lad_{}_{}.csv'.format(technology, policy))
+
+    if year == BASE_YEAR:
+        results_file = open(results_filename, 'w', newline='')
+        results_writer = csv.writer(results_file)
+        results_writer.writerow(
+            ('lad', 'year', 'technology', 'policy', 'average_capacity', 'fttp',
+            'fttdp', 'fttc', 'docsis3', 'adsl', 'total_prems'))
+
+    else:
+        results_file = open(results_filename, 'a', newline='')
+        results_writer = csv.writer(results_file)
+
+    coverage = system.aggregate_coverage('lad')
+    capacity = system.capacity('lad')
+
+    for area_dict in coverage:
+        for area_dict_2 in capacity:
+            if area_dict['id'] == area_dict_2['id']:
+                results_writer.writerow(
+                    (
+                        area_dict['id'],
+                        year,
+                        technology,
+                        policy,
+                        area_dict_2['average_capacity'],
+                        area_dict['percentage_of_premises_with_fttp'],
+                        area_dict['percentage_of_premises_with_fttdp'],
+                        area_dict['percentage_of_premises_with_fttc'],
+                        area_dict['percentage_of_premises_with_docsis3'],
+                        area_dict['percentage_of_premises_with_adsl'],
+                        area_dict['sum_of_premises'],
+                    )
+                )
+
+    results_file.close()
+
 ################################################################
 # RUN MODEL
 ################################################################
@@ -409,16 +489,16 @@ def run():
 
             total_distributions = [distribution for distribution in system._distributions]
 
-            adoption_desirability_percentage = (
+            adoption_desirability_percentage = round((
                 len([dist.total_prems for dist in adoption_desirability]) /
-                len([dist.total_prems for dist in total_distributions]) * 100)
+                len([dist.total_prems for dist in total_distributions]) * 100),3)
 
             percentage_annual_increase = round(float(annual_adoption_rate - \
                 adoption_desirability_percentage), 1)
 
             # update the number of premises wanting to adopt (adoption_desirability)
             distribution_adoption_desirability_ids = update_adoption_desirability(
-                system._distributions, percentage_annual_increase)
+                system._distributions, percentage_annual_increase, technology)
 
             system.update_adoption_desirability(distribution_adoption_desirability_ids)
 
@@ -449,6 +529,9 @@ def run():
 
             write_spend(built_interventions, year, technology, policy)
 
+            write_exchange_results(system, year, technology, policy)
+
+            write_lad_results(system, year, technology, policy)
 
             # logging.info("--")
 
