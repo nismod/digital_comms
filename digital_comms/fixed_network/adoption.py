@@ -7,7 +7,7 @@ from logging import getLogger
 LOGGER = getLogger(__name__)
 
 
-def update_adoption_desirability(distributions, annual_adoption_rate):
+def update_adoption_desirability(distributions, annual_adoption_rate, technology):
     """
     Given adoption parameters and a set of distribution points, return likely adoptees.
 
