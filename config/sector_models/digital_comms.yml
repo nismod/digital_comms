@@ -144,7 +144,7 @@ parameters:
 - absolute_range: (0, 100000)
   default_value: 500
   description: The costs to enable a cabinet to service FTTP
-  name: costs_assets_upgrade_cabinet_fttp
+  name: costs_assets_cabinet_fttp
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
@@ -250,7 +250,7 @@ parameters:
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 10000000000)
-  default_value: 5000000
+  default_value: 50000000
   description: The yearly budget to spend on infrastructure
   name: annual_budget
   suggested_range: (0, 1000000000)
