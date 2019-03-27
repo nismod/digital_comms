@@ -9,8 +9,9 @@ from geographiclib.geodesic import Geodesic
 from collections import OrderedDict
 import matplotlib.pyplot as plt
 
-from path_loss_calculations import path_loss_calc_module
-# from built_env_module import find_line_of_sight 
+from digital_comms.mobile_network.path_loss_module import path_loss_calculator
+
+# from built_env_module import find_line_of_sight
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), '..',  '..', 'scripts','script_config.ini'))
@@ -18,17 +19,18 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 
 #data locations
 DATA_RAW = os.path.join(BASE_PATH, 'raw')
-DATA_RESULTS = os.path.join(BASE_PATH, '..',  '..' ,'results', 'system_simulator')
+DATA_RESULTS = os.path.join(BASE_PATH, '..' ,'results', 'system_simulator')
 
 def read_postcode_sector(postcode_sector):
-    with fiona.open(os.path.join(DATA_RAW, 'd_shapes', 'postcode_sectors', '_postcode_sectors.shp'), 'r') as source:
+    postcode_area = ''.join([i for i in postcode_sector[:2] if not i.isdigit()])
+    with fiona.open(os.path.join(DATA_RAW, 'd_shapes', 'postcode_sectors', postcode_area + '.shp'), 'r') as source:
 
         return [sector for sector in source if sector['properties']['postcode'].replace(" ", "") == postcode_sector][0]
 
 def get_transmitters(postcode_sector):
 
     potential_transmitters = []
-    
+
     geom = shape(postcode_sector['geometry'])
     geom_box = geom.bounds
 
@@ -86,6 +88,7 @@ def generate_receivers(postcode_sector, quantity):
     receivers = []
 
     id_number = 0
+    np.random.seed(42)
 
     while len(receivers) < quantity:
 
@@ -118,7 +121,7 @@ def generate_receivers(postcode_sector, quantity):
 
     return receivers
 
-class SystemManager(object):
+class NetworkManager(object):
 
     def __init__(self, area, transmitters, receivers):
 
@@ -127,7 +130,7 @@ class SystemManager(object):
         self.receivers = {}
 
         area_id = area['properties']['postcode']
-        self.area[area_id] = Area(area) 
+        self.area[area_id] = Area(area)
 
         for transmitter in transmitters:
             transmitter_id = transmitter['properties']["sitengr"]
@@ -146,9 +149,9 @@ class SystemManager(object):
             area_containing_receivers.add_receiver(receiver)
 
     def calc_link_budget(self, frequency, bandwidth, iterations):
-        
         """
         Takes propagation parameters and calculates capacity.
+
         """
 
         results = []
@@ -160,30 +163,29 @@ class SystemManager(object):
             path_loss = self.calculate_path_loss(closest_transmitters[0], receiver, frequency)
 
             received_power = self.calc_received_power(closest_transmitters[0], receiver, path_loss)
-           
-            interference = self.calculate_interference(closest_transmitters, receiver) 
-            
+
+            interference = self.calculate_interference(closest_transmitters, receiver, frequency)
+
             noise = self.calculate_noise(bandwidth)
 
             sinr = self.calculate_sinr(received_power, interference, noise)
-            
-            estimated_capacity = self.estimate_capacity(bandwidth, sinr)           
+
+            estimated_capacity = self.estimate_capacity(bandwidth, sinr)
 
             data = {'sinr': sinr, 'estimated_capacity': estimated_capacity}
-            
+
             results.append(data)
 
         return results
 
     def find_closest_available_transmitters(self, receiver):
+        """
+        Returns a list of all transmitters, ranked based on proximity to the receiver.
 
         """
-        Returns a list of all transmitters, ranked based on proximity to the receiver. 
-        """
-
         idx = index.Index()
 
-        for transmitter in self.transmitters.values(): 
+        for transmitter in self.transmitters.values():
             idx.insert(0, Point(transmitter.coordinates).bounds, transmitter)
 
         number_of_transmitters = len(self.transmitters.values())
@@ -198,15 +200,15 @@ class SystemManager(object):
 
         x2_receiver = receiver.coordinates[0]
         y2_receiver = receiver.coordinates[1]
-        
-        x1_transmitter, y1_transmitter = transform_coordinates(Proj(init='epsg:27700'), Proj(init='epsg:4326'), 
-                                                                closest_transmitters.coordinates[0], 
+
+        x1_transmitter, y1_transmitter = transform_coordinates(Proj(init='epsg:27700'), Proj(init='epsg:4326'),
+                                                                closest_transmitters.coordinates[0],
                                                                 closest_transmitters.coordinates[1])
-        
-        x2_receiver, y2_receiver = transform_coordinates(Proj(init='epsg:27700'), Proj(init='epsg:4326'), 
-                                                                receiver.coordinates[0], 
+
+        x2_receiver, y2_receiver = transform_coordinates(Proj(init='epsg:27700'), Proj(init='epsg:4326'),
+                                                                receiver.coordinates[0],
                                                                 receiver.coordinates[1])
-        
+
         Geo = Geodesic.WGS84
         i_strt_distance = Geo.Inverse(x1_transmitter, y1_transmitter, x2_receiver, y2_receiver)
         interference_strt_distance = int(round(i_strt_distance['s12'], 0))
@@ -214,39 +216,39 @@ class SystemManager(object):
         ant_height = 20
         ant_type =  'macro'
         settlement_type = 'urban'
-        #type_of_sight, building_height, street_width = built_environment_module(transmitter_geom, receiver_geom)  
-        #type_of_sight = find_line_of_sight(x1_transmitter, y1_transmitter, x2_receiver, y2_receiver)  
+        #type_of_sight, building_height, street_width = built_environment_module(transmitter_geom, receiver_geom)
+        #type_of_sight = find_line_of_sight(x1_transmitter, y1_transmitter, x2_receiver, y2_receiver)
         type_of_sight = randomly_select_los()
         building_height = 20
         street_width = 20
 
-        path_loss = path_loss_calc_module(
-            frequency, 
-            interference_strt_distance, 
-            ant_height, 
-            ant_type, 
-            building_height, 
-            street_width, 
-            settlement_type, 
-            type_of_sight, 
+        path_loss = path_loss_calculator(
+            frequency,
+            interference_strt_distance,
+            ant_height,
+            ant_type,
+            building_height,
+            street_width,
+            settlement_type,
+            type_of_sight,
             receiver.ue_height)
-        
+
         return path_loss
 
     def calc_received_power(self, transmitter, receiver, path_loss):
         """
-        Calculate received power based on transmitter and receiver characteristcs, and path loss. 
+        Calculate received power based on transmitter and receiver characteristcs, and path loss.
         """
-        
-        eirp = float(transmitter.power) + float(transmitter.gain) - float(transmitter.losses) 
+
+        eirp = float(transmitter.power) + float(transmitter.gain) - float(transmitter.losses)
         received_power = eirp - path_loss - receiver.misc_losses + receiver.gain - receiver.losses
 
-        return received_power    
+        return received_power
 
-    def calculate_interference(self, nearest_transmitters, receiver):
+    def calculate_interference(self, nearest_transmitters, receiver, frequency):
 
         """
-        calculate interference from other cells. 
+        calculate interference from other cells.
 
         nearest_transmitters contains all transmitters, ranked based on distance, meaning
         we need to select cells 1-3 (as cell 0 is the actual cell in use)
@@ -256,9 +258,9 @@ class SystemManager(object):
 
         interference = []
 
-        x1_receiver, y1_receiver = transform_coordinates(Proj(init='epsg:27700'), 
-                                                        Proj(init='epsg:4326'), 
-                                                        receiver.coordinates[0], 
+        x1_receiver, y1_receiver = transform_coordinates(Proj(init='epsg:27700'),
+                                                        Proj(init='epsg:4326'),
+                                                        receiver.coordinates[0],
                                                         receiver.coordinates[1])
 
         #calculate interference from other power sources
@@ -268,9 +270,9 @@ class SystemManager(object):
             x2_interference = interference_transmitter.coordinates[0]
             y2_interference = interference_transmitter.coordinates[1]
 
-            x2_interference, y2_interference = transform_coordinates(Proj(init='epsg:27700'), 
-                                                                    Proj(init='epsg:4326'), 
-                                                                    interference_transmitter.coordinates[0], 
+            x2_interference, y2_interference = transform_coordinates(Proj(init='epsg:27700'),
+                                                                    Proj(init='epsg:4326'),
+                                                                    interference_transmitter.coordinates[0],
                                                                     interference_transmitter.coordinates[1])
 
             Geo = Geodesic.WGS84
@@ -279,36 +281,35 @@ class SystemManager(object):
 
             ant_height = 20
             ant_type =  'macro'
-            #get built env paramaters
             building_height = 20
             street_width = 20
-            settlement_type = 'urban' 
+            settlement_type = 'urban'
             type_of_sight = randomly_select_los()
 
-            path_loss = path_loss_calc_module(
-                frequency, 
-                interference_strt_distance, 
-                ant_height, 
-                ant_type, 
-                building_height, 
-                street_width, 
-                settlement_type, 
-                type_of_sight, 
+            path_loss = path_loss_calculator(
+                frequency,
+                interference_strt_distance,
+                ant_height,
+                ant_type,
+                building_height,
+                street_width,
+                settlement_type,
+                type_of_sight,
                 receiver.ue_height)
 
             #calc interference from other cells
             received_interference = self.calc_received_power(interference_transmitter, receiver, path_loss)
 
-            #add cell interference to list 
+            #add cell interference to list
             interference.append(received_interference)
 
         return interference
-    
+
     def calculate_noise(self, bandwidth):
         #TODO
         """
-        Calculate receiver noise (N  = k T B), where k is Boltzmann's constant, 
-        T is temperatrue in K and B is bandwidth in use.   
+        Calculate receiver noise (N  = k T B), where k is Boltzmann's constant,
+        T is temperatrue in K and B is bandwidth in use.
         """
         k = 1
         T = 15
@@ -327,7 +328,7 @@ class SystemManager(object):
         sinr = round(received_power / sum(interference) + noise, 1)
 
         return sinr
-    
+
     def estimate_capacity(self,bandwidth, sinr):
         """
         Estimate wireless link capacity (Mbps) based on bandwidth and receiver signal.
@@ -336,13 +337,13 @@ class SystemManager(object):
         estimated_capacity = round(bandwidth*np.log2(1+sinr), 2)
 
         return estimated_capacity
-    
+
     def transmitter_density(self):
-        """Calculate transmitter density per square kilometer (km^2) 
+        """Calculate transmitter density per square kilometer (km^2)
 
         Returns
         -------
-        obj 
+        obj
             Sum of transmitters
 
         Notes
@@ -353,17 +354,17 @@ class SystemManager(object):
             return 0
 
         summed_transmitters = len(
-            self.transmitters 
+            self.transmitters
         )
 
         return summed_transmitters
 
     def receiver_density(self):
-        """Calculate receiver density per square kilometer (km^2) 
+        """Calculate receiver density per square kilometer (km^2)
 
         Returns
         -------
-        obj 
+        obj
             Sum of receiver
 
         Notes
@@ -374,13 +375,13 @@ class SystemManager(object):
             return 0
 
         summed_receivers = len(
-            self.receivers 
+            self.receivers
         )
 
         return summed_receivers
 
 class Area(object):
-    
+
     def __init__(self, data):
         #id and geographic info
         self.id = data['properties']["postcode"]
@@ -394,15 +395,15 @@ class Area(object):
         polygon = shape(data['geometry'])
         area = polygon.area
         return area
-    
+
     def add_transmitter(self, transmitter):
         self._transmitters[transmitter.id] = transmitter
-    
+
     def add_receiver(self, receiver):
         self._receivers[receiver.id] = receiver
 
 class Transmitter(object):
-    
+
     def __init__(self, data):
         #id and geographic info
         self.id = data['properties']["sitengr"]
@@ -443,11 +444,11 @@ def transform_coordinates(old_proj, new_proj, x, y):
 def write_results(results, frequency, bandwidth, t_density, r_density, postcode_sector_name):
 
     suffix = suffix = 'freq_{}_bandwidth_{}_density_{}'.format(frequency, bandwidth, t_density)
-    
+
     directory = os.path.join(DATA_RESULTS, postcode_sector_name)
     if not os.path.exists(directory):
         os.makedirs(directory)
-    
+
     filename = '{}.csv'.format(suffix)
     directory = os.path.join(directory, filename)
 
@@ -510,14 +511,14 @@ def format_data(existing_data, new_data, frequency, bandwidth, postcode_sector_n
 #####################################
 
 def plot_data(data, frequency, bandwidth, postcode_sector_name):
-   
+
     sinr = []
     capacity = []
 
     for datum in data:
         sinr.append(datum['sinr'])
         capacity.append(datum['estimated_capacity'])
-    
+
     plt.figure()
     plt.scatter(sinr, capacity)
 
@@ -535,7 +536,7 @@ def plot_data(data, frequency, bandwidth, postcode_sector_name):
     plt.savefig(os.path.join(directory, 'freq_{}_bw_{}.png'.format(frequency, bandwidth)))
 
 def joint_plot(data, postcode_sector_name):
-   
+
     sinr_2_5 = []
     sinr_2_10 = []
     sinr_2_20 = []
@@ -623,14 +624,14 @@ if __name__ == "__main__":
 
         (3.5, 5),
         (3.5, 10),
-        (3.5, 20),        
+        (3.5, 20),
         ]:
         print("Running {} GHz with {} MHz bandwidth".format(frequency, bandwidth))
-    
-        #load system model with data
-        MANAGER = SystemManager(geojson_postcode_sector, TRANSMITTERS, RECEIVERS)
 
-        results = MANAGER.calc_link_budget(frequency, bandwidth, 10000) 
+        #load system model with data
+        MANAGER = NetworkManager(geojson_postcode_sector, TRANSMITTERS, RECEIVERS)
+
+        results = MANAGER.calc_link_budget(frequency, bandwidth, 10000)
         print('TODO: iterations is not currently doing anything')
 
         #calculate transmitter density
@@ -638,13 +639,13 @@ if __name__ == "__main__":
 
         #calculate transmitter density
         r_density = MANAGER.receiver_density()
-        
+
         write_results(results, frequency, bandwidth, t_density, r_density, postcode_sector_name)
 
         plot_data(results, frequency, bandwidth, postcode_sector_name)
 
         format_data(joint_plot_data, results, frequency, bandwidth, postcode_sector_name)
- 
+
     joint_plot(joint_plot_data, postcode_sector_name)
 
     print('write cells')
@@ -657,128 +658,3 @@ if __name__ == "__main__":
     geojson_postcode_sector_list = []
     geojson_postcode_sector_list.append(geojson_postcode_sector)
     write_shapefile(geojson_postcode_sector_list,  postcode_sector_name, '_boundary.shp')
-
-#####################################
-# TEST DATA
-#####################################
-
-# if __name__ == '__main__':
-    
-    # TRANSMITTERS = [
-    #     {
-    #         'type': "Feature",
-    #         'geometry': {
-    #             "type": "Point",
-    #             "coordinates": [0.124896, 52.215965]
-    #         },
-    #         'properties': {
-    #             "operator":'voda',
-    #             "opref": 46497,
-    #             "sitengr": 'TL4515059700',
-    #             "ant_height": 13.7,
-    #             "type": 'macro',
-    #             "power": 28.1,
-    #             "gain": 18,
-    #             "losses": 2,
-    #             "pcd_sector": "CB1 1",
-    #         }
-    #     },
-    #     {
-    #         'type': "Feature",
-    #         'geometry': {
-    #             "type": "Point",
-    #             "coordinates": [0.133939, 52.215263]
-    #         },
-    #         'properties': {
-    #             "operator":'voda',
-    #             "opref": 31745,
-    #             "sitengr": 'TL4577059640',
-    #             "ant_height": 14.9,
-    #             "type": 'macro',
-    #             "power": 29.8,
-    #             "gain": 18,
-    #             "losses": 2,
-    #             "pcd_sector": "CB1 2",
-    #         }
-    #     },
-    #     {
-    #         'type': "Feature",
-    #         'geometry': {
-    #             "type": "Point",
-    #             "coordinates": [0.11593, 52.215227]
-    #         },
-    #         'properties': {
-    #             "operator":'voda',
-    #             "opref": 31742,
-    #             "sitengr": 'TL4454059600',
-    #             "ant_height": 14.9,
-    #             "type": 'macro',
-    #             "power": 29.8,
-    #             "gain": 18,
-    #             "losses": 2,
-    #             "pcd_sector": "CB1 2",
-    #         }
-    #     },
-    #     {
-    #         'type': "Feature",
-    #         'geometry': {
-    #             "type": "Point",
-    #             "coordinates": [0.12512, 52.21442]
-    #         },
-    #         'properties': {
-    #             "operator":'voda',
-    #             "opref": 31746,
-    #             "sitengr": 'TL4529059480',
-    #             "ant_height": 14.9,
-    #             "type": 'macro',
-    #             "power": 29.8,
-    #             "gain": 18,
-    #             "losses": 2,
-    #             "pcd_sector": "CB1 2",
-    #         }
-    #     }
-    # ]
-    # RECEIVERS = [
-    #     {
-    #         'type': "Feature",
-    #         'geometry': {
-    #             "type": "Point",
-    #             "coordinates": [0.11748, 52.21854]
-    #         },
-    #         'properties': {
-    #             "ue_id": "AB1",
-    #             "sitengr": 'TL4454059600',
-    #             "misc_losses": 4,
-    #             "gain": 4,
-    #             "losses": 4,
-    #         }
-    #     },
-    #     {
-    #         'type': "Feature",
-    #         'geometry': {
-    #             "type": "Point",
-    #             "coordinates": [0.11670, 52.21362]
-    #         },
-    #         'properties': {
-    #             "ue_id": "AB2",
-    #             "sitengr": 'TL4454059600',
-    #             "misc_losses": 4,
-    #             "gain": 4,
-    #             "losses": 4,
-    #         }
-    #     },
-    #     {
-    #         'type': "Feature",
-    #         'geometry': {
-    #             "type": "Point",
-    #             "coordinates": [0.118174, 52.214870]
-    #         },
-    #         'properties': {
-    #             "ue_id": "AB3",
-    #             "sitengr": 'TL4454059600',
-    #             "misc_losses": 4,
-    #             "gain": 4,
-    #             "losses": 4,
-    #         }
-    #     }
-    # ]
