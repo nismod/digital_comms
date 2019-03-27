@@ -147,8 +147,15 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
     #         raise ValueError('Could not determine if cell is above or below roof line')
 
     elif 0.1 < distance and settlement_type == 'urban' and 30 < frequency <= 150:
+
+        alpha = (1.1*np.log(frequency) - 0.7) *
+
+        beta =
+
+
         path_loss = (
-            69.6 + 26.2*np.log(150) - 20*np.log(150/frequency) - 13.82*np.log(ant_height)-
+            69.6 + 26.2*np.log(150) - 20*np.log(150/frequency) - 13.82*np.log(ant_height)+
+            [44.9 - 6.55*log(ant_height)] * (log(distance))**alpha - beta*(ue_height)
         )
 
         if above_roof == 1:
