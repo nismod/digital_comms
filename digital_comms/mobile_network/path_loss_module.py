@@ -123,65 +123,188 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
     frequency = frequency*1000
     #model requires distance in kilometers rather than meters.
     distance = distance/1000
+    #find smallest value
+    hm = min(ant_height, ue_height)
+    #find largest value
+    hb = max(ant_height, ue_height)
 
-    if distance <= 0.04:
+    alpha_hm = (1.1*np.log(frequency) - 0.7) * min(10, hm) - 
+        (1.56*np.log(frequency) - 0.8) + max(0, (20*np.log(hm/10)))
+
+    beta_hb = min(0, (20*np.log(hb/30)))
+
+    if distance <= 20:
+        alpha_exponent = 1
+    elif 20 < distance < 100: 
+        alpha_exponent = 1 + (0.14 + 1.87*10**-4 * frequency + 1.07*10**-3 * hb)*(np.log(distance/20))**0.8
+    else:
+        raise ValueError('Distance over 100km not compliant')
+
+    if distance > 0.1:
+
+        if 30 < frequency <= 150:
+
+            path_loss = (
+                69.6 + 26.2*np.log(150) - 20*np.log(150/frequency) - 
+                13.82*np.log(max(30, hb)) +
+                (44.9 - 6.55*np.log(max(30, hb))) * 
+                (np.log(distance))**alpha_exponent - alpha_hm - beta_hb
+            )
+
+        elif 150 < frequency <= 1500:
+
+            path_loss = (
+                69.6 + 26.2*np.log(frequency) - 
+                13.82*np.log(max(30, hb)) +
+                (44.9 - 6.55*np.log(max(30, hb))) * 
+                (np.log(distance))**alpha_exponent - alpha_hm - beta_hb
+            )  
+
+        elif 1500 < frequency <= 2000:
+
+            path_loss = (
+                46.3 + 33.9*np.log(frequency) - 
+                13.82*np.log(max(30, hb)) +
+                (44.9 - 6.55*np.log(max(30, hb))) * 
+                (np.log(distance))**alpha_exponent - alpha_hm - beta_hb
+            )  
+
+        elif 2000 < frequency <= 3000:
+
+            path_loss = (
+                46.3 + 33.9*np.log(2000) + 
+                10*np.log(frequency/2000) -
+                13.82*np.log(max(30, hb)) +
+                (44.9 - 6.55*np.log(max(30, hb))) * 
+                (np.log(distance))**alpha_exponent - alpha_hm - beta_hb
+            )  
+        
+        else:
+            raise ValueError('Carrier frequency incorrect for Extended HATA') 
+
+        if settlement_type == 'suburban':
+
+            path_loss = (
+                path_loss - 2 * /
+                (np.log((min(max(150, frequency), 2000)/28)))**2 - 5.4
+            )
+
+        elif settlement_type == 'rural': #also called 'open area'
+
+            path_loss = (
+                path_loss - 4.78 * /
+                (np.log((min(max(150, frequency), 2000))))**2 + 18.33 * \
+                    np.log(min(max(150, frequency), 2000))) - 40.94
+            )
+
+            if above_roof == 1:
+                path_loss = (
+                    32.4 + (20*np.log(frequency)) + (10*np.log(distance**2 +
+                    (ant_height - ue_height)**2 / 10**6)) +
+                    generate_log_normal_dist_value(0,12,1)
+                )
+        else:
+            pass
+
+    if distance < 0.04:
+
         path_loss = (
             32.4 + (20*np.log(frequency)) + (10*np.log(distance**2 +
-            (ant_height - ue_height)**2 / 10**6)) +
-            generate_log_normal_dist_value(0,3.5,1)
+            (hb - hm)**2 / 10**6))
         )
 
-    # elif 0.04 < distance <= 0.1:
-    #     path_loss = (
-    #         32.4 + (20*np.log(frequency)) + (10*np.log(distance**2 +
-    #         (ant_height - ue_height)**2 / 10**6))
-    #     )
-
-    #     if above_roof == 1:
-    #         random_quantity = generate_log_normal_dist_value(0,3.5,1)
-    #         path_loss = random_quantity + ((12-3.5)/0.1-0.04) * (distance - 0.04)
-    #     elif above_roof == 0:
-    #         random_quantity = generate_log_normal_dist_value(0,3.5,1)
-    #         path_loss = random_quantity + ((17-3.5)/0.1-0.04) * (distance - 0.04)
-    #     else:
-    #         raise ValueError('Could not determine if cell is above or below roof line')
-
-    elif 0.1 < distance and settlement_type == 'urban' and 30 < frequency <= 150:
-
-        alpha = (1.1*np.log(frequency) - 0.7) *
-
-        beta =
-
-
-        path_loss = (
-            69.6 + 26.2*np.log(150) - 20*np.log(150/frequency) - 13.82*np.log(ant_height)+
-            [44.9 - 6.55*log(ant_height)] * (log(distance))**alpha - beta*(ue_height)
+    if 0.04 <= distance < 0.1:
+        
+        #distance set at 0.1
+        l_fixed_distance_upper = (
+            32.4 + (20*np.log(frequency)) + (10*np.log(0.1**2 +
+            (hb - hm)**2 / 10**6)) 
         )
+
+        #distance set at 0.04
+        l_fixed_distance_lower = (
+            32.4 + (20*np.log(frequency)) + (10*np.log(0.04**2 +
+            (hb - hm)**2 / 10**6)) 
+        )
+
+        path_loss = (l_fixed_distance_lower +
+            (np.log(distance) - np.log(0.04) / \
+            (np.log(0.1) - np.log(0.04)) * 
+            (l_fixed_distance_upper - l_fixed_distance_lower) 
+        )
+
+        path_loss = (l_fixed_distance_lower +
+            (np.log(distance) - np.log(0.04) / \
+            (np.log(0.1) - np.log(0.04)) * 
+            (l_fixed_distance_upper - l_fixed_distance_lower) 
+        )
+
+    else:
+        raise ValueError('Unknown distance')
+
+    #determine variation in path loss using stochastic component
+
+    if distance < 0.04:
+
+        path_loss = path_loss + generate_log_normal_dist_value(0,3.5,1)
+
+    elif 0.04 < distance < 0.1:
 
         if above_roof == 1:
+            random_quantity = generate_log_normal_dist_value(0,3.5,1)
             path_loss = (
-                32.4 + (20*np.log(frequency)) + (10*np.log(distance**2 +
-                (ant_height - ue_height)**2 / 10**6)) +
-                generate_log_normal_dist_value(0,12,1)
+                path_loss + random_quantity + 
+                ((12-3.5)/0.1-0.04)) * (distance - 0.04)
+            )
+        elif above_roof == 0:
+            random_quantity = generate_log_normal_dist_value(0,3.5,1)
+            path_loss = (
+                path_loss + random_quantity + 
+                ((17-3.5)/0.1-0.04)) * (distance - 0.04)
+            )
+        else:
+            raise ValueError('Could not determine if cell is above or below roof line')
+
+    elif 0.1 < distance <= 0.2:
+
+        if above_roof == 1:
+            random_quantity = generate_log_normal_dist_value(0,12,1)
+            path_loss = (
+                path_loss + random_quantity                
             )
 
         elif above_roof == 0:
-            path_loss = generate_log_normal_dist_value(0,17,1)
+            random_quantity = generate_log_normal_dist_value(0,17,1)
+            path_loss = (
+                path_loss + random_quantity                
+            )
         else:
             raise ValueError('Could not determine if cell is above or below roof line')
 
     elif 0.2 < distance <= 0.6:
         if above_roof == 1:
             random_quantity = generate_log_normal_dist_value(0,12,1)
-            path_loss = random_quantity + ((9-12)/0.6-0.2) * (distance - 0.02)
+            path_loss = (
+                path_loss + random_quantity + 
+                ((9-12)/0.6-0.2) * (distance - 0.02)
+            )
         elif above_roof == 0:
             random_quantity = generate_log_normal_dist_value(0,17,1)
-            path_loss = random_quantity + ((9-17)/0.6-0.2) * (distance - 0.02)
+            path_loss = (
+                path_loss + random_quantity + 
+                ((9-17)/0.6-0.2) * (distance - 0.02)
+            )
         else:
             raise ValueError('Could not determine if cell is above or below roof line')
+    
+    elif 0.6 < distance:
+            random_quantity = generate_log_normal_dist_value(0,12,1)
+            path_loss = (
+                path_loss + random_quantity
+            )
 
     else:
-            path_loss = random_quantity = generate_log_normal_dist_value(0,12,1)
+        raise ValueError('Did not recognise distance')
 
     return round(path_loss)
 
@@ -380,44 +503,3 @@ def generate_log_normal_dist_value(mu, sigma, draws):
 
 
 
-
-    # elif 0.04 < distance <= 0.1:
-    #     path_loss = (
-    #         32.4 + (20*np.log(frequency)) + (10*np.log(distance**2 +
-    #         (ant_height - ue_height)**2 / 10**6))
-    #     )
-
-    #     if above_roof == 1:
-    #         random_quantity = generate_log_normal_dist_value(0,3.5,1)
-    #         path_loss = random_quantity + ((12-3.5)/0.1-0.04) * (distance - 0.04)
-    #     elif above_roof == 0:
-    #         random_quantity = generate_log_normal_dist_value(0,3.5,1)
-    #         path_loss = random_quantity + ((17-3.5)/0.1-0.04) * (distance - 0.04)
-    #     else:
-    #         raise ValueError('Could not determine if cell is above or below roof line')
-
-    # elif 0.1 < distance <= 0.2:
-    #     if above_roof == 1:
-    #         path_loss = (
-    #             32.4 + (20*np.log(frequency)) + (10*np.log(distance**2 +
-    #             (ant_height - ue_height)**2 / 10**6)) +
-    #             generate_log_normal_dist_value(0,12,1)
-    #         )
-
-    #     elif above_roof == 0:
-    #         path_loss = generate_log_normal_dist_value(0,17,1)
-    #     else:
-    #         raise ValueError('Could not determine if cell is above or below roof line')
-
-    # elif 0.2 < distance <= 0.6:
-    #     if above_roof == 1:
-    #         random_quantity = generate_log_normal_dist_value(0,12,1)
-    #         path_loss = random_quantity + ((9-12)/0.6-0.2) * (distance - 0.02)
-    #     elif above_roof == 0:
-    #         random_quantity = generate_log_normal_dist_value(0,17,1)
-    #         path_loss = random_quantity + ((9-17)/0.6-0.2) * (distance - 0.02)
-    #     else:
-    #         raise ValueError('Could not determine if cell is above or below roof line')
-
-    # else:
-    #         path_loss = random_quantity = generate_log_normal_dist_value(0,12,1)
