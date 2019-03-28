@@ -1,7 +1,7 @@
 import pytest
 from digital_comms.mobile_network.path_loss_module import (
     path_loss_calculator,
-    free_space_model,
+    free_space,
     extended_hata,
     check_applicability
 )
@@ -24,16 +24,63 @@ from digital_comms.mobile_network.path_loss_module import (
     (2.6,5000,20,1.5,118), #stochastic component is 3 (seed=42)
 ])
 
-def test_free_space_model(frequency, distance, ant_height, ue_height, expected):
+def test_free_space(frequency, distance, ant_height, ue_height, expected):
     assert (
-        free_space_model(frequency, distance, ant_height, ue_height)
+        free_space(frequency, distance, ant_height, ue_height)
     ) == expected
 
 @pytest.mark.parametrize("frequency, distance, ant_height, ant_type, building_height, \
     street_width, settlement_type, type_of_sight, ue_height, above_roof, expected", [
-    (3,20,15,'macro',20,20,'urban','los',1.5,1, 6), # test distance <0.04 km
-    # (1,50,15,'macro',20,20,'urban','los',1.5,1, 6), # test distance >0.04 km, above roof
-    # (1,50,15,'macro',20,20,'urban','los',1.5,1, 6), # test distance >0.04 km, below roof
+    ####urban####
+    # test distance <0.04 km, stochastic component = 6
+    (0.8,20,20,'macro',20,20,'urban','los',1.5,1, 100),
+    # test distance <0.04 km, above roof, stochastic component = 388 
+    (0.1,200,20,'macro',20,20,'urban','los',1.5,1, 505),
+    # test distance >0.04 km, below roof, stochastic component = 4648 
+    (0.1,200,20,'',20,20,'urban','nlos',1.5,0, 4765), 
+    # test distance >0.04 km, above roof, stochastic component = 338 
+    (0.8,200,20,'',20,20,'urban','los',1.5,1, 557),  
+    # test distance >0.04 km, below roof, stochastic component = 4648 
+    (0.8,200,20,'',20,20,'urban','nlos',1.5,0, 4817), 
+    # test distance >0.04 km, above roof, stochastic component = 338  
+    (1.8,200,20,'',20,20,'urban','los',1.5,1, 613), 
+    # test distance >0.04 km, below roof, stochastic component = 4648  
+    (1.8,200,20,'',20,20,'urban','nlos',1.5,0, 4873), 
+    # test distance >0.04 km, above roof, stochastic component = 338  
+    (2.1,200,20,'',20,20,'urban','los',1.5,1, 617), 
+    # test distance >0.04 km, below roof, stochastic component = 4648
+    # spreadsheet gives 4878 due to rounding.   
+    (2.1,200,20,'',20,20,'urban','nlos',1.5,0, 4877),
+    #change distances
+    #test 90m
+    # # test distance 0.09 km, above roof, stochastic component =   
+    # (1.8,90,20,'',20,20,'urban','los',1.5,1, 0 ), 
+    # # test distance 0.09 km, below roof, stochastic component =   
+    # (1.8,90,20,'',20,20,'urban','nlos',1.5,0, 4873), 
+    #test 500m    
+    # test distance 0.05 km, above roof, stochastic component =   
+    (1.8,500,20,'',20,20,'urban','los',1.5,1, 0 ), 
+    # # test distance 0.05 km, below roof, stochastic component =   
+    # (1.8,90,20,'',20,20,'urban','nlos',1.5,0, 4873), 
+    
+    
+    
+    # ####suburban####
+    # # test distance >0.04 km, above roof, stochastic component = 338 
+    # (0.8,200,20,'',20,20,'suburban','los',1.5,1, 529),  
+    # # test distance >0.04 km, below roof, stochastic component = 4648 
+    # (0.8,200,20,'',20,20,'suburban','nlos',1.5,0, 4789), 
+    # # test distance 0.5 km, above roof, stochastic component = 112  
+    # (0.8,500,20,'',20,20,'suburban','los',1.5,1, 274), 
+    # # test distance 0.5 km, above roof, stochastic component = 184  
+    # (0.8,500,20,'',20,20,'suburban','los',1.5,0, 346), 
+    # ####rural####
+    # # test distance >0.04 km, above roof, stochastic component = 338 
+    # (1.8,200,20,'',20,20,'rural','los',1.5,1, 441), 
+
+
+
+
     # (1,150,15,'macro',20,20,'urban','los',1.5,1, 6), # test distance >0.1 km, above roof
     # (1,150,15,'macro',20,20,'urban','los',1.5,1, 6), # test distance >0.1 km, below roof
     # (1,400,15,'macro',20,20,'urban','los',1.5,1, 6), # test distance >0.2 km, above roof
@@ -41,32 +88,47 @@ def test_free_space_model(frequency, distance, ant_height, ue_height, expected):
     # (1,700,15,'macro',20,20,'urban','los',1.5,1, 6), # test distance >0.6 km
 ])
 
-def test_extended_hata_model(frequency, distance, ant_height, ant_type, building_height,
+def test_extended_hata(frequency, distance, ant_height, ant_type, building_height,
     street_width, settlement_type, type_of_sight, ue_height, above_roof, expected):
     assert (
-        path_loss_calculator(frequency, distance, ant_height, ant_type, building_height,
+        extended_hata(frequency, distance, ant_height, ant_type, building_height,
         street_width, settlement_type, type_of_sight, ue_height, above_roof)
     ) == expected
 
-# def test_extended_hata_model_value_errors():
+#error for providing >3ghz
+def test_extended_hata_model_value_errors():
 
-#     #'unknown' used to test if cell neither above or below roof line
-#     msg = 'Could not determine if cell is above or below roof line'
+    msg = 'Distance over 100km not compliant'
 
-#     with pytest.raises(ValueError) as ex1:
-#         free_space_model(1,50,15,'macro',20,20,'urban','los',1.5,'unknown')
+    with pytest.raises(ValueError) as ex1:
+        extended_hata(4,2000000,20,'macro',20,20,'urban','los',1.5,1)
 
-#     assert msg in str(ex1)
+    assert msg in str(ex1)
 
-#     with pytest.raises(ValueError) as ex2:
-#         free_space_model(1,150,15,'macro',20,20,'urban','los',1.5,'unknown')
+    msg = 'Carrier frequency incorrect for Extended HATA'
 
-#     assert msg in str(ex2)
+    with pytest.raises(ValueError) as ex1:
+        extended_hata(4,200,20,'macro',20,20,'urban','los',1.5,1)
 
-#     with pytest.raises(ValueError) as ex3:
-#         free_space_model(1,400,15,'macro',20,20,'urban','los',1.5,'unknown')
+    assert msg in str(ex1)
 
-#     assert msg in str(ex3)
+    #'unknown' used to test if cell neither above or below roof line
+    msg = 'Could not determine if cell is above or below roof line'
+
+    with pytest.raises(ValueError) as ex1:
+        extended_hata(1,50,15,'macro',20,20,'urban','los',1.5,'unknown')
+
+    assert msg in str(ex1)
+
+    with pytest.raises(ValueError) as ex2:
+        extended_hata(1,150,15,'macro',20,20,'urban','los',1.5,'unknown')
+
+    assert msg in str(ex2)
+
+    with pytest.raises(ValueError) as ex3:
+        extended_hata(1,400,15,'macro',20,20,'urban','los',1.5,'unknown')
+
+    assert msg in str(ex3)
 
 
 
