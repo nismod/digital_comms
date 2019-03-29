@@ -1,11 +1,14 @@
 import pytest
 from digital_comms.mobile_network.path_loss_module import (
     path_loss_calculator,
+    determine_path_loss,
     free_space,
     extended_hata,
+    e_utra_3gpp_tr36_814,
     check_applicability
 )
 
+#prepare for testing Free Space model
 @pytest.mark.parametrize("frequency, distance, ant_height, ue_height, expected", [
     (0.8,1000,20,1.5,93), #stochastic component is 3 (seed=42)
     (0.8,2000,20,1.5,99), #stochastic component is 3 (seed=42)
@@ -29,6 +32,7 @@ def test_free_space(frequency, distance, ant_height, ue_height, expected):
         free_space(frequency, distance, ant_height, ue_height)
     ) == expected
 
+#prepare for testing Extended HATA model
 @pytest.mark.parametrize("frequency, distance, ant_height, ant_type, building_height, \
     street_width, settlement_type, type_of_sight, ue_height, above_roof, expected", [
     ####urban####
@@ -84,7 +88,7 @@ def test_free_space(frequency, distance, ant_height, ue_height, expected):
     (0.7,25000,20,'',20,20,'rural','los',1.5,1, 537),
     #test 50km
     # test distance 50 km, above roof, stochastic component = 388
-    (0.7,50000,20,'',20,20,'rural','los',1.5,1, 537),
+    (0.7,50000,20,'',20,20,'rural','los',1.5,1, 553),
 ])
 
 def test_extended_hata(frequency, distance, ant_height, ant_type, building_height,
@@ -94,7 +98,7 @@ def test_extended_hata(frequency, distance, ant_height, ant_type, building_heigh
         street_width, settlement_type, type_of_sight, ue_height, above_roof)
     ) == expected
 
-#error for providing >3ghz
+#Test errors for Extended HATA
 def test_extended_hata_model_value_errors():
 
     msg = 'Distance over 100km not compliant'
@@ -104,10 +108,10 @@ def test_extended_hata_model_value_errors():
 
     assert msg in str(ex1)
 
-    msg = 'Carrier frequency incorrect for Extended HATA'
+    msg = 'Carrier frequency incorrect for Extended Hata'
 
     with pytest.raises(ValueError) as ex1:
-        extended_hata(4,200,20,'macro',20,20,'urban','los',1.5,1)
+        extended_hata(7,200,20,'macro',20,20,'urban','los',1.5,1)
 
     assert msg in str(ex1)
 
@@ -129,51 +133,75 @@ def test_extended_hata_model_value_errors():
 
     assert msg in str(ex3)
 
+#Prepare for testing 3GPP E-UTRA
+@pytest.mark.parametrize("frequency, distance, ant_height, ant_type, building_height, \
+    street_width, settlement_type, type_of_sight, ue_height, expected", [
+    (3.5,500,10,'micro',20,20,'urban','los',1.5, (98+4)), #stochastic component is 4 (seed=42)
+    (3.5,1000,10,'micro',20,20,'urban','los',1.5, (108+4)), #stochastic  component is 4 (seed=42)
+    (3.5,6000,10,'micro',20,20,'urban','los',1.5, 250),
+    (3.5,500,10,'micro',20,20,'urban','nlos',1.5, (136+7)), #stochastic component is 7 (seed=42)
+    (3.5,500,25, 'macro',20,20,'urban','los',1.5, (98+7)), #stochastic component is 7 (seed=42)
+    (3.5,2000,25,'macro',20,20,'urban','los',1.5, (113+7)), #stochastic component is 7 (seed=42)
+    (3.5,6000,10,'macro',20,20,'urban','los',1.5, 250),
+    (3.5,1000,25,'macro',20,20,'urban','nlos',1.5, (142+20)), #stochastic component is 20 (seed=42)
+    (3.5,6000,10,'macro',20,20,'urban','nlos',1.5, 250),
+    (3.5,1000,35,'macro',10,20,'suburban','los',1.5, (108+7)), #stochastic component is 7 (seed=42)
+    (3.5,4000,35,'macro',10,20,'suburban','los',1.5, (127+7+20)), #stochastic component is 7 + 20 (seed=42)
+    (3.5,500,35,'macro',10,20,'suburban','nlos',1.5, (121+53)), #stochastic component is 53 (seed=42)
+    (3.5,6000,10,'macro',20,20,'suburban','los',1.5, 250),
+    (3.5,1000,35,'macro',10,20,'rural','los',1.5, (108+7)), #stochastic component is 7 (seed=42)
+    (3.5,4000,35,'macro',10,20,'rural','los',1.5, (127+7+20)), #stochastic component is 7 + 20 (seed=42)
+    (3.5,500,35,'macro',10,20,'rural','nlos',1.5, (121+53)),  #stochastic component is 53 (seed=42)
+    (3.5,6000,10,'macro',20,20,'rural','nlos',1.5, 250),
+])
 
+def test_eval_path_loss_calc(frequency, distance, ant_height, ant_type, building_height,
+    street_width, settlement_type, type_of_sight, ue_height, expected):
+    assert (
+        e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_height,
+        street_width, settlement_type, type_of_sight, ue_height)
+    ) == expected
 
+#Prepare for testing 3GPP compatability function
+@pytest.mark.parametrize("building_height, street_width, ant_height, ue_height, expected", [
+    (20, 20, 20, 1.5, True),
+    (5, 20, 8, 1.5, False), ])
 
-# @pytest.mark.parametrize("frequency, distance, ant_height, ant_type, building_height, street_width, settlement_type, type_of_sight, ue_height, expected", [
-#     (3.5,500,10,'micro',20,20,'urban','los',1.5, (98+4)), #stochastic component is 4 (seed=42)
-#     (3.5,1000,10,'micro',20,20,'urban','los',1.5, (108+4)), #stochastic  component is 4 (seed=42)
-#     (3.5,6000,10,'micro',20,20,'urban','los',1.5, 250),
-#     (3.5,500,10,'micro',20,20,'urban','nlos',1.5, (136+7)), #stochastic component is 7 (seed=42)
-#     (3.5,500,25, 'macro',20,20,'urban','los',1.5, (98+7)), #stochastic component is 7 (seed=42)
-#     (3.5,2000,25,'macro',20,20,'urban','los',1.5, (113+7)), #stochastic component is 7 (seed=42)
-#     (3.5,6000,10,'macro',20,20,'urban','los',1.5, 250),
-#     (3.5,1000,25,'macro',20,20,'urban','nlos',1.5, (142+20)), #stochastic component is 20 (seed=42)
-#     (3.5,6000,10,'macro',20,20,'urban','nlos',1.5, 250),
-#     (3.5,1000,35,'macro',10,20,'suburban','los',1.5, (108+7)), #stochastic component is 7 (seed=42)
-#     (3.5,4000,35,'macro',10,20,'suburban','los',1.5, (127+7+20)), #stochastic component is 7 + 20 (seed=42)
-#     (3.5,500,35,'macro',10,20,'suburban','nlos',1.5, (121+53)), #stochastic component is 53 (seed=42)
-#     (3.5,6000,10,'macro',20,20,'suburban','los',1.5, 250),
-#     (3.5,1000,35,'macro',10,20,'rural','los',1.5, (108+7)), #stochastic component is 7 (seed=42)
-#     (3.5,4000,35,'macro',10,20,'rural','los',1.5, (127+7+20)), #stochastic component is 7 + 20 (seed=42)
-#     (3.5,500,35,'macro',10,20,'rural','nlos',1.5, (121+53)),  #stochastic component is 53 (seed=42)
-#     (3.5,6000,10,'macro',20,20,'rural','nlos',1.5, 250),
-# ])
+def test_check_applicability(building_height, street_width, ant_height, ue_height, expected):
+    assert (
+        check_applicability(building_height, street_width, ant_height, ue_height)
+    ) == expected
 
-# def test_eval_path_loss_calc(frequency, distance, ant_height, ant_type, building_height, street_width, settlement_type, type_of_sight, ue_height, expected):
-#     assert (path_loss_calculator(frequency, distance, ant_height, ant_type, building_height, street_width, settlement_type, type_of_sight, ue_height)) == expected
+def test_path_loss_calculator_errors():
 
-# @pytest.mark.parametrize("building_height, street_width, ant_height, ue_height, expected", [
-#     (20, 20, 20, 1.5, True),
-#     (5, 20, 8, 1.5, False), ])
+    with pytest.raises(ValueError) as ex:
+        path_loss_calculator(0.01,500,10,'micro',20,20,'urban','los',1.5,1)
 
-# def test_eval_applicability(building_height, street_width, ant_height, ue_height, expected):
-#     assert (check_applicability(building_height, street_width, ant_height, ue_height)) == expected
+    msg = 'frequency of 0.01 is NOT within correct range'
 
-# def test_value_errors():
+    assert msg in str(ex)
 
-#     with pytest.raises(ValueError) as ex:
-#         path_loss_calculator(1,500,10,'micro',20,20,'urban','los',1.5)
+#Prepare for testing path_loss_calculator
+@pytest.mark.parametrize("frequency, distance, ant_height, ant_type, building_height, \
+    street_width, settlement_type, type_of_sight, ue_height, above_roof, expected", [
+    (1.8,500,20,'',20,20,'urban','nlos',1.5,0, 429),
+    (3.5,500,35,'macro',10,20,'suburban','nlos',1.5, 0, (121+53)),
+])
 
-#     msg = 'frequency of 1 is NOT within correct range of 2-6 GHz'
+def test_path_loss_calculator(frequency, distance, ant_height, ant_type, building_height,
+    street_width, settlement_type, type_of_sight, ue_height, above_roof, expected):
+    assert (
+        path_loss_calculator(frequency, distance, ant_height, ant_type, building_height,
+        street_width, settlement_type, type_of_sight, ue_height, above_roof)
+    ) == expected
 
-#     assert msg in str(ex)
+#Prepare for testing determine_path_loss
+@pytest.mark.parametrize("extended_hata_path_loss, free_space_path_loss, expected", [
+    (100, 200, 200),
+    (200, 100, 200),
+])
 
-#     with pytest.raises(ValueError) as ex:
-#         path_loss_calculator(3.5,500,35,'unknown',10,20,'unknown','unknown',1.5)
-
-#     msg = 'Did not recognise parameter combination'
-
-#     assert msg in str(ex)
+def test_determine_path_loss(extended_hata_path_loss, free_space_path_loss, expected):
+    assert (
+        determine_path_loss(extended_hata_path_loss, free_space_path_loss)
+    ) == expected
