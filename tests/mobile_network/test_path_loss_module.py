@@ -34,58 +34,57 @@ def test_free_space(frequency, distance, ant_height, ue_height, expected):
     ####urban####
     # test distance <0.04 km, stochastic component = 6
     (0.8,20,20,'macro',20,20,'urban','los',1.5,1, 100),
-    # test distance <0.04 km, above roof, stochastic component = 388 
+    # test distance <0.04 km, above roof, stochastic component = 388
     (0.1,200,20,'macro',20,20,'urban','los',1.5,1, 505),
-    # test distance >0.04 km, below roof, stochastic component = 4648 
-    (0.1,200,20,'',20,20,'urban','nlos',1.5,0, 4765), 
-    # test distance >0.04 km, above roof, stochastic component = 338 
-    (0.8,200,20,'',20,20,'urban','los',1.5,1, 557),  
-    # test distance >0.04 km, below roof, stochastic component = 4648 
-    (0.8,200,20,'',20,20,'urban','nlos',1.5,0, 4817), 
-    # test distance >0.04 km, above roof, stochastic component = 338  
-    (1.8,200,20,'',20,20,'urban','los',1.5,1, 613), 
-    # test distance >0.04 km, below roof, stochastic component = 4648  
-    (1.8,200,20,'',20,20,'urban','nlos',1.5,0, 4873), 
-    # test distance >0.04 km, above roof, stochastic component = 338  
-    (2.1,200,20,'',20,20,'urban','los',1.5,1, 617), 
     # test distance >0.04 km, below roof, stochastic component = 4648
-    # spreadsheet gives 4878 due to rounding.   
+    (0.1,200,20,'',20,20,'urban','nlos',1.5,0, 4765),
+    # test distance >0.04 km, above roof, stochastic component = 338
+    (0.8,200,20,'',20,20,'urban','los',1.5,1, 557),
+    # test distance >0.04 km, below roof, stochastic component = 4648
+    (0.8,200,20,'',20,20,'urban','nlos',1.5,0, 4817),
+    # test distance >0.04 km, above roof, stochastic component = 338
+    (1.8,200,20,'',20,20,'urban','los',1.5,1, 613),
+    # test distance >0.04 km, below roof, stochastic component = 4648
+    (1.8,200,20,'',20,20,'urban','nlos',1.5,0, 4873),
+    # test distance >0.04 km, above roof, stochastic component = 338
+    (2.1,200,20,'',20,20,'urban','los',1.5,1, 617),
+    # test distance >0.04 km, below roof, stochastic component = 4648
+    # spreadsheet gives 4878 due to rounding.
     (2.1,200,20,'',20,20,'urban','nlos',1.5,0, 4877),
+    ####suburban####
+    # test distance >0.04 km, above roof, stochastic component = 338
+    (0.8,200,20,'',20,20,'suburban','los',1.5,1, 529),
+    # test distance >0.04 km, below roof, stochastic component = 4648
+    (0.8,200,20,'',20,20,'suburban','nlos',1.5,0, 4789),
+    # test distance 0.5 km, above roof, stochastic component = 112
+    (0.8,500,20,'',20,20,'suburban','los',1.5,1, 274),
+    # test distance 0.5 km, above roof, stochastic component = 184
+    (0.8,500,20,'',20,20,'suburban','los',1.5,0, 346),
+    ####rural####
+    # test distance >0.04 km, above roof, stochastic component = 338
+    (1.8,200,20,'',20,20,'rural','los',1.5,1, 441),
+    #####test 500m####
+    # test distance 0.05 km, above roof, stochastic component = 112
+    (1.8,500,20,'',20,20,'urban','los',1.5,1, 357),
+    # test distance 0.05 km, below roof, stochastic component =
+    (1.8,500,20,'',20,20,'urban','nlos',1.5,0, 429),
     #change distances
-    #test 90m
-    # # test distance 0.09 km, above roof, stochastic component =   
-    # (1.8,90,20,'',20,20,'urban','los',1.5,1, 0 ), 
-    # # test distance 0.09 km, below roof, stochastic component =   
-    # (1.8,90,20,'',20,20,'urban','nlos',1.5,0, 4873), 
-    #test 500m    
-    # test distance 0.05 km, above roof, stochastic component =   
-    (1.8,500,20,'',20,20,'urban','los',1.5,1, 0 ), 
-    # # test distance 0.05 km, below roof, stochastic component =   
-    # (1.8,90,20,'',20,20,'urban','nlos',1.5,0, 4873), 
-    
-    
-    
-    # ####suburban####
-    # # test distance >0.04 km, above roof, stochastic component = 338 
-    # (0.8,200,20,'',20,20,'suburban','los',1.5,1, 529),  
-    # # test distance >0.04 km, below roof, stochastic component = 4648 
-    # (0.8,200,20,'',20,20,'suburban','nlos',1.5,0, 4789), 
-    # # test distance 0.5 km, above roof, stochastic component = 112  
-    # (0.8,500,20,'',20,20,'suburban','los',1.5,1, 274), 
-    # # test distance 0.5 km, above roof, stochastic component = 184  
-    # (0.8,500,20,'',20,20,'suburban','los',1.5,0, 346), 
-    # ####rural####
-    # # test distance >0.04 km, above roof, stochastic component = 338 
-    # (1.8,200,20,'',20,20,'rural','los',1.5,1, 441), 
-
-
-
-
-    # (1,150,15,'macro',20,20,'urban','los',1.5,1, 6), # test distance >0.1 km, above roof
-    # (1,150,15,'macro',20,20,'urban','los',1.5,1, 6), # test distance >0.1 km, below roof
-    # (1,400,15,'macro',20,20,'urban','los',1.5,1, 6), # test distance >0.2 km, above roof
-    # (1,400,15,'macro',20,20,'urban','los',1.5,1, 6), # test distance >0.2 km, below roof
-    # (1,700,15,'macro',20,20,'urban','los',1.5,1, 6), # test distance >0.6 km
+    #test 90m (0.04< d <0.1)
+    # test distance 0.09 km, above roof, stochastic component = 47
+    (1.8,90,20,'',20,20,'urban','los',1.5,1, 188),
+    # test distance 0.09 km, below roof, stochastic component = 162
+    (1.8,90,20,'',20,20,'urban','nlos',1.5,0, 297),
+    #test 5km
+    # test distance 5 km, above roof, stochastic component = 388
+    (1.8,5000,20,'',20,20,'rural','los',1.5,1, 513),
+    #test 25km
+    # test distance 25 km, above roof, stochastic component = 388
+    (0.7,25000,20,'',20,20,'rural','los',1.5,1, 537),
+    # test distance 25 km, above roof, stochastic component = 388
+    (0.7,25000,20,'',20,20,'rural','los',1.5,1, 537),
+    #test 50km
+    # test distance 50 km, above roof, stochastic component = 388
+    (0.7,50000,20,'',20,20,'rural','los',1.5,1, 537),
 ])
 
 def test_extended_hata(frequency, distance, ant_height, ant_type, building_height,
