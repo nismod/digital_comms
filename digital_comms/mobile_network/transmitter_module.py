@@ -38,11 +38,10 @@ def read_postcode_sector(postcode_sector):
 
 def get_transmitters(postcode_sector):
 
-    potential_transmitters = []
+    transmitters = []
 
     geom = shape(postcode_sector['geometry'])
     geom_length = geom.length
-    print('buffer distance is {} km'.format(round((geom_length/10)/1000)))
     geom_buffer = geom.buffer(geom_length/10)
     geom_box = geom_buffer.bounds
 
@@ -58,7 +57,7 @@ def get_transmitters(postcode_sector):
                     geom_box[2] >= float(line[0]) and
                     geom_box[3] >= float(line[1])
                     ):
-                    potential_transmitters.append({
+                    transmitters.append({
                         'type': "Feature",
                         'geometry': {
                             "type": "Point",
@@ -77,21 +76,7 @@ def get_transmitters(postcode_sector):
                         }
                     })
 
-    ##get only transmitters inside the desired postcode sector
-    #transmitters = []
-    # # Initialze Rtree
-    # idx = index.Index()
-    # [idx.insert(0, shape(transmitter['geometry']).bounds, transmitter) \
-    #     for transmitter in potential_transmitters]
-
-    # # Join the two
-    # for n in idx.intersection((shape(postcode_sector['geometry']).bounds), objects=True):
-    #     postcode_sector_shape = shape(postcode_sector['geometry'])
-    #     transmitter_shape = shape(n.object['geometry'])
-    #     if postcode_sector_shape.contains(transmitter_shape):
-    #         transmitters.append(n.object)
-
-    return potential_transmitters
+    return transmitters
 
 def generate_receivers(postcode_sector, quantity):
 
