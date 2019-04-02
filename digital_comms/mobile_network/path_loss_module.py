@@ -188,7 +188,14 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
 
     ###PART 1####
     #Determine initial path loss according to distance, frequency and environment.
-    if distance > 0.1:
+    if distance < 0.04:
+
+        path_loss = (
+            32.4 + (20*np.log(frequency)) + (10*np.log((distance**2) +
+            ((hb - hm)**2) / (10**6)))
+        )
+
+    elif distance >= 0.1:
 
         if 30 < frequency <= 150:
 
@@ -251,13 +258,6 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
 
             pass
 
-    elif distance < 0.04:
-
-        path_loss = (
-            32.4 + (20*np.log(frequency)) + (10*np.log((distance**2) +
-            ((hb - hm)**2) / (10**6)))
-        )
-
     elif 0.04 <= distance < 0.1:
 
         #distance pre-set at 0.1
@@ -279,16 +279,16 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
         ))
 
     else:
-
+        print(distance)
         raise ValueError('Distance over 100km not compliant')
 
     ###PART 2####
     #determine variation in path loss using stochastic component
-    if distance < 0.04:
+    if distance <= 0.04:
 
         path_loss = path_loss + generate_log_normal_dist_value(0,3.5,1)
 
-    elif 0.04 < distance < 0.1:
+    elif 0.04 < distance <= 0.1:
 
         if above_roof == 1:
 
