@@ -2,19 +2,23 @@ import os, sys, configparser
 import csv
 from rtree import index
 import fiona
-from shapely.geometry import shape, Point, Polygon
+from shapely.geometry import shape, Point, Polygon, MultiPoint
 import numpy as np
 from pyproj import Proj, transform, Geod
 from geographiclib.geodesic import Geodesic
 from collections import OrderedDict
 import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.cluster import DBSCAN
 
 from digital_comms.mobile_network.path_loss_module import path_loss_calculator
 
 # from built_env_module import find_line_of_sight
 
 CONFIG = configparser.ConfigParser()
-CONFIG.read(os.path.join(os.path.dirname(__file__), '..',  '..', 'scripts','script_config.ini'))
+CONFIG.read(
+    os.path.join(os.path.dirname(__file__), '..',  '..', 'scripts','script_config.ini')
+)
 BASE_PATH = CONFIG['file_locations']['base_path']
 
 #data locations
@@ -23,9 +27,14 @@ DATA_RESULTS = os.path.join(BASE_PATH, '..' ,'results', 'system_simulator')
 
 def read_postcode_sector(postcode_sector):
     postcode_area = ''.join([i for i in postcode_sector[:2] if not i.isdigit()])
-    with fiona.open(os.path.join(DATA_RAW, 'd_shapes', 'postcode_sectors', postcode_area + '.shp'), 'r') as source:
+    with fiona.open(
+        os.path.join(DATA_RAW, 'd_shapes', 'postcode_sectors', postcode_area + '.shp'), 'r') \
+        as source:
 
-        return [sector for sector in source if sector['properties']['postcode'].replace(" ", "") == postcode_sector][0]
+        return [
+            sector for sector in source \
+            if sector['properties']['postcode'].replace(" ", "") == postcode_sector \
+        ][0]
 
 def get_transmitters(postcode_sector):
 
@@ -34,11 +43,18 @@ def get_transmitters(postcode_sector):
     geom = shape(postcode_sector['geometry'])
     geom_box = geom.bounds
 
-    with open(os.path.join(DATA_RAW, 'b_mobile_model', 'sitefinder', 'sitefinder.csv'), 'r') as system_file:
+    with open(
+        os.path.join(DATA_RAW, 'b_mobile_model', 'sitefinder', 'sitefinder.csv'), 'r'
+        ) as system_file:
             reader = csv.reader(system_file)
             next(reader)
             for line in reader:
-                if (geom_box[0] <= float(line[0]) and geom_box[1] <= float(line[1]) and geom_box[2] >= float(line[0]) and geom_box[3] >= float(line[1])):
+                if (
+                    geom_box[0] <= float(line[0]) and
+                    geom_box[1] <= float(line[1]) and
+                    geom_box[2] >= float(line[0]) and
+                    geom_box[3] >= float(line[1])
+                    ):
                     potential_transmitters.append({
                         'type': "Feature",
                         'geometry': {
@@ -62,7 +78,8 @@ def get_transmitters(postcode_sector):
 
     # Initialze Rtree
     idx = index.Index()
-    [idx.insert(0, shape(transmitter['geometry']).bounds, transmitter) for transmitter in potential_transmitters]
+    [idx.insert(0, shape(transmitter['geometry']).bounds, transmitter) \
+        for transmitter in potential_transmitters]
 
     # Join the two
     for n in idx.intersection((shape(postcode_sector['geometry']).bounds), objects=True):
@@ -121,6 +138,46 @@ def generate_receivers(postcode_sector, quantity):
 
     return receivers
 
+def find_and_deploy_new_basestation(existing_transmitters, iteration_number):
+
+    transmitters = np.vstack([[
+        transmitter.coordinates \
+            for transmitter in existing_transmitters.values()
+            ]])
+
+    db = DBSCAN(eps=10000, min_samples=2).fit(transmitters)
+    core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
+    core_samples_mask[db.core_sample_indices_] = True
+    labels = db.labels_
+    n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+    clusters = [transmitters[labels == i] for i in range(n_clusters_)]
+
+    final_transmitters = []
+
+    for idx, cluster in enumerate(clusters):
+        transmitter_geom = MultiPoint(cluster)
+        transmitter_rep_point = transmitter_geom.representative_point()
+        final_transmitters.append({
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [transmitter_rep_point.x, transmitter_rep_point.y]
+            },
+            'properties': {
+                    "operator": 'unknown',
+                    "sitengr": "{" + 'new' + "}{GEN" + str(iteration_number) + '}',
+                    "ant_height": 20,
+                    "tech": 'LTE',
+                    "freq": 700,
+                    "type": 17,
+                    "power": 30,
+                    "gain": 18,
+                    "losses": 2,
+                }
+            })
+
+    return final_transmitters
+
 class NetworkManager(object):
 
     def __init__(self, area, transmitters, receivers):
@@ -148,29 +205,53 @@ class NetworkManager(object):
             area_containing_receivers = self.area[area_id]
             area_containing_receivers.add_receiver(receiver)
 
-    def calc_link_budget(self, frequency, bandwidth, iterations):
+    def build_new_assets(self, list_of_new_assets, area_id):
+
+        for transmitter in list_of_new_assets:
+            transmitter_id = transmitter['properties']["sitengr"]
+            transmitter = Transmitter(transmitter)
+            print(transmitter_id)
+            self.transmitters[transmitter_id] = transmitter
+
+            for area_containing_transmitters in self.area.values():
+                if area_containing_transmitters.id == area_id:
+                    area_containing_transmitters.add_transmitter(transmitter)
+
+    def estimate_link_budget(self, frequency, bandwidth):
         """
         Takes propagation parameters and calculates capacity.
 
         """
-
         results = []
 
         for receiver in self.receivers.values():
 
-            closest_transmitters = self.find_closest_available_transmitters(receiver)
+            closest_transmitters = self.find_closest_available_transmitters(
+                receiver
+            )
 
-            path_loss = self.calculate_path_loss(closest_transmitters[0], receiver, frequency)
+            path_loss = self.calculate_path_loss(
+                closest_transmitters[0], receiver, frequency
+            )
 
-            received_power = self.calc_received_power(closest_transmitters[0], receiver, path_loss)
+            received_power = self.calc_received_power(
+                closest_transmitters[0], receiver, path_loss
+            )
 
-            interference = self.calculate_interference(closest_transmitters, receiver, frequency)
+            interference = self.calculate_interference(
+                closest_transmitters, receiver, frequency)
 
-            noise = self.calculate_noise(bandwidth)
+            noise = self.calculate_noise(
+                bandwidth
+            )
 
-            sinr = self.calculate_sinr(received_power, interference, noise)
+            sinr = self.calculate_sinr(
+                received_power, interference, noise
+            )
 
-            estimated_capacity = self.estimate_capacity(bandwidth, sinr)
+            estimated_capacity = self.estimate_capacity(
+                bandwidth, sinr
+            )
 
             data = {'sinr': sinr, 'estimated_capacity': estimated_capacity}
 
@@ -201,16 +282,24 @@ class NetworkManager(object):
         x2_receiver = receiver.coordinates[0]
         y2_receiver = receiver.coordinates[1]
 
-        x1_transmitter, y1_transmitter = transform_coordinates(Proj(init='epsg:27700'), Proj(init='epsg:4326'),
-                                                                closest_transmitters.coordinates[0],
-                                                                closest_transmitters.coordinates[1])
+        x1_transmitter, y1_transmitter = transform_coordinates(
+            Proj(init='epsg:27700'), Proj(init='epsg:4326'),
+            closest_transmitters.coordinates[0],
+            closest_transmitters.coordinates[1]
+            )
 
-        x2_receiver, y2_receiver = transform_coordinates(Proj(init='epsg:27700'), Proj(init='epsg:4326'),
-                                                                receiver.coordinates[0],
-                                                                receiver.coordinates[1])
+        x2_receiver, y2_receiver = transform_coordinates(
+            Proj(init='epsg:27700'), Proj(init='epsg:4326'),
+            receiver.coordinates[0],
+            receiver.coordinates[1]
+            )
 
         Geo = Geodesic.WGS84
-        i_strt_distance = Geo.Inverse(x1_transmitter, y1_transmitter, x2_receiver, y2_receiver)
+
+        i_strt_distance = Geo.Inverse(
+            x1_transmitter, y1_transmitter, x2_receiver, y2_receiver
+
+            )
         interference_strt_distance = int(round(i_strt_distance['s12'], 0))
 
         ant_height = 20
@@ -221,6 +310,7 @@ class NetworkManager(object):
         type_of_sight = randomly_select_los()
         building_height = 20
         street_width = 20
+        above_roof = 0
 
         path_loss = path_loss_calculator(
             frequency,
@@ -231,7 +321,9 @@ class NetworkManager(object):
             street_width,
             settlement_type,
             type_of_sight,
-            receiver.ue_height)
+            receiver.ue_height,
+            above_roof
+            )
 
         return path_loss
 
@@ -240,8 +332,15 @@ class NetworkManager(object):
         Calculate received power based on transmitter and receiver characteristcs, and path loss.
         """
 
-        eirp = float(transmitter.power) + float(transmitter.gain) - float(transmitter.losses)
-        received_power = eirp - path_loss - receiver.misc_losses + receiver.gain - receiver.losses
+        eirp = float(transmitter.power) + \
+            float(transmitter.gain) - \
+            float(transmitter.losses)
+
+        received_power = eirp - \
+            path_loss - \
+            receiver.misc_losses + \
+            receiver.gain - \
+            receiver.losses \
 
         return received_power
 
@@ -270,13 +369,22 @@ class NetworkManager(object):
             x2_interference = interference_transmitter.coordinates[0]
             y2_interference = interference_transmitter.coordinates[1]
 
-            x2_interference, y2_interference = transform_coordinates(Proj(init='epsg:27700'),
-                                                                    Proj(init='epsg:4326'),
-                                                                    interference_transmitter.coordinates[0],
-                                                                    interference_transmitter.coordinates[1])
+            x2_interference, y2_interference = transform_coordinates(
+                Proj(init='epsg:27700'),
+                Proj(init='epsg:4326'),
+                interference_transmitter.coordinates[0],
+                interference_transmitter.coordinates[1]
+                )
 
             Geo = Geodesic.WGS84
-            i_strt_distance = Geo.Inverse(x2_interference, y2_interference, x1_receiver, y1_receiver)
+
+            i_strt_distance = Geo.Inverse(
+                x2_interference,
+                y2_interference,
+                x1_receiver,
+                y1_receiver
+                )
+
             interference_strt_distance = int(round(i_strt_distance['s12'], 0))
 
             ant_height = 20
@@ -285,6 +393,7 @@ class NetworkManager(object):
             street_width = 20
             settlement_type = 'urban'
             type_of_sight = randomly_select_los()
+            above_roof = 0
 
             path_loss = path_loss_calculator(
                 frequency,
@@ -295,10 +404,16 @@ class NetworkManager(object):
                 street_width,
                 settlement_type,
                 type_of_sight,
-                receiver.ue_height)
+                receiver.ue_height,
+                above_roof
+                )
 
             #calc interference from other cells
-            received_interference = self.calc_received_power(interference_transmitter, receiver, path_loss)
+            received_interference = self.calc_received_power(
+                interference_transmitter,
+                receiver,
+                path_loss
+                )
 
             #add cell interference to list
             interference.append(received_interference)
@@ -315,7 +430,7 @@ class NetworkManager(object):
         T = 15
         B = bandwidth
 
-        fake_noise = k*T*B
+        #fake_noise = k*T*B
 
         noise = 5
 
@@ -353,11 +468,17 @@ class NetworkManager(object):
         if not self.transmitters:
             return 0
 
-        summed_transmitters = len(
-            self.transmitters
-        )
+        postcode_sector_area = ([round(a.area) for a in self.area.values()])[0]
 
-        return summed_transmitters
+        transmitter_density = float(round(
+            len(self.transmitters) / (postcode_sector_area/1000), 5
+        ))
+
+        # summed_transmitters = len(
+        #     self.transmitters / postcode_sector_area
+        # )
+
+        return transmitter_density
 
     def receiver_density(self):
         """Calculate receiver density per square kilometer (km^2)
@@ -441,9 +562,20 @@ def transform_coordinates(old_proj, new_proj, x, y):
 
     return new_x, new_y
 
+def generate_lut_results(results, percentile):
+    """Get the threshold capacity based on a given percentile.
+    """
+    threshold_capacity_value = []
+
+    for capacity_value in results:
+        threshold_capacity_value.append(capacity_value['estimated_capacity'])
+
+    return np.percentile(threshold_capacity_value, percentile)
+
+
 def write_results(results, frequency, bandwidth, t_density, r_density, postcode_sector_name):
 
-    suffix = suffix = 'freq_{}_bandwidth_{}_density_{}'.format(frequency, bandwidth, t_density)
+    suffix = 'freq_{}_bandwidth_{}_density_{}'.format(frequency, bandwidth, t_density)
 
     directory = os.path.join(DATA_RESULTS, postcode_sector_name)
     if not os.path.exists(directory):
@@ -465,16 +597,58 @@ def write_results(results, frequency, bandwidth, t_density, r_density, postcode_
     for result in results:
         # Output metrics
         results_writer.writerow(
-            (frequency, bandwidth, t_density, r_density, result['sinr'], result['estimated_capacity']))
+            (frequency,
+            bandwidth,
+            t_density,
+            r_density,
+            result['sinr'],
+            result['estimated_capacity'])
+            )
 
     results_file.close()
+
+def write_lookup_table(threshold_value, frequency, bandwidth, t_density, postcode_sector_name):
+
+    suffix = 'lookup_table_{}'.format(postcode_sector_name)
+
+    directory = os.path.join(DATA_RESULTS, postcode_sector_name)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    filename = '{}.csv'.format(suffix)
+    directory = os.path.join(directory, filename)
+
+    if not os.path.exists(directory):
+        lut_file = open(directory, 'w', newline='')
+        lut_writer = csv.writer(lut_file)
+        lut_writer.writerow(
+            ('environment','frequency','bandwidth','t_density','throughput'))
+    else:
+        lut_file = open(directory, 'a', newline='')
+        lut_writer = csv.writer(lut_file)
+    environment = 'urban'
+    # output and report results for this timestep
+
+    lut_writer.writerow(
+        (environment,
+        frequency,
+        bandwidth,
+        t_density,
+        threshold_value)
+        )
+
+    lut_file.close()
 
 def write_shapefile(data, postcode_sector_name, filename):
 
     # Translate props to Fiona sink schema
     prop_schema = []
     for name, value in data[0]['properties'].items():
-        fiona_prop_type = next((fiona_type for fiona_type, python_type in fiona.FIELD_TYPES_MAP.items() if python_type == type(value)), None)
+        fiona_prop_type = next((
+            fiona_type for fiona_type, python_type in fiona.FIELD_TYPES_MAP.items() if \
+            python_type == type(value)), None
+            )
+
         prop_schema.append((name, fiona_prop_type))
 
     sink_driver = 'ESRI Shapefile'
@@ -491,7 +665,9 @@ def write_shapefile(data, postcode_sector_name, filename):
 
     print(os.path.join(directory, filename))
     # Write all elements to output file
-    with fiona.open(os.path.join(directory, filename), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
+    with fiona.open(
+        os.path.join(directory, filename), 'w',
+        driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         [sink.write(feature) for feature in data]
 
 def format_data(existing_data, new_data, frequency, bandwidth, postcode_sector_name):
@@ -537,46 +713,46 @@ def plot_data(data, frequency, bandwidth, postcode_sector_name):
 
 def joint_plot(data, postcode_sector_name):
 
-    sinr_2_5 = []
-    sinr_2_10 = []
-    sinr_2_20 = []
-    sinr_3p5_5 = []
-    sinr_3p5_10 = []
-    sinr_3p5_20 = []
-    capacity_2_5 = []
-    capacity_2_10 = []
-    capacity_2_20 = []
-    capacity_3p5_5 = []
-    capacity_3p5_10 = []
-    capacity_3p5_20 = []
+    sinr_700_10 = []
+    sinr_800_10 = []
+    sinr_900_10 = []
+    sinr_1800_10 = []
+    sinr_2100_10 = []
+    sinr_2600_10 = []
+    capacity_700_10 = []
+    capacity_800_10 = []
+    capacity_900_10 = []
+    capacity_1800_10 = []
+    capacity_2100_10 = []
+    capacity_2600_10 = []
 
     for datum in data:
-        if datum['frequency'] == 2 and datum['bandwidth'] == 5:
-            sinr_2_5.append(datum['sinr'])
-            capacity_2_5.append(datum['capacity'])
-        if datum['frequency'] == 2 and datum['bandwidth'] == 10:
-            sinr_2_10.append(datum['sinr'])
-            capacity_2_10.append(datum['capacity'])
-        if datum['frequency'] == 2 and datum['bandwidth'] == 20:
-            sinr_2_20.append(datum['sinr'])
-            capacity_2_20.append(datum['capacity'])
-        if datum['frequency'] == 3.5 and datum['bandwidth'] == 5:
-            sinr_3p5_5.append(datum['sinr'])
-            capacity_3p5_5.append(datum['capacity'])
-        if datum['frequency'] == 3.5 and datum['bandwidth'] == 10:
-            sinr_3p5_10.append(datum['sinr'])
-            capacity_3p5_10.append(datum['capacity'])
-        if datum['frequency'] == 3.5 and datum['bandwidth'] == 20:
-            sinr_3p5_20.append(datum['sinr'])
-            capacity_3p5_20.append(datum['capacity'])
+        if datum['frequency'] == 0.7 and datum['bandwidth'] == 10:
+            sinr_700_10.append(datum['sinr'])
+            capacity_700_10.append(datum['capacity'])
+        if datum['frequency'] == 0.8 and datum['bandwidth'] == 10:
+            sinr_800_10.append(datum['sinr'])
+            capacity_800_10.append(datum['capacity'])
+        if datum['frequency'] == 0.9 and datum['bandwidth'] == 10:
+            sinr_900_10.append(datum['sinr'])
+            capacity_900_10.append(datum['capacity'])
+        if datum['frequency'] == 1.8 and datum['bandwidth'] == 10:
+            sinr_1800_10.append(datum['sinr'])
+            capacity_1800_10.append(datum['capacity'])
+        if datum['frequency'] == 2.1 and datum['bandwidth'] == 10:
+            sinr_2100_10.append(datum['sinr'])
+            capacity_2100_10.append(datum['capacity'])
+        if datum['frequency'] == 2.6 and datum['bandwidth'] == 10:
+            sinr_2600_10.append(datum['sinr'])
+            capacity_2600_10.append(datum['capacity'])
 
-        #setup and plot
-    plt.scatter(sinr_2_5, capacity_2_5, label='5@2GHz ')
-    plt.scatter(sinr_2_10, capacity_2_10, label='10@2GHz')
-    plt.scatter(sinr_2_20, capacity_2_20, label='20@2GHz')
-    plt.scatter(sinr_3p5_5, capacity_3p5_5, label='5@3.5GHz')
-    plt.scatter(sinr_3p5_10, capacity_3p5_10, label='10@3.5GHz')
-    plt.scatter(sinr_3p5_20, capacity_3p5_20, label='20@3.5GHz')
+    #setup and plot
+    plt.scatter(sinr_700_10, capacity_700_10, label='10@700GHz ')
+    plt.scatter(sinr_800_10, capacity_800_10, label='10@800GHz')
+    plt.scatter(sinr_900_10, capacity_900_10, label='10@900GHz')
+    plt.scatter(sinr_1800_10, capacity_1800_10, label='10@1800GHz')
+    plt.scatter(sinr_2100_10, capacity_2100_10, label='10@2100GHz')
+    plt.scatter(sinr_2600_10, capacity_2600_10, label='10@2600GHz')
 
     plt.xlabel("SINR")
     plt.ylabel("Capacity (Mbps)")
@@ -588,6 +764,101 @@ def joint_plot(data, postcode_sector_name):
         os.makedirs(directory)
 
     plt.savefig(os.path.join(directory, 'panel_plot.png'))
+
+#####################################
+# UK Spectrum Portfolio
+#####################################
+
+SPECTRUM_PORTFOLIO_DL = {
+    'O2 Telefonica': {
+        'FDD DL': {
+            '800': 10,
+            '900': 17.4,
+            '1800': 5.8,
+            '2100': 10,
+            },
+        'FDD UL': {
+            '800': 10,
+            '900': 17.4,
+            '1800': 5.8,
+            '2100': 10,
+            },
+        'TDD': {
+            '1900': 5,
+            '2300': 40,
+            '3500': 40,
+            },
+        },
+    'Vodafone': {
+        'FDD DL': {
+            '800': 10,
+            '900': 17.4,
+            '1500': 20,
+            '1800': 5.8,
+            '2100': 14.8,
+            '2600': 20,
+            },
+        'FDD UL': {
+            '800': 10,
+            '900': 17.4,
+            '1800': 5.8,
+            '2100': 14.8,
+            '2600': 20,
+            },
+        'TDD': {
+            '2600': 25,
+            '3500': 50,
+            },
+        },
+    'EE (BT)': {
+        'FDD DL': {
+            '800': 5,
+            '1800': 45,
+            '2100': 20,
+            '2600': 35,
+            },
+        'FDD UL': {
+            '800': 5,
+            '1800': 45,
+            '2100': 20,
+            '2600': 35,
+            },
+        'TDD': {
+            '1900': 10,
+            '3500': 40,
+            },
+        },
+    '3 UK (H3G)': {
+        'FDD DL': {
+            '800': 5,
+            '1500': 20,
+            '1800': 15,
+            '2100': 14.6,
+            },
+        'FDD UL': {
+            '800': 5,
+            '1800': 15,
+            '2100': 14.6,
+            },
+        'TDD': {
+            '1900': 5.4,
+            '3500': 40,
+            '3700': 80,
+            },
+        },
+    'BT': {
+        'FDD DL': {
+            '2600': 15,
+            },
+        'FDD UL': {
+            '2600': 15,
+            },
+        'TDD': {
+            '2600': 25,
+            },
+        },
+}
+
 
 #####################################
 # APPLY METHODS
@@ -611,42 +882,69 @@ if __name__ == "__main__":
 
     #get list of transmitters
     TRANSMITTERS = get_transmitters(geojson_postcode_sector)
+    #{'operator': 'O2', 'sitengr': 'TL4491058710', 'ant_height': '5', 'tech': 'GSM',
+    # 'freq': '900', 'type': '3.2', 'power': 30, 'gain': 18, 'losses': 2}
 
     #generate receivers
     RECEIVERS = generate_receivers(geojson_postcode_sector, 1000)
 
     joint_plot_data = []
 
-    for frequency, bandwidth in [
-        (2, 5),
-        (2, 10),
-        (2, 20),
+    idx = 0
 
-        (3.5, 5),
-        (3.5, 10),
-        (3.5, 20),
+    for frequency, bandwidth, t_density, percentile in [
+        (0.7, 10, 0, 95),
+        (0.8, 10, 0, 95),
+        # (0.9, 10),
+
+        # (1.8, 10),
+        # (2.1, 10),
+        # (2.6, 10),
         ]:
-        print("Running {} GHz with {} MHz bandwidth".format(frequency, bandwidth))
 
-        #load system model with data
-        MANAGER = NetworkManager(geojson_postcode_sector, TRANSMITTERS, RECEIVERS)
+        while t_density < 7:
 
-        results = MANAGER.calc_link_budget(frequency, bandwidth, 10000)
-        print('TODO: iterations is not currently doing anything')
+            print("Running {} GHz with {} MHz bandwidth".format(frequency, bandwidth))
+            if idx == 0:
 
-        #calculate transmitter density
-        t_density = MANAGER.transmitter_density()
+                #load system model with data
+                MANAGER = NetworkManager(geojson_postcode_sector, TRANSMITTERS, RECEIVERS)
 
-        #calculate transmitter density
-        r_density = MANAGER.receiver_density()
+                #calculate transmitter density
+                t_density = MANAGER.transmitter_density()
 
-        write_results(results, frequency, bandwidth, t_density, r_density, postcode_sector_name)
+            else:
+                NEW_TRANSMITTERS = find_and_deploy_new_basestation(
+                    MANAGER.transmitters, idx
+                    )
+                MANAGER.build_new_assets(NEW_TRANSMITTERS, geojson_postcode_sector)
 
-        plot_data(results, frequency, bandwidth, postcode_sector_name)
+            results = MANAGER.estimate_link_budget(frequency, bandwidth)
 
-        format_data(joint_plot_data, results, frequency, bandwidth, postcode_sector_name)
+            #calculate transmitter density
+            t_density = MANAGER.transmitter_density()
+            print('t_density is {}'.format(t_density))
 
-    joint_plot(joint_plot_data, postcode_sector_name)
+            #calculate transmitter density
+            r_density = MANAGER.receiver_density()
+
+            # write_results(results, frequency, bandwidth, t_density,
+            #     r_density, postcode_sector_name
+            #     )
+
+            #find percentile values
+            lookup_table_results = generate_lut_results(results, percentile)
+
+            #env, frequency, bandwidth, site_density, capacity
+            write_lookup_table(
+                lookup_table_results, frequency, bandwidth, t_density, postcode_sector_name
+                )
+
+            # format_data(joint_plot_data, results, frequency, bandwidth, postcode_sector_name)
+
+            idx += 1
+
+    # joint_plot(joint_plot_data, postcode_sector_name)
 
     print('write cells')
     write_shapefile(TRANSMITTERS,  postcode_sector_name, 'transmitters.shp')
@@ -654,7 +952,7 @@ if __name__ == "__main__":
     print('write receivers')
     write_shapefile(RECEIVERS,  postcode_sector_name, 'receivers.shp')
 
-    print('write cells')
+    print('write boundary')
     geojson_postcode_sector_list = []
     geojson_postcode_sector_list.append(geojson_postcode_sector)
     write_shapefile(geojson_postcode_sector_list,  postcode_sector_name, '_boundary.shp')
