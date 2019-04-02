@@ -41,7 +41,10 @@ def get_transmitters(postcode_sector):
     potential_transmitters = []
 
     geom = shape(postcode_sector['geometry'])
-    geom_box = geom.bounds
+    geom_length = geom.length
+    print('buffer distance is {} km'.format(round((geom_length/10)/1000)))
+    geom_buffer = geom.buffer(geom_length/10)
+    geom_box = geom_buffer.bounds
 
     with open(
         os.path.join(DATA_RAW, 'b_mobile_model', 'sitefinder', 'sitefinder.csv'), 'r'
@@ -74,21 +77,21 @@ def get_transmitters(postcode_sector):
                         }
                     })
 
-    transmitters = []
+    ##get only transmitters inside the desired postcode sector
+    #transmitters = []
+    # # Initialze Rtree
+    # idx = index.Index()
+    # [idx.insert(0, shape(transmitter['geometry']).bounds, transmitter) \
+    #     for transmitter in potential_transmitters]
 
-    # Initialze Rtree
-    idx = index.Index()
-    [idx.insert(0, shape(transmitter['geometry']).bounds, transmitter) \
-        for transmitter in potential_transmitters]
+    # # Join the two
+    # for n in idx.intersection((shape(postcode_sector['geometry']).bounds), objects=True):
+    #     postcode_sector_shape = shape(postcode_sector['geometry'])
+    #     transmitter_shape = shape(n.object['geometry'])
+    #     if postcode_sector_shape.contains(transmitter_shape):
+    #         transmitters.append(n.object)
 
-    # Join the two
-    for n in idx.intersection((shape(postcode_sector['geometry']).bounds), objects=True):
-        postcode_sector_shape = shape(postcode_sector['geometry'])
-        transmitter_shape = shape(n.object['geometry'])
-        if postcode_sector_shape.contains(transmitter_shape):
-            transmitters.append(n.object)
-
-    return transmitters
+    return potential_transmitters
 
 def generate_receivers(postcode_sector, quantity):
 
@@ -902,7 +905,7 @@ if __name__ == "__main__":
         # (2.6, 10),
         ]:
 
-        while t_density < 7:
+        while t_density < 0.03:
 
             print("Running {} GHz with {} MHz bandwidth".format(frequency, bandwidth))
             if idx == 0:
