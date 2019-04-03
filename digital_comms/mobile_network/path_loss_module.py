@@ -25,15 +25,15 @@ from math import pi
 
 def path_loss_calculator(frequency, distance, ant_height, ant_type, building_height,
     street_width, settlement_type, type_of_sight, ue_height, above_roof):
-
-    """Calculate the correct path loss given a range of critera
+    """
+    Calculate the correct path loss given a range of critera
 
     Parameters
     ----------
     frequency : float
         Frequency band given in GHz (f)
     distance : float
-        Distance between the transmitter and receiver (d)
+        Distance between the transmitter and receiver (d) in km.
     ant_height:
         Height of the antenna (hBS)
     ant_type : string
@@ -325,7 +325,6 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
             path_loss = (
                 path_loss + random_quantity
             )
-
         else:
 
             raise ValueError('Could not determine if cell is above or below roof line')

@@ -126,7 +126,7 @@ def generate_receivers(postcode_sector, quantity):
 
     return receivers
 
-def find_and_deploy_new_basestation(existing_transmitters, iteration_number):
+def find_and_deploy_new_transmitter(existing_transmitters, iteration_number):
 
     transmitters = np.vstack([[
         transmitter.coordinates \
@@ -198,7 +198,7 @@ class NetworkManager(object):
         for transmitter in list_of_new_assets:
             transmitter_id = transmitter['properties']["sitengr"]
             transmitter = Transmitter(transmitter)
-            print(transmitter_id)
+
             self.transmitters[transmitter_id] = transmitter
 
             for area_containing_transmitters in self.area.values():
@@ -273,29 +273,36 @@ class NetworkManager(object):
         x1_transmitter, y1_transmitter = transform_coordinates(
             Proj(init='epsg:27700'), Proj(init='epsg:4326'),
             closest_transmitters.coordinates[0],
-            closest_transmitters.coordinates[1]
+            closest_transmitters.coordinates[1],
             )
 
         x2_receiver, y2_receiver = transform_coordinates(
             Proj(init='epsg:27700'), Proj(init='epsg:4326'),
             receiver.coordinates[0],
-            receiver.coordinates[1]
+            receiver.coordinates[1],
             )
 
         Geo = Geodesic.WGS84
 
         i_strt_distance = Geo.Inverse(
-            x1_transmitter, y1_transmitter, x2_receiver, y2_receiver
-
+            y1_transmitter, x1_transmitter,  y2_receiver, x2_receiver
             )
-        interference_strt_distance = int(round(i_strt_distance['s12'], 0))
+
+        interference_strt_distance = round(i_strt_distance['s12'],0)
 
         ant_height = 20
         ant_type =  'macro'
         settlement_type = 'urban'
-        #type_of_sight, building_height, street_width = built_environment_module(transmitter_geom, receiver_geom)
-        #type_of_sight = find_line_of_sight(x1_transmitter, y1_transmitter, x2_receiver, y2_receiver)
+
+        #type_of_sight, building_height, street_width = built_environment_module(
+        # transmitter_geom, receiver_geom
+        # )
+        #type_of_sight = find_line_of_sight(
+        # x1_transmitter, y1_transmitter, x2_receiver, y2_receiver
+        # )
+
         type_of_sight = randomly_select_los()
+
         building_height = 20
         street_width = 20
         above_roof = 0
@@ -518,11 +525,14 @@ class Transmitter(object):
         self.id = data['properties']["sitengr"]
         self.coordinates = data['geometry']["coordinates"]
         #antenna properties
-        self.ant_type = data['properties']['type']
-        self.ant_height = data['properties']['ant_height']
-        self.power = data['properties']["power"]
-        self.gain = data['properties']["gain"]
-        self.losses = data['properties']["losses"]
+        self.ant_type = 'macro'
+        self.ant_height = 20
+        self.power = 40
+        self.gain = 18
+        self.losses = 2
+
+    def __repr__(self):
+        return "<Transmitter id:{}>".format(self.id)
 
 class Receiver(object):
     def __init__(self, data):
@@ -536,7 +546,11 @@ class Receiver(object):
         self.losses = data['properties']['losses']
         self.ue_height = 1.5
 
+    def __repr__(self):
+        return "<Receiver id:{}>".format(self.id)
+
 def randomly_select_los():
+    np.random.seed(42)
     number = round(np.random.rand(1,1)[0][0], 2)
     if number > 0.5:
         los = 'los'
@@ -559,7 +573,6 @@ def generate_lut_results(results, percentile):
         threshold_capacity_value.append(capacity_value['estimated_capacity'])
 
     return np.percentile(threshold_capacity_value, percentile)
-
 
 def write_results(results, frequency, bandwidth, t_density, r_density, postcode_sector_name):
 
@@ -902,7 +915,7 @@ if __name__ == "__main__":
                 t_density = MANAGER.transmitter_density()
 
             else:
-                NEW_TRANSMITTERS = find_and_deploy_new_basestation(
+                NEW_TRANSMITTERS = find_and_deploy_new_transmitter(
                     MANAGER.transmitters, idx
                     )
                 MANAGER.build_new_assets(NEW_TRANSMITTERS, geojson_postcode_sector)
