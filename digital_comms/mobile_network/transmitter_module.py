@@ -3,13 +3,14 @@ import csv
 from rtree import index
 import fiona
 from shapely.geometry import shape, Point, Polygon, MultiPoint
+from shapely.geometry.polygon import Polygon
 import numpy as np
 from pyproj import Proj, transform, Geod
 from geographiclib.geodesic import Geodesic
 from collections import OrderedDict
 import matplotlib.pyplot as plt
 import pandas as pd
-from sklearn.cluster import DBSCAN
+from scipy.spatial import Delaunay
 
 from digital_comms.mobile_network.path_loss_module import path_loss_calculator
 
@@ -126,45 +127,62 @@ def generate_receivers(postcode_sector, quantity):
 
     return receivers
 
-def find_and_deploy_new_transmitter(existing_transmitters, iteration_number):
+def find_and_deploy_new_transmitter(
+    existing_transmitters, iteration_number, geojson_postcode_sector):
 
-    transmitters = np.vstack([[
-        transmitter.coordinates \
-            for transmitter in existing_transmitters.values()
-            ]])
+    existing_transmitter_coordinates = []
+    for existing_transmitter in existing_transmitters.values():
+        existing_transmitter_coordinates.append(existing_transmitter.coordinates)
 
-    db = DBSCAN(eps=10000, min_samples=2).fit(transmitters)
-    core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
-    core_samples_mask[db.core_sample_indices_] = True
-    labels = db.labels_
-    n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
-    clusters = [transmitters[labels == i] for i in range(n_clusters_)]
+    #convert to numpy array
+    existing_transmitter_coordinates = np.array(existing_transmitter_coordinates)
 
-    final_transmitters = []
+    #get delaunay grid
+    tri = Delaunay(existing_transmitter_coordinates)
 
-    for idx, cluster in enumerate(clusters):
-        transmitter_geom = MultiPoint(cluster)
-        transmitter_rep_point = transmitter_geom.representative_point()
-        final_transmitters.append({
-            'type': "Feature",
-            'geometry': {
-                "type": "Point",
-                "coordinates": [transmitter_rep_point.x, transmitter_rep_point.y]
-            },
-            'properties': {
-                    "operator": 'unknown',
-                    "sitengr": "{" + 'new' + "}{GEN" + str(iteration_number) + '}',
-                    "ant_height": 20,
-                    "tech": 'LTE',
-                    "freq": 700,
-                    "type": 17,
-                    "power": 30,
-                    "gain": 18,
-                    "losses": 2,
-                }
-            })
+    #get coordinates from gri
+    coord_groups = [tri.points[x] for x in tri.simplices]
 
-    return final_transmitters
+    #convert coordinate groups to polygons
+    polygons = [Polygon(x) for x in coord_groups]
+
+    #sort based on area
+    polygons = sorted(polygons, key=lambda x: x.area, reverse=True)
+
+    geom = shape(geojson_postcode_sector['geometry'])
+
+    for new_site_area in polygons:
+
+        #get the centroid from the largest area
+        centroid = new_site_area.centroid
+
+        if geom.contains(centroid):
+            break
+        else:
+           continue
+
+    NEW_TRANSMITTERS = []
+
+    NEW_TRANSMITTERS.append({
+        'type': "Feature",
+        'geometry': {
+            "type": "Point",
+            "coordinates": [centroid.x, centroid.y]
+        },
+        'properties': {
+                "operator": 'unknown',
+                "sitengr": "{" + 'new' + "}{GEN" + str(iteration_number) + '}',
+                "ant_height": 20,
+                "tech": 'LTE',
+                "freq": 700,
+                "type": 17,
+                "power": 30,
+                "gain": 18,
+                "losses": 2,
+            }
+        })
+
+    return NEW_TRANSMITTERS
 
 class NetworkManager(object):
 
@@ -614,7 +632,8 @@ def write_results(results, frequency, bandwidth, t_density, r_density, postcode_
 
     results_file.close()
 
-def write_lookup_table(threshold_value, frequency, bandwidth, t_density, postcode_sector_name):
+def write_lookup_table(threshold_value, operator, technology, frequency,
+    bandwidth, t_density, postcode_sector_name):
 
     suffix = 'lookup_table_{}'.format(postcode_sector_name)
 
@@ -629,15 +648,18 @@ def write_lookup_table(threshold_value, frequency, bandwidth, t_density, postcod
         lut_file = open(directory, 'w', newline='')
         lut_writer = csv.writer(lut_file)
         lut_writer.writerow(
-            ('environment','frequency','bandwidth','t_density','throughput'))
+            ('environment', 'operator', 'technology', 'frequency',
+            'bandwidth','t_density','throughput'))
     else:
         lut_file = open(directory, 'a', newline='')
         lut_writer = csv.writer(lut_file)
+
     environment = 'urban'
     # output and report results for this timestep
-
     lut_writer.writerow(
         (environment,
+        operator,
+        technology,
         frequency,
         bandwidth,
         t_density,
@@ -773,103 +795,25 @@ def joint_plot(data, postcode_sector_name):
     plt.savefig(os.path.join(directory, 'panel_plot.png'))
 
 #####################################
-# UK Spectrum Portfolio
-#####################################
-
-SPECTRUM_PORTFOLIO_DL = {
-    'O2 Telefonica': {
-        'FDD DL': {
-            '800': 10,
-            '900': 17.4,
-            '1800': 5.8,
-            '2100': 10,
-            },
-        'FDD UL': {
-            '800': 10,
-            '900': 17.4,
-            '1800': 5.8,
-            '2100': 10,
-            },
-        'TDD': {
-            '1900': 5,
-            '2300': 40,
-            '3500': 40,
-            },
-        },
-    'Vodafone': {
-        'FDD DL': {
-            '800': 10,
-            '900': 17.4,
-            '1500': 20,
-            '1800': 5.8,
-            '2100': 14.8,
-            '2600': 20,
-            },
-        'FDD UL': {
-            '800': 10,
-            '900': 17.4,
-            '1800': 5.8,
-            '2100': 14.8,
-            '2600': 20,
-            },
-        'TDD': {
-            '2600': 25,
-            '3500': 50,
-            },
-        },
-    'EE (BT)': {
-        'FDD DL': {
-            '800': 5,
-            '1800': 45,
-            '2100': 20,
-            '2600': 35,
-            },
-        'FDD UL': {
-            '800': 5,
-            '1800': 45,
-            '2100': 20,
-            '2600': 35,
-            },
-        'TDD': {
-            '1900': 10,
-            '3500': 40,
-            },
-        },
-    '3 UK (H3G)': {
-        'FDD DL': {
-            '800': 5,
-            '1500': 20,
-            '1800': 15,
-            '2100': 14.6,
-            },
-        'FDD UL': {
-            '800': 5,
-            '1800': 15,
-            '2100': 14.6,
-            },
-        'TDD': {
-            '1900': 5.4,
-            '3500': 40,
-            '3700': 80,
-            },
-        },
-    'BT': {
-        'FDD DL': {
-            '2600': 15,
-            },
-        'FDD UL': {
-            '2600': 15,
-            },
-        'TDD': {
-            '2600': 25,
-            },
-        },
-}
-
-
-#####################################
 # APPLY METHODS
 #####################################
+
+SPECTRUM_PORTFOLIO = [
+    ('O2 Telefonica', 'FDD DL', 0.7, 10),
+    ('O2 Telefonica', 'FDD DL', 0.8, 10),
+    ('O2 Telefonica', 'FDD DL', 0.9, 17.4),
+    ('O2 Telefonica', 'FDD DL', 1.8, 5.8),
+    ('O2 Telefonica', 'FDD DL', 2.1, 10),
+    ('O2 Telefonica', 'FDD DL', 3.5, 100),
+    ('Vodafone', 'FDD DL', 0.7, 10),
+    ('Vodafone', 'FDD DL', 0.8, 10),
+    ('Vodafone', 'FDD DL', 0.9, 17.4),
+    ('Vodafone', 'FDD DL', 1.5, 20),
+    ('Vodafone', 'FDD DL', 1.8, 5.8),
+    ('Vodafone', 'FDD DL', 2.1, 14.8),
+    ('Vodafone', 'FDD DL', 2.6, 20),
+    ('Vodafone', 'FDD DL', 3.5, 100),
+]
 
 if __name__ == "__main__":
 
@@ -898,18 +842,12 @@ if __name__ == "__main__":
     joint_plot_data = []
 
     idx = 0
+    t_density = 0
+    percentile = 95
 
-    for frequency, bandwidth, t_density, percentile in [
-        (0.7, 10, 0, 95),
-        (0.8, 10, 0, 95),
-        # (0.9, 10),
+    for operator, technology, frequency, bandwidth in SPECTRUM_PORTFOLIO:
 
-        # (1.8, 10),
-        # (2.1, 10),
-        # (2.6, 10),
-        ]:
-
-        while t_density < 0.03:
+        while t_density < 0.107:
 
             print("Running {} GHz with {} MHz bandwidth".format(frequency, bandwidth))
             if idx == 0:
@@ -922,7 +860,7 @@ if __name__ == "__main__":
 
             else:
                 NEW_TRANSMITTERS = find_and_deploy_new_transmitter(
-                    MANAGER.transmitters, idx
+                    MANAGER.transmitters, idx, geojson_postcode_sector
                     )
                 MANAGER.build_new_assets(NEW_TRANSMITTERS, geojson_postcode_sector)
 
@@ -944,22 +882,115 @@ if __name__ == "__main__":
 
             #env, frequency, bandwidth, site_density, capacity
             write_lookup_table(
-                lookup_table_results, frequency, bandwidth, t_density, postcode_sector_name
+                lookup_table_results, operator, technology, frequency,
+                bandwidth, t_density, postcode_sector_name
                 )
 
             # format_data(joint_plot_data, results, frequency, bandwidth, postcode_sector_name)
 
             idx += 1
 
-    # joint_plot(joint_plot_data, postcode_sector_name)
-
-    print('write cells')
-    write_shapefile(TRANSMITTERS,  postcode_sector_name, 'transmitters.shp')
-
     print('write receivers')
     write_shapefile(RECEIVERS,  postcode_sector_name, 'receivers.shp')
+
+    print('write transmitters')
+    write_shapefile(TRANSMITTERS,  postcode_sector_name, 'transmitters.shp')
 
     print('write boundary')
     geojson_postcode_sector_list = []
     geojson_postcode_sector_list.append(geojson_postcode_sector)
     write_shapefile(geojson_postcode_sector_list,  postcode_sector_name, '_boundary.shp')
+
+#####################################
+# UK Spectrum Portfolio dict
+#####################################
+
+# SPECTRUM_PORTFOLIO_DICT = {
+#     'O2 Telefonica': {
+#         'FDD DL': {
+#             '800': 10,
+#             '900': 17.4,
+#             '1800': 5.8,
+#             '2100': 10,
+#             },
+#         'FDD UL': {
+#             '800': 10,
+#             '900': 17.4,
+#             '1800': 5.8,
+#             '2100': 10,
+#             },
+#         'TDD': {
+#             '1900': 5,
+#             '2300': 40,
+#             '3500': 40,
+#             },
+#         },
+#     'Vodafone': {
+#         'FDD DL': {
+#             '800': 10,
+#             '900': 17.4,
+#             '1500': 20,
+#             '1800': 5.8,
+#             '2100': 14.8,
+#             '2600': 20,
+#             },
+#         'FDD UL': {
+#             '800': 10,
+#             '900': 17.4,
+#             '1800': 5.8,
+#             '2100': 14.8,
+#             '2600': 20,
+#             },
+#         'TDD': {
+#             '2600': 25,
+#             '3500': 50,
+#             },
+#         },
+#     'EE (BT)': {
+#         'FDD DL': {
+#             '800': 5,
+#             '1800': 45,
+#             '2100': 20,
+#             '2600': 35,
+#             },
+#         'FDD UL': {
+#             '800': 5,
+#             '1800': 45,
+#             '2100': 20,
+#             '2600': 35,
+#             },
+#         'TDD': {
+#             '1900': 10,
+#             '3500': 40,
+#             },
+#         },
+#     '3 UK (H3G)': {
+#         'FDD DL': {
+#             '800': 5,
+#             '1500': 20,
+#             '1800': 15,
+#             '2100': 14.6,
+#             },
+#         'FDD UL': {
+#             '800': 5,
+#             '1800': 15,
+#             '2100': 14.6,
+#             },
+#         'TDD': {
+#             '1900': 5.4,
+#             '3500': 40,
+#             '3700': 80,
+#             },
+#         },
+#     'BT': {
+#         'FDD DL': {
+#             '2600': 15,
+#             },
+#         'FDD UL': {
+#             '2600': 15,
+#             },
+#         'TDD': {
+#             '2600': 25,
+#             },
+#         },
+# }
