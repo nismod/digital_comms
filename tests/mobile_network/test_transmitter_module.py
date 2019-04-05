@@ -8,6 +8,8 @@ from digital_comms.mobile_network.transmitter_module import (
     NetworkManager,
     read_postcode_sector,
     find_and_deploy_new_transmitter,
+    randomly_select_los,
+    transform_coordinates
     )
 
 @pytest.fixture
@@ -31,8 +33,8 @@ def base_system(get_postcode_sector):
                 "sitengr": 'TL4454059600',
                 "ant_height": 14.9,
                 "type": 'macro',
-                "power": 29.8,
-                "gain": 18,
+                "power": 40,
+                "gain": 20,
                 "losses": 2,
                 "pcd_sector": "CB1 2",
             }
@@ -49,8 +51,8 @@ def base_system(get_postcode_sector):
                 "sitengr": 'TL4515059700',
                 "ant_height": 13.7,
                 "type": 'macro',
-                "power": 28.1,
-                "gain": 18,
+                "power": 40,
+                "gain": 20,
                 "losses": 2,
                 "pcd_sector": "CB1 1",
             }
@@ -67,8 +69,8 @@ def base_system(get_postcode_sector):
                 "sitengr": 'TL4529059480',
                 "ant_height": 14.9,
                 "type": 'macro',
-                "power": 29.8,
-                "gain": 18,
+                "power": 40,
+                "gain": 20,
                 "losses": 2,
                 "pcd_sector": "CB1 2",
             }
@@ -85,8 +87,8 @@ def base_system(get_postcode_sector):
                 "sitengr": 'TL4577059640',
                 "ant_height": 14.9,
                 "type": 'macro',
-                "power": 29.8,
-                "gain": 18,
+                "power": 40,
+                "gain": 20,
                 "losses": 2,
                 "pcd_sector": "CB1 2",
             }
@@ -335,12 +337,16 @@ def test_calc_received_power(base_system):
     closest_transmitters = base_system.find_closest_available_transmitters(receiver)[0]
 
     actual_received_power = base_system.calc_received_power(
-                closest_transmitters,
-                receiver,
-                4808
-                )
+        closest_transmitters,
+        receiver,
+        4808
+        )
 
-    expected_received_power = (62 - 4808 - 4 + 4 - 4)
+    #eirp = power + gain - losses
+    #58 = 40 + 20 - 2
+    #received_power = eirp - path_loss - misc_losses + gain - losses
+    #-4,754 = 58 - 4808 - 4 + 4 - 4
+    expected_received_power = ((40 + 20 - 2) - 4808 - 4 + 4 - 4)
 
     assert actual_received_power == expected_received_power
 
@@ -360,17 +366,29 @@ def test_calculate_interference(base_system):
         frequency
         )
 
-    print(actual_interference)
-    
-    estimated_interference = 0
+    #eirp = power + gain - losses
+    #received_power = eirp - path_loss - misc_losses + gain - losses
+    #interference 1
+    #path loss(0.7 475 20 macro 20 20 urban nlos 1.5 0)
+    #-349 = (40 + 20 - 2) - 403 - 4 + 4 - 4
+    #interference 2
+    #path_loss(0.7 477 20 macro 20 20 urban nlos 1.5 0)
+    #-346 = (40 + 20 - 2) - 400 - 4 + 4 - 4
+    #interference 3
+    #path_loss(0.7 1078 20 macro 20 20 urban nlos 1.5 0)
+    #-538 = (40 + 20 - 2) - 592 - 4 + 4 - 4
 
-    assert actual_interference == 0
+    expected_interference = [
+        -349, -346, -538
+        ]
+
+    assert actual_interference == expected_interference
 
 def test_calculate_noise(base_system):
-    
+
     bandwidth = 10
 
-    actual_result = base_system.test_calculate_noise(bandwidth)
+    actual_result = base_system.calculate_noise(bandwidth)
 
     expected_result = 5
 
@@ -380,29 +398,56 @@ def test_calculate_sinr(base_system):
 
     receiver = base_system.receivers['AB3']
 
-    closest_transmitters = base_system.find_closest_available_transmitters(receiver)[0]
+    closest_transmitter = base_system.find_closest_available_transmitters(receiver)[0]
 
     actual_received_power = base_system.calc_received_power(
-                closest_transmitters,
-                receiver,
-                4808
-                )
+        closest_transmitter,
+        receiver,
+        4808
+        )
 
-    # sinr = round(received_power / sum(interference) + noise, 1)
+    closest_transmitters = base_system.find_closest_available_transmitters(receiver)
 
-    pass
-  
+    actual_interference = base_system.calculate_interference(
+        closest_transmitters,
+        receiver,
+        0.7
+        )
+
+    actual_noise = base_system.calculate_noise(10)
+
+    actual_sinr = round(
+        actual_received_power / sum(actual_interference) + actual_noise, 1
+        )
+
+    expected_received_power = ((40 + 20 - 2) - 4808 - 4 + 4 - 4)
+
+    expected_interference = [
+        -349, -346, -538
+        ]
+
+    expected_noise = 5
+
+    #expected_sinr = 8.9
+    #expected_sinr = ((40 + 20 - 2) - 4808 - 4 + 4 - 4) / sum(-349, -346, -538) + 5
+    # 8.9 = -4764 / -1233 +5
+    expected_sinr = round(
+        expected_received_power / sum(expected_interference) + expected_noise, 1
+        )
+
+    assert actual_sinr == expected_sinr
+
 def test_estimate_capacity(base_system):
-    
+
     bandwidth = 10
+    sinr = 8.9
 
-    expected_estimated_capacity = round(bandwidth*np.log2(1+sinr), 2)
+    actual_estimate_capacity = base_system.estimate_capacity(bandwidth, sinr)
 
-    assert actual_estimated_capacity == expected_estimated_capacity
+    expected_estimate_capacity = round(bandwidth*np.log2(1+sinr), 2)
 
+    assert actual_estimate_capacity == expected_estimate_capacity
 
-# def test_calc_buget(base_system):
+def test_randomly_select_los():
 
-#     actual_results = base_system.calc_link_budget(3.5, 5, 1)
-#     print(actual_results)
-#     assert actual_results == 0
+    assert randomly_select_los() == 'nlos'

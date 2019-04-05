@@ -259,11 +259,11 @@ class NetworkManager(object):
 
         number_of_transmitters = len(self.transmitters.values())
 
-        all_nearest_transmitters =  list(
+        all_closest_transmitters =  list(
             idx.nearest(
                 Point(receiver.coordinates).bounds, number_of_transmitters, objects='raw'))
 
-        return all_nearest_transmitters
+        return all_closest_transmitters
 
     def calculate_path_loss(self, closest_transmitters, receiver, frequency):
 
@@ -324,9 +324,15 @@ class NetworkManager(object):
 
     def calc_received_power(self, transmitter, receiver, path_loss):
         """
-        Calculate received power based on transmitter and receiver characteristcs, and path loss.
-        """
+        Calculate received power based on transmitter and receiver characteristcs,
+        and path loss.
 
+        Equivalent Isotropically Radiated Power (EIRP) = Power + Gain - Losses
+
+
+
+        """
+        #calculate Equivalent Isotropically Radiated Power (EIRP)
         eirp = float(transmitter.power) + \
             float(transmitter.gain) - \
             float(transmitter.losses)
@@ -339,16 +345,16 @@ class NetworkManager(object):
 
         return received_power
 
-    def calculate_interference(self, nearest_transmitters, receiver, frequency):
+    def calculate_interference(self, closest_transmitters, receiver, frequency):
 
         """
         calculate interference from other cells.
 
-        nearest_transmitters contains all transmitters, ranked based on distance, meaning
+        closest_transmitters contains all transmitters, ranked based on distance, meaning
         we need to select cells 1-3 (as cell 0 is the actual cell in use)
         """
 
-        three_nearest_transmitters = nearest_transmitters[1:4]
+        three_closest_transmitters = closest_transmitters[1:4]
 
         interference = []
 
@@ -358,7 +364,7 @@ class NetworkManager(object):
                                                         receiver.coordinates[1])
 
         #calculate interference from other power sources
-        for interference_transmitter in three_nearest_transmitters:
+        for interference_transmitter in three_closest_transmitters:
 
             #get distance
             x2_interference = interference_transmitter.coordinates[0]
@@ -374,10 +380,10 @@ class NetworkManager(object):
             Geo = Geodesic.WGS84
 
             i_strt_distance = Geo.Inverse(
-                x2_interference,
                 y2_interference,
+                x2_interference,
+                y1_receiver,
                 x1_receiver,
-                y1_receiver
                 )
 
             interference_strt_distance = int(round(i_strt_distance['s12'], 0))
@@ -528,7 +534,7 @@ class Transmitter(object):
         self.ant_type = 'macro'
         self.ant_height = 20
         self.power = 40
-        self.gain = 18
+        self.gain = 20
         self.losses = 2
 
     def __repr__(self):
