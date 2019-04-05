@@ -342,19 +342,63 @@ def test_calc_received_power(base_system):
 
     expected_received_power = (62 - 4808 - 4 + 4 - 4)
 
-    return actual_received_power == expected_received_power
+    assert actual_received_power == expected_received_power
 
 def test_calculate_interference(base_system):
-    pass
+
+    frequency = 0.7
+
+    receiver = base_system.receivers['AB3']
+
+    closest_transmitters = base_system.find_closest_available_transmitters(
+        receiver
+        )
+
+    actual_interference = base_system.calculate_interference(
+        closest_transmitters,
+        receiver,
+        frequency
+        )
+
+    print(actual_interference)
+    
+    estimated_interference = 0
+
+    assert actual_interference == 0
 
 def test_calculate_noise(base_system):
-    pass
+    
+    bandwidth = 10
+
+    actual_result = base_system.test_calculate_noise(bandwidth)
+
+    expected_result = 5
+
+    assert actual_result == expected_result
 
 def test_calculate_sinr(base_system):
-    pass
 
-def test_estimate_capacity(base_system):
+    receiver = base_system.receivers['AB3']
+
+    closest_transmitters = base_system.find_closest_available_transmitters(receiver)[0]
+
+    actual_received_power = base_system.calc_received_power(
+                closest_transmitters,
+                receiver,
+                4808
+                )
+
+    # sinr = round(received_power / sum(interference) + noise, 1)
+
     pass
+  
+def test_estimate_capacity(base_system):
+    
+    bandwidth = 10
+
+    expected_estimated_capacity = round(bandwidth*np.log2(1+sinr), 2)
+
+    assert actual_estimated_capacity == expected_estimated_capacity
 
 
 # def test_calc_buget(base_system):
