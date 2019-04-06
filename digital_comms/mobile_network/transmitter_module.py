@@ -1,16 +1,21 @@
 import os, sys, configparser
 import csv
+import glob
+
 from rtree import index
 import fiona
-from shapely.geometry import shape, Point, Polygon, MultiPoint
+from shapely.geometry import shape, Point, Polygon, MultiPoint, mapping
 from shapely.geometry.polygon import Polygon
+from shapely.wkt import loads
+from shapely.prepared import prep
 import numpy as np
 from pyproj import Proj, transform, Geod
 from geographiclib.geodesic import Geodesic
-from collections import OrderedDict
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.spatial import Delaunay
+
+from collections import OrderedDict
 
 from digital_comms.mobile_network.path_loss_module import path_loss_calculator
 
@@ -36,6 +41,102 @@ def read_postcode_sector(postcode_sector):
             sector for sector in source \
             if sector['properties']['postcode'].replace(" ", "") == postcode_sector \
         ][0]
+
+def get_local_authority_ids(postcode_sector):
+
+    with fiona.open(os.path.join(
+        DATA_RAW, 'd_shapes','lad_uk_2016-12', 'lad_uk_2016-12.shp'), 'r') as source:
+        postcode_sector_geom = shape(postcode_sector['geometry'])
+        return [
+            lad['properties']['name'] for lad in source \
+            if postcode_sector_geom.intersection(shape(lad['geometry']))
+            ]
+
+def read_building_polygons(postcode_sector, lad_ids):
+    """
+    This function imports the building polygons from
+    the relevant local authority lookup tables.
+
+    """
+    prepared_area = prep(shape(postcode_sector['geometry']))
+
+    def premises():
+        i = 0
+        for lad_id in lad_ids:
+            directory = os.path.join(DATA_RAW, 'e_dem_and_buildings', 'prems_by_lad', lad_id)
+            pathlist = glob.iglob(directory + '/*.csv', recursive=True)
+            for path in pathlist:
+                with open(path, 'r') as system_file:
+                    reader = csv.DictReader(system_file)
+                    next(reader)
+                    for line in reader:
+                        geom = loads(line['geom'])
+                        geom_point = geom.representative_point()
+                        feature = {
+                            'type': 'Feature',
+                            'geometry': mapping(geom),
+                            'representative_point': geom_point,
+                            'properties':{
+                                'floor_area': line['floor_area'],
+                                'height_toroofbase': line['height_toroofbase'],
+                                'height_torooftop': line['height_torooftop'],
+                                'number_of_floors': line['number_of_floors'],
+                                'footprint_area': line['footprint_area'],
+                            }
+                        }
+                        yield (i, geom_point.bounds, feature)
+
+    idx = index.Index(premises())
+
+    output = []
+
+    for n in idx.intersection((shape(postcode_sector['geometry']).bounds), objects=True):
+        point = n.object['representative_point']
+        if prepared_area.contains(point):
+            #del n.object['representative_point']
+            output.append(n.object)
+
+    return output
+
+def calculate_indoor_outdoor_ratio(postcode_sector, buildings):
+    """
+    Gets the percentage probability of a user being either indoor or outdoor.
+
+    Note: the sum of total_inside_floor_area and total_outside_area will not sum up to
+    the postcode_sector_area, as total_inside_floor_area takes into account all floors
+    in a building, not just the building footprint.
+
+    Parameters
+    ----------
+    footprint_area : float
+        Estimate of a building's geographical area.
+    floor_area : float
+        Estimate of a building's indoor area across all floors.
+
+    """
+    #start with total building footprint area
+    building_footprint = 0
+    for building in buildings:
+        building_footprint += building['properties']['footprint_area']
+
+    #start with gross indoor area
+    total_inside_floor_area = 0
+    for building in buildings:
+        total_inside_floor_area += building['properties']['floor_area']
+
+    #now calculate gross outside area
+    geom = shape(postcode_sector['geometry'])
+    postcode_sector_area = geom.area
+    total_outside_area = postcode_sector_area - building_footprint
+
+    #get total potential usage area (note: greater than postcode sector area)
+    total_usage_area = total_outside_area + total_inside_floor_area
+
+    #calculate percentage probability between indoor/outdoor
+    indoor_probability = total_inside_floor_area/total_usage_area*100
+    outdoor_probability = total_outside_area/total_usage_area*100
+
+    return (indoor_probability, outdoor_probability)
 
 def get_transmitters(postcode_sector):
 
@@ -490,7 +591,7 @@ class NetworkManager(object):
         postcode_sector_area = ([round(a.area) for a in self.area.values()])[0]
 
         transmitter_density = float(round(
-            len(self.transmitters) / (postcode_sector_area/1000), 5
+            len(self.transmitters) / (postcode_sector_area/1000000), 5
         ))
 
         # summed_transmitters = len(
@@ -831,6 +932,15 @@ if __name__ == "__main__":
     #get postcode sector
     geojson_postcode_sector = read_postcode_sector(postcode_sector_name)
 
+    #get local authority district
+    local_authority_ids = get_local_authority_ids(geojson_postcode_sector)
+
+    #import buildings in postcode sector
+    buildings = read_building_polygons(geojson_postcode_sector, local_authority_ids)
+
+    #get the probability for inside versus outside calls
+    indoor_outdoor_probability = calculate_indoor_outdoor_ratio(geojson_postcode_sector, buildings)
+
     #get list of transmitters
     TRANSMITTERS = get_transmitters(geojson_postcode_sector)
     #{'operator': 'O2', 'sitengr': 'TL4491058710', 'ant_height': '5', 'tech': 'GSM',
@@ -847,7 +957,7 @@ if __name__ == "__main__":
 
     for operator, technology, frequency, bandwidth in SPECTRUM_PORTFOLIO:
 
-        while t_density < 0.107:
+        while t_density < 100:
 
             print("Running {} GHz with {} MHz bandwidth".format(frequency, bandwidth))
             if idx == 0:
@@ -879,7 +989,7 @@ if __name__ == "__main__":
 
             #find percentile values
             lookup_table_results = generate_lut_results(results, percentile)
-
+            print(lookup_table_results)
             #env, frequency, bandwidth, site_density, capacity
             write_lookup_table(
                 lookup_table_results, operator, technology, frequency,
@@ -889,6 +999,9 @@ if __name__ == "__main__":
             # format_data(joint_plot_data, results, frequency, bandwidth, postcode_sector_name)
 
             idx += 1
+
+    print('write buildings')
+    write_shapefile(buildings,  postcode_sector_name, 'buildings.shp')
 
     print('write receivers')
     write_shapefile(RECEIVERS,  postcode_sector_name, 'receivers.shp')

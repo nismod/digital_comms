@@ -10,22 +10,15 @@ CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
-#import sitefinder
-#subset based on type of cells and operator
-#buffer
-#dissolve
-#take centroid
-#writeout
-
 def import_sitefinder_data(path):
-    """Import sitefinder data, selecting desired asset types.
-
-    - Select sites belonging to main operators
-        - Includes 'O2', 'Vodafone', BT EE (as 'Orange'/'T-Mobile') and 'Three'
-        - Excludes 'Airwave' and 'Network Rail'
-    - Select relevant cells:
-        - Includes 'Macro', 'SECTOR', 'Sectored' and 'Directional'
-        - Excludes 'micro', 'microcell', 'omni' or 'pico' antenna types.
+    """
+    Import sitefinder data, selecting desired asset types.
+        - Select sites belonging to main operators:
+            - Includes 'O2', 'Vodafone', BT EE (as 'Orange'/'T-Mobile') and 'Three'
+            - Excludes 'Airwave' and 'Network Rail'
+        - Select relevant cells:
+            - Includes 'Macro', 'SECTOR', 'Sectored' and 'Directional'
+            - Excludes 'micro', 'microcell', 'omni' or 'pico' antenna types.
 
     """
     asset_data = []
@@ -34,34 +27,34 @@ def import_sitefinder_data(path):
         reader = csv.DictReader(system_file)
         next(reader, None)
         for line in reader:
-            if line['Operator'] != 'Airwave' and line['Operator'] != 'Network Rail':
-                if line['Anttype'] == 'MACRO' or \
-                    line['Anttype'] == 'SECTOR' or \
-                    line['Anttype'] == 'Sectored' or \
-                    line['Anttype'] == 'Directional':
-                    asset_data.append({
-                        'type': "Feature",
-                        'geometry': {
-                            "type": "Point",
-                            "coordinates": [float(line['X']), float(line['Y'])]
-                        },
-                        'properties':{
-                            'Operator': line['Operator'],
-                            'Opref': line['Opref'],
-                            'Sitengr': line['Sitengr'],
-                            'Antennaht': line['Antennaht'],
-                            'Transtype': line['Transtype'],
-                            'Freqband': line['Freqband'],
-                            'Anttype': line['Anttype'],
-                            'Powerdbw': line['Powerdbw'],
-                            'Maxpwrdbw': line['Maxpwrdbw'],
-                            'Maxpwrdbm': line['Maxpwrdbm'],
-                            'Sitelat': float(line['Sitelat']),
-                            'Sitelng': float(line['Sitelng']),
-                        }
-                    })
-                else:
-                    pass
+            print(line)
+            #if line['Operator'] != 'Airwave' and line['Operator'] != 'Network Rail':
+            if line['Operator'] == 'O2' or line['Operator'] == 'Vodafone':
+                # if line['Anttype'] == 'MACRO' or \
+                #     line['Anttype'] == 'SECTOR' or \
+                #     line['Anttype'] == 'Sectored' or \
+                #     line['Anttype'] == 'Directional':
+                asset_data.append({
+                    'type': "Feature",
+                    'geometry': {
+                        "type": "Point",
+                        "coordinates": [float(line['X']), float(line['Y'])]
+                    },
+                    'properties':{
+                        'Operator': line['Operator'],
+                        'Opref': line['Opref'],
+                        'Sitengr': line['Sitengr'],
+                        'Antennaht': line['Antennaht'],
+                        'Transtype': line['Transtype'],
+                        'Freqband': line['Freqband'],
+                        'Anttype': line['Anttype'],
+                        'Powerdbw': line['Powerdbw'],
+                        'Maxpwrdbw': line['Maxpwrdbw'],
+                        'Maxpwrdbm': line['Maxpwrdbm'],
+                        'Sitelat': float(line['Sitelat']),
+                        'Sitelng': float(line['Sitelng']),
+                    }
+                })
             else:
                 pass
 
@@ -83,7 +76,9 @@ def process_asset_data(data):
     dissolved_assets = []
 
     for asset in buffered_assets:
-        touching_assets = [other_asset for other_asset in copy_of_assets if asset.intersects(other_asset)]
+        touching_assets = [
+            other_asset for other_asset in copy_of_assets if asset.intersects(other_asset)
+            ]
         dissolved_shape = cascaded_union(touching_assets)
         final_centroid = dissolved_shape.representative_point()
         dissolved_assets.append((final_centroid.coords[0][0], final_centroid.coords[0][1]))
@@ -128,7 +123,8 @@ def write_shapefile(data, filename):
 
     print(os.path.join(directory, filename))
     # Write all elements to output file
-    with fiona.open(os.path.join(directory, filename), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
+    with fiona.open(os.path.join(directory, filename),
+        'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         [sink.write(feature) for feature in data]
 
 def csv_writer(data, filename):
@@ -163,12 +159,14 @@ if __name__ == "__main__":
 
     #import desired assets
     asset_data = import_sitefinder_data(
-        os.path.join(BASE_PATH,'raw','b_mobile_model','sitefinder','sitefinder'+'.csv')
+        os.path.join(
+            BASE_PATH,'raw','b_mobile_model','sitefinder','sitefinder_cambridgeshire'+'.csv'
+            )
         )
 
     #process points using 50m buffer
     points = process_asset_data(asset_data)
-
+    print(points)
     #write shapefile
     write_shapefile(points, 'sitefinder_processed.shp')
 
