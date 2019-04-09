@@ -10,6 +10,8 @@ from shapely.geometry import shape, Point, Polygon, MultiPoint, mapping
 from shapely.wkt import loads
 from shapely.prepared import prep
 
+from collections import OrderedDict
+
 CONFIG = configparser.ConfigParser()
 CONFIG.read(
     os.path.join(os.path.dirname(__file__), 'script_config.ini')
@@ -20,7 +22,29 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 DATA_RAW = os.path.join(BASE_PATH, 'raw')
 DATA_RESULTS = os.path.join(BASE_PATH, 'intermediate')
 
-def get_all_postcode_sectors():
+def get_local_authority_district(lad_id):
+
+    with fiona.open(os.path.join(
+        DATA_RAW, 'd_shapes','lad_uk_2016-12', 'lad_uk_2016-12.shp'), 'r') as source:
+
+        return [lad for lad in source if lad['properties']['name'] == lad_id][0]
+
+def get_postcode_sectors(lad_id):
+
+    lut_directory = os.path.join(DATA_RAW, '..', 'intermediate',
+    'pcd_sector_to_lad_lut', 'pcd_sector_to_lad_lut.csv'
+    )
+
+    pcd_sector_to_lad_lut = []
+
+    with open(lut_directory, 'r') as system_file:
+        reader = csv.DictReader(system_file)
+        next(reader)
+        for line in reader:
+            if line['lad'] == lad_id:
+                pcd_sector_to_lad_lut.append(
+                    line['postcode_sector']
+                    )
 
     all_postcode_sectors = []
 
@@ -31,25 +55,35 @@ def get_all_postcode_sectors():
             for sector in source:
                 all_postcode_sectors.append(sector)
 
-    return all_postcode_sectors
+    intersecting_postcode_sectors = []
+    postcode_sector_ids = []
 
-def get_local_authority_ids(postcode_sector):
+    for postcode_sector in all_postcode_sectors:
+        if postcode_sector['properties']['postcode'] in pcd_sector_to_lad_lut:
+            intersecting_postcode_sectors.append(postcode_sector)
+            postcode_sector_ids.append(postcode_sector['properties']['postcode'])
 
-    with fiona.open(os.path.join(
-        DATA_RAW, 'd_shapes','lad_uk_2016-12', 'lad_uk_2016-12.shp'), 'r') as source:
-        postcode_sector_geom = shape(postcode_sector['geometry'])
-        return [
-            lad['properties']['name'] for lad in source \
-            if postcode_sector_geom.intersection(shape(lad['geometry']))
-            ]
+    touching_lad_ids =  set()
 
-def read_building_polygons(postcode_sector, lad_ids):
+    with open(lut_directory, 'r') as system_file:
+        reader = csv.DictReader(system_file)
+        next(reader)
+        for line in reader:
+            if line['postcode_sector'] in postcode_sector_ids:
+                touching_lad_ids.add(
+                    line['lad']
+                    )
+
+    return intersecting_postcode_sectors, touching_lad_ids
+
+
+def read_building_polygons(postcode_sectors, lad_ids):
     """
     This function imports the building polygons from
     the relevant local authority lookup tables.
 
     """
-    prepared_area = prep(shape(postcode_sector['geometry']))
+    idx = index.Index()
 
     def premises():
         i = 0
@@ -82,13 +116,33 @@ def read_building_polygons(postcode_sector, lad_ids):
 
     output = []
 
-    for n in idx.intersection((shape(postcode_sector['geometry']).bounds), objects=True):
-        point = n.object['representative_point']
-        if prepared_area.contains(point):
-            #del n.object['representative_point']
-            output.append(n.object)
+    for postcode_sector in postcode_sectors:
+        postcode_shape = shape(postcode_sector['geometry'])
+        prepared_area = prep(postcode_shape)
+        for n in idx.intersection((postcode_shape.bounds), objects=True):
+            point = n.object['representative_point']
+            if prepared_area.contains(point):
+                del n.object['representative_point']
+                output.append(n.object)
 
     return output
+
+def get_intersecting_buildings(postcode_sector, buildings):
+
+    intersecting_buildings = []
+
+    # Initialze Rtree
+    idx = index.Index()
+    [idx.insert(0, shape(building['geometry']).bounds, building) for building in buildings]
+
+    for n in idx.intersection((shape(postcode_sector['geometry']).bounds), objects=True):
+        postcode_sector_shape = shape(postcode_sector['geometry'])
+        premise_shape = shape(n.object['geometry'])
+        if postcode_sector_shape.contains(premise_shape.representative_point()):
+            intersecting_buildings.append(n.object)
+
+
+    return intersecting_buildings
 
 def calculate_indoor_outdoor_ratio(postcode_sector, buildings):
     """
@@ -152,18 +206,20 @@ def get_geotype_information(postcode_sector, buildings):
     for building in buildings:
         try:
             res_count = float(building['properties']['res_count'])
+            non_res_count = 0
         except ValueError:
+            res_count = 0
             non_res_count = 1
         residential_count += res_count
         non_residential_count += non_res_count
-
+    print('residential_count is {}'.format(residential_count))
     #get area in km^2
     geom = shape(postcode_sector['geometry'])
     area = geom.area/1000000
-
+    print('non_residential_count is {}'.format(non_residential_count))
     return residential_count, non_residential_count, area
 
-def csv_writer(data_for_writing, filename):
+def csv_writer(data_for_writing, lad):
     """
     Write data to a CSV file path
 
@@ -174,11 +230,11 @@ def csv_writer(data_for_writing, filename):
         fieldnames.append(name)
 
     #create path
-    directory = os.path.join(BASE_PATH, 'intermediate', 'mobile_geotype_lut')
+    directory = os.path.join(BASE_PATH, 'intermediate', 'mobile_geotype_lut', lad)
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    path = os.path.join(directory, filename)
+    path = os.path.join(directory, lad + '.csv')
 
     if not os.path.exists(path):
         lut_file = open(path, 'w', newline='')
@@ -210,25 +266,48 @@ def csv_writer(data_for_writing, filename):
 
 if __name__ == "__main__":
 
+    SYSTEM_INPUT = os.path.join('data', 'raw')
+
+    if len(sys.argv) != 2:
+        print("Error: no exchange or abbreviation provided")
+        print("Usage: {} <lad>".format(os.path.basename(__file__)))
+        exit(-1)
+
+    # Read LUTs
+    print('Process ' + sys.argv[1])
+    lad_name = sys.argv[1]
+
+    #get lad shape
+    print('get lad shape')
+    lad = get_local_authority_district(lad_name)
+
     #get lut of postcode sectors
-    postcode_sectors = get_all_postcode_sectors()
+    print('get pcd_sectors intersecting with lad boundary')
+    postcode_sectors, touching_lad_ids = get_postcode_sectors(lad_name)
+
+    #get buildings
+    print('loading in buildings')
+    buildings = read_building_polygons(postcode_sectors, touching_lad_ids)
 
     for postcode_sector in postcode_sectors:
 
         print('processing {}'.format(postcode_sector['properties']['postcode']))
         postcode_sector_name = postcode_sector['properties']['postcode']
 
-        #get local authority district
-        local_authority_ids = get_local_authority_ids(postcode_sector)
-
-        #import buildings in postcode sector
-        buildings = read_building_polygons(postcode_sector, local_authority_ids)
+        #intersect buildings and pcd_sector
+        postcode_sector_buildings = get_intersecting_buildings(postcode_sector, buildings)
 
         #get the probability for inside versus outside calls
-        indoor_outdoor_probability = calculate_indoor_outdoor_ratio(postcode_sector, buildings)
+        indoor_outdoor_probability = calculate_indoor_outdoor_ratio(
+            postcode_sector, postcode_sector_buildings
+            )
+
+        print('indoor is {} and outdoor is {}'.format(
+            indoor_outdoor_probability[0],
+            indoor_outdoor_probability[1]))
 
         residential_count, non_residential_count, area = \
-            get_geotype_information(postcode_sector, buildings)
+            get_geotype_information(postcode_sector, postcode_sector_buildings)
 
         data_for_writing = []
         data_for_writing.append({
@@ -240,5 +319,4 @@ if __name__ == "__main__":
             'area': area,
         })
 
-        #write csv
-        csv_writer(data_for_writing, 'mobile_geotype_lut.csv')
+        csv_writer(data_for_writing, lad_name)
