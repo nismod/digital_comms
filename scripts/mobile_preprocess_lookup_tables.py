@@ -7,7 +7,6 @@ import glob
 from rtree import index
 import fiona
 from shapely.geometry import shape, Point, Polygon, MultiPoint, mapping
-from shapely.geometry.polygon import Polygon
 from shapely.wkt import loads
 from shapely.prepared import prep
 
