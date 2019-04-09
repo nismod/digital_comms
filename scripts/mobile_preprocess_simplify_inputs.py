@@ -114,4 +114,4 @@ if __name__ == "__main__":
 
     lut = intersect_boundaries(postcode_sectors, lads)
 
-    csv_writer(lut, 'postcode_sector_to_lad_lut.csv')
+    csv_writer(lut, 'pcd_sector_to_lad_lut.csv')
