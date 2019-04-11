@@ -29,7 +29,28 @@ def get_local_authority_district(lad_id):
 
         return [lad for lad in source if lad['properties']['name'] == lad_id][0]
 
-def get_postcode_sectors(lad_id):
+def find_existing_processed_postcode_sectors(lad):
+
+    processed_postcode_sectors = []
+
+    path = os.path.join(BASE_PATH, 'intermediate', 'mobile_geotype_lut', lad, lad + '.csv')
+
+    if not os.path.exists(path):
+
+        pass
+
+    else:
+
+        with open(path, 'r') as system_file:
+            reader = csv.DictReader(system_file)
+            for line in reader:
+                processed_postcode_sectors.append(
+                    line['postcode_sector']
+                    )
+
+    return processed_postcode_sectors
+
+def get_postcode_sectors(processed_postcode_sectors, lad_id):
 
     lut_directory = os.path.join(DATA_RAW, '..', 'intermediate',
     'pcd_sector_to_lad_lut', 'pcd_sector_to_lad_lut.csv'
@@ -52,8 +73,11 @@ def get_postcode_sectors(lad_id):
     pathlist = glob.iglob(directory + '/*.shp', recursive=True)
     for path in pathlist:
         with fiona.open(path, 'r') as source:
-            for sector in source:
-                all_postcode_sectors.append(sector)
+            for postcode_sector in source:
+                if postcode_sector['properties']['postcode'] not in processed_postcode_sectors:
+                    all_postcode_sectors.append(postcode_sector)
+                else:
+                    pass
 
     intersecting_postcode_sectors = []
     postcode_sector_ids = []
@@ -75,7 +99,6 @@ def get_postcode_sectors(lad_id):
                     )
 
     return intersecting_postcode_sectors, touching_lad_ids
-
 
 def read_building_polygons(postcode_sectors, lad_ids):
     """
@@ -229,6 +252,8 @@ def csv_writer(data_for_writing, lad):
     for name, value in data_for_writing[0].items():
         fieldnames.append(name)
 
+    data_for_writing = data_for_writing[0]
+
     #create path
     directory = os.path.join(BASE_PATH, 'intermediate', 'mobile_geotype_lut', lad)
     if not os.path.exists(directory):
@@ -246,8 +271,9 @@ def csv_writer(data_for_writing, lad):
     else:
         lut_file = open(path, 'a', newline='')
         lut_writer = csv.writer(lut_file)
+        print('added {} to csv'.format(data_for_writing['postcode_sector']))
 
-    data_for_writing = data_for_writing[0]
+
     # output and report results for this timestep
     lut_writer.writerow(
         (data_for_writing['postcode_sector'],
@@ -281,9 +307,15 @@ if __name__ == "__main__":
     print('get lad shape')
     lad = get_local_authority_district(lad_name)
 
-    #get lut of postcode sectors
+    #find unprocessed postcode sectors
+    print('finding unprocessed postcode sectors')
+    processed_postcode_sectors = find_existing_processed_postcode_sectors(lad_name)
+
+    #get lut of all postcode sectors in or intersecting the lad
     print('get pcd_sectors intersecting with lad boundary')
-    postcode_sectors, touching_lad_ids = get_postcode_sectors(lad_name)
+    postcode_sectors, touching_lad_ids = get_postcode_sectors(
+        processed_postcode_sectors, lad_name
+        )
 
     #get buildings
     print('loading in buildings')
