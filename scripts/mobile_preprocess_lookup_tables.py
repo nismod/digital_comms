@@ -317,8 +317,11 @@ if __name__ == "__main__":
         processed_postcode_sectors, lad_name
         )
     if len(postcode_sectors) == 0:
+
         pass
+
     else:
+
         #get buildings
         print('loading in buildings')
         buildings = read_building_polygons(postcode_sectors, touching_lad_ids)

@@ -24,7 +24,7 @@ import numpy as np
 from math import pi
 
 def path_loss_calculator(frequency, distance, ant_height, ant_type, building_height,
-    street_width, settlement_type, type_of_sight, ue_height, above_roof):
+    street_width, settlement_type, type_of_sight, ue_height, above_roof, indoor):
     """
     Calculate the correct path loss given a range of critera
 
@@ -77,6 +77,8 @@ def path_loss_calculator(frequency, distance, ant_height, ant_type, building_hei
         raise ValueError (
             "frequency of {} is NOT within correct range".format(frequency)
         )
+
+    path_loss = path_loss + outdoor_to_indoor_path_loss(indoor)
 
     return path_loss
 
@@ -635,3 +637,20 @@ def generate_log_normal_dist_value(mu, sigma, draws):
     s = np.random.lognormal(mu, sigma, draws)
 
     return int(round(s[0]))
+
+def outdoor_to_indoor_path_loss(indoor):
+    """
+    ITU-R M.1225 suggests building penetration loss for shadow fading can be modelled
+    as a log-normal distribution with a mean and  standard deviation of 12 dB and
+    8 dB respectively.
+
+    """
+    if indoor:
+
+        outdoor_to_indoor_path_loss = 0
+
+    else:
+
+        outdoor_to_indoor_path_loss = generate_log_normal_dist_value(12, 8, 1)
+
+    return outdoor_to_indoor_path_loss

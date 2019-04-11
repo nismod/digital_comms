@@ -35,5 +35,4 @@ if __name__ == "__main__":
     lads = read_lads()
     selection = [(lad['properties']['name']) for lad in lads]
 
-
     print(*selection, sep='\n')
