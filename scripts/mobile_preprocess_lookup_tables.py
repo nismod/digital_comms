@@ -316,39 +316,41 @@ if __name__ == "__main__":
     postcode_sectors, touching_lad_ids = get_postcode_sectors(
         processed_postcode_sectors, lad_name
         )
+    if len(postcode_sectors) == 0:
+        pass
+    else:
+        #get buildings
+        print('loading in buildings')
+        buildings = read_building_polygons(postcode_sectors, touching_lad_ids)
 
-    #get buildings
-    print('loading in buildings')
-    buildings = read_building_polygons(postcode_sectors, touching_lad_ids)
+        for postcode_sector in postcode_sectors:
 
-    for postcode_sector in postcode_sectors:
+            print('processing {}'.format(postcode_sector['properties']['postcode']))
+            postcode_sector_name = postcode_sector['properties']['postcode']
 
-        print('processing {}'.format(postcode_sector['properties']['postcode']))
-        postcode_sector_name = postcode_sector['properties']['postcode']
+            #intersect buildings and pcd_sector
+            postcode_sector_buildings = get_intersecting_buildings(postcode_sector, buildings)
 
-        #intersect buildings and pcd_sector
-        postcode_sector_buildings = get_intersecting_buildings(postcode_sector, buildings)
+            #get the probability for inside versus outside calls
+            indoor_outdoor_probability = calculate_indoor_outdoor_ratio(
+                postcode_sector, postcode_sector_buildings
+                )
 
-        #get the probability for inside versus outside calls
-        indoor_outdoor_probability = calculate_indoor_outdoor_ratio(
-            postcode_sector, postcode_sector_buildings
-            )
+            print('indoor is {} and outdoor is {}'.format(
+                indoor_outdoor_probability[0],
+                indoor_outdoor_probability[1]))
 
-        print('indoor is {} and outdoor is {}'.format(
-            indoor_outdoor_probability[0],
-            indoor_outdoor_probability[1]))
+            residential_count, non_residential_count, area = \
+                get_geotype_information(postcode_sector, postcode_sector_buildings)
 
-        residential_count, non_residential_count, area = \
-            get_geotype_information(postcode_sector, postcode_sector_buildings)
+            data_for_writing = []
+            data_for_writing.append({
+                'postcode_sector': postcode_sector_name,
+                'indoor_probability': indoor_outdoor_probability[0],
+                'outdoor_probability': indoor_outdoor_probability[1],
+                'residential_count': residential_count,
+                'non_residential_count': non_residential_count,
+                'area': area,
+            })
 
-        data_for_writing = []
-        data_for_writing.append({
-            'postcode_sector': postcode_sector_name,
-            'indoor_probability': indoor_outdoor_probability[0],
-            'outdoor_probability': indoor_outdoor_probability[1],
-            'residential_count': residential_count,
-            'non_residential_count': non_residential_count,
-            'area': area,
-        })
-
-        csv_writer(data_for_writing, lad_name)
+            csv_writer(data_for_writing, lad_name)
