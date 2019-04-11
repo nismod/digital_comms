@@ -5,11 +5,9 @@ import numpy as np
 from digital_comms.mobile_network.transmitter_module import (
     read_postcode_sector,
     get_local_authority_ids,
-    calculate_indoor_outdoor_ratio,
     get_transmitters,
     generate_receivers,
     NetworkManager,
-    read_postcode_sector,
     find_and_deploy_new_transmitter,
     randomly_select_los,
     transform_coordinates
@@ -111,6 +109,7 @@ def base_system(get_postcode_sector):
                 "misc_losses": 4,
                 "gain": 4,
                 "losses": 4,
+                "indoor": True,
             }
         },
         {
@@ -125,6 +124,7 @@ def base_system(get_postcode_sector):
                 "misc_losses": 4,
                 "gain": 4,
                 "losses": 4,
+                "indoor": True,
             }
         },
         {
@@ -139,6 +139,7 @@ def base_system(get_postcode_sector):
                 "misc_losses": 4,
                 "gain": 4,
                 "losses": 4,
+                "indoor": True,
             }
         }
     ]
@@ -155,7 +156,18 @@ def base_system(get_postcode_sector):
 
 def test_generate_receivers(get_postcode_sector):
 
-    actual_receivers = generate_receivers(get_postcode_sector, 100)
+    postcode_sector_lut ={
+        'postcode_sector': 'CB11',
+        'indoor_probability': 100,
+        'outdoor_probability': 0,
+        'residential_count': 20,
+        'non_residential_count': 20,
+        'area': 200,
+    }
+
+    actual_receivers = generate_receivers(
+        get_postcode_sector, postcode_sector_lut, 100
+        )
 
     receiver_1 = actual_receivers[0]
 
@@ -164,6 +176,7 @@ def test_generate_receivers(get_postcode_sector):
     assert receiver_1['properties']['misc_losses'] == 4
     assert receiver_1['properties']['gain'] == 4
     assert receiver_1['properties']['losses'] == 4
+    assert receiver_1['properties']['indoor'] == True
 
 def test_find_and_deploy_new_transmitter(base_system, get_postcode_sector):
 
@@ -330,7 +343,9 @@ def test_calculate_path_loss(base_system):
         (np.log(distance))**alpha_exponent - alpha_hm - beta_hb
     )
 
-    path_loss = path_loss + 4648 #4808
+    #stochastic component for geometry/distance 4808
+    #stochastic component for building penetration loss 8655567
+    path_loss = path_loss + 4648 + 8655567
 
     assert actual_result == path_loss
 
@@ -383,8 +398,14 @@ def test_calculate_interference(base_system):
     #path_loss(0.7 1078 20 macro 20 20 urban nlos 1.5 0)
     #-538 = (40 + 20 - 2) - 592 - 4 + 4 - 4
 
+    #distance/geometry based
+    # expected_interference = [
+    #     -349, -346, -538
+    #     ]
+
+    #stochastic component for building penetration loss 8655567
     expected_interference = [
-        -349, -346, -538
+        -8655916, -8655913, -8656105
         ]
 
     assert actual_interference == expected_interference
@@ -408,7 +429,7 @@ def test_calculate_sinr(base_system):
     actual_received_power = base_system.calc_received_power(
         closest_transmitter,
         receiver,
-        4808
+        (4808 + 8655567)
         )
 
     closest_transmitters = base_system.find_closest_available_transmitters(receiver)
@@ -425,10 +446,10 @@ def test_calculate_sinr(base_system):
         actual_received_power / sum(actual_interference) + actual_noise, 1
         )
 
-    expected_received_power = ((40 + 20 - 2) - 4808 - 4 + 4 - 4)
+    expected_received_power = ((40 + 20 - 2) - (4808 + 8655567) - 4 + 4 - 4)
 
     expected_interference = [
-        -349, -346, -538
+        -8655916, -8655913, -8656105
         ]
 
     expected_noise = 5
@@ -442,17 +463,45 @@ def test_calculate_sinr(base_system):
 
     assert actual_sinr == expected_sinr
 
+def test_modulation_scheme_and_coding_rate(base_system):
+
+    MODULATION_AND_CODING_LUT =[
+        #CQI Index	Modulation	Coding rate	Spectral efficiency (bps/Hz) SINR estimate (dB)
+        (1,	'QPSK',	0.0762,	0.1523, -6.7),
+        (2,	'QPSK',	0.1172,	0.2344, -4.7),
+        (3,	'QPSK',	0.1885,	0.377, -2.3),
+        (4,	'QPSK',	0.3008,	0.6016, 0.2),
+        (5,	'QPSK',	0.4385,	0.877, 2.4),
+        (6,	'QPSK',	0.5879,	1.1758,	4.3),
+        (7,	'16QAM', 0.3691, 1.4766, 5.9),
+        (8,	'16QAM', 0.4785, 1.9141, 8.1),
+        (9,	'16QAM', 0.6016, 2.4063, 10.3),
+        (10, '64QAM', 0.4551, 2.7305, 11.7),
+        (11, '64QAM', 0.5537, 3.3223, 14.1),
+        (12, '64QAM', 0.6504, 3.9023, 16.3),
+        (13, '64QAM', 0.7539, 4.5234, 18.7),
+        (14, '64QAM', 0.8525, 5.1152, 21),
+        (15, '64QAM', 0.9258, 5.5547, 22.7),
+        ]
+
+    actual_result = base_system.modulation_scheme_and_coding_rate(
+        10, MODULATION_AND_CODING_LUT
+        )
+    
+    expected_result = 1.9141
+
+    assert actual_result == expected_result
+
 def test_estimate_capacity(base_system):
 
     bandwidth = 10
-    sinr = 8.9
+    spectral_effciency = 1
 
-    actual_estimate_capacity = base_system.estimate_capacity(bandwidth, sinr)
+    actual_estimate_capacity = base_system.estimate_capacity(
+        bandwidth, spectral_effciency
+        )
 
-    expected_estimate_capacity = round(bandwidth*np.log2(1+sinr), 2)
+    expected_estimate_capacity = (bandwidth/1000000)*spectral_effciency
 
     assert actual_estimate_capacity == expected_estimate_capacity
 
-def test_randomly_select_los():
-
-    assert randomly_select_los() == 'nlos'

@@ -8,8 +8,8 @@ import pytest
 import os
 
 from scripts.mobile_preprocess_lookup_tables import (
-    get_all_postcode_sectors,
-    get_local_authority_ids,
+    get_postcode_sectors,
+    get_local_authority_district,
     read_building_polygons,
     calculate_indoor_outdoor_ratio,
     get_geotype_information,
@@ -78,7 +78,8 @@ def test_calculate_indoor_outdoor_ratio(postcode_sector, buildings):
 
 def test_get_geotype_information(postcode_sector, buildings):
 
-    actual_residential_count, actual_area, actual_density = get_geotype_information(
+    actual_residential_count, actual_non_residential_count, \
+        actual_area = get_geotype_information(
         postcode_sector, buildings
         )
 
@@ -86,11 +87,12 @@ def test_get_geotype_information(postcode_sector, buildings):
     # 20 = 10 + 10
     expected_residential_count = 20
 
+    expected_non_residential_count = 0
+
     # sum of postcode_sector area = 30 m^2/1000000
     expected_area = (30/1000000)
 
-    expected_density = expected_residential_count / expected_area
-
     assert actual_residential_count == expected_residential_count
+    assert actual_non_residential_count == expected_non_residential_count
     assert actual_area == expected_area
-    assert actual_density == expected_density
+

@@ -255,10 +255,21 @@ def test_process_asset_data(load_data):
         'type': "Feature",
         'geometry': {
             "type": "Point",
-            "coordinates": [545957.2237, 258488.07435],
+            "coordinates": [545957.2237, 258488.07434999995],
             },
-        'properties':{}
-        },
+        'properties':{
+            'Antennaht': 16.0,
+            'Transtype': ['GSM','UMTS','UMTS','GSM','GSM','GSM','UMTS',
+                'UMTS','UMTS','UMTS','UMTS','UMTS'],
+            'Freqband': ['1800','2100','2100','1800','1800','1800','2100',
+                '2100','2100','2100','2100','2100'],
+            'Anttype': ['SECTOR','SECTOR','Sectored','SECTOR','SECTOR',
+                'SECTOR','SECTOR','SECTOR','SECTOR','Macro','Macro','Macro'],
+            'Powerdbw': 22.166666666666668,
+            'Maxpwrdbw': 32,
+            'Maxpwrdbm': 0,
+            }
+        }
         ]
 
     assert len(actual_processed_data) == len(expected_processed_data)

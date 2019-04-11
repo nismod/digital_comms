@@ -77,9 +77,9 @@ def path_loss_calculator(frequency, distance, ant_height, ant_type, building_hei
         raise ValueError (
             "frequency of {} is NOT within correct range".format(frequency)
         )
-
+        
     path_loss = path_loss + outdoor_to_indoor_path_loss(indoor)
-
+    
     return path_loss
 
 def determine_path_loss(extended_hata_path_loss, free_space_path_loss):
@@ -645,12 +645,13 @@ def outdoor_to_indoor_path_loss(indoor):
     8 dB respectively.
 
     """
+
     if indoor:
 
-        outdoor_to_indoor_path_loss = 0
+        outdoor_to_indoor_path_loss = generate_log_normal_dist_value(12, 8, 1)
 
     else:
 
-        outdoor_to_indoor_path_loss = generate_log_normal_dist_value(12, 8, 1)
+        outdoor_to_indoor_path_loss = 0
 
     return outdoor_to_indoor_path_loss

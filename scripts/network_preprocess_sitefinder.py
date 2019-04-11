@@ -59,7 +59,7 @@ def import_sitefinder_data(path):
 
     return asset_data
 
-def find_average(my_property):
+def find_average(my_property, touching_assets):
 
     numerator = sum([float(a['properties'][my_property]) for a in touching_assets
         if str(a['properties'][my_property]).isdigit()])
@@ -98,10 +98,10 @@ def process_asset_data(data):
             if asset['buffer'].intersects(other_asset['buffer']):
                 touching_assets.append(other_asset)
                 assets_seen.add(other_asset['properties']['Opref'])
-
+        
         dissolved_shape = cascaded_union([a['buffer'] for a in touching_assets])
         final_centroid = dissolved_shape.centroid
-
+        
         output.append({
             'type': "Feature",
             'geometry': {
@@ -109,13 +109,13 @@ def process_asset_data(data):
                 "coordinates": [final_centroid.coords[0][0], final_centroid.coords[0][1]],
             },
             'properties':{
-                'Antennaht': find_average('Antennaht'),
+                'Antennaht': find_average('Antennaht', touching_assets),
                 'Transtype': [a['properties']['Transtype'] for a in touching_assets],
                 'Freqband': [a['properties']['Freqband'] for a in touching_assets],
                 'Anttype': [a['properties']['Anttype'] for a in touching_assets],
-                'Powerdbw': find_average('Powerdbw'),
-                'Maxpwrdbw': find_average('Maxpwrdbw'),
-                'Maxpwrdbm': find_average('Maxpwrdbm'),
+                'Powerdbw': find_average('Powerdbw', touching_assets),
+                'Maxpwrdbw': find_average('Maxpwrdbw', touching_assets),
+                'Maxpwrdbm': find_average('Maxpwrdbm', touching_assets),
             }
         })
 

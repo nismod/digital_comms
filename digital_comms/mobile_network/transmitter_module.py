@@ -15,9 +15,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.spatial import Delaunay
 
+from itertools import tee
 from collections import OrderedDict
 
-from digital_comms.mobile_network.path_loss_module import path_loss_calculator
+from path_loss_module import path_loss_calculator
 
 # from built_env_module import find_line_of_sight
 
@@ -35,7 +36,9 @@ DATA_RESULTS = os.path.join(BASE_PATH, '..' ,'results', 'system_simulator')
 np.random.seed(42)
 
 def read_postcode_sector(postcode_sector):
+
     postcode_area = ''.join([i for i in postcode_sector[:2] if not i.isdigit()])
+    postcode_area = postcode_area.lower()
     with fiona.open(
         os.path.join(DATA_RAW, 'd_shapes', 'postcode_sectors', postcode_area + '.shp'), 'r') \
         as source:
@@ -139,7 +142,7 @@ def generate_receivers(postcode_sector, postcode_sector_lut, quantity):
 
     """
     indoor_probability = postcode_sector_lut['indoor_probability']
-
+    
     coordinates = []
 
     geom = shape(postcode_sector['geometry'])
@@ -159,6 +162,8 @@ def generate_receivers(postcode_sector, postcode_sector_lut, quantity):
         x_coord = np.random.uniform(low=minx, high=maxx, size=1)
         y_coord = np.random.uniform(low=miny, high=maxy, size=1)
 
+        indoor_outdoor_probability = np.random.rand(1,1)[0][0]      
+        
         coordinates = list(zip(x_coord, y_coord))
 
         # Join the two
@@ -177,7 +182,8 @@ def generate_receivers(postcode_sector, postcode_sector_lut, quantity):
                     "misc_losses": 4,
                     "gain": 4,
                     "losses": 4,
-                    "indoor": True if np.random.rand(1,1)[0][0] < indoor_probability else False
+                    "indoor": (True if float(indoor_outdoor_probability) < \
+                        float(indoor_probability) else False),
                 }
             })
             id_number += 1
@@ -477,7 +483,7 @@ class NetworkManager(object):
             settlement_type = 'urban'
             type_of_sight = randomly_select_los()
             above_roof = 0
-            location = receiver.indoor
+            indoor = receiver.indoor
 
             path_loss = path_loss_calculator(
                 frequency,
@@ -490,7 +496,7 @@ class NetworkManager(object):
                 type_of_sight,
                 receiver.ue_height,
                 above_roof,
-                location,
+                indoor,
                 )
 
             #calc interference from other cells
@@ -777,7 +783,7 @@ def write_lookup_table(threshold_value, operator, technology, frequency,
     lut_file.close()
 
 def write_shapefile(data, postcode_sector_name, filename):
-
+    
     # Translate props to Fiona sink schema
     prop_schema = []
     for name, value in data[0]['properties'].items():
@@ -805,7 +811,9 @@ def write_shapefile(data, postcode_sector_name, filename):
     with fiona.open(
         os.path.join(directory, filename), 'w',
         driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
-        [sink.write(feature) for feature in data]
+        for feature in data:
+            print(feature)
+            sink.write(feature)
 
 def format_data(existing_data, new_data, frequency, bandwidth, postcode_sector_name):
 
@@ -980,7 +988,7 @@ if __name__ == "__main__":
 
     for operator, technology, frequency, bandwidth in SPECTRUM_PORTFOLIO:
 
-        while t_density < 100:
+        while t_density < 200:
 
             print("Running {} GHz with {} MHz bandwidth".format(
                 frequency, bandwidth
@@ -1007,7 +1015,7 @@ if __name__ == "__main__":
                     )
 
             results = MANAGER.estimate_link_budget(
-                frequency, bandwidth, modulation_and_coding_lut
+                frequency, bandwidth, MODULATION_AND_CODING_LUT
                 )
 
             #calculate transmitter density
