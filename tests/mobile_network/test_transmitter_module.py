@@ -1,6 +1,7 @@
 import pytest
 import os
 import numpy as np
+from shapely.geometry import shape, Point
 
 from digital_comms.mobile_network.transmitter_module import (
     read_postcode_sector,
@@ -151,7 +152,7 @@ def base_system(get_postcode_sector):
 
 @pytest.fixture
 def postcode_sector_lut():
-    
+
     yield {
         'postcode_sector': 'CB11',
         'indoor_probability': 100,
@@ -169,11 +170,19 @@ def test_determine_environment(postcode_sector_lut):
 
     assert actual_results == expected_result
 
-# def test_get_transmitters(get_postcode_sector):
+def test_get_transmitters(get_postcode_sector):
 
-#     actual_receivers = get_transmitters(get_postcode_sector)
+    actual_receivers = get_transmitters(get_postcode_sector)
 
-#     assert len(actual_receivers) == 21
+    geom = shape(get_postcode_sector['geometry'])
+
+    actual_receivers_in_shape = []
+
+    for receiver in actual_receivers:
+        if geom.contains(Point(receiver['geometry']['coordinates'])):
+            actual_receivers_in_shape.append(receiver)
+
+    assert len(actual_receivers_in_shape) == 3
 
 def test_generate_receivers(get_postcode_sector, postcode_sector_lut):
 
@@ -190,125 +199,153 @@ def test_generate_receivers(get_postcode_sector, postcode_sector_lut):
     assert receiver_1['properties']['losses'] == 4
     assert receiver_1['properties']['indoor'] == True
 
-# def test_find_and_deploy_new_transmitter(base_system, get_postcode_sector):
+def test_find_and_deploy_new_transmitter(base_system, get_postcode_sector):
 
-#     new_transmitter = find_and_deploy_new_transmitter(
-#         base_system.transmitters, 1, get_postcode_sector
-#         )
+    new_transmitter = find_and_deploy_new_transmitter(
+        base_system.transmitters, 1, get_postcode_sector
+        )
 
-#     expected_transmitter = [
-#         {
-#             'type': "Feature",
-#             'geometry': {
-#                 "type": "Point",
-#                 "coordinates": [545478.632082053, 259578.12093366645]
-#             },
-#             'properties': {
-#                     "operator": 'unknown',
-#                     "sitengr": '{new}{GEN1}',
-#                     "ant_height": 20,
-#                     "tech": 'LTE',
-#                     "freq": 700,
-#                     "type": 17,
-#                     "power": 30,
-#                     "gain": 18,
-#                     "losses": 2,
-#                 }
-#         }
-#     ]
+    expected_transmitter = [
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [545685.9002289057, 258142.1213415587]
+            },
+            'properties': {
+                    "operator": 'unknown',
+                    "sitengr": '{new}{GEN1}',
+                    "ant_height": 20,
+                    "tech": 'LTE',
+                    "freq": 700,
+                    "type": 17,
+                    "power": 30,
+                    "gain": 18,
+                    "losses": 2,
+                }
+        }
+    ]
 
-#     assert len(new_transmitter) == 1
-#     assert new_transmitter == expected_transmitter
+    assert len(new_transmitter) == 1
+    assert new_transmitter == expected_transmitter
 
-# def test_network_manager(base_system):
+    new_transmitter = find_and_deploy_new_transmitter(
+        base_system.transmitters, 1, get_postcode_sector
+        )
 
-#     assert len(base_system.area) == 1
-#     assert len(base_system.transmitters) == 4
-#     assert len(base_system.receivers) == 3
+    expected_transmitter = [
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [545631.0363226292, 258198.41171843308]
+            },
+            'properties': {
+                    "operator": 'unknown',
+                    "sitengr": '{new}{GEN1}',
+                    "ant_height": 20,
+                    "tech": 'LTE',
+                    "freq": 700,
+                    "type": 17,
+                    "power": 30,
+                    "gain": 18,
+                    "losses": 2,
+                }
+        }
+    ]
 
-# def test_build_new_assets(base_system):
+    assert len(new_transmitter) == 1
+    assert new_transmitter == expected_transmitter
 
-#     build_this_transmitter = [
-#         {
-#             'type': "Feature",
-#             'geometry': {
-#                 "type": "Point",
-#                 "coordinates": [0.124896, 52.215965]
-#             },
-#             'properties': {
-#                     "operator": 'unknown',
-#                     "sitengr": '{new}{GEN1}',
-#                     "ant_height": 20,
-#                     "tech": 'LTE',
-#                     "freq": 700,
-#                     "type": 17,
-#                     "power": 30,
-#                     "gain": 18,
-#                     "losses": 2,
-#                 }
-#         }
-#     ]
+def test_network_manager(base_system):
 
-#     base_system.build_new_assets(build_this_transmitter, 'CB11')
+    assert len(base_system.area) == 1
+    assert len(base_system.transmitters) == 4
+    assert len(base_system.receivers) == 3
 
-#     assert len(base_system.transmitters) == 5
+def test_build_new_assets(base_system):
 
-# # def test_estimate_link_budget(base_system):
+    build_this_transmitter = [
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [0.124896, 52.215965]
+            },
+            'properties': {
+                    "operator": 'unknown',
+                    "sitengr": '{new}{GEN1}',
+                    "ant_height": 20,
+                    "tech": 'LTE',
+                    "freq": 700,
+                    "type": 17,
+                    "power": 30,
+                    "gain": 18,
+                    "losses": 2,
+                }
+        }
+    ]
 
-# #     actual_result = base_system.estimate_link_budget(0.7, 10)
+    base_system.build_new_assets(build_this_transmitter, 'CB11')
 
-# #     #find closest_transmitters
-# #     # <Receiver id:AB1>
-# #     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>, <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
-# #     # <Receiver id:AB3>
-# #     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>, <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
-# #     # <Receiver id:AB2>
-# #     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4529059480>, <Transmitter id:TL4515059700>, <Transmitter id:TL4577059640>]
+    assert len(base_system.transmitters) == 5
 
-# #     #find path_loss (self.calculate_path_loss)
+# def test_estimate_link_budget(base_system):
 
-# #     # type_of_sight is nlos
-# #     # 0.7 383.56170453174326 20 macro 20 20 urban nlos 1.5 0
-# #     # 0.7 869 20 macro 20 20 urban nlos 1.5 0
-# #     # 0.7 961 20 macro 20 20 urban nlos 1.5 0
-# #     # 0.7 1856 20 macro 20 20 urban nlos 1.5 0
-# #     # type_of_sight is nlos
-# #     # 0.7 158.43465782386215 20 macro 20 20 urban nlos 1.5 0
-# #     # 0.7 753 20 macro 20 20 urban nlos 1.5 0
-# #     # 0.7 770 20 macro 20 20 urban nlos 1.5 0
-# #     # 0.7 1744 20 macro 20 20 urban nlos 1.5 0
-# #     # type_of_sight is nlos
-# #     # 0.7 186.39733937494557 20 macro 20 20 urban nlos 1.5 0
-# #     # 0.7 935 20 macro 20 20 urban nlos 1.5 0
-# #     # 0.7 943 20 macro 20 20 urban nlos 1.5 0
-# #     # 0.7 1915 20 macro 20 20 urban nlos 1.5 0
+#     actual_result = base_system.estimate_link_budget(0.7, 10)
 
-# #     #find received_power (self.calc_received_power)
+#     #find closest_transmitters
+#     # <Receiver id:AB1>
+#     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>, <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
+#     # <Receiver id:AB3>
+#     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>, <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
+#     # <Receiver id:AB2>
+#     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4529059480>, <Transmitter id:TL4515059700>, <Transmitter id:TL4577059640>]
 
-# #     #find interference (self.calculate_interference)
+#     #find path_loss (self.calculate_path_loss)
 
-# #     #find noise
+#     # type_of_sight is nlos
+#     # 0.7 383.56170453174326 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 869 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 961 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 1856 20 macro 20 20 urban nlos 1.5 0
+#     # type_of_sight is nlos
+#     # 0.7 158.43465782386215 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 753 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 770 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 1744 20 macro 20 20 urban nlos 1.5 0
+#     # type_of_sight is nlos
+#     # 0.7 186.39733937494557 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 935 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 943 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 1915 20 macro 20 20 urban nlos 1.5 0
 
-# #     #find sinr (self.calculate_sinr)
+#     #find received_power (self.calc_received_power)
 
-# #     #find (self.estimate_capacity)
+#     #find interference (self.calculate_interference)
+
+#     #find noise
+
+#     #find sinr (self.calculate_sinr)
+
+#     #find (self.estimate_capacity)
 
 
-# #     expected_result = 0
+#     expected_result = 0
 
-# #     assert expected_result == actual_result
+#     assert expected_result == actual_result
 
-# def test_find_closest_available_transmitters(base_system):
+def test_find_closest_available_transmitters(base_system):
 
-#     receiver = base_system.receivers['AB3']
+    receiver = base_system.receivers['AB3']
 
-#     actual_result = base_system.find_closest_available_transmitters(receiver)
+    actual_result = base_system.find_closest_available_transmitters(receiver)
 
-#     actual_transmitter_ids = [t.id for t in actual_result]
+    actual_transmitter_ids = [t.id for t in actual_result]
 
-#     expected_result = ['TL4454059600', 'TL4515059700', 'TL4529059480', 'TL4577059640']
+    expected_result = ['TL4454059600', 'TL4515059700', 'TL4529059480', 'TL4577059640']
 
-#     assert actual_transmitter_ids == expected_result
+    assert actual_transmitter_ids == expected_result
 
 
 # def test_calculate_path_loss(base_system):
@@ -499,7 +536,7 @@ def test_generate_receivers(get_postcode_sector, postcode_sector_lut):
 #     actual_result = base_system.modulation_scheme_and_coding_rate(
 #         10, MODULATION_AND_CODING_LUT
 #         )
-    
+
 #     expected_result = 1.9141
 
 #     assert actual_result == expected_result
@@ -516,4 +553,3 @@ def test_generate_receivers(get_postcode_sector, postcode_sector_lut):
 #     expected_estimate_capacity = (bandwidth/1000000)*spectral_effciency
 
 #     assert actual_estimate_capacity == expected_estimate_capacity
-
