@@ -136,6 +136,15 @@ class NetworkManager():
                 exchange.upgrade(technology)
 
     def update_adoption_desirability(self, adoption_desirability):
+        """
+
+        Updates the state of the set of distributions, then computes new statistics
+        at the cabinet and exchange levels
+
+        Arguments
+        ---------
+        adoption_desirability : list of tuple
+        """
 
         for distribution_id, desirability_to_adopt in adoption_desirability:
             for distribution in self._distributions:
@@ -429,7 +438,14 @@ class NetworkManager():
 
 
 class Asset(metaclass=ABCMeta):
-    """An Asset with no ``clients`` is a distribution point
+    """Abstract fixed network node
+
+    An Asset with no ``clients`` is a distribution point
+
+    Arguments
+    ---------
+    clients : list, optional
+        An optional list of digital_comms.fixed_network.model:`Asset`
     """
 
     def __init__(self, clients=None):
@@ -498,6 +514,7 @@ class Asset(metaclass=ABCMeta):
                     self.link.upgrade('fibre')
 
             elif action in ('fttdp'):
+                self._fttp = 0
                 self._fttdp = self.total_prems
                 self._fttc = 0
                 self._docsis3 = 0
@@ -517,7 +534,7 @@ class Asset(metaclass=ABCMeta):
         return rollout_costs
 
     @property
-    def rollout_benefits(self):
+    def rollout_benefits(self) -> Dict:
         rollout_benefits = {}
         benefits = [client.rollout_benefits for client in self._clients]
         for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
@@ -525,7 +542,7 @@ class Asset(metaclass=ABCMeta):
         return rollout_benefits
 
     @property
-    def rollout_bcr(self):
+    def rollout_bcr(self) -> Dict:
         rollout_bcr = {}
         benefits = self.rollout_benefits
         costs = self.rollout_costs
@@ -535,7 +552,7 @@ class Asset(metaclass=ABCMeta):
         return rollout_bcr
 
     @property
-    def total_potential_benefit(self):
+    def total_potential_benefit(self) -> Dict:
         total_potential_benefit = {}
         benefits = [client.total_potential_benefit for client in self._clients]
         for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
@@ -543,7 +560,7 @@ class Asset(metaclass=ABCMeta):
         return total_potential_benefit
 
     @property
-    def total_potential_bcr(self):
+    def total_potential_bcr(self) -> Dict:
         total_potential_bcr = {}
         benefit = self.total_potential_benefit
         cost = self.rollout_costs
@@ -568,7 +585,6 @@ class Exchange(Asset):
     link
     parameters : dict
         Contains all parameters from 'digital_comms.yml'.
-
 
     """
 
@@ -638,23 +654,6 @@ class Cabinet(Asset):
     parameters : dict
         Contains all parameters from 'digital_comms.yml'.
 
-    Attributes
-    ----------
-    id
-    connection
-    fttp
-    fttdp
-    fttc
-    adsl
-    parameters
-    link
-    compute()
-
-    Methods
-    -------
-    compute
-        Calculates upgrade costs and benefits.
-
     """
 
     def __init__(self, data, clients, link, parameters):
@@ -673,7 +672,7 @@ class Cabinet(Asset):
         return "<Cabinet id:{}>".format(self.id)
 
     @property
-    def upgrade_costs(self):
+    def upgrade_costs(self) -> Dict:
 
         upgrade_costs = {}
 
@@ -705,10 +704,12 @@ class Cabinet(Asset):
         return upgrade_costs
 
     def compute(self):
+        """Calculates upgrade costs and benefits.
+        """
 
         self.list_of_asset_costs = []
         self.list_of_asset_costs.append({
-            'id': self.id ,
+            'id': self.id,
             'costs_assets_cabinet_fttp': (self.parameters['costs_assets_cabinet_fttp'] \
                 * ceil(len(self._clients) / 32) \
                 if self.fttp == 0 else 0),

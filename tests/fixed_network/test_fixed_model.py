@@ -203,6 +203,8 @@ class TestUpgradeExchange:
         assert actual.total_prems == 20
         assert isinstance(actual._clients, list)
 
+        small_system.update_adoption_desirability([('distribution_{EACAM}{795}', True)])
+
         intervention_list = [('exchange_EACAM', 'fttdp')]
         small_system.upgrade(intervention_list)
 
@@ -212,8 +214,8 @@ class TestUpgradeExchange:
         assert actual.fttp == 0
         assert actual.fttdp == 20
         assert actual.fttc == 0
-        assert actual.docsis3 == 5
-        assert actual.adsl == 20
+        assert actual.docsis3 == 0
+        assert actual.adsl == 0
         assert actual.total_prems == 20
         assert isinstance(actual._clients, list)
 
