@@ -3,7 +3,8 @@
 from collections import defaultdict
 from math import ceil
 from abc import abstractmethod, abstractproperty, ABCMeta
-from functools import lru_cache
+from typing import Dict
+import logging
 
 #####################
 # MODEL
@@ -505,44 +506,51 @@ class Asset(metaclass=ABCMeta):
         self.compute()
 
     @property
-    def rollout_costs(self):
+    def rollout_costs(self) -> Dict:
         rollout_costs = {}
+        upgrade_costs = self.upgrade_costs
+        costs = [client.rollout_costs for client in self._clients]
+
         for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
-            rollout_costs[tech] = self.upgrade_costs[tech] + \
-                sum(client.rollout_costs[tech] for client in self._clients)
+            rollout_costs[tech] = upgrade_costs[tech] + \
+                sum(cost[tech] for cost in costs)
         return rollout_costs
 
     @property
     def rollout_benefits(self):
         rollout_benefits = {}
+        benefits = [client.rollout_benefits for client in self._clients]
         for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
-            rollout_benefits[tech] = sum(
-                client.rollout_benefits[tech] for client in self._clients)
+            rollout_benefits[tech] = sum(benefit[tech] for benefit in benefits)
         return rollout_benefits
 
     @property
     def rollout_bcr(self):
         rollout_bcr = {}
+        benefits = self.rollout_benefits
+        costs = self.rollout_costs
         for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
             rollout_bcr[tech] = _calculate_benefit_cost_ratio(
-                self.rollout_benefits[tech], self.rollout_costs[tech])
+                benefits[tech], costs[tech])
         return rollout_bcr
 
     @property
     def total_potential_benefit(self):
         total_potential_benefit = {}
+        benefits = [client.total_potential_benefit for client in self._clients]
         for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
-            total_potential_benefit[tech] = sum(
-                client.total_potential_benefit[tech] for client in self._clients)
+            total_potential_benefit[tech] = sum(benefit[tech] for benefit in benefits)
         return total_potential_benefit
 
     @property
     def total_potential_bcr(self):
         total_potential_bcr = {}
+        benefit = self.total_potential_benefit
+        cost = self.rollout_costs
         for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
             total_potential_bcr[tech] = _calculate_benefit_cost_ratio(
-                self.total_potential_benefit[tech],
-                self.rollout_costs[tech]
+                benefit[tech],
+                cost[tech]
                 )
         return total_potential_bcr
 
