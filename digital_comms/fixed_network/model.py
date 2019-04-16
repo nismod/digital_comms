@@ -3,6 +3,7 @@
 from collections import defaultdict
 from math import ceil
 from abc import abstractmethod, abstractproperty, ABCMeta
+from functools import lru_cache
 
 #####################
 # MODEL
@@ -446,26 +447,32 @@ class Asset(metaclass=ABCMeta):
         return NotImplementedError
 
     @property
+    @lru_cache(maxsize=4096)
     def fttp(self):
         return sum([client.fttp for client in self._clients])
 
     @property
+    @lru_cache(maxsize=4096)
     def fttdp(self):
         return sum([client.fttdp for client in self._clients])
 
     @property
+    @lru_cache(maxsize=4096)
     def fttc(self):
         return sum([client.fttc for client in self._clients])
 
     @property
+    @lru_cache(maxsize=4096)
     def docsis3(self):
         return sum([client.docsis3 for client in self._clients])
 
     @property
+    @lru_cache(maxsize=4096)
     def adsl(self):
         return sum([client.adsl for client in self._clients])
 
     @property
+    @lru_cache(maxsize=4096)
     def total_prems(self):
         return sum([client.total_prems for client in self._clients])
 
@@ -504,6 +511,7 @@ class Asset(metaclass=ABCMeta):
         self.compute()
 
     @property
+    @lru_cache(maxsize=4096)
     def rollout_costs(self):
         rollout_costs = {}
         for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
@@ -512,6 +520,7 @@ class Asset(metaclass=ABCMeta):
         return rollout_costs
 
     @property
+    @lru_cache(maxsize=4096)
     def rollout_benefits(self):
         rollout_benefits = {}
         for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
@@ -520,6 +529,7 @@ class Asset(metaclass=ABCMeta):
         return rollout_benefits
 
     @property
+    @lru_cache(maxsize=4096)
     def rollout_bcr(self):
         rollout_bcr = {}
         for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
@@ -528,6 +538,7 @@ class Asset(metaclass=ABCMeta):
         return rollout_bcr
 
     @property
+    @lru_cache(maxsize=4096)
     def total_potential_benefit(self):
         total_potential_benefit = {}
         for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
@@ -536,6 +547,7 @@ class Asset(metaclass=ABCMeta):
         return total_potential_benefit
 
     @property
+    @lru_cache(maxsize=4096)
     def total_potential_bcr(self):
         total_potential_bcr = {}
         for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
@@ -729,29 +741,6 @@ class Distribution(Asset):
         TODO
     parameters : dict
         Contains all parameters from 'digital_comms.yml'.
-
-    Attributes
-    ----------
-    id
-    connection
-    fttp
-    fttdp
-    fttc
-    adsl
-    wta
-    wtp
-    adoption_desirability
-    parameters
-    link
-    compute()
-
-    Methods
-    -------
-    compute
-        Calculates upgrade costs and benefits.
-    upgrade
-        Upgrades any links with new technology.
-
     """
     def __init__(self, data, link, parameters):
         super().__init__()
@@ -854,10 +843,10 @@ class Distribution(Asset):
         )
         return upgrade_costs
 
-
     @property
+    @lru_cache(maxsize=4096)
     def rollout_benefits(self):
-        """
+        """Compute the benefit of rolling out the technologies
 
         Notes
         -----
@@ -870,15 +859,16 @@ class Distribution(Asset):
         """
         rollout_benefits = {}
         for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
-            if self.adoption_desirability:
-                rollout_benefits[tech] = _calculate_potential_revenue(
-                    self.wtp, self.parameters['months_per_year'],
-                    self.parameters['payback_period'], self.parameters['profit_margin'])
-            else:
-                rollout_benefits[tech] = 0
+            # if self.adoption_desirability:
+            rollout_benefits[tech] = _calculate_potential_revenue(
+                self.wtp, self.parameters['months_per_year'],
+                self.parameters['payback_period'], self.parameters['profit_margin'])
+            # else:
+            #     rollout_benefits[tech] = 0
         return rollout_benefits
 
     @property
+    @lru_cache(maxsize=4096)
     def total_potential_benefit(self):
         total_potential_benefit = {}
         for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
