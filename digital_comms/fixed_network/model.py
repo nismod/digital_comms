@@ -859,12 +859,12 @@ class Distribution(Asset):
         """
         rollout_benefits = {}
         for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
-            # if self.adoption_desirability:
-            rollout_benefits[tech] = _calculate_potential_revenue(
-                self.wtp, self.parameters['months_per_year'],
-                self.parameters['payback_period'], self.parameters['profit_margin'])
-            # else:
-            #     rollout_benefits[tech] = 0
+            if self.adoption_desirability:
+                rollout_benefits[tech] = _calculate_potential_revenue(
+                    self.wtp, self.parameters['months_per_year'],
+                    self.parameters['payback_period'], self.parameters['profit_margin'])
+            else:
+                rollout_benefits[tech] = 0
         return rollout_benefits
 
     @property
