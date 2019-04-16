@@ -427,9 +427,14 @@ class NetworkManager():
 
 
 class Asset(metaclass=ABCMeta):
+    """An Asset with no ``clients`` is a distribution point
+    """
 
-    def __init__(self, clients):
-        self._clients = clients
+    def __init__(self, clients=None):
+        if clients:
+            self._clients = clients
+        else:
+            self._clients = []
         self.link = None
 
     @abstractmethod
@@ -471,17 +476,35 @@ class Asset(metaclass=ABCMeta):
         ---------
         action : str
         """
-        if action == 'fttp':
-            if self.link is not None:
-                self.link.upgrade('fibre')
-            for client in self._clients:
-                client.upgrade(action)
+        if self._clients:
+            if action == 'fttp':
+                if self.link is not None:
+                    self.link.upgrade('fibre')
+                for client in self._clients:
+                    client.upgrade(action)
 
-        if action == 'fttdp':
-            if self.link is not None:
-                self.link.upgrade('fibre')
-            for client in self._clients:
-                client.upgrade(action)
+            if action == 'fttdp':
+                if self.link is not None:
+                    self.link.upgrade('fibre')
+                for client in self._clients:
+                    client.upgrade(action)
+        else:
+            if action in ('fttp'):
+                action = 'fttp'
+                self._fttp = self.total_prems
+                self._fttdp = 0
+                self._fttc = 0
+                self._docsis3 = 0
+                self._adsl = 0
+                if self.link is not None:
+                    self.link.upgrade('fibre')
+
+            if action in ('fttdp'):
+                action = 'fttdp'
+                self._fttdp = self.total_prems
+                self._fttc = 0
+                self._docsis3 = 0
+                self._adsl = 0
 
         self.compute()
 
@@ -649,6 +672,7 @@ class Cabinet(Asset):
     def upgrade_costs(self):
 
         upgrade_costs = {}
+
         upgrade_costs['fttp'] = (
             (
                 self.parameters['costs_assets_cabinet_fttp'] \
@@ -697,7 +721,7 @@ class Cabinet(Asset):
         })
 
 
-class Distribution():
+class Distribution(Asset):
     """Distribution object
 
     Parameters
@@ -735,17 +759,17 @@ class Distribution():
 
     """
     def __init__(self, data, link, parameters):
-
+        super().__init__()
         # Asset parameters
         self.id = data["id"]
         self.lad = data["lad"]
         self.connection = data["connection"]
-        self.fttp = int(data["fttp"])
-        self.fttdp = int(data["fttdp"])
-        self.fttc = int(data["fttc"])
-        self.docsis3 = int(data["docsis3"])
-        self.adsl = int(data["adsl"])
-        self.total_prems = int(data['total_prems'])
+        self._fttp = int(data["fttp"])
+        self._fttdp = int(data["fttdp"])
+        self._fttc = int(data["fttc"])
+        self._docsis3 = int(data["docsis3"])
+        self._adsl = int(data["adsl"])
+        self._total_prems = int(data['total_prems'])
         self.wta = float(data["wta"])
         self.wtp = int(data["wtp"])
         self.adoption_desirability = False
@@ -756,6 +780,30 @@ class Distribution():
         self.link = link
 
         self.compute()
+
+    @property
+    def fttp(self):
+        return self._fttp
+
+    @property
+    def fttdp(self):
+        return self._fttdp
+
+    @property
+    def fttc(self):
+        return self._fttc
+
+    @property
+    def docsis3(self):
+        return self._docsis3
+
+    @property
+    def adsl(self):
+        return self._adsl
+
+    @property
+    def total_prems(self):
+        return self._total_prems
 
     def compute(self):
 
@@ -779,9 +827,11 @@ class Distribution():
         )
         })
 
+    @property
+    def upgrade_costs(self):
         # Upgrade costs
-        self.upgrade_costs = {}
-        self.upgrade_costs['fttp'] = (
+        upgrade_costs = {}
+        upgrade_costs['fttp'] = (
             (self.parameters['costs_assets_premise_fttp_modem'] * self.total_prems) +
             (self.parameters['costs_assets_premise_fttp_optical_network_terminator'] \
                 * self.total_prems if self.fttp == 0 else 0) +
@@ -791,102 +841,57 @@ class Distribution():
                 * (-(-self.total_prems // 32))) +
             (self.link.upgrade_costs['fibre'] if self.link is not None else 0)
         )
-        self.upgrade_costs['fttdp'] = (
+        upgrade_costs['fttdp'] = (
             (self.parameters['costs_assets_distribution_fttdp_8_ports'] \
                 * (-(-self.total_prems // 8)) if self.fttdp == 0 else 0) +
             (self.parameters['costs_assets_premise_fttdp_modem'] * self.total_prems \
                 if self.fttdp == 0 else 0)
         )
-        self.upgrade_costs['fttc'] = (
+        upgrade_costs['fttc'] = (
             (self.parameters['costs_assets_distribution_fttc'] if self.fttc == 0 else 0) +
             (self.parameters['costs_assets_premise_fttc_modem'] if self.fttc == 0 else 0) +
             (self.link.upgrade_costs['copper'] if self.link is not None else 0)
         )
-        self.upgrade_costs['adsl'] = (
+        upgrade_costs['adsl'] = (
             (self.parameters['costs_assets_distribution_adsl'] if self.adsl == 0 else 0) +
             (self.parameters['costs_assets_premise_adsl_modem'] if self.adsl == 0 else 0) +
             (self.link.upgrade_costs['copper'] if self.link is not None else 0)
         )
+        return upgrade_costs
 
-        # Rollout costs
-        self.rollout_costs = {}
-        self.rollout_costs['fttp'] = self.upgrade_costs['fttp']
-        self.rollout_costs['fttdp'] = self.upgrade_costs['fttdp']
-        self.rollout_costs['fttc'] = self.upgrade_costs['fttc']
-        self.rollout_costs['adsl'] = self.upgrade_costs['adsl']
 
-        # Rollout benefits
-        self.rollout_benefits = {}
+    @property
+    def rollout_benefits(self):
+        """
 
-        # if self.adoption_desirability:
+        Notes
+        -----
+        Problem: wtp is now aggregated to the distribution point
+        But households will adopt at different times
+        scenario adoption should really be done before the aggregation
+        or a logic developed which relies on the overall attractiveness
+        of the distribution point.
 
-        # Problem: wtp is now aggregated to the distribution point
-        # But households will adopt at different times
-        # scenario adoption should really be done before the aggregation
-        # or a logic developed which relies on the overall attractiveness
-        # of the distribution point.
-        self.rollout_benefits['fttp'] = _calculate_potential_revenue(
-            self.wtp, self.parameters['months_per_year'],
-            self.parameters['payback_period'], self.parameters['profit_margin']
+        """
+        rollout_benefits = {}
+        for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
+            if self.adoption_desirability:
+                rollout_benefits[tech] = _calculate_potential_revenue(
+                    self.wtp, self.parameters['months_per_year'],
+                    self.parameters['payback_period'], self.parameters['profit_margin'])
+            else:
+                rollout_benefits[tech] = 0
+        return rollout_benefits
+
+    @property
+    def total_potential_benefit(self):
+        total_potential_benefit = {}
+        for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
+            total_potential_benefit[tech] = _calculate_potential_revenue(
+                self.wtp, self.parameters['months_per_year'],
+                self.parameters['payback_period'], self.parameters['profit_margin']
             )
-        self.rollout_benefits['fttdp'] = _calculate_potential_revenue(
-            self.wtp, self.parameters['months_per_year'],
-            self.parameters['payback_period'], self.parameters['profit_margin']
-            )
-        self.rollout_benefits['fttc'] = _calculate_potential_revenue(
-            self.wtp, self.parameters['months_per_year'],
-            self.parameters['payback_period'], self.parameters['profit_margin']
-            )
-        self.rollout_benefits['adsl'] = _calculate_potential_revenue(
-            self.wtp, self.parameters['months_per_year'],
-            self.parameters['payback_period'], self.parameters['profit_margin']
-            )
-        # else:
-        #     self.rollout_benefits['fttp'] = 0
-        #     self.rollout_benefits['fttdp'] = 0
-        #     self.rollout_benefits['fttc'] = 0
-        #     self.rollout_benefits['adsl'] = 0
-
-        # Benefit-cost ratio
-        self.rollout_bcr = {}
-        self.rollout_bcr['fttp'] = int(_calculate_benefit_cost_ratio(
-            self.rollout_benefits['fttp'], self.rollout_costs['fttp']))
-        self.rollout_bcr['fttdp'] = int(_calculate_benefit_cost_ratio(
-            self.rollout_benefits['fttdp'], self.rollout_costs['fttdp']))
-        self.rollout_bcr['fttc'] = _calculate_benefit_cost_ratio(
-            self.rollout_benefits['fttc'], self.rollout_costs['fttc'])
-        self.rollout_bcr['adsl'] = _calculate_benefit_cost_ratio(
-            self.rollout_benefits['adsl'], self.rollout_costs['adsl'])
-
-        # Total potential benefit
-        self.total_potential_benefit = {}
-        self.total_potential_benefit['fttp'] = _calculate_potential_revenue(
-            self.wtp, self.parameters['months_per_year'],
-            self.parameters['payback_period'], self.parameters['profit_margin']
-        )
-        self.total_potential_benefit['fttdp'] = _calculate_potential_revenue(
-            self.wtp, self.parameters['months_per_year'],
-            self.parameters['payback_period'], self.parameters['profit_margin']
-        )
-        self.total_potential_benefit['fttc'] = _calculate_potential_revenue(
-            self.wtp, self.parameters['months_per_year'],
-            self.parameters['payback_period'], self.parameters['profit_margin']
-        )
-        self.total_potential_benefit['adsl'] = _calculate_potential_revenue(
-            self.wtp, self.parameters['months_per_year'],
-            self.parameters['payback_period'], self.parameters['profit_margin']
-        )
-
-        #  Total potential benefit-cost ratio
-        self.total_potential_bcr = {}
-        self.total_potential_bcr['fttp'] = _calculate_benefit_cost_ratio(
-            self.total_potential_benefit['fttp'], self.rollout_costs['fttp'])
-        self.total_potential_bcr['fttdp'] = _calculate_benefit_cost_ratio(
-            self.total_potential_benefit['fttdp'], self.rollout_costs['fttdp'])
-        self.total_potential_bcr['fttc'] = _calculate_benefit_cost_ratio(
-            self.total_potential_benefit['fttc'], self.rollout_costs['fttc'])
-        self.total_potential_bcr['adsl'] = _calculate_benefit_cost_ratio(
-            self.total_potential_benefit['adsl'], self.rollout_costs['adsl'])
+        return total_potential_benefit
 
     def connection_capacity(self, technology):
         capacity = _generic_connection_capacity(technology)
@@ -894,25 +899,6 @@ class Distribution():
 
     def __repr__(self):
         return "<Distribution id:{}>".format(self.id)
-
-    def upgrade(self, action):
-
-        if action in ('fttp'):
-            action = 'fttp'
-            self.fttp = self.total_prems
-            self.fttdp = 0
-            self.fttc = 0
-            self.docsis3 = 0
-            self.adsl = 0
-            if self.link is not None:
-                self.link.upgrade('fibre')
-
-        if action in ('fttdp'):
-            action = 'fttdp'
-            self.fttdp = self.total_prems
-            self.fttc = 0
-            self.docsis3 = 0
-            self.adsl = 0
 
     def update_desirability_to_adopt(self, desirability_to_adopt):
         self.adoption_desirability = desirability_to_adopt
@@ -985,13 +971,8 @@ def _calculate_benefit_cost_ratio(benefits, costs):
 def _calculate_potential_revenue(wtp, months, payback_period, profit_margin):
 
     try:
-        return round(
-            int(wtp) \
-            * months \
-            * payback_period
-            * (100 - profit_margin) / 100
-        )
-
+        return int(wtp) * months * payback_period \
+               * (100 - profit_margin) / 100
     except ZeroDivisionError:
         return 0
 
