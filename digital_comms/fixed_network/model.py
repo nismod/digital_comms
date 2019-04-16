@@ -472,25 +472,21 @@ class Asset(metaclass=ABCMeta):
     def upgrade(self, action):
         """Upgrade the asset's clients with an ``action``
 
+        If a leaf asset (e.g. a distribution point with no clients), upgrade
+        self.
+
         Arguments
         ---------
         action : str
         """
         if self._clients:
-            if action == 'fttp':
-                if self.link is not None:
-                    self.link.upgrade('fibre')
-                for client in self._clients:
-                    client.upgrade(action)
+            if self.link is not None:
+                self.link.upgrade('fibre')
+            for client in self._clients:
+                client.upgrade(action)
 
-            if action == 'fttdp':
-                if self.link is not None:
-                    self.link.upgrade('fibre')
-                for client in self._clients:
-                    client.upgrade(action)
         else:
             if action in ('fttp'):
-                action = 'fttp'
                 self._fttp = self.total_prems
                 self._fttdp = 0
                 self._fttc = 0
@@ -499,8 +495,7 @@ class Asset(metaclass=ABCMeta):
                 if self.link is not None:
                     self.link.upgrade('fibre')
 
-            if action in ('fttdp'):
-                action = 'fttdp'
+            elif action in ('fttdp'):
                 self._fttdp = self.total_prems
                 self._fttc = 0
                 self._docsis3 = 0
