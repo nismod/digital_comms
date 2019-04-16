@@ -104,10 +104,12 @@ def base_system():
 
     return system
 
+
 @pytest.fixture
 def technology():
 
     return 'fttp'
+
 
 @pytest.fixture
 def small_system(base_system, technology):
@@ -121,6 +123,101 @@ def small_system(base_system, technology):
     base_system.update_adoption_desirability(distribution_adoption_desirability_ids)
 
     return base_system
+
+
+class TestUpgradeExchange:
+    """
+    """
+
+    def test_compute_exchange(self, base_system):
+
+        actual = base_system._exchanges[0]
+        assert actual.id == 'exchange_EACAM'
+        assert actual.fttp == 0
+        assert actual.fttdp == 0
+        assert actual.fttc == 5
+        assert actual.docsis3 == 5
+        assert actual.adsl == 20
+        assert actual.total_prems == 20
+
+        intervention_list = [('exchange_EACAM', 'fttp')]
+        base_system.upgrade(intervention_list)
+
+        actual.compute()
+
+        assert actual.id == 'exchange_EACAM'
+        assert actual.fttp == 20
+        assert actual.fttdp == 0
+        assert actual.fttc == 0
+        assert actual.docsis3 == 0
+        assert actual.adsl == 0
+        assert actual.total_prems == 20
+
+    def test_upgrade_exchange_base(self, base_system):
+
+        actual = base_system._exchanges[0]
+        assert actual.id == 'exchange_EACAM'
+        assert actual.fttp == 0
+        assert actual.fttdp == 0
+        assert actual.fttc == 5
+        assert actual.docsis3 == 5
+        assert actual.adsl == 20
+        assert actual.total_prems == 20
+        assert isinstance(actual._clients, list)
+
+        intervention_list = [('exchange_EACAM', 'fttp')]
+        base_system.upgrade(intervention_list)
+        actual = base_system._exchanges[0]
+        assert actual.fttp == 20
+        assert actual.adsl == 0
+
+    def test_upgrade_exchange(self, small_system):
+
+        intervention_list = [('exchange_EACAM', 'fttp')]
+        small_system.upgrade(intervention_list)
+
+        actual = small_system._exchanges[0]
+
+        assert actual.id == 'exchange_EACAM'
+        assert actual.fttp == 20
+        assert actual.fttdp == 0
+        assert actual.fttc == 0
+        assert actual.docsis3 == 0
+        assert actual.adsl == 0
+        assert actual.total_prems == 20
+        assert isinstance(actual._clients, list)
+
+    def test_sequence_upgrade_exchange(self, small_system):
+
+        intervention_list = [('exchange_EACAM', 'fttp')]
+        small_system.upgrade(intervention_list)
+
+        actual = small_system._exchanges[0]
+
+        assert actual.id == 'exchange_EACAM'
+        assert actual.fttp == 20
+        assert actual.fttdp == 0
+        assert actual.fttc == 0
+        assert actual.docsis3 == 0
+        assert actual.adsl == 0
+        assert actual.total_prems == 20
+        assert isinstance(actual._clients, list)
+
+        intervention_list = [('exchange_EACAM', 'fttdp')]
+        small_system.upgrade(intervention_list)
+
+        actual = small_system._exchanges[0]
+
+        assert actual.id == 'exchange_EACAM'
+        assert actual.fttp == 0
+        assert actual.fttdp == 20
+        assert actual.fttc == 0
+        assert actual.docsis3 == 5
+        assert actual.adsl == 20
+        assert actual.total_prems == 20
+        assert isinstance(actual._clients, list)
+
+
 
 def test_coverage(small_system):
 
@@ -322,7 +419,7 @@ def test_fttdp_upgrade_distributions(small_system):
     telco_match_funding = 2000
     service_obligation_capacity = 10
 
-    #build interventions
+    # build interventions
     built_interventions = decide_interventions(
         small_system._distributions, year, technology, policy, annual_budget, adoption_cap,
         subsidy, telco_match_funding, service_obligation_capacity, 'distribution')
@@ -361,6 +458,9 @@ def test_fttdp_upgrade_distributions(small_system):
 #         subsidy, telco_match_funding, service_obligation_capacity, 'exchange')
 #     print(fttp_s1_built_interventions)
 #     assert fttp_s1_built_interventions == 'fail'
+
+
+
 
 
 def test_enhanced_fttp_capacity_at_lad(small_system):
