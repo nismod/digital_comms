@@ -815,18 +815,18 @@ class Distribution(Asset):
         upgrade_costs = {}
         upgrade_costs['fttp'] = (
             (self.parameters['costs_assets_premise_fttp_modem'] * self.total_prems) +
-            (self.parameters['costs_assets_premise_fttp_optical_network_terminator'] \
+            (self.parameters['costs_assets_premise_fttp_optical_network_terminator']
                 * self.total_prems if self.fttp == 0 else 0) +
-            (self.parameters['planning_administration_cost'] * self.total_prems \
+            (self.parameters['planning_administration_cost'] * self.total_prems
                 if self.fttp == 0 else 0) +
-            (self.parameters['costs_assets_premise_fttp_optical_connection_point'] \
+            (self.parameters['costs_assets_premise_fttp_optical_connection_point']
                 * (-(-self.total_prems // 32))) +
             (self.link.upgrade_costs['fibre'] if self.link is not None else 0)
         )
         upgrade_costs['fttdp'] = (
-            (self.parameters['costs_assets_distribution_fttdp_8_ports'] \
+            (self.parameters['costs_assets_distribution_fttdp_8_ports']
                 * (-(-self.total_prems // 8)) if self.fttdp == 0 else 0) +
-            (self.parameters['costs_assets_premise_fttdp_modem'] * self.total_prems \
+            (self.parameters['costs_assets_premise_fttdp_modem'] * self.total_prems
                 if self.fttdp == 0 else 0)
         )
         upgrade_costs['fttc'] = (
@@ -855,9 +855,12 @@ class Distribution(Asset):
 
         """
         rollout_benefits = {}
+
+        benefit = self._calculate_revenue()
+
         for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
             if self.adoption_desirability:
-                rollout_benefits[tech] = self._calculate_revenue(tech)
+                rollout_benefits[tech] = benefit
             else:
                 rollout_benefits[tech] = 0
         return rollout_benefits
@@ -865,11 +868,14 @@ class Distribution(Asset):
     @property
     def total_potential_benefit(self):
         total_potential_benefit = {}
+
+        benefit = self._calculate_revenue()
+
         for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
-            total_potential_benefit[tech] = self._calculate_revenue(tech)
+            total_potential_benefit[tech] = benefit
         return total_potential_benefit
 
-    def _calculate_revenue(self, tech):
+    def _calculate_revenue(self):
         return _calculate_potential_revenue(
                 self.wtp, self.parameters['months_per_year'],
                 self.parameters['payback_period'],
@@ -945,7 +951,7 @@ class Link():
 
 def _calculate_benefit_cost_ratio(benefits, costs):
     try:
-        return round(benefits / costs)
+        return benefits / costs
     except ZeroDivisionError:
         return 0
 
