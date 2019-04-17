@@ -448,6 +448,7 @@ class Asset(metaclass=ABCMeta):
     """
 
     def __init__(self, clients=None):
+        self.id = None
         if clients:
             self._clients = clients
         else:
@@ -865,7 +866,10 @@ class Distribution(Asset):
 
         for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
             if self.adoption_desirability:
-                rollout_benefits[tech] = benefit
+                if getattr(self, tech) == 0:
+                    rollout_benefits[tech] = benefit
+                else:
+                    rollout_benefits[tech] = 0
             else:
                 rollout_benefits[tech] = 0
         return rollout_benefits

@@ -114,12 +114,11 @@ def technology():
 @pytest.fixture
 def small_system(base_system, technology):
 
-    #40% want to adopt in total
+    # 40% want to adopt in total
     distribution_adoption_desirability_ids = update_adoption_desirability(
-        base_system._distributions, 40, technology
-    )
+        base_system._distributions, 40)
 
-    #update model adoption desirability
+    # update model adoption desirability
     base_system.update_adoption_desirability(distribution_adoption_desirability_ids)
 
     return base_system
