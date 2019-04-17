@@ -4,7 +4,6 @@ from collections import defaultdict
 from math import ceil
 from abc import abstractmethod, abstractproperty, ABCMeta
 from typing import Dict
-import logging
 
 #####################
 # MODEL
@@ -490,12 +489,17 @@ class Asset(metaclass=ABCMeta):
     def upgrade(self, action):
         """Upgrade the asset's clients with an ``action``
 
-        If a leaf asset (e.g. a distribution point with no clients), upgrade
+        If a leaf asset (e.g. an Asset with no clients), upgrade
         self.
 
         Arguments
         ---------
         action : str
+
+        Notes
+        -----
+        Could check whether self is an instance of Distribution instead
+
         """
         if self._clients:
             if self.link is not None:
@@ -599,7 +603,7 @@ class Exchange(Asset):
         self.compute()
 
     @property
-    def upgrade_costs(self):
+    def upgrade_costs(self) -> Dict:
         upgrade_costs = {}
         upgrade_costs['fttp'] = (
             (self.parameters['costs_assets_exchange_fttp'] if self.fttp == 0 else 0)
@@ -624,12 +628,14 @@ class Exchange(Asset):
         self.list_of_asset_costs = []
         self.list_of_asset_costs.append({
             'id': self.id,
-            'costs_assets_exchange_fttp': (self.parameters['costs_assets_exchange_fttp'] if self.fttp == 0 else 0),
-            'link_upgrade_costs': (self.link.upgrade_costs['fibre'] if self.link is not None else 0),
+            'costs_assets_exchange_fttp':
+                (self.parameters['costs_assets_exchange_fttp'] if self.fttp == 0 else 0),
+            'link_upgrade_costs':
+                (self.link.upgrade_costs['fibre'] if self.link is not None else 0),
             'total_cost': (
-            (self.parameters['costs_assets_exchange_fttp'] if self.fttp == 0 else 0)
-            +
-            (self.link.upgrade_costs['fibre'] if self.link is not None else 0))
+                (self.parameters['costs_assets_exchange_fttp'] if self.fttp == 0 else 0)
+                +
+                (self.link.upgrade_costs['fibre'] if self.link is not None else 0))
         })
 
     def __repr__(self):
@@ -655,7 +661,6 @@ class Cabinet(Asset):
         Contains all parameters from 'digital_comms.yml'.
 
     """
-
     def __init__(self, data, clients, link, parameters):
         super().__init__(clients)
         # Asset parameters
@@ -754,7 +759,7 @@ class Distribution(Asset):
         self._total_prems = int(data['total_prems'])
         self.wta = float(data["wta"])
         self.wtp = int(data["wtp"])
-        self.adoption_desirability = False
+        self.adoption_desirability = False  # type: bool
 
         self.parameters = parameters
 
