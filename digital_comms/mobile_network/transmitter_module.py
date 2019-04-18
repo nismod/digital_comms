@@ -23,7 +23,7 @@ from digital_comms.mobile_network.path_loss_module import path_loss_calculator
 #set seed for stochastic predictablity
 np.random.seed(42)
 
-from built_env_module import find_line_of_sight
+# from built_env_module import find_line_of_sight
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read(
@@ -464,8 +464,8 @@ class NetworkManager(object):
     def calculate_path_loss(self, closest_transmitter,
         receiver, frequency, environment):
 
-        for area in self.area.values():
-            local_authority_ids = area.local_authority_ids
+        # for area in self.area.values():
+        #     local_authority_ids = area.local_authority_ids
 
         x2_receiver = receiver.coordinates[0]
         y2_receiver = receiver.coordinates[1]
@@ -495,17 +495,15 @@ class NetworkManager(object):
 
         # type_of_sight, building_height, street_width = built_environment_module(
         # transmitter_geom, receiver_geom
-        # )
+        #
 
-        # type_of_sight = randomly_select_los()
-        if interference_strt_distance < 500 :
-            type_of_sight = find_line_of_sight(
-            x1_transmitter, y1_transmitter, x2_receiver, y2_receiver, local_authority_ids
-            )
-        else:
-            type_of_sight = 'nlos'
-
-
+        type_of_sight = randomly_select_los()
+        # if interference_strt_distance < 500 :
+        #     type_of_sight = find_line_of_sight(
+        #     x1_transmitter, y1_transmitter, x2_receiver, y2_receiver, local_authority_ids
+        #     )
+        # else:
+        #     type_of_sight = 'nlos'
 
         building_height = 20
         street_width = 20
@@ -635,17 +633,32 @@ class NetworkManager(object):
     def calculate_noise(self, bandwidth):
         #TODO
         """
-        Calculate receiver noise (N  = k T B), where k is Boltzmann's
-        constant, T is temperatrue in K and B is bandwidth in use.
+        Terminal noise can be calculated as:
+
+        “K (Boltzmann constant) x T (290K) x bandwidth”.
+
+        The bandwidth depends on bit rate, which defines the number of resource blocks.
+        We assume 50 resource blocks, equal 9 MHz, transmission for 1 Mbps downlink.
+
+        Thermal noise (dBm) -118.4 = k(Boltzmann) * T(290K)* B(360kHz)
 
         """
         k = 1
         T = 15
         B = bandwidth
 
+        resource_blocks = [
+            # Bandwidth (MHz), Resource Blocks, Subcarriers (downlink), Subcarriers (uplink)
+            (1.4, 6, 73, 72),
+            (3, 15,	181, 180),
+            (5, 25,	301, 300),
+            (10, 50, 601, 600),
+            (15, 75, 901, 900),
+            (20, 100, 1201, 1200),
+        ]
         #fake_noise = k*T*B
 
-        noise = 5
+        noise = -106.5
 
         return noise
 
@@ -655,7 +668,11 @@ class NetworkManager(object):
 
         """
         sinr = round(received_power / sum(interference) + noise, 1)
+        # print('received power is {}'.format(received_power))
+        # print('interference is {}'.format(sum(interference)))
+        # print('noise is {}'.format(noise))
 
+        print(sinr)
         return sinr
 
     def modulation_scheme_and_coding_rate(
@@ -1191,32 +1208,32 @@ if __name__ == "__main__":
                 frequency, bandwidth, environment, MODULATION_AND_CODING_LUT
                 )
 
-            # #calculate transmitter density
-            # t_density = MANAGER.transmitter_density()
-            # print('t_density is {}'.format(t_density))
+            #calculate transmitter density
+            t_density = MANAGER.transmitter_density()
+            print('t_density is {}'.format(t_density))
 
-            # #calculate transmitter density
-            # r_density = MANAGER.receiver_density()
+            #calculate transmitter density
+            r_density = MANAGER.receiver_density()
 
-            # # write_results(results, frequency, bandwidth, t_density,
-            # #     r_density, postcode_sector_name
-            # #     )
-
-            # #find percentile values
-            # lookup_table_results = generate_lut_results(results, percentile)
-
-            # #env, frequency, bandwidth, site_density, capacity
-            # write_lookup_table(
-            #     lookup_table_results, operator, technology, frequency,
-            #     bandwidth, t_density, postcode_sector_name
+            # write_results(results, frequency, bandwidth, t_density,
+            #     r_density, postcode_sector_name
             #     )
 
-            # # format_data(
-            # # joint_plot_data, results, frequency,
-            # # bandwidth, postcode_sector_name
-            # # )
+            #find percentile values
+            lookup_table_results = generate_lut_results(results, percentile)
 
-            # idx += 1
+            #env, frequency, bandwidth, site_density, capacity
+            write_lookup_table(
+                lookup_table_results, operator, technology, frequency,
+                bandwidth, t_density, postcode_sector_name
+                )
+
+            # format_data(
+            # joint_plot_data, results, frequency,
+            # bandwidth, postcode_sector_name
+            # )
+
+            idx += 1
 
 #     # print('write buildings')
 #     # write_shapefile(buildings,  postcode_sector_name, 'buildings.shp')

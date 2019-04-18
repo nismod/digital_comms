@@ -146,7 +146,11 @@ def base_system(get_postcode_sector):
         }
     ]
 
-    system = NetworkManager(get_postcode_sector, TRANSMITTERS, RECEIVERS)
+    geojson_postcode_sector = get_postcode_sector
+
+    geojson_postcode_sector['properties']['local_authority_ids'] = ['E07000008']
+
+    system = NetworkManager(geojson_postcode_sector, TRANSMITTERS, RECEIVERS)
 
     return system
 
