@@ -77,9 +77,10 @@ def path_loss_calculator(frequency, distance, ant_height, ant_type, building_hei
         raise ValueError (
             "frequency of {} is NOT within correct range".format(frequency)
         )
-        
+    # print('path loss is {}'.format(path_loss))
+    # print('outdoor to indoor is {}'.format(outdoor_to_indoor_path_loss(indoor)))
     path_loss = path_loss + outdoor_to_indoor_path_loss(indoor)
-    
+
     return path_loss
 
 def determine_path_loss(extended_hata_path_loss, free_space_path_loss):
@@ -94,7 +95,6 @@ def determine_path_loss(extended_hata_path_loss, free_space_path_loss):
         The path loss resulting from the use of the Free Space model (dB).
     extended_hata_path_loss : int
         The path loss resulting from the use of the Extended Hata model (dB).
-
 
     """
     if extended_hata_path_loss < free_space_path_loss:
@@ -129,14 +129,14 @@ def free_space(frequency, distance, ant_height, ue_height):
     #model requires distance in kilometers rather than meters.
     distance = distance/1000
 
-    random_variation = generate_log_normal_dist_value(0,2.5,1)
+    random_variation = generate_log_normal_dist_value(1, 2.5, 1)
 
     path_loss = (
         32.4 + 10*np.log10((((ant_height - ue_height)/1000)**2 + \
         distance**2)) + (20*np.log10(frequency) + random_variation)
     )
 
-    return round(path_loss)
+    return round(path_loss, 2)
 
 def extended_hata(frequency, distance, ant_height, ant_type, building_height,
     street_width, settlement_type, type_of_sight, ue_height, above_roof):
@@ -170,10 +170,10 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
     #find largest value
     hb = max(ant_height, ue_height)
 
-    alpha_hm = round((1.1*np.log(frequency) - 0.7) * min(10, hm) - \
-        (1.56*np.log(frequency) - 0.8) + max(0, (20*np.log(hm/10))),3)
+    alpha_hm = (1.1*np.log(frequency) - 0.7) * min(10, hm) - \
+        (1.56*np.log(frequency) - 0.8) + max(0, (20*np.log(hm/10)))
 
-    beta_hb = round(min(0, (20*np.log(hb/30))),3)
+    beta_hb = min(0, (20*np.log(hb/30)))
 
     if distance <= 20: #units : km
 
@@ -181,9 +181,9 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
 
     elif 20 < distance < 100: #units : km
 
-        alpha_exponent = round((1 + (0.14 + (1.87*10**-4) * frequency + \
-            (1.07*10**-3) * hb)*(np.log(distance/20))**0.8))
-
+        alpha_exponent = 1 + (0.14 + 1.87e-4 * frequency + \
+            1.07e-3 * hb)*(np.log(distance/20))**0.8
+        # print('alpha_exponent is {}'.format(alpha_exponent))
     else:
 
         raise ValueError('Distance over 100km not compliant')
@@ -201,61 +201,67 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
 
         if 30 < frequency <= 150:
 
-            path_loss = round((
+            path_loss = (
                 69.6 + 26.2*np.log(150) - 20*np.log(150/frequency) -
                 13.82*np.log(max(30, hb)) +
                 (44.9 - 6.55*np.log(max(30, hb))) *
-                (np.log(distance))**alpha_exponent - alpha_hm - beta_hb
-            ))
+                np.log(distance)**alpha_exponent - alpha_hm - beta_hb
+            )
 
         elif 150 < frequency <= 1500:
 
-            path_loss = round(
+            path_loss = (
                 69.6 + 26.2*np.log(frequency) -
                 13.82*np.log(max(30, hb)) +
                 (44.9 - 6.55*np.log(max(30, hb))) *
-                (np.log(distance))**alpha_exponent - alpha_hm - beta_hb
+                ((np.log(distance))**alpha_exponent) - alpha_hm - beta_hb
             )
+            # print('alpha_exponent is {}'.format(alpha_exponent))
+            # print('26.2*np.log(frequency) is {}'.format(26.2*np.log(frequency)))
+            # print('13.82*np.log(max(30, hb)) is {}'.format(13.82*np.log(max(30, hb))))
+            # print('(44.9 - 6.55*np.log(max(30, hb))) is {}'.format((44.9 - 6.55*np.log(max(30, hb)))))
+            # print('(np.log(distance)**alpha_exponent) is {}'.format(np.log(distance)**alpha_exponent))
+            # print('alpha_hm is {}'.format(alpha_hm))
+            # print('beta_hb is {}'.format(beta_hb))
 
         elif 1500 < frequency <= 2000:
 
-            path_loss = round((
+            path_loss = (
                 46.3 + 33.9*np.log(frequency) -
                 13.82*np.log(max(30, hb)) +
                 (44.9 - 6.55*np.log(max(30, hb))) *
                 (np.log(distance))**alpha_exponent - alpha_hm - beta_hb
-            ))
-
+            )
+            #print('path loss is {}'.format(path_loss))
         elif 2000 < frequency <= 3000:
 
-            path_loss = round((
+            path_loss = (
                 46.3 + 33.9*np.log(2000) +
                 10*np.log(frequency/2000) -
                 13.82*np.log(max(30, hb)) +
                 (44.9 - 6.55*np.log(max(30, hb))) *
                 (np.log(distance))**alpha_exponent - alpha_hm - beta_hb
-            ))
-
+            )
+            #print('pathloss part 1 is {}'.format(path_loss))
         else:
 
             raise ValueError('Carrier frequency incorrect for Extended Hata')
 
         if settlement_type == 'suburban':
 
-            path_loss = round((
+            path_loss = (
                 path_loss - 2 * \
                 (np.log((min(max(150, frequency), 2000)/28)))**2 - 5.4
-            ))
+            )
 
         elif settlement_type == 'rural': #also called 'open area'
 
-            path_loss = round((
+            path_loss = (
                 path_loss - 4.78 * \
                 (np.log(min(max(150, frequency), 2000)))**2 + 18.33 * \
                     np.log(min(max(150, frequency), 2000)) - 40.94
-            ))
-
-
+            )
+            # print('rural path loss is {}'.format(path_loss))
         else:
 
             pass
@@ -274,11 +280,11 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
             (hb - hm)**2 / 10**6))
         )
 
-        path_loss = round((l_fixed_distance_lower +
+        path_loss = (l_fixed_distance_lower +
             (np.log(distance) - np.log(0.04)) / \
             (np.log(0.1) - np.log(0.04)) *
             (l_fixed_distance_upper - l_fixed_distance_lower)
-        ))
+        )
 
     else:
         print(distance)
@@ -288,25 +294,25 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
     #determine variation in path loss using stochastic component
     if distance <= 0.04:
 
-        path_loss = path_loss + generate_log_normal_dist_value(0,3.5,1)
+        path_loss = path_loss + generate_log_normal_dist_value(1, 3.5, 1)
 
     elif 0.04 < distance <= 0.1:
 
         if above_roof == 1:
 
-            sigma = round((3.5 + ((12-3.5)/0.1-0.04) * (distance - 0.04)))
-            random_quantity = generate_log_normal_dist_value(0,sigma,1)
-            path_loss = round((
+            sigma = (3.5 + ((12-3.5)/0.1-0.04) * (distance - 0.04))
+            random_quantity = generate_log_normal_dist_value(1, sigma, 1)
+            path_loss = (
                 path_loss + random_quantity
-            ))
+            )
 
         elif above_roof == 0:
 
             sigma = (3.5 + ((17-3.5)/0.1-0.04) * (distance - 0.04))
-            random_quantity = generate_log_normal_dist_value(0,sigma,1)
-            path_loss = round((
+            random_quantity = generate_log_normal_dist_value(1, sigma, 1)
+            path_loss = (
                 path_loss + random_quantity
-            ))
+            )
 
         else:
 
@@ -316,14 +322,14 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
 
         if above_roof == 1:
 
-            random_quantity = generate_log_normal_dist_value(0,12,1)
+            random_quantity = generate_log_normal_dist_value(1, 12, 1)
             path_loss = (
                 path_loss + random_quantity
             )
 
         elif above_roof == 0:
 
-            random_quantity = generate_log_normal_dist_value(0,17,1)
+            random_quantity = generate_log_normal_dist_value(1, 17, 1)
             path_loss = (
                 path_loss + random_quantity
             )
@@ -336,15 +342,15 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
         if above_roof == 1:
 
             sigma = (12 + ((9-12)/0.6-0.2) * (distance - 0.02))
-            random_quantity = generate_log_normal_dist_value(0,sigma,1)
-            path_loss = round((
+            random_quantity = generate_log_normal_dist_value(1, sigma, 1)
+            path_loss = (
                 path_loss + random_quantity
-            ))
+            )
 
         elif above_roof == 0:
 
             sigma = (17 + ((9-17)/0.6-0.2) * (distance - 0.02))
-            random_quantity = generate_log_normal_dist_value(0,sigma,1)
+            random_quantity = generate_log_normal_dist_value(1, sigma, 1)
             path_loss = (
                 path_loss + random_quantity
             )
@@ -354,9 +360,9 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
             raise ValueError('Could not determine if cell is above or below roof line')
 
     elif 0.6 < distance:
-
-            random_quantity = generate_log_normal_dist_value(0,12,1)
-
+            # print('second to last path loss is {}'.format(path_loss))
+            random_quantity = generate_log_normal_dist_value(1, 12, 1)
+            # print('random quantity is {}'.format(random_quantity))
             path_loss = (
                 path_loss + random_quantity
             )
@@ -364,8 +370,8 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
     else:
 
         raise ValueError('Did not recognise distance')
-
-    return round(path_loss)
+    # print('final path loss is {}'.format(path_loss))
+    return round(path_loss, 2)
 
 def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_height,
     street_width, settlement_type, type_of_sight, ue_height):
@@ -421,17 +427,17 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
 
         if distance < breakpoint_urban:
 
-            path_loss = round(
+            path_loss = (
                 22 * np.log10(distance) + 28 + 20*np.log10(frequency) +
-                generate_log_normal_dist_value(0,3,1)
+                generate_log_normal_dist_value(1, 3, 1)
             )
 
         elif breakpoint_urban < distance < 5000:
 
-            path_loss = round(
+            path_loss = (
                 40 * np.log10(distance) + 7.8 - 18*np.log10(ant_height) -
                 18*np.log10(ue_height) + 2*np.log10(frequency) +
-                generate_log_normal_dist_value(0,3,1)
+                generate_log_normal_dist_value(1, 3, 1)
             )
 
         else:
@@ -444,7 +450,7 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
 
         path_loss = (
             (36.7*np.log10(distance) + 22.7 + 26*np.log10(frequency)) +
-            generate_log_normal_dist_value(0,4,1)
+            generate_log_normal_dist_value(1, 4, 1)
         )
 
     # add outside-to-inside calculations for urban microcell
@@ -456,7 +462,7 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
 
             path_loss = (
                 22 * np.log10(distance) + 28 + 20*np.log10(frequency) +
-                generate_log_normal_dist_value(0,4,1)
+                generate_log_normal_dist_value(1, 4, 1)
             )
 
         elif breakpoint_urban < distance < 5000:
@@ -464,7 +470,7 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
             path_loss = (
                 (40*np.log10(distance) + 7.8 - 18*np.log10(ant_height) -
                 18*np.log10(ue_height) + 2*np.log10(frequency)) +
-                generate_log_normal_dist_value(0,4,1)
+                generate_log_normal_dist_value(1, 4, 1)
             )
 
         else:
@@ -478,14 +484,14 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
         if (10 < distance < 5000 and
             check_applicability(building_height, street_width, ant_height, ue_height)):
 
-            path_loss = round(
+            path_loss = (
                 (161.04 - 7.1*np.log10(street_width) +
                 7.5*np.log10(building_height) -
                 (24.37-3.7*(building_height/ant_height)**2) *
                 np.log10(ant_height) + (43.42-3.1*np.log10(ant_height)) *
                 (np.log10(distance)-3)+ 20*np.log10(frequency) -
                 (3.2*(np.log10(11.75*ue_height))**2-4.97)) +
-                generate_log_normal_dist_value(0,6,1)
+                generate_log_normal_dist_value(1, 6, 1)
             )
 
         else:
@@ -498,22 +504,22 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
 
         def suburban_los_pl1(input_distance):
 
-            pl1 = round(
+            pl1 = (
                 (20*np.log10(40*pi*input_distance*frequency/3) +
                 min(0.03*building_height**1.72,10) *
                 np.log10(input_distance) -
                 min(0.044*building_height**1.72, 14.77) +
                 0.002*np.log10(building_height)*input_distance) +
-                generate_log_normal_dist_value(0,4,1)
+                generate_log_normal_dist_value(1, 4, 1)
             )
 
             return pl1
 
         def suburban_los_pl2(input_distance):
 
-            pl2 =  round(
+            pl2 =  (
                 40*np.log10(input_distance / breakpoint_suburban_rural) +
-                generate_log_normal_dist_value(0,6,1)
+                generate_log_normal_dist_value(1, 6, 1)
             )
 
             return pl2
@@ -521,13 +527,13 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
         if (10 < distance < breakpoint_suburban_rural and
             check_applicability(building_height, street_width, ant_height, ue_height)):
 
-            path_loss = round(suburban_los_pl1(distance))
+            path_loss = suburban_los_pl1(distance)
 
         elif (breakpoint_suburban_rural < distance < 5000 and
             check_applicability(building_height, street_width, ant_height, ue_height)):
 
             pl1 = suburban_los_pl1(breakpoint_suburban_rural)
-            path_loss = round(pl1 + suburban_los_pl2(distance))
+            path_loss = pl1 + suburban_los_pl2(distance)
 
         else:
 
@@ -540,7 +546,7 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
         if (10 < distance < 5000 and
             check_applicability(building_height, street_width, ant_height, ue_height)):
 
-            path_loss = round(
+            path_loss = (
                 (161.04-7.1*np.log10(street_width) +
                 7.5*np.log10(building_height) -
                 (24.37-3.7*(building_height/ant_height)**2) *
@@ -549,7 +555,7 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
                 (np.log10(distance)-3) +
                 20*np.log10(frequency) -
                 (3.2*(np.log10(11.75*ue_height))**2-4.97)) +
-                generate_log_normal_dist_value(0,8,1)
+                generate_log_normal_dist_value(1, 8, 1)
             )
 
         elif distance <= 10:
@@ -566,7 +572,7 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
 
         raise ValueError('Did not recognise parameter combination')
 
-    return round(path_loss)
+    return round(path_loss, 2)
 
 def check_applicability(building_height, street_width, ant_height, ue_height):
 
@@ -622,9 +628,15 @@ def generate_log_normal_dist_value(mu, sigma, draws):
     Generates random values using a lognormal distribution,
     given a specific mean (mu) and standard deviation (sigma).
 
+    https://stackoverflow.com/questions/51609299/python-np-lognormal-gives-infinite-
+    results-for-big-average-and-st-dev
+
+    The parameters mu and sigma in np.random.lognormal are not the mean and STD of
+    the lognormal distribution. They are the mean and STD of the underlying normal
+    distribution.
+
     Parameters
     ----------
-
     mu : int
         Mean of the desired distribution.
     sigma : int
@@ -634,9 +646,13 @@ def generate_log_normal_dist_value(mu, sigma, draws):
 
     """
     np.random.seed(42)
-    s = np.random.lognormal(mu, sigma, draws)
 
-    return int(round(s[0]))
+    normal_std = np.sqrt(np.log(1 + (sigma/mu)**2))
+    normal_mean = np.log(mu) - normal_std**2 / 2
+
+    hs = np.random.lognormal(normal_mean, normal_std, draws)
+    #print('random amount is {}'.format(round(hs[0],2)))
+    return round(hs[0],2)
 
 def outdoor_to_indoor_path_loss(indoor):
     """

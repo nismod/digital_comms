@@ -11,21 +11,23 @@ from digital_comms.mobile_network.path_loss_module import (
 #prepare for testing Free Space model
 @pytest.mark.parametrize("frequency, distance, ant_height, ue_height, \
     expected", [
-    (0.8,1000,20,1.5,93), #stochastic component is 3 (seed=42)
-    (0.8,2000,20,1.5,99), #stochastic component is 3 (seed=42)
-    (0.8,3000,20,1.5,103), #stochastic component is 3 (seed=42)
-    (0.8,4000,20,1.5,106), #stochastic component is 3 (seed=42)
-    (0.8,5000,20,1.5,107), #stochastic component is 3 (seed=42)
-    (1.8,1000,20,1.5,101), #stochastic component is 3 (seed=42)
-    (1.8,2000,20,1.5,107), #stochastic component is 3 (seed=42)
-    (1.8,3000,20,1.5,110), #stochastic component is 3 (seed=42)
-    (1.8,4000,20,1.5,113), #stochastic component is 3 (seed=42)
-    (1.8,5000,20,1.5,114), #stochastic component is 3 (seed=42)
-    (2.6,1000,20,1.5,104), #stochastic component is 3 (seed=42)
-    (2.6,2000,20,1.5,110), #stochastic component is 3 (seed=42)
-    (2.6,3000,20,1.5,113), #stochastic component is 3 (seed=42)
-    (2.6,4000,20,1.5,116), #stochastic component is 3 (seed=42)
-    (2.6,5000,20,1.5,118), #stochastic component is 3 (seed=42)
+    #seed=42
+    #expected value is: (deterministic path loss, stochastic component)
+    (0.8,1000,20,1.5,(90.46+0.75)),
+    (0.8,2000,20,1.5,(96.48+0.75)),
+    (0.8,3000,20,1.5,(100+0.75)),
+    (0.8,4000,20,1.5,(102.5+0.75)),
+    (0.8,5000,20,1.5,(104.44+0.75)),
+    (1.8,1000,20,1.5,(97.51+0.75)),
+    (1.8,2000,20,1.5,(103.53+0.75)),
+    (1.8,3000,20,1.5,(107.05+0.75)),
+    (1.8,4000,20,1.5,(109.55+0.75)),
+    (1.8,5000,20,1.5,(111.48+0.75)),
+    (2.6,1000,20,1.5,(100.7+0.75)),
+    (2.6,2000,20,1.5,(106.72+0.75)),
+    (2.6,3000,20,1.5,(110.24+0.75)),
+    (2.6,4000,20,1.5,(112.74+0.75)),
+    (2.6,5000,20,1.5,(114.68+0.75)),
     ])
 
 def test_free_space(frequency, distance, ant_height, ue_height, expected):
@@ -38,63 +40,71 @@ def test_free_space(frequency, distance, ant_height, ue_height, expected):
     building_height, street_width, settlement_type, type_of_sight, \
     ue_height, above_roof, expected", [
     ####urban####
-    # test distance <0.04 km, stochastic component = 6
-    (0.8,20,20,'macro',20,20,'urban','los',1.5,1, 100),
-    # test distance <0.04 km, above roof, stochastic component = 388
-    (0.1,200,20,'macro',20,20,'urban','los',1.5,1, 505),
-    # test distance >0.04 km, below roof, stochastic component = 4648
-    (0.1,200,20,'',20,20,'urban','nlos',1.5,0, 4765),
-    # test distance >0.04 km, above roof, stochastic component = 338
-    (0.8,200,20,'',20,20,'urban','los',1.5,1, 557),
-    # test distance >0.04 km, below roof, stochastic component = 4648
-    (0.8,200,20,'',20,20,'urban','nlos',1.5,0, 4817),
-    # test distance >0.04 km, above roof, stochastic component = 338
-    (1.8,200,20,'',20,20,'urban','los',1.5,1, 613),
-    # test distance >0.04 km, below roof, stochastic component = 4648
-    (1.8,200,20,'',20,20,'urban','nlos',1.5,0, 4873),
-    # test distance >0.04 km, above roof, stochastic component = 338
-    (2.1,200,20,'',20,20,'urban','los',1.5,1, 617),
-    # test distance >0.04 km, below roof, stochastic component = 4648
-    # spreadsheet gives 4878 due to rounding.
-    (2.1,200,20,'',20,20,'urban','nlos',1.5,0, 4877),
+    # test distance <0.04 km
+    (0.8,20,20,'macro',20,20,'urban','los',1.5,1,(94.03+0.61)),
+    # test distance <0.04 km, above roof
+    (0.1,200,20,'macro',20,20,'urban','los',1.5,1,(117.3+0.25)),
+    # test distance >0.04 km, below roof
+    (0.1,200,20,'',20,20,'urban','nlos',1.5,0,(117.3+0.19)),
+    # test distance >0.04 km, above roof
+    (0.8,200,20,'',20,20,'urban','los',1.5,1, (169.08+0.25)),
+    # test distance >0.04 km, below roof
+    (0.8,200,20,'',20,20,'urban','nlos',1.5,0, (169.08+0.19)),
+    # test distance >0.04 km, above roof
+    (1.8,200,20,'',20,20,'urban','los',1.5,1, (224.67+0.25)),
+    # test distance >0.04 km, below roof
+    (1.8,200,20,'',20,20,'urban','nlos',1.5,0, (round(224.86,2))),
+    # test distance >0.04 km, above roof
+    (2.1,200,20,'',20,20,'urban','los',1.5,1, (228.72+0.25)),
+    # test distance >0.04 km, below roof
+    (2.1,200,20,'',20,20,'urban','nlos',1.5,0, (228.72+0.19)),
     ####suburban####
-    # test distance >0.04 km, above roof, stochastic component = 338
-    (0.8,200,20,'',20,20,'suburban','los',1.5,1, 529),
-    # test distance >0.04 km, below roof, stochastic component = 4648
-    (0.8,200,20,'',20,20,'suburban','nlos',1.5,0, 4789),
-    # test distance 0.5 km, above roof, stochastic component = 112
-    (0.8,500,20,'',20,20,'suburban','los',1.5,1, 274),
-    # test distance 0.5 km, above roof, stochastic component = 184
-    (0.8,500,20,'',20,20,'suburban','los',1.5,0, 346),
+    # test distance >0.04 km, above roof
+    (0.8,200,20,'',20,20,'suburban','los',1.5,1, (141.2+0.25)),
+    # test distance >0.04 km, below roof
+    (0.8,200,20,'',20,20,'suburban','nlos',1.5,0, (141.2+0.19)),
+    # test distance 0.5 km, above roof
+    (0.8,500,20,'',20,20,'suburban','los',1.5,1, (round(162.23,2))),
+    # test distance 0.5 km, above roof
+    (0.8,500,20,'',20,20,'suburban','los',1.5,0, (round(162.21,2))),
     ####rural####
-    # test distance >0.04 km, above roof, stochastic component = 338
-    (1.8,200,20,'',20,20,'rural','los',1.5,1, 441),
+    # test distance >0.04 km, above roof
+    (1.8,200,20,'',20,20,'rural','los',1.5,1, (52.57+0.25)),
     #####test 500m####
-    # test distance 0.05 km, above roof, stochastic component = 112
-    (1.8,500,20,'',20,20,'urban','los',1.5,1, 357),
-    # test distance 0.05 km, below roof, stochastic component =
-    (1.8,500,20,'',20,20,'urban','nlos',1.5,0, 429), 
+    # test distance 0.05 km, above roof
+    (1.8,500,20,'',20,20,'urban','los',1.5,1, (round(245.4+0.3,2))),
+    # test distance 0.05 km, below roof
+    (1.8,500,20,'',20,20,'urban','nlos',1.5,0, (245.4+0.28)),
     #change distances
     #test 90m (0.04< d <0.1)
-    # test distance 0.09 km, above roof, stochastic component = 47
-    (1.8,90,20,'',20,20,'urban','los',1.5,1, 188),
-    # test distance 0.09 km, below roof, stochastic component = 162
-    (1.8,90,20,'',20,20,'urban','nlos',1.5,0, 297),
+    # test distance 0.09 km, above roof
+    (1.8,90,20,'',20,20,'urban','los',1.5,1, (round(134.67+0.35,2))),
+    # test distance 0.09 km, below roof
+    (1.8,90,20,'',20,20,'urban','nlos',1.5,0, (round(134.67+0.28,2))),
     #test 5km
-    # test distance 5 km, above roof, stochastic component = 388
-    (1.8,5000,20,'',20,20,'rural','los',1.5,1, 513),
-    #test 25km
-    # test distance 25 km, above roof, stochastic component = 388
-    (0.7,25000,20,'',20,20,'rural','los',1.5,1, 537),
-    # test distance 25 km, above roof, stochastic component = 388
-    (0.7,25000,20,'',20,20,'rural','los',1.5,1, 537),
+    # test distance 5 km, above roof
+    (1.8,5000,20,'',20,20,'urban','los',1.5,1, (297.49+0.25)),
+    # test distance 5 km, above roof
+    (1.8,5000,20,'',20,20,'rural','los',1.5,1, (125.39+0.25)),
+    #test 20km
+    # test distance 20 km, above roof
+    (0.7,20000,20,'',20,20,'urban','los',1.5,1, (269.77+0.25)),
+    (0.7,20000,20,'',20,20,'rural','los',1.5,1, (143.77+0.25)),
+    #test 21km
+    # test distance 21 km, above roof
+    (0.7,21000,20,'',20,20,'urban','los',1.5,1, (272.91+0.25)),
+    (0.7,21000,20,'',20,20,'rural','los',1.5,1, (146.91+0.25)),
+    # test distance 25 km, above roof
+    (0.7,25000,20,'',20,20,'urban','los',1.5,1, (282.72+0.25)),
+    (0.7,25000,20,'',20,20,'rural','los',1.5,1, (156.72+0.25)),
     #test 50km
-    # test distance 50 km, above roof, stochastic component = 388
-    (0.7,50000,20,'',20,20,'rural','los',1.5,1, 553),
+    # test distance 50 km, above roof
+    (0.7,50000,20,'',20,20,'urban','los',1.5,1, (330.35+0.25)),
+    (0.7,50000,20,'',20,20,'rural','los',1.5,1, (204.35+0.25)),
     ])
 
-def test_extended_hata(frequency, distance, ant_height, ant_type, 
-    building_height, street_width, settlement_type, type_of_sight, 
+def test_extended_hata(frequency, distance, ant_height, ant_type,
+    building_height, street_width, settlement_type, type_of_sight,
     ue_height, above_roof, expected):
     assert (
         extended_hata(frequency, distance, ant_height, ant_type, \
@@ -141,37 +151,40 @@ def test_extended_hata_model_value_errors():
 @pytest.mark.parametrize("frequency, distance, ant_height, ant_type, \
     building_height, street_width, settlement_type, type_of_sight, \
     ue_height, expected", [
-    #stochastic component is 4 (seed=42)
-    (3.5,500,10,'micro',20,20,'urban','los',1.5, (98+4)), 
-    (3.5,1000,10,'micro',20,20,'urban','los',1.5, (108+4)), 
+    #stochastic component is 0.68 (seed=42)
+    (3.5,500,10,'micro',20,20,'urban','los',1.5, (round(98.26+0.67,2))),
+    (3.5,1000,10,'micro',20,20,'urban','los',1.5, (round(107.72+0.67,2))),
     (3.5,6000,10,'micro',20,20,'urban','los',1.5, 250),
-    #stochastic component is 7 (seed=42)
-    (3.5,500,10,'micro',20,20,'urban','nlos',1.5, (136+7)), 
-    (3.5,500,25, 'macro',20,20,'urban','los',1.5, (98+7)), 
-    (3.5,2000,25,'macro',20,20,'urban','los',1.5, (113+7)), 
+    # #stochastic component is 0.56 (seed=42)
+    (3.5,500,10,'micro',20,20,'urban','nlos',1.5, (135.90+0.56)),
+    (3.5,500,25, 'macro',20,20,'urban','los',1.5, (round(98.26+0.56,2))),
+    (3.5,2000,25,'macro',20,20,'urban','los',1.5, (112.6+0.56)),
     (3.5,6000,10,'macro',20,20,'urban','los',1.5, 250),
-    #stochastic component is 20 (seed=42)
-    (3.5,1000,25,'macro',20,20,'urban','nlos',1.5, (142+20)), 
+    #stochastic component is 0.42 (seed=42)
+    (3.5,1000,25,'macro',20,20,'urban','nlos',1.5, (round(141.69+0.42,2))),
     (3.5,6000,10,'macro',20,20,'urban','nlos',1.5, 250),
-    #stochastic component is 7 (seed=42)
-    (3.5,1000,35,'macro',10,20,'suburban','los',1.5, (108+7)), 
-    #stochastic component is 7 + 20 (seed=42)
-    (3.5,4000,35,'macro',10,20,'suburban','los',1.5, (127+7+20)),
-    #stochastic component is 53 (seed=42) 
-    (3.5,500,35,'macro',10,20,'suburban','nlos',1.5, (121+53)), 
+    #stochastic component is 0.56 (seed=42)
+    (3.5,1000,35,'macro',10,20,'suburban','los',1.5, (107.74+0.56)),
+    #stochastic component is 0.56 & 0.42 (seed=42)
+    (3.5,4000,35,'macro',10,20,'suburban','los',1.5, (round(126.73+0.56+0.42,2))),
+    #stochastic component is 0.34 (seed=42)
+    (3.5,500,35,'macro',10,20,'suburban','nlos',1.5, (121.39+0.34)),
     (3.5,6000,10,'macro',20,20,'suburban','los',1.5, 250),
-    #stochastic component is 7 (seed=42)
-    (3.5,1000,35,'macro',10,20,'rural','los',1.5, (108+7)), 
-    #stochastic component is 7 + 20 (seed=42)
-    (3.5,4000,35,'macro',10,20,'rural','los',1.5, (127+7+20)),
-    #stochastic component is 53 (seed=42) 
-    (3.5,500,35,'macro',10,20,'rural','nlos',1.5, (121+53)),  
+    #stochastic component is 0.56 (seed=42)
+    (3.5,1000,35,'macro',10,20,'rural','los',1.5, (107.74+0.56)),
+    #stochastic component is 0.56 + 0.42 (seed=42)
+    (3.5,4000,35,'macro',10,20,'rural','los',1.5, (round(126.73+0.56+0.42,2))),
+    #stochastic component is 0.34 (seed=42)
+    (3.5,500,35,'macro',10,20,'rural','nlos',1.5, (121.39+0.34)),
     (3.5,6000,10,'macro',20,20,'rural','nlos',1.5, 250),
     ])
 
-def test_eval_path_loss_calc(frequency, distance, ant_height, ant_type,  
-    building_height, street_width, settlement_type, type_of_sight, 
+def test_eval_path_loss_calc(frequency, distance, ant_height, ant_type,
+    building_height, street_width, settlement_type, type_of_sight,
     ue_height, expected):
+    print(e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, \
+        building_height, street_width, settlement_type, type_of_sight, \
+        ue_height))
     assert (
         e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, \
         building_height, street_width, settlement_type, type_of_sight, \
@@ -184,10 +197,10 @@ def test_eval_path_loss_calc(frequency, distance, ant_height, ant_type,
     (20, 20, 20, 1.5, True),
     (5, 20, 8, 1.5, False), ])
 
-def test_check_applicability(building_height, street_width, ant_height, 
+def test_check_applicability(building_height, street_width, ant_height,
     ue_height, expected):
     assert (
-        check_applicability(building_height, street_width, ant_height, 
+        check_applicability(building_height, street_width, ant_height,
         ue_height)
         ) == expected
 
@@ -206,20 +219,18 @@ def test_path_loss_calculator_errors():
 @pytest.mark.parametrize("frequency, distance, ant_height, ant_type, \
     building_height, street_width, settlement_type, type_of_sight, \
     ue_height, above_roof, indoor, expected", [
-    (1.8,500,20,'',20,20,'urban','nlos',1.5,0, False, 429),
-    (3.5,500,35,'macro',10,20,'suburban','nlos',1.5, 0, False, (121+53)),
-    #building penetration stochastic component is 8655567 (seed=42)
-    (1.8,500,20,'',20,20,'urban','nlos',1.5,0, True, (429+8655567)),
-    #building penetration stochastic component is 8655567 (seed=42)
-    (3.5,500,35,'macro',10,20,'suburban','nlos',1.5, 0,True,(121+53+8655567)),
+    (1.8,500,20,'',20,20,'urban','nlos',1.5,0, False, (245.4+0.28)),
+    (3.5,500,35,'macro',10,20,'suburban','nlos',1.5, 0, False, (121.39+0.34)),
+    (1.8,500,20,'',20,20,'urban','nlos',1.5,0, True, (245.4+0.28+13.49)),
+    (3.5,500,35,'macro',10,20,'suburban','nlos',1.5, 0,True,(121.39+0.34+13.49)),
 ])
 
-def test_path_loss_calculator(frequency, distance, ant_height, ant_type, 
-    building_height,street_width, settlement_type, type_of_sight, ue_height, 
+def test_path_loss_calculator(frequency, distance, ant_height, ant_type,
+    building_height,street_width, settlement_type, type_of_sight, ue_height,
     above_roof, indoor, expected):
     assert (
-        path_loss_calculator(frequency, distance, ant_height, ant_type, 
-        building_height, street_width, settlement_type, type_of_sight, 
+        path_loss_calculator(frequency, distance, ant_height, ant_type,
+        building_height, street_width, settlement_type, type_of_sight,
         ue_height, above_roof, indoor)
         ) == expected
 
@@ -230,7 +241,7 @@ def test_path_loss_calculator(frequency, distance, ant_height, ant_type,
     (200, 100, 200),
     ])
 
-def test_determine_path_loss(extended_hata_path_loss, free_space_path_loss, 
+def test_determine_path_loss(extended_hata_path_loss, free_space_path_loss,
     expected):
     assert (
         determine_path_loss(extended_hata_path_loss, free_space_path_loss)
