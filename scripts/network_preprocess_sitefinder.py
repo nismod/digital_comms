@@ -121,34 +121,34 @@ def process_asset_data(data):
 
     return output
 
-# def write_shapefile(data, filename):
+def write_shapefile(data, filename):
 
-#     # Translate props to Fiona sink schema
-#     prop_schema = []
+    # Translate props to Fiona sink schema
+    prop_schema = []
 
-#     for name, value in data[0]['properties'].items():
-#         fiona_prop_type = next((fiona_type for fiona_type, python_type in
-#         fiona.FIELD_TYPES_MAP.items() if python_type == type(value)), None)
-#         prop_schema.append((name, fiona_prop_type))
+    for name, value in data[0]['properties'].items():
+        fiona_prop_type = next((fiona_type for fiona_type, python_type in
+        fiona.FIELD_TYPES_MAP.items() if python_type == type(value)), None)
+        prop_schema.append((name, fiona_prop_type))
 
-#     sink_driver = 'ESRI Shapefile'
-#     sink_crs = {'init': 'epsg:27700'}
-#     sink_schema = {
-#         'geometry': data[0]['geometry']['type'],
-#         'properties': OrderedDict(prop_schema)
-#     }
+    sink_driver = 'ESRI Shapefile'
+    sink_crs = {'init': 'epsg:27700'}
+    sink_schema = {
+        'geometry': data[0]['geometry']['type'],
+        'properties': OrderedDict(prop_schema)
+    }
 
-#     # Create path
-#     directory = os.path.join(BASE_PATH, 'intermediate', 'sitefinder')
-#     if not os.path.exists(directory):
-#         os.makedirs(directory)
+    # Create path
+    directory = os.path.join(BASE_PATH, 'intermediate', 'sitefinder')
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
-#     print(os.path.join(directory, filename))
-#     # Write all elements to output file
-#     with fiona.open(os.path.join(directory, filename),
-#         'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
-#         for feature in data:
-#             sink.write(feature)
+    print(os.path.join(directory, filename))
+    # Write all elements to output file
+    with fiona.open(os.path.join(directory, filename),
+        'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
+        for feature in data:
+            sink.write(feature)
 
 def csv_writer(data, filename):
     """

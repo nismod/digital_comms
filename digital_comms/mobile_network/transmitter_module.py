@@ -410,14 +410,14 @@ class NetworkManager(object):
             path_loss = self.calculate_path_loss(
                 closest_transmitters[0], receiver, frequency, environment
             )
-
+            print('receiver path loss is {}'.format(path_loss))
             received_power = self.calc_received_power(
                 closest_transmitters[0], receiver, path_loss
             )
 
             interference = self.calculate_interference(
                 closest_transmitters, receiver, frequency, environment)
-
+            print('interference is {}'.format(interference))
             noise = self.calculate_noise(
                 bandwidth
             )
@@ -433,8 +433,8 @@ class NetworkManager(object):
             estimated_capacity = self.estimate_capacity(
                 bandwidth, spectral_efficiency
             )
-
-            data = {'sinr': sinr, 'estimated_capacity': estimated_capacity}
+            
+            data = {'sinr': sinr, 'capacity_mbps': estimated_capacity}
 
             results.append(data)
 
@@ -543,8 +543,8 @@ class NetworkManager(object):
             path_loss - \
             receiver.misc_losses + \
             receiver.gain - \
-            receiver.losses \
-
+            receiver.losses 
+        # print('received power is {}'.format(received_power))
         return received_power
 
     def calculate_interference(
@@ -557,7 +557,6 @@ class NetworkManager(object):
         is the actual cell in use)
 
         """
-
         three_closest_transmitters = closest_transmitters[1:4]
 
         interference = []
@@ -617,7 +616,7 @@ class NetworkManager(object):
                 above_roof,
                 indoor,
                 )
-
+            #print('path loss of {} is {}'.format(interference_transmitter.id, path_loss))
             #calc interference from other cells
             received_interference = self.calc_received_power(
                 interference_transmitter,
@@ -658,7 +657,7 @@ class NetworkManager(object):
         ]
         #fake_noise = k*T*B
 
-        noise = -106.5
+        noise = -104.5
 
         return noise
 
@@ -666,14 +665,27 @@ class NetworkManager(object):
         """
         Calculate the Signal-to-Interference-plus-Noise-Ration (SINR).
 
+        TODO: convert interference values into Watts, then sum, then
+        convert into dBm.
+
         """
-        sinr = round(received_power / sum(interference) + noise, 1)
+        # sum_of_interference = sum(interference)
+
+        interference_values = []
+        for value in interference:
+            interim_value = value/10
+            output_value = 10**interim_value            
+            interference_values.append(output_value)
+
+        sum_of_interference = 10*np.log10(sum(interference_values))
+
+        sinr = received_power / (sum_of_interference + noise)
         # print('received power is {}'.format(received_power))
         # print('interference is {}'.format(sum(interference)))
         # print('noise is {}'.format(noise))
 
-        print(sinr)
-        return sinr
+        # print(sinr)
+        return round(sinr, 2)
 
     def modulation_scheme_and_coding_rate(
         self, sinr, modulation_and_coding_lut):
@@ -703,11 +715,12 @@ class NetworkManager(object):
 
         """
         #estimated_capacity = round(bandwidth*np.log2(1+sinr), 2)
-        bandwidth_in_hertz = bandwidth/1000000
-
+        bandwidth_in_hertz = bandwidth*1000000
+        
         estimated_capacity = bandwidth_in_hertz*spectral_efficiency
-
-        return estimated_capacity
+        estimated_capacity_mbps = estimated_capacity / 1000000 
+        
+        return estimated_capacity_mbps
 
     def transmitter_density(self):
         """

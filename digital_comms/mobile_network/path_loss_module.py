@@ -77,11 +77,11 @@ def path_loss_calculator(frequency, distance, ant_height, ant_type, building_hei
         raise ValueError (
             "frequency of {} is NOT within correct range".format(frequency)
         )
-    # print('path loss is {}'.format(path_loss))
+    print('path loss is {}'.format(path_loss))
     # print('outdoor to indoor is {}'.format(outdoor_to_indoor_path_loss(indoor)))
     path_loss = path_loss + outdoor_to_indoor_path_loss(indoor)
 
-    return path_loss
+    return round(path_loss, 2)
 
 def determine_path_loss(extended_hata_path_loss, free_space_path_loss):
     """Model guidance states that 'when L [median path loss] is below
@@ -651,7 +651,7 @@ def generate_log_normal_dist_value(mu, sigma, draws):
     normal_mean = np.log(mu) - normal_std**2 / 2
 
     hs = np.random.lognormal(normal_mean, normal_std, draws)
-    #print('random amount is {}'.format(round(hs[0],2)))
+    # print('random amount is {}'.format(round(hs[0],2)))
     return round(hs[0],2)
 
 def outdoor_to_indoor_path_loss(indoor):
