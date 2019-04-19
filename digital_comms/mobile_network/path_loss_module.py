@@ -77,7 +77,7 @@ def path_loss_calculator(frequency, distance, ant_height, ant_type, building_hei
         raise ValueError (
             "frequency of {} is NOT within correct range".format(frequency)
         )
-    print('path loss is {}'.format(path_loss))
+    # print('path loss is {}'.format(path_loss))
     # print('outdoor to indoor is {}'.format(outdoor_to_indoor_path_loss(indoor)))
     path_loss = path_loss + outdoor_to_indoor_path_loss(indoor)
 
