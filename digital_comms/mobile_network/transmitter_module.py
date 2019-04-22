@@ -410,14 +410,14 @@ class NetworkManager(object):
             path_loss = self.calculate_path_loss(
                 closest_transmitters[0], receiver, frequency, environment
             )
-            print('receiver path loss is {}'.format(path_loss))
+            
             received_power = self.calc_received_power(
                 closest_transmitters[0], receiver, path_loss
             )
 
             interference = self.calculate_interference(
                 closest_transmitters, receiver, frequency, environment)
-            print('interference is {}'.format(interference))
+            
             noise = self.calculate_noise(
                 bandwidth
             )
@@ -430,7 +430,7 @@ class NetworkManager(object):
                 sinr, modulation_and_coding_lut
             )
 
-            estimated_capacity = self.estimate_capacity(
+            estimated_capacity = self.link_budget_capacity(
                 bandwidth, spectral_efficiency
             )
             
@@ -706,7 +706,7 @@ class NetworkManager(object):
 
         return spectral_efficiency
 
-    def estimate_capacity(self, bandwidth, spectral_efficiency):
+    def link_budget_capacity(self, bandwidth, spectral_efficiency):
         """
         Estimate wireless link capacity (Mbps) based on bandwidth and
         receiver signal.
@@ -717,10 +717,10 @@ class NetworkManager(object):
         #estimated_capacity = round(bandwidth*np.log2(1+sinr), 2)
         bandwidth_in_hertz = bandwidth*1000000
         
-        estimated_capacity = bandwidth_in_hertz*spectral_efficiency
-        estimated_capacity_mbps = estimated_capacity / 1000000 
+        link_budget_capacity = bandwidth_in_hertz*spectral_efficiency
+        link_budget_capacity_mbps = link_budget_capacity / 1000000 
         
-        return estimated_capacity_mbps
+        return link_budget_capacity_mbps
 
     def transmitter_density(self):
         """
@@ -762,6 +762,14 @@ class NetworkManager(object):
             )
 
         return transmitter_density
+
+    def average_link_budget_capacity(self):
+        """
+        Estimate the average receiver capacity.
+
+        """
+
+
 
     def receiver_density(self):
         """Calculate receiver density per square kilometer (km^2)
@@ -863,13 +871,13 @@ def transform_coordinates(old_proj, new_proj, x, y):
 
     return new_x, new_y
 
-def generate_lut_results(results, percentile):
+def obtain_thresholdold_value(results, percentile):
     """Get the threshold capacity based on a given percentile.
     """
     threshold_capacity_value = []
 
     for capacity_value in results:
-        threshold_capacity_value.append(capacity_value['estimated_capacity'])
+        threshold_capacity_value.append(capacity_value['capacity_mbps'])
 
     return np.percentile(threshold_capacity_value, percentile)
 
@@ -1233,11 +1241,11 @@ if __name__ == "__main__":
             #     )
 
             #find percentile values
-            lookup_table_results = generate_lut_results(results, percentile)
-
+            threshold_value = obtain_threshold_value(results, percentile)
+            print(lookup_table_results)
             #env, frequency, bandwidth, site_density, capacity
             write_lookup_table(
-                lookup_table_results, operator, technology, frequency,
+                threshold_value, operator, technology, frequency,
                 bandwidth, t_density, postcode_sector_name
                 )
 
@@ -1263,97 +1271,3 @@ if __name__ == "__main__":
 #     write_shapefile(
 #         geojson_postcode_sector_list,  postcode_sector_name, '_boundary.shp'
 #         )
-
-# #####################################
-# # UK Spectrum Portfolio dict
-# #####################################
-
-# # SPECTRUM_PORTFOLIO_DICT = {
-# #     'O2 Telefonica': {
-# #         'FDD DL': {
-# #             '800': 10,
-# #             '900': 17.4,
-# #             '1800': 5.8,
-# #             '2100': 10,
-# #             },
-# #         'FDD UL': {
-# #             '800': 10,
-# #             '900': 17.4,
-# #             '1800': 5.8,
-# #             '2100': 10,
-# #             },
-# #         'TDD': {
-# #             '1900': 5,
-# #             '2300': 40,
-# #             '3500': 40,
-# #             },
-# #         },
-# #     'Vodafone': {
-# #         'FDD DL': {
-# #             '800': 10,
-# #             '900': 17.4,
-# #             '1500': 20,
-# #             '1800': 5.8,
-# #             '2100': 14.8,
-# #             '2600': 20,
-# #             },
-# #         'FDD UL': {
-# #             '800': 10,
-# #             '900': 17.4,
-# #             '1800': 5.8,
-# #             '2100': 14.8,
-# #             '2600': 20,
-# #             },
-# #         'TDD': {
-# #             '2600': 25,
-# #             '3500': 50,
-# #             },
-# #         },
-# #     'EE (BT)': {
-# #         'FDD DL': {
-# #             '800': 5,
-# #             '1800': 45,
-# #             '2100': 20,
-# #             '2600': 35,
-# #             },
-# #         'FDD UL': {
-# #             '800': 5,
-# #             '1800': 45,
-# #             '2100': 20,
-# #             '2600': 35,
-# #             },
-# #         'TDD': {
-# #             '1900': 10,
-# #             '3500': 40,
-# #             },
-# #         },
-# #     '3 UK (H3G)': {
-# #         'FDD DL': {
-# #             '800': 5,
-# #             '1500': 20,
-# #             '1800': 15,
-# #             '2100': 14.6,
-# #             },
-# #         'FDD UL': {
-# #             '800': 5,
-# #             '1800': 15,
-# #             '2100': 14.6,
-# #             },
-# #         'TDD': {
-# #             '1900': 5.4,
-# #             '3500': 40,
-# #             '3700': 80,
-# #             },
-# #         },
-# #     'BT': {
-# #         'FDD DL': {
-# #             '2600': 15,
-# #             },
-# #         'FDD UL': {
-# #             '2600': 15,
-# #             },
-# #         'TDD': {
-# #             '2600': 25,
-# #             },
-# #         },
-# # }
