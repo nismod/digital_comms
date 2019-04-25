@@ -170,10 +170,10 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
     #find largest value
     hb = max(ant_height, ue_height)
 
-    alpha_hm = (1.1*np.log(frequency) - 0.7) * min(10, hm) - \
-        (1.56*np.log(frequency) - 0.8) + max(0, (20*np.log(hm/10)))
+    alpha_hm = (1.1*np.log10(frequency) - 0.7) * min(10, hm) - \
+        (1.56*np.log10(frequency) - 0.8) + max(0, (20*np.log10(hm/10)))
 
-    beta_hb = min(0, (20*np.log(hb/30)))
+    beta_hb = min(0, (20*np.log10(hb/30)))
 
     if distance <= 20: #units : km
 
@@ -182,7 +182,7 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
     elif 20 < distance < 100: #units : km
 
         alpha_exponent = 1 + (0.14 + 1.87e-4 * frequency + \
-            1.07e-3 * hb)*(np.log(distance/20))**0.8
+            1.07e-3 * hb)*(np.log10(distance/20))**0.8
         # print('alpha_exponent is {}'.format(alpha_exponent))
     else:
 
@@ -193,7 +193,7 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
     if distance < 0.04:
 
         path_loss = (
-            32.4 + (20*np.log(frequency)) + (10*np.log((distance**2) +
+            32.4 + (20*np.log10(frequency)) + (10*np.log10((distance**2) +
             ((hb - hm)**2) / (10**6)))
         )
 
@@ -202,45 +202,38 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
         if 30 < frequency <= 150:
 
             path_loss = (
-                69.6 + 26.2*np.log(150) - 20*np.log(150/frequency) -
-                13.82*np.log(max(30, hb)) +
-                (44.9 - 6.55*np.log(max(30, hb))) *
-                np.log(distance)**alpha_exponent - alpha_hm - beta_hb
+                69.6 + 26.2*np.log10(150) - 20*np.log10(150/frequency) -
+                13.82*np.log10(max(30, hb)) +
+                (44.9 - 6.55*np.log10(max(30, hb))) *
+                np.log10(distance)**alpha_exponent - alpha_hm - beta_hb
             )
 
         elif 150 < frequency <= 1500:
 
             path_loss = (
-                69.6 + 26.2*np.log(frequency) -
-                13.82*np.log(max(30, hb)) +
-                (44.9 - 6.55*np.log(max(30, hb))) *
-                ((np.log(distance))**alpha_exponent) - alpha_hm - beta_hb
+                69.6 + 26.2*np.log10(frequency) -
+                13.82*np.log10(max(30, hb)) +
+                (44.9 - 6.55*np.log10(max(30, hb))) *
+                ((np.log10(distance))**alpha_exponent) - alpha_hm - beta_hb
             )
-            # print('alpha_exponent is {}'.format(alpha_exponent))
-            # print('26.2*np.log(frequency) is {}'.format(26.2*np.log(frequency)))
-            # print('13.82*np.log(max(30, hb)) is {}'.format(13.82*np.log(max(30, hb))))
-            # print('(44.9 - 6.55*np.log(max(30, hb))) is {}'.format((44.9 - 6.55*np.log(max(30, hb)))))
-            # print('(np.log(distance)**alpha_exponent) is {}'.format(np.log(distance)**alpha_exponent))
-            # print('alpha_hm is {}'.format(alpha_hm))
-            # print('beta_hb is {}'.format(beta_hb))
 
         elif 1500 < frequency <= 2000:
 
             path_loss = (
-                46.3 + 33.9*np.log(frequency) -
-                13.82*np.log(max(30, hb)) +
-                (44.9 - 6.55*np.log(max(30, hb))) *
-                (np.log(distance))**alpha_exponent - alpha_hm - beta_hb
+                46.3 + 33.9*np.log10(frequency) -
+                13.82*np.log10(max(30, hb)) +
+                (44.9 - 6.55*np.log10(max(30, hb))) *
+                (np.log10(distance))**alpha_exponent - alpha_hm - beta_hb
             )
             #print('path loss is {}'.format(path_loss))
         elif 2000 < frequency <= 3000:
 
             path_loss = (
-                46.3 + 33.9*np.log(2000) +
-                10*np.log(frequency/2000) -
-                13.82*np.log(max(30, hb)) +
-                (44.9 - 6.55*np.log(max(30, hb))) *
-                (np.log(distance))**alpha_exponent - alpha_hm - beta_hb
+                46.3 + 33.9*np.log10(2000) +
+                10*np.log10(frequency/2000) -
+                13.82*np.log10(max(30, hb)) +
+                (44.9 - 6.55*np.log10(max(30, hb))) *
+                (np.log10(distance))**alpha_exponent - alpha_hm - beta_hb
             )
             #print('pathloss part 1 is {}'.format(path_loss))
         else:
@@ -251,15 +244,15 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
 
             path_loss = (
                 path_loss - 2 * \
-                (np.log((min(max(150, frequency), 2000)/28)))**2 - 5.4
+                (np.log10((min(max(150, frequency), 2000)/28)))**2 - 5.4
             )
 
         elif settlement_type == 'rural': #also called 'open area'
 
             path_loss = (
                 path_loss - 4.78 * \
-                (np.log(min(max(150, frequency), 2000)))**2 + 18.33 * \
-                    np.log(min(max(150, frequency), 2000)) - 40.94
+                (np.log10(min(max(150, frequency), 2000)))**2 + 18.33 * \
+                    np.log10(min(max(150, frequency), 2000)) - 40.94
             )
             # print('rural path loss is {}'.format(path_loss))
         else:
@@ -270,19 +263,19 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
 
         #distance pre-set at 0.1
         l_fixed_distance_upper = (
-            32.4 + (20*np.log(frequency)) + (10*np.log(0.1**2 +
+            32.4 + (20*np.log10(frequency)) + (10*np.log10(0.1**2 +
             (hb - hm)**2 / 10**6))
         )
 
         #distance pre-set at 0.04
         l_fixed_distance_lower = (
-            32.4 + (20*np.log(frequency)) + (10*np.log(0.04**2 +
+            32.4 + (20*np.log10(frequency)) + (10*np.log10(0.04**2 +
             (hb - hm)**2 / 10**6))
         )
 
         path_loss = (l_fixed_distance_lower +
-            (np.log(distance) - np.log(0.04)) / \
-            (np.log(0.1) - np.log(0.04)) *
+            (np.log10(distance) - np.log10(0.04)) / \
+            (np.log10(0.1) - np.log10(0.04)) *
             (l_fixed_distance_upper - l_fixed_distance_lower)
         )
 
@@ -647,11 +640,11 @@ def generate_log_normal_dist_value(mu, sigma, draws):
     """
     np.random.seed(42)
 
-    normal_std = np.sqrt(np.log(1 + (sigma/mu)**2))
-    normal_mean = np.log(mu) - normal_std**2 / 2
+    normal_std = np.sqrt(np.log10(1 + (sigma/mu)**2))
+    normal_mean = np.log10(mu) - normal_std**2 / 2
 
     hs = np.random.lognormal(normal_mean, normal_std, draws)
-    # print('random amount is {}'.format(round(hs[0],2)))
+    print('random amount {}'.format(round(hs[0],2)))
     return round(hs[0],2)
 
 def outdoor_to_indoor_path_loss(indoor):
@@ -669,5 +662,5 @@ def outdoor_to_indoor_path_loss(indoor):
     else:
 
         outdoor_to_indoor_path_loss = 0
-
+    print('building penetration loss is {}'.format(outdoor_to_indoor_path_loss))
     return outdoor_to_indoor_path_loss
