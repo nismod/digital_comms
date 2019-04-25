@@ -46,6 +46,7 @@ def read_postcode_sector(postcode_sector):
     postcode_area = ''.join(
         [i for i in postcode_sector[:2] if not i.isdigit()]
         )
+
     postcode_area = postcode_area.lower()
     with fiona.open(
         os.path.join(
@@ -86,6 +87,7 @@ def import_area_lut(postcode_sector_name, lad_ids):
                         'outdoor_probability': line['outdoor_probability'],
                         'residential_count': line['residential_count'],
                         'non_residential_count': line['non_residential_count'],
+                        'estimated_population': int(float(line['residential_count'])*2.5),
                         'area': line['area'],
                     }
 
@@ -93,10 +95,8 @@ def import_area_lut(postcode_sector_name, lad_ids):
 
 def determine_environment(postcode_sector_lut):
 
-    estimated_population = float(postcode_sector_lut['residential_count'])*2.5
-
     population_density = (
-        estimated_population / float(postcode_sector_lut['area'])
+        postcode_sector_lut['estimated_population'] / float(postcode_sector_lut['area'])
         )
 
     if population_density >= 7959:
@@ -247,7 +247,7 @@ def generate_receivers(postcode_sector, postcode_sector_lut, quantity):
     return receivers
 
 def find_and_deploy_new_transmitter(
-    existing_transmitters, iteration_number, geojson_postcode_sector):
+    existing_transmitters, new_sites, geojson_postcode_sector, idx):
     """
     Given existing transmitter locations, try deploy a new one in the area
     which has the largest existing gap between transmitters.
@@ -262,93 +262,95 @@ def find_and_deploy_new_transmitter(
         The postcode sector boundary in GeoJson format.
 
     """
-    existing_transmitter_coordinates = []
-    for existing_transmitter in existing_transmitters.values():
-        existing_transmitter_coordinates.append(
-            existing_transmitter.coordinates
+    NEW_TRANSMITTERS = []
+
+    for n in range(0, new_sites):
+
+        existing_transmitter_coordinates = []
+        for existing_transmitter in existing_transmitters.values():
+            existing_transmitter_coordinates.append(
+                existing_transmitter.coordinates
+                )
+
+        #convert to numpy array
+        existing_transmitter_coordinates = np.array(
+            existing_transmitter_coordinates
             )
 
-    #convert to numpy array
-    existing_transmitter_coordinates = np.array(
-        existing_transmitter_coordinates
-        )
+        #get delaunay grid
+        tri = Delaunay(existing_transmitter_coordinates)
 
-    #get delaunay grid
-    tri = Delaunay(existing_transmitter_coordinates)
+        #get coordinates from gri
+        coord_groups = [tri.points[x] for x in tri.simplices]
 
-    #get coordinates from gri
-    coord_groups = [tri.points[x] for x in tri.simplices]
+        #convert coordinate groups to polygons
+        polygons = [Polygon(x) for x in coord_groups]
 
-    #convert coordinate groups to polygons
-    polygons = [Polygon(x) for x in coord_groups]
+        #sort based on area
+        polygons = sorted(polygons, key=lambda x: x.area, reverse=True)
 
-    #sort based on area
-    polygons = sorted(polygons, key=lambda x: x.area, reverse=True)
+        geom = shape(geojson_postcode_sector['geometry'])
 
-    geom = shape(geojson_postcode_sector['geometry'])
+        #try to allocate using the delauney polygon with the largest area first
+        try:
+            for new_site_area in polygons:
 
-    #try to allocate using the delauney polygon with the largest area first
-    try:
-        for new_site_area in polygons:
+                #get the centroid from the largest area
+                centroid = new_site_area.centroid
 
-            #get the centroid from the largest area
-            centroid = new_site_area.centroid
-
-            if geom.contains(centroid):
-                break
-            else:
-                continue
-
-        x_coord = np.random.uniform(low=minx, high=maxx, size=1)
-        y_coord = np.random.uniform(low=miny, high=maxy, size=1)
-
-    #if no delauney polygon centroids are in the area boundary, randomly allocate
-    except:
-
-        geom_box = geom.bounds
-
-        minx = geom_box[0]
-        miny = geom_box[1]
-        maxx = geom_box[2]
-        maxy = geom_box[3]
-
-        random_transmitter_location = []
-
-        while len(random_transmitter_location) == 0:
+                if geom.contains(centroid):
+                    break
+                else:
+                    continue
 
             x_coord = np.random.uniform(low=minx, high=maxx, size=1)
             y_coord = np.random.uniform(low=miny, high=maxy, size=1)
 
-            receiver = Point((x_coord, y_coord))
+        #if no delauney polygon centroids are in the area boundary, randomly allocate
+        except:
 
-            if geom.contains(receiver):
-                centroid = receiver.centroid
-                random_transmitter_location.append(receiver)
+            geom_box = geom.bounds
 
-            else:
+            minx = geom_box[0]
+            miny = geom_box[1]
+            maxx = geom_box[2]
+            maxy = geom_box[3]
 
-                continue
+            random_transmitter_location = []
 
-    NEW_TRANSMITTERS = []
+            while len(random_transmitter_location) == 0:
 
-    NEW_TRANSMITTERS.append({
-        'type': "Feature",
-        'geometry': {
-            "type": "Point",
-            "coordinates": [centroid.x, centroid.y]
-        },
-        'properties': {
-                "operator": 'unknown',
-                "sitengr": "{" + 'new' + "}{GEN" + str(iteration_number) + '}',
-                "ant_height": 20,
-                "tech": 'LTE',
-                "freq": 700,
-                "type": 17,
-                "power": 30,
-                "gain": 18,
-                "losses": 2,
-            }
-        })
+                x_coord = np.random.uniform(low=minx, high=maxx, size=1)
+                y_coord = np.random.uniform(low=miny, high=maxy, size=1)
+
+                receiver = Point((x_coord, y_coord))
+
+                if geom.contains(receiver):
+                    centroid = receiver.centroid
+                    random_transmitter_location.append(receiver)
+
+                else:
+
+                    continue
+
+        NEW_TRANSMITTERS.append({
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [centroid.x, centroid.y]
+            },
+            'properties': {
+                    "operator": 'unknown',
+                    "sitengr": "{" + 'new' + "}{GEN" + str(idx) + '.' + str(n+1) + '}',
+                    "ant_height": 20,
+                    "tech": 'LTE',
+                    "freq": 700,
+                    "type": 17,
+                    "power": 30,
+                    "gain": 18,
+                    "losses": 2,
+                }
+            })
 
     return NEW_TRANSMITTERS
 
@@ -394,7 +396,26 @@ class NetworkManager(object):
     def estimate_link_budget(
         self, frequency, bandwidth, environment, modulation_and_coding_lut):
         """
-        Takes propagation parameters and calculates capacity.
+        Takes propagation parameters and calculates link budget capacity.
+
+        Parameters
+        ----------
+        frequency : float
+            The carrier frequency for the chosen spectrum band (GHz).
+        bandwidth : float
+            The width of the spectrum around the carrier frequency (MHz).
+        environment : string
+            Either urban, suburban or rural.
+        modulation_and_coding_lut : list of tuples
+            A lookup table containing modulation and coding rates,
+            spectral efficiencies and SINR estimates.
+
+        Returns
+        -------
+        sinr : float
+            The signal to noise plut interference ratio (GHz).
+        capacity_mbps : float
+            The estimated link budget capacity.
 
         """
         results = []
@@ -410,14 +431,14 @@ class NetworkManager(object):
             path_loss = self.calculate_path_loss(
                 closest_transmitters[0], receiver, frequency, environment
             )
-            
+
             received_power = self.calc_received_power(
                 closest_transmitters[0], receiver, path_loss
             )
 
             interference = self.calculate_interference(
                 closest_transmitters, receiver, frequency, environment)
-            
+
             noise = self.calculate_noise(
                 bandwidth
             )
@@ -433,10 +454,19 @@ class NetworkManager(object):
             estimated_capacity = self.link_budget_capacity(
                 bandwidth, spectral_efficiency
             )
-            
+
             data = {'sinr': sinr, 'capacity_mbps': estimated_capacity}
 
             results.append(data)
+
+            # print('received_power is {}'.format(received_power))
+            # print('interference is {}'.format(interference))
+            # print('noise is {}'.format(noise))
+            # print('sinr is {}'.format(sinr))
+            # print('spectral_efficiency is {}'.format(spectral_efficiency))
+            # print('estimated_capacity is {}'.format(estimated_capacity))
+            # print('path_loss is {}'.format(path_loss))
+            # print('-----------------------------')
 
         return results
 
@@ -543,8 +573,8 @@ class NetworkManager(object):
             path_loss - \
             receiver.misc_losses + \
             receiver.gain - \
-            receiver.losses 
-        # print('received power is {}'.format(received_power))
+            receiver.losses
+        print('received power is {}'.format(received_power))
         return received_power
 
     def calculate_interference(
@@ -616,7 +646,7 @@ class NetworkManager(object):
                 above_roof,
                 indoor,
                 )
-            #print('path loss of {} is {}'.format(interference_transmitter.id, path_loss))
+            # print('path loss of {} is {}'.format(interference_transmitter.id, path_loss))
             #calc interference from other cells
             received_interference = self.calc_received_power(
                 interference_transmitter,
@@ -639,25 +669,22 @@ class NetworkManager(object):
         The bandwidth depends on bit rate, which defines the number of resource blocks.
         We assume 50 resource blocks, equal 9 MHz, transmission for 1 Mbps downlink.
 
-        Thermal noise (dBm) -118.4 = k(Boltzmann) * T(290K)* B(360kHz)
+        Required SNR (dB)
+        Detection bandwidth (BW) (Hz)
+        k = Boltzmann constant
+        T = Temperature (kelvins) (290 kelvin = ~16 celcius)
+        NF = Receiver noise figure
+
+        NoiseFloor (dBm) = 10log10(k*T*1000)+NF+10log10BW
+
+        NoiseFloor (dBm) = 10log10(1.38x10e-23*290*1x10e3)+1.5+10log10(10x10e6)
 
         """
-        k = 1
-        T = 15
-        B = bandwidth
+        k = 1.38e-23
+        t = 290
+        BW = 100*1000000
 
-        resource_blocks = [
-            # Bandwidth (MHz), Resource Blocks, Subcarriers (downlink), Subcarriers (uplink)
-            (1.4, 6, 73, 72),
-            (3, 15,	181, 180),
-            (5, 25,	301, 300),
-            (10, 50, 601, 600),
-            (15, 75, 901, 900),
-            (20, 100, 1201, 1200),
-        ]
-        #fake_noise = k*T*B
-
-        noise = -104.5
+        noise = 10*np.log10(k*t*1000)+1.5+10*np.log10(BW)
 
         return noise
 
@@ -665,26 +692,20 @@ class NetworkManager(object):
         """
         Calculate the Signal-to-Interference-plus-Noise-Ration (SINR).
 
-        TODO: convert interference values into Watts, then sum, then
-        convert into dBm.
-
         """
-        # sum_of_interference = sum(interference)
 
         interference_values = []
         for value in interference:
-            interim_value = value/10
-            output_value = 10**interim_value            
+            output_value = 10**value
             interference_values.append(output_value)
 
-        sum_of_interference = 10*np.log10(sum(interference_values))
+        sum_of_interference = sum(interference_values)
+        raw_noise = 10**noise
 
-        sinr = received_power / (sum_of_interference + noise)
-        # print('received power is {}'.format(received_power))
-        # print('interference is {}'.format(sum(interference)))
-        # print('noise is {}'.format(noise))
+        interference_plus_noise = np.log10(sum_of_interference + raw_noise)
 
-        # print(sinr)
+        sinr = received_power / interference_plus_noise
+
         return round(sinr, 2)
 
     def modulation_scheme_and_coding_rate(
@@ -716,10 +737,10 @@ class NetworkManager(object):
         """
         #estimated_capacity = round(bandwidth*np.log2(1+sinr), 2)
         bandwidth_in_hertz = bandwidth*1000000
-        
+
         link_budget_capacity = bandwidth_in_hertz*spectral_efficiency
-        link_budget_capacity_mbps = link_budget_capacity / 1000000 
-        
+        link_budget_capacity_mbps = link_budget_capacity / 1000000
+
         return link_budget_capacity_mbps
 
     def transmitter_density(self):
@@ -871,8 +892,10 @@ def transform_coordinates(old_proj, new_proj, x, y):
 
     return new_x, new_y
 
-def obtain_thresholdold_value(results, percentile):
-    """Get the threshold capacity based on a given percentile.
+def obtain_threshold_value(results, percentile):
+    """
+    Get the threshold capacity based on a given percentile.
+
     """
     threshold_capacity_value = []
 
@@ -882,7 +905,8 @@ def obtain_thresholdold_value(results, percentile):
     return np.percentile(threshold_capacity_value, percentile)
 
 def pairwise(iterable):
-    """Return iterable of 2-tuples in a sliding window
+    """
+    Return iterable of 2-tuples in a sliding window
 
     Parameters
     ----------
@@ -942,7 +966,7 @@ def write_results(results, frequency, bandwidth, t_density,
 
     results_file.close()
 
-def write_lookup_table(threshold_value, operator, technology, frequency,
+def write_lookup_table(threshold_value, environment, operator, technology, frequency,
     bandwidth, t_density, postcode_sector_name):
 
     suffix = 'lookup_table_{}'.format(postcode_sector_name)
@@ -964,7 +988,6 @@ def write_lookup_table(threshold_value, operator, technology, frequency,
         lut_file = open(directory, 'a', newline='')
         lut_writer = csv.writer(lut_file)
 
-    environment = 'urban'
     # output and report results for this timestep
     lut_writer.writerow(
         (environment,
@@ -1119,15 +1142,15 @@ SPECTRUM_PORTFOLIO = [
     ('O2 Telefonica', 'FDD DL', 0.9, 17.4),
     ('O2 Telefonica', 'FDD DL', 1.8, 5.8),
     ('O2 Telefonica', 'FDD DL', 2.1, 10),
-    ('O2 Telefonica', 'FDD DL', 3.5, 100),
-    ('Vodafone', 'FDD DL', 0.7, 10),
-    ('Vodafone', 'FDD DL', 0.8, 10),
-    ('Vodafone', 'FDD DL', 0.9, 17.4),
-    ('Vodafone', 'FDD DL', 1.5, 20),
-    ('Vodafone', 'FDD DL', 1.8, 5.8),
-    ('Vodafone', 'FDD DL', 2.1, 14.8),
-    ('Vodafone', 'FDD DL', 2.6, 20),
-    ('Vodafone', 'FDD DL', 3.5, 100),
+    ('O2 Telefonica', 'FDD DL', 3.5, 40),
+    # ('Vodafone', 'FDD DL', 0.7, 10),
+    # ('Vodafone', 'FDD DL', 0.8, 10),
+    # ('Vodafone', 'FDD DL', 0.9, 17.4),
+    # ('Vodafone', 'FDD DL', 1.5, 20),
+    # ('Vodafone', 'FDD DL', 1.8, 5.8),
+    # ('Vodafone', 'FDD DL', 2.1, 14.8),
+    # ('Vodafone', 'FDD DL', 2.6, 20),
+    # ('Vodafone', 'FDD DL', 3.5, 40),
 ]
 
 MODULATION_AND_CODING_LUT =[
@@ -1188,7 +1211,9 @@ if __name__ == "__main__":
 
     #generate receivers
     RECEIVERS = generate_receivers(
-        geojson_postcode_sector, postcode_sector_lut, 1000
+        geojson_postcode_sector,
+        postcode_sector_lut,
+        10
         )
 
     joint_plot_data = []
@@ -1197,34 +1222,49 @@ if __name__ == "__main__":
     t_density = 0
     percentile = 95
 
+    DESIRED_TRANSMITTER_DENSITY = 10 #per km^2
+
     for operator, technology, frequency, bandwidth in SPECTRUM_PORTFOLIO:
 
-        while t_density < 100:
+        #load system model with data
+        MANAGER = NetworkManager(
+            geojson_postcode_sector, TRANSMITTERS, RECEIVERS
+            )
+
+        #calculate transmitter density
+        starting_t_density = MANAGER.transmitter_density()
+
+        my_range = np.linspace(starting_t_density, DESIRED_TRANSMITTER_DENSITY, 10)
+        site_densities = list(set([round(x) for x in my_range]))
+
+        postcode_sector_object = [a for a in MANAGER.area.values()][0]
+        postcode_sector_area = postcode_sector_object.area/1000000
+
+        idx = 0
+
+        for site_density in site_densities:
 
             print("Running {} GHz with {} MHz bandwidth".format(
                 frequency, bandwidth
                 ))
 
-            if idx == 0:
+            current_t_density = MANAGER.transmitter_density()
 
-                #load system model with data
-                MANAGER = NetworkManager(
-                    geojson_postcode_sector, TRANSMITTERS, RECEIVERS
-                    )
+            number_of_new_sites = int(
+                (site_density - current_t_density) * postcode_sector_area
+            )
 
-                #calculate transmitter density
-                t_density = MANAGER.transmitter_density()
+            #build a new transmitter
+            NEW_TRANSMITTERS = find_and_deploy_new_transmitter(
+                MANAGER.transmitters, number_of_new_sites, geojson_postcode_sector, idx
+                )
 
-            else:
+            #add new transmitter to network manager
+            MANAGER.build_new_assets(
+                NEW_TRANSMITTERS, geojson_postcode_sector
+                )
 
-                NEW_TRANSMITTERS = find_and_deploy_new_transmitter(
-                    MANAGER.transmitters, idx, geojson_postcode_sector
-                    )
-
-                MANAGER.build_new_assets(
-                    NEW_TRANSMITTERS, geojson_postcode_sector
-                    )
-
+            #run results simulation
             results = MANAGER.estimate_link_budget(
                 frequency, bandwidth, environment, MODULATION_AND_CODING_LUT
                 )
@@ -1242,19 +1282,16 @@ if __name__ == "__main__":
 
             #find percentile values
             threshold_value = obtain_threshold_value(results, percentile)
-            print(lookup_table_results)
+            print('threshold_value is {}'.format(threshold_value))
             #env, frequency, bandwidth, site_density, capacity
             write_lookup_table(
-                threshold_value, operator, technology, frequency,
+                threshold_value, environment, operator, technology, frequency,
                 bandwidth, t_density, postcode_sector_name
                 )
 
-            # format_data(
-            # joint_plot_data, results, frequency,
-            # bandwidth, postcode_sector_name
-            # )
-
             idx += 1
+
+            print('------------------------------------')
 
 #     # print('write buildings')
 #     # write_shapefile(buildings,  postcode_sector_name, 'buildings.shp')

@@ -165,6 +165,7 @@ def postcode_sector_lut():
         'outdoor_probability': 0,
         'residential_count': 20,
         'non_residential_count': 20,
+        'estimated_population': 50,
         'area': 200,
     }
 
@@ -231,7 +232,7 @@ def test_generate_receivers(get_postcode_sector, postcode_sector_lut):
 def test_find_and_deploy_new_transmitter(base_system, get_postcode_sector):
 
     new_transmitter = find_and_deploy_new_transmitter(
-        base_system.transmitters, 1, get_postcode_sector
+        base_system.transmitters, 1, get_postcode_sector, 1
         )
 
     expected_transmitter = [
@@ -243,7 +244,7 @@ def test_find_and_deploy_new_transmitter(base_system, get_postcode_sector):
             },
             'properties': {
                     "operator": 'unknown',
-                    "sitengr": '{new}{GEN1}',
+                    "sitengr": '{new}{GEN1.1}',
                     "ant_height": 20,
                     "tech": 'LTE',
                     "freq": 700,
@@ -259,7 +260,7 @@ def test_find_and_deploy_new_transmitter(base_system, get_postcode_sector):
     assert new_transmitter == expected_transmitter
 
     new_transmitter = find_and_deploy_new_transmitter(
-        base_system.transmitters, 1, get_postcode_sector
+        base_system.transmitters, 1, get_postcode_sector, 1
         )
 
     expected_transmitter = [
@@ -271,7 +272,7 @@ def test_find_and_deploy_new_transmitter(base_system, get_postcode_sector):
             },
             'properties': {
                     "operator": 'unknown',
-                    "sitengr": '{new}{GEN1}',
+                    "sitengr": '{new}{GEN1.1}',
                     "ant_height": 20,
                     "tech": 'LTE',
                     "freq": 700,
@@ -319,230 +320,227 @@ def test_build_new_assets(base_system):
 
     assert len(base_system.transmitters) == 5
 
-def test_estimate_link_budget(base_system, modulation_coding_lut):
+# def test_estimate_link_budget(base_system, modulation_coding_lut):
 
-    actual_result = base_system.estimate_link_budget(
-        0.7, 10, 'urban', modulation_coding_lut
+#     actual_result = base_system.estimate_link_budget(
+#         0.7, 10, 'urban', modulation_coding_lut
+#         )
+#     print(actual_result)
+#     # find closest_transmitters
+#     # <Receiver id:AB1>
+#     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>,
+#     # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
+#     # <Receiver id:AB3>
+#     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>,
+#     # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
+#     # <Receiver id:AB2>
+#     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4529059480>,
+#     # <Transmitter id:TL4515059700>, <Transmitter id:TL4577059640>]
+
+#     # find path_loss
+
+#     # type_of_sight is nlos
+#     # 0.7 383.56170453174326 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 869 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 961 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 1856 20 macro 20 20 urban nlos 1.5 0
+#     # type_of_sight is nlos
+#     # 0.7 158.43465782386215 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 753 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 770 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 1744 20 macro 20 20 urban nlos 1.5 0
+#     # type_of_sight is nlos
+#     # 0.7 186.39733937494557 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 935 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 943 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 1915 20 macro 20 20 urban nlos 1.5 0
+
+#     # find received_power (self.calc_received_power)
+
+#     # find interference (self.calculate_interference)
+
+#     # find noise (self.calculate_noise)
+
+#     # find sinr (self.calculate_sinr)
+
+#     #find spectral efficiency (self.modulation_scheme_and_coding_rate)
+
+#     # find (self.estimate_capacity)
+
+#     expected_result = 0
+
+#     assert expected_result == actual_result
+
+def test_find_closest_available_transmitters(base_system):
+
+    receiver = base_system.receivers['AB3']
+
+    actual_result = base_system.find_closest_available_transmitters(receiver)
+
+    actual_transmitter_ids = [t.id for t in actual_result]
+
+    expected_result = [
+        'TL4454059600', 'TL4515059700', 'TL4529059480', 'TL4577059640'
+        ]
+
+    assert actual_transmitter_ids == expected_result
+
+
+def test_calculate_path_loss(base_system):
+
+    #path_loss
+    frequency = 0.7
+    interference_strt_distance = 158
+    ant_height = 20
+    # ant_type = 'macro'
+    # building_height = 20
+    # street_width = 20
+    # settlement_type = 'urban'
+    # type_of_sight = 'nlos'
+    ue_height = 1.5
+    # above_roof = 0
+
+    receiver = base_system.receivers['AB3']
+
+    closest_transmitters = base_system.find_closest_available_transmitters(
+        receiver
+        )[0]
+
+    actual_result = base_system.calculate_path_loss(
+        closest_transmitters, receiver, frequency, 'urban'
         )
-    print(actual_result)
-    #find closest_transmitters
-    # <Receiver id:AB1>
-    # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>, 
-    # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
-    # <Receiver id:AB3>
-    # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>, 
-    # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
-    # <Receiver id:AB2>
-    # [<Transmitter id:TL4454059600>, <Transmitter id:TL4529059480>, 
-    # <Transmitter id:TL4515059700>, <Transmitter id:TL4577059640>]
 
-    #find path_loss 
+    #model requires frequency in MHz rather than GHz.
+    frequency = frequency*1000
+    #model requires distance in kilometers rather than meters.
+    distance = interference_strt_distance/1000
 
-    # type_of_sight is nlos
-    # 0.7 383.56170453174326 20 macro 20 20 urban nlos 1.5 0
-    # 0.7 869 20 macro 20 20 urban nlos 1.5 0
-    # 0.7 961 20 macro 20 20 urban nlos 1.5 0
-    # 0.7 1856 20 macro 20 20 urban nlos 1.5 0
-    # type_of_sight is nlos
-    # 0.7 158.43465782386215 20 macro 20 20 urban nlos 1.5 0
-    # 0.7 753 20 macro 20 20 urban nlos 1.5 0
-    # 0.7 770 20 macro 20 20 urban nlos 1.5 0
-    # 0.7 1744 20 macro 20 20 urban nlos 1.5 0
-    # type_of_sight is nlos
-    # 0.7 186.39733937494557 20 macro 20 20 urban nlos 1.5 0
-    # 0.7 935 20 macro 20 20 urban nlos 1.5 0
-    # 0.7 943 20 macro 20 20 urban nlos 1.5 0
-    # 0.7 1915 20 macro 20 20 urban nlos 1.5 0
+    #find smallest value
+    hm = min(ant_height, ue_height)
+    #find largest value
+    hb = max(ant_height, ue_height)
 
-    #find received_power (self.calc_received_power)
+    alpha_hm = (1.1*np.log10(frequency) - 0.7) * min(10, hm) - \
+        (1.56*np.log10(frequency) - 0.8) + max(0, (20*np.log10(hm/10)))
 
-    #find interference (self.calculate_interference)
+    beta_hb = min(0, (20*np.log10(hb/30)))
 
-    #find noise
+    alpha_exponent = 1
 
-    #find sinr (self.calculate_sinr)
+    path_loss = round((
+        69.6 + 26.2*np.log10(frequency) -
+        13.82*np.log10(max(30, hb)) +
+        (44.9 - 6.55*np.log10(max(30, hb))) *
+        (np.log10(distance))**alpha_exponent - alpha_hm - beta_hb), 2
+    )
 
-    #find (self.estimate_capacity)
+    #stochastic component for geometry/distance 0.64
+    #stochastic component for building penetration loss 3.31
+    path_loss = path_loss + 3.31 + 0.64
 
-    expected_result = 0
+    assert actual_result == round(path_loss,2)
 
-    assert expected_result == actual_result
+def test_calc_received_power(base_system):
 
-# def test_find_closest_available_transmitters(base_system):
+    receiver = base_system.receivers['AB3']
 
-#     receiver = base_system.receivers['AB3']
+    closest_transmitter = base_system.find_closest_available_transmitters(
+        receiver
+        )[0]
 
-#     actual_result = base_system.find_closest_available_transmitters(receiver)
+    actual_received_power = base_system.calc_received_power(
+        closest_transmitter,
+        receiver,
+        173.94
+        )
 
-#     actual_transmitter_ids = [t.id for t in actual_result]
+    #eirp = power + gain - losses
+    #58 = 40 + 20 - 2
+    #received_power = eirp - path_loss - misc_losses + gain - losses
+    #-119.94 = 58 - 173.94 - 4 + 4 - 4
+    expected_received_power = ((40 + 20 - 2) - 173.94 - 4 + 4 - 4)
 
-#     expected_result = [
-#         'TL4454059600', 'TL4515059700', 'TL4529059480', 'TL4577059640'
-#         ]
+    assert actual_received_power == expected_received_power
 
-#     assert actual_transmitter_ids == expected_result
+def test_calculate_interference(base_system):
 
+    frequency = 0.7
 
-# def test_calculate_path_loss(base_system):
+    receiver = base_system.receivers['AB3']
 
-#     #path_loss
-#     frequency = 0.7
-#     interference_strt_distance = 158
-#     ant_height = 20
-#     # ant_type = 'macro'
-#     # building_height = 20
-#     # street_width = 20
-#     # settlement_type = 'urban'
-#     # type_of_sight = 'nlos'
-#     ue_height = 1.5
-#     # above_roof = 0
+    closest_transmitters = base_system.find_closest_available_transmitters(
+        receiver
+        )
 
-#     receiver = base_system.receivers['AB3']
+    actual_interference = base_system.calculate_interference(
+        closest_transmitters,
+        receiver,
+        frequency,
+        'urban'
+        )
 
-#     closest_transmitters = base_system.find_closest_available_transmitters(
-#         receiver
-#         )[0]
+    #eirp = power + gain - losses
+    #received_power = eirp - path_loss - misc_losses + gain - losses
+    #interference 1
+    #path loss(0.7 475 20 macro 20 20 urban nlos 1.5 0)
+    #-65.89 = (40 + 20 - 2) - 119.89 - 4 + 4 - 4
+    #interference 2
+    #path_loss(0.7 477 20 macro 20 20 urban nlos 1.5 0)
+    #-65.96 = (40 + 20 - 2) - 119.96 - 4 + 4 - 4
+    #interference 3
+    #path_loss(0.7 1078 20 macro 20 20 urban nlos 1.5 0)
+    #-78.4 = (40 + 20 - 2) - 132.4 - 4 + 4 - 4
 
-#     actual_result = base_system.calculate_path_loss(
-#         closest_transmitters, receiver, frequency, 'urban'
-#         )
+    expected_interference = [
+        -65.89, -65.96, -78.4
+        ]
 
-#     #model requires frequency in MHz rather than GHz.
-#     frequency = frequency*1000
-#     #model requires distance in kilometers rather than meters.
-#     distance = interference_strt_distance/1000
+    assert actual_interference == expected_interference
 
-#     #find smallest value
-#     hm = min(ant_height, ue_height)
-#     #find largest value
-#     hb = max(ant_height, ue_height)
+def test_calculate_noise(base_system):
 
-#     alpha_hm = (1.1*np.log(frequency) - 0.7) * min(10, hm) - \
-#         (1.56*np.log(frequency) - 0.8) + max(0, (20*np.log(hm/10)))
+    bandwidth = 100
 
-#     beta_hb = min(0, (20*np.log(hb/30)))
+    actual_result = round(base_system.calculate_noise(bandwidth),2)
 
-#     alpha_exponent = 1
+    expected_result = -92.48
 
-#     path_loss = round((
-#         69.6 + 26.2*np.log(frequency) -
-#         13.82*np.log(max(30, hb)) +
-#         (44.9 - 6.55*np.log(max(30, hb))) *
-#         (np.log(distance))**alpha_exponent - alpha_hm - beta_hb), 2
-#     )
+    assert actual_result == expected_result
 
-#     #stochastic component for geometry/distance 0.19
-#     #stochastic component for building penetration loss 13.49
-#     path_loss = path_loss + 13.49 + 0.19
+def test_calculate_sinr(base_system):
 
-#     assert actual_result == path_loss
+    receiver = base_system.receivers['AB3']
 
-# def test_calc_received_power(base_system):
+    closest_transmitter = base_system.find_closest_available_transmitters(
+        receiver
+        )[0]
 
-#     receiver = base_system.receivers['AB3']
+    actual_received_power = base_system.calc_received_power(
+        closest_transmitter,
+        receiver,
+        173.94
+        )
 
-#     closest_transmitter = base_system.find_closest_available_transmitters(
-#         receiver
-#         )[0]
+    closest_transmitters = base_system.find_closest_available_transmitters(
+        receiver
+        )
 
-#     actual_received_power = base_system.calc_received_power(
-#         closest_transmitter,
-#         receiver,
-#         173.94
-#         )
+    actual_interference = base_system.calculate_interference(
+        closest_transmitters,
+        receiver,
+        0.7,
+        'urban'
+        )
 
-#     #eirp = power + gain - losses
-#     #58 = 40 + 20 - 2
-#     #received_power = eirp - path_loss - misc_losses + gain - losses
-#     #-120.94 = 58 - 173.94 - 4 + 4 - 4
-#     expected_received_power = ((40 + 20 - 2) - 173.94 - 4 + 4 - 4)
+    def convert_to_dbm(my_list):
+        interference_dbm = []
+        for value in my_list:
+            interim_value = value/10
+            final_value = 10**interim_value
+            interference_dbm.append(final_value)
+        final_interference = 10*np.log10(sum(interference_dbm))
 
-#     assert actual_received_power == expected_received_power
-
-# def test_calculate_interference(base_system):
-
-#     frequency = 0.7
-
-#     receiver = base_system.receivers['AB3']
-
-#     closest_transmitters = base_system.find_closest_available_transmitters(
-#         receiver
-#         )
-
-#     actual_interference = base_system.calculate_interference(
-#         closest_transmitters,
-#         receiver,
-#         frequency,
-#         'urban'
-#         )
-
-#     #eirp = power + gain - losses
-#     #received_power = eirp - path_loss - misc_losses + gain - losses
-#     #interference 1
-#     #path loss(0.7 475 20 macro 20 20 urban nlos 1.5 0)
-#     #-144.92 = (40 + 20 - 2) - 198.92 - 4 + 4 - 4
-#     #interference 2
-#     #path_loss(0.7 477 20 macro 20 20 urban nlos 1.5 0)
-#     #-145.02 = (40 + 20 - 2) - 199.02 - 4 + 4 - 4
-#     #interference 3
-#     #path_loss(0.7 1078 20 macro 20 20 urban nlos 1.5 0)
-#     #-163.44 = (40 + 20 - 2) - 217.44 - 4 + 4 - 4
-
-#     #distance/geometry based
-#     # expected_interference = [
-#     #     -144.92, -145.02, -163.44
-#     #     ]
-
-#     expected_interference = [
-#         -144.92, -145.02, -163.44
-#         ]
-
-#     assert actual_interference == expected_interference
-
-# def test_calculate_noise(base_system):
-
-#     bandwidth = 10
-
-#     actual_result = base_system.calculate_noise(bandwidth)
-
-#     expected_result = -104.5
-
-#     assert actual_result == expected_result
-
-# def test_calculate_sinr(base_system):
-
-#     receiver = base_system.receivers['AB3']
-
-#     closest_transmitter = base_system.find_closest_available_transmitters(
-#         receiver
-#         )[0]
-
-#     actual_received_power = base_system.calc_received_power(
-#         closest_transmitter,
-#         receiver,
-#         173.94
-#         )
-
-#     closest_transmitters = base_system.find_closest_available_transmitters(
-#         receiver
-#         )
-
-#     actual_interference = base_system.calculate_interference(
-#         closest_transmitters,
-#         receiver,
-#         0.7,
-#         'urban'
-#         )
-
-#     def convert_to_dbm(my_list):
-#         interference_dbm = []
-#         for value in my_list:
-#             interim_value = value/10
-#             final_value = 10**interim_value
-#             interference_dbm.append(final_value)
-#         final_interference = 10*np.log10(sum(interference_dbm))
-        
-#         return round(final_interference, 2)
+        return round(final_interference, 2)
 
 #     actual_interference = convert_to_dbm(actual_interference)
 
@@ -551,7 +549,7 @@ def test_estimate_link_budget(base_system, modulation_coding_lut):
 #     actual_sinr = round(
 #         actual_received_power / (actual_interference + actual_noise), 1
 #         )
-        
+
 #     expected_received_power = ((40 + 20 - 2) - 173.94 - 4 + 4 - 4)
 
 #     expected_interference = [
@@ -614,5 +612,3 @@ def test_estimate_link_budget(base_system, modulation_coding_lut):
 #         )
 
 #     assert actual_estimate_capacity == expected_estimate_capacity
-
-
