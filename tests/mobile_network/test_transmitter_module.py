@@ -320,70 +320,74 @@ def test_build_new_assets(base_system):
 
     assert len(base_system.transmitters) == 5
 
-# def test_estimate_link_budget(base_system, modulation_coding_lut):
+def test_estimate_link_budget(base_system, modulation_coding_lut):
 
-#     actual_result = base_system.estimate_link_budget(
-#         0.7, 10, 'urban', modulation_coding_lut
-#         )
-#     print(actual_result)
-#     # find closest_transmitters
-#     # <Receiver id:AB1>
-#     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>,
-#     # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
-#     # <Receiver id:AB3>
-#     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>,
-#     # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
-#     # <Receiver id:AB2>
-#     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4529059480>,
-#     # <Transmitter id:TL4515059700>, <Transmitter id:TL4577059640>]
+    actual_result = base_system.estimate_link_budget(
+        0.7, 10, 'urban', modulation_coding_lut
+        )
+    print(actual_result)
+    # find closest_transmitters
+    # <Receiver id:AB1>
+    # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>,
+    # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
+    # <Receiver id:AB3>
+    # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>,
+    # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
+    # <Receiver id:AB2>
+    # [<Transmitter id:TL4454059600>, <Transmitter id:TL4529059480>,
+    # <Transmitter id:TL4515059700>, <Transmitter id:TL4577059640>]
 
-#     # find path_loss
+    # find path_loss
 
-#     # type_of_sight is nlos
-#     # 0.7 383.56170453174326 20 macro 20 20 urban nlos 1.5 0
-#     # 0.7 869 20 macro 20 20 urban nlos 1.5 0
-#     # 0.7 961 20 macro 20 20 urban nlos 1.5 0
-#     # 0.7 1856 20 macro 20 20 urban nlos 1.5 0
-#     # type_of_sight is nlos
-#     # 0.7 158.43465782386215 20 macro 20 20 urban nlos 1.5 0
-#     # 0.7 753 20 macro 20 20 urban nlos 1.5 0
-#     # 0.7 770 20 macro 20 20 urban nlos 1.5 0
-#     # 0.7 1744 20 macro 20 20 urban nlos 1.5 0
-#     # type_of_sight is nlos
-#     # 0.7 186.39733937494557 20 macro 20 20 urban nlos 1.5 0
-#     # 0.7 935 20 macro 20 20 urban nlos 1.5 0
-#     # 0.7 943 20 macro 20 20 urban nlos 1.5 0
-#     # 0.7 1915 20 macro 20 20 urban nlos 1.5 0
+    # type_of_sight is nlos
+    # 0.7 383.56170453174326 20 macro 20 20 urban nlos 1.5 0
+    # 0.7 869 20 macro 20 20 urban nlos 1.5 0
+    # 0.7 961 20 macro 20 20 urban nlos 1.5 0
+    # 0.7 1856 20 macro 20 20 urban nlos 1.5 0
+    # type_of_sight is nlos
+    # 0.7 158.43465782386215 20 macro 20 20 urban nlos 1.5 0
+    # 0.7 753 20 macro 20 20 urban nlos 1.5 0
+    # 0.7 770 20 macro 20 20 urban nlos 1.5 0
+    # 0.7 1744 20 macro 20 20 urban nlos 1.5 0
+    # type_of_sight is nlos
+    # 0.7 186.39733937494557 20 macro 20 20 urban nlos 1.5 0
+    # 0.7 935 20 macro 20 20 urban nlos 1.5 0
+    # 0.7 943 20 macro 20 20 urban nlos 1.5 0
+    # 0.7 1915 20 macro 20 20 urban nlos 1.5 0
 
-#     # find received_power (self.calc_received_power)
+    # find received_power (self.calc_received_power)
 
-#     # find interference (self.calculate_interference)
+    # find interference (self.calculate_interference)
 
-#     # find noise (self.calculate_noise)
+    # find noise (self.calculate_noise)
 
-#     # find sinr (self.calculate_sinr)
+    # find sinr (self.calculate_sinr)
 
-#     #find spectral efficiency (self.modulation_scheme_and_coding_rate)
+    #find spectral efficiency (self.modulation_scheme_and_coding_rate)
 
-#     # find (self.estimate_capacity)
+    # find (self.estimate_capacity)
 
-#     expected_result = 0
+    expected_result = 0
 
-#     assert expected_result == actual_result
+    assert expected_result == actual_result
 
 def test_find_closest_available_transmitters(base_system):
 
     receiver = base_system.receivers['AB3']
 
-    actual_result = base_system.find_closest_available_transmitters(receiver)
+    transmitter, interfering_transmitters = (
+        base_system.find_closest_available_transmitters(receiver)
+        )
 
-    actual_transmitter_ids = [t.id for t in actual_result]
+    assert transmitter.id == 'TL4454059600'
+
+    interfering_transmitter_ids = [t.id for t in interfering_transmitters]
 
     expected_result = [
-        'TL4454059600', 'TL4515059700', 'TL4529059480', 'TL4577059640'
+        'TL4515059700', 'TL4529059480', 'TL4577059640'
         ]
 
-    assert actual_transmitter_ids == expected_result
+    assert interfering_transmitter_ids == expected_result
 
 
 def test_calculate_path_loss(base_system):
@@ -402,12 +406,12 @@ def test_calculate_path_loss(base_system):
 
     receiver = base_system.receivers['AB3']
 
-    closest_transmitters = base_system.find_closest_available_transmitters(
-        receiver
-        )[0]
+    transmitter, interfering_transmitters = (
+        base_system.find_closest_available_transmitters(receiver)
+        )
 
     actual_result = base_system.calculate_path_loss(
-        closest_transmitters, receiver, frequency, 'urban'
+        transmitter, receiver, frequency, 'urban'
         )
 
     #model requires frequency in MHz rather than GHz.
@@ -444,12 +448,12 @@ def test_calc_received_power(base_system):
 
     receiver = base_system.receivers['AB3']
 
-    closest_transmitter = base_system.find_closest_available_transmitters(
-        receiver
-        )[0]
+    transmitter, interfering_transmitters = (
+        base_system.find_closest_available_transmitters(receiver)
+        )
 
     actual_received_power = base_system.calc_received_power(
-        closest_transmitter,
+        transmitter,
         receiver,
         173.94
         )
@@ -468,12 +472,12 @@ def test_calculate_interference(base_system):
 
     receiver = base_system.receivers['AB3']
 
-    closest_transmitters = base_system.find_closest_available_transmitters(
-        receiver
+    transmitter, interfering_transmitters = (
+        base_system.find_closest_available_transmitters(receiver)
         )
 
     actual_interference = base_system.calculate_interference(
-        closest_transmitters,
+        interfering_transmitters,
         receiver,
         frequency,
         'urban'
@@ -509,106 +513,109 @@ def test_calculate_noise(base_system):
 
 def test_calculate_sinr(base_system):
 
-    receiver = base_system.receivers['AB3']
+    # receiver = base_system.receivers['AB3']
 
-    closest_transmitter = base_system.find_closest_available_transmitters(
-        receiver
-        )[0]
+    # closest_transmitter = base_system.find_closest_available_transmitters(
+    #     receiver
+    #     )[0]
 
-    actual_received_power = base_system.calc_received_power(
-        closest_transmitter,
-        receiver,
-        173.94
+    # actual_received_power = base_system.calc_received_power(
+    #     closest_transmitter,
+    #     receiver,
+    #     173.94
+    #     )
+
+    # closest_transmitters = base_system.find_closest_available_transmitters(
+    #     receiver
+    #     )
+
+    # actual_interference = base_system.calculate_interference(
+    #     closest_transmitters,
+    #     receiver,
+    #     0.7,
+    #     'urban'
+    #     )
+
+    # def convert_to_raw(my_list):
+    #     interference = []
+    #     for value in my_list:
+    #         final_value = 10**value
+    #         interference.append(final_value)
+    #     final_interference = np.log10(sum(interference))
+
+    #     return round(final_interference, 2)
+
+    # actual_raw_interference = convert_to_raw(actual_interference)
+
+    # actual_raw_noise = base_system.calculate_noise(10)
+
+    # actual_sinr = round(
+    #     actual_received_power / (actual_interference + actual_noise), 1
+    #     )
+
+    # expected_received_power = ((40 + 20 - 2) - 173.94 - 4 + 4 - 4)
+
+    # expected_interference = [
+    #     -144.92, -145.02, -163.44
+    #     ]
+
+    # expected_interference = convert_to_dbm(expected_interference)
+
+    # expected_noise = -104.5
+
+    # #expected_sinr = 8.9
+    # #expected_sinr = ((40 + 20 - 2) - 4808 - 4 + 4 - 4) / sum(-349, -346, -538) + 5
+    # # 8.9 = -4764 / -1233 +5
+    # expected_sinr = round(
+    #     expected_received_power / (expected_interference + expected_noise), 1
+        # )
+
+    actual_sinr = round(
+        base_system.calculate_sinr(-20, [-60.48,-60.48,-60.48], -80), 2
         )
 
-    closest_transmitters = base_system.find_closest_available_transmitters(
-        receiver
+    assert actual_sinr == 40
+
+def test_modulation_scheme_and_coding_rate(base_system):
+
+    MODULATION_AND_CODING_LUT =[
+        #CQI Index	Modulation	Coding rate	Spectral efficiency (bps/Hz) SINR estimate (dB)
+        (1,	'QPSK',	0.0762,	0.1523, -6.7),
+        (2,	'QPSK',	0.1172,	0.2344, -4.7),
+        (3,	'QPSK',	0.1885,	0.377, -2.3),
+        (4,	'QPSK',	0.3008,	0.6016, 0.2),
+        (5,	'QPSK',	0.4385,	0.877, 2.4),
+        (6,	'QPSK',	0.5879,	1.1758,	4.3),
+        (7,	'16QAM', 0.3691, 1.4766, 5.9),
+        (8,	'16QAM', 0.4785, 1.9141, 8.1),
+        (9,	'16QAM', 0.6016, 2.4063, 10.3),
+        (10, '64QAM', 0.4551, 2.7305, 11.7),
+        (11, '64QAM', 0.5537, 3.3223, 14.1),
+        (12, '64QAM', 0.6504, 3.9023, 16.3),
+        (13, '64QAM', 0.7539, 4.5234, 18.7),
+        (14, '64QAM', 0.8525, 5.1152, 21),
+        (15, '64QAM', 0.9258, 5.5547, 22.7),
+        ]
+
+    actual_result = base_system.modulation_scheme_and_coding_rate(
+        10, MODULATION_AND_CODING_LUT
         )
 
-    actual_interference = base_system.calculate_interference(
-        closest_transmitters,
-        receiver,
-        0.7,
-        'urban'
+    expected_result = 1.9141
+
+    assert actual_result == expected_result
+
+def link_budget_capacity(base_system):
+
+    bandwidth = 10
+    spectral_effciency = 2
+
+    actual_estimate_capacity = base_system.estimate_capacity(
+        bandwidth, spectral_effciency
         )
 
-    def convert_to_dbm(my_list):
-        interference_dbm = []
-        for value in my_list:
-            interim_value = value/10
-            final_value = 10**interim_value
-            interference_dbm.append(final_value)
-        final_interference = 10*np.log10(sum(interference_dbm))
+    expected_estimate_capacity = (
+        ((bandwidth*1000000)*spectral_effciency)/1000000
+        )
 
-        return round(final_interference, 2)
-
-#     actual_interference = convert_to_dbm(actual_interference)
-
-#     actual_noise = base_system.calculate_noise(10)
-
-#     actual_sinr = round(
-#         actual_received_power / (actual_interference + actual_noise), 1
-#         )
-
-#     expected_received_power = ((40 + 20 - 2) - 173.94 - 4 + 4 - 4)
-
-#     expected_interference = [
-#         -144.92, -145.02, -163.44
-#         ]
-
-#     expected_interference = convert_to_dbm(expected_interference)
-
-#     expected_noise = -104.5
-
-#     #expected_sinr = 8.9
-#     #expected_sinr = ((40 + 20 - 2) - 4808 - 4 + 4 - 4) / sum(-349, -346, -538) + 5
-#     # 8.9 = -4764 / -1233 +5
-#     expected_sinr = round(
-#         expected_received_power / (expected_interference + expected_noise), 1
-#         )
-
-#     assert actual_sinr == expected_sinr
-
-# def test_modulation_scheme_and_coding_rate(base_system):
-
-#     MODULATION_AND_CODING_LUT =[
-#         #CQI Index	Modulation	Coding rate	Spectral efficiency (bps/Hz) SINR estimate (dB)
-#         (1,	'QPSK',	0.0762,	0.1523, -6.7),
-#         (2,	'QPSK',	0.1172,	0.2344, -4.7),
-#         (3,	'QPSK',	0.1885,	0.377, -2.3),
-#         (4,	'QPSK',	0.3008,	0.6016, 0.2),
-#         (5,	'QPSK',	0.4385,	0.877, 2.4),
-#         (6,	'QPSK',	0.5879,	1.1758,	4.3),
-#         (7,	'16QAM', 0.3691, 1.4766, 5.9),
-#         (8,	'16QAM', 0.4785, 1.9141, 8.1),
-#         (9,	'16QAM', 0.6016, 2.4063, 10.3),
-#         (10, '64QAM', 0.4551, 2.7305, 11.7),
-#         (11, '64QAM', 0.5537, 3.3223, 14.1),
-#         (12, '64QAM', 0.6504, 3.9023, 16.3),
-#         (13, '64QAM', 0.7539, 4.5234, 18.7),
-#         (14, '64QAM', 0.8525, 5.1152, 21),
-#         (15, '64QAM', 0.9258, 5.5547, 22.7),
-#         ]
-
-#     actual_result = base_system.modulation_scheme_and_coding_rate(
-#         10, MODULATION_AND_CODING_LUT
-#         )
-
-#     expected_result = 1.9141
-
-#     assert actual_result == expected_result
-
-# def test_estimate_capacity(base_system):
-
-#     bandwidth = 10
-#     spectral_effciency = 2
-
-#     actual_estimate_capacity = base_system.estimate_capacity(
-#         bandwidth, spectral_effciency
-#         )
-
-#     expected_estimate_capacity = (
-#         ((bandwidth*1000000)*spectral_effciency)/1000000
-#         )
-
-#     assert actual_estimate_capacity == expected_estimate_capacity
+    assert actual_estimate_capacity == expected_estimate_capacity

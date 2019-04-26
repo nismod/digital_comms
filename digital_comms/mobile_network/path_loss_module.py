@@ -644,7 +644,7 @@ def generate_log_normal_dist_value(mu, sigma, draws):
     normal_mean = np.log10(mu) - normal_std**2 / 2
 
     hs = np.random.lognormal(normal_mean, normal_std, draws)
-    print('random amount {}'.format(round(hs[0],2)))
+    # print('random amount {}'.format(round(hs[0],2)))
     return round(hs[0],2)
 
 def outdoor_to_indoor_path_loss(indoor):
@@ -662,5 +662,5 @@ def outdoor_to_indoor_path_loss(indoor):
     else:
 
         outdoor_to_indoor_path_loss = 0
-    print('building penetration loss is {}'.format(outdoor_to_indoor_path_loss))
+    # print('building penetration loss is {}'.format(outdoor_to_indoor_path_loss))
     return outdoor_to_indoor_path_loss

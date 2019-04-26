@@ -421,23 +421,22 @@ class NetworkManager(object):
         results = []
 
         for receiver in self.receivers.values():
-
-            closest_transmitters = self.find_closest_available_transmitters(
-                receiver
+            print(receiver.id)
+            closest_transmitter, interfering_transmitters = (
+                self.find_closest_available_transmitters(receiver)
             )
-
-            #add function here to check if closest cell is available for use?
-
+            print('closest_transmitter is {}'.format(closest_transmitter))
+            print('interfering_transmitters is {}'.format(interfering_transmitters))
             path_loss = self.calculate_path_loss(
-                closest_transmitters[0], receiver, frequency, environment
+                closest_transmitter, receiver, frequency, environment
             )
-
+            print('path_loss is {}'.format(path_loss))
             received_power = self.calc_received_power(
-                closest_transmitters[0], receiver, path_loss
+                closest_transmitter, receiver, path_loss
             )
 
             interference = self.calculate_interference(
-                closest_transmitters, receiver, frequency, environment)
+                interfering_transmitters, receiver, frequency, environment)
 
             noise = self.calculate_noise(
                 bandwidth
@@ -459,14 +458,14 @@ class NetworkManager(object):
 
             results.append(data)
 
-            # print('received_power is {}'.format(received_power))
-            # print('interference is {}'.format(interference))
-            # print('noise is {}'.format(noise))
-            # print('sinr is {}'.format(sinr))
-            # print('spectral_efficiency is {}'.format(spectral_efficiency))
-            # print('estimated_capacity is {}'.format(estimated_capacity))
-            # print('path_loss is {}'.format(path_loss))
-            # print('-----------------------------')
+            print('received_power is {}'.format(received_power))
+            print('interference is {}'.format(interference))
+            print('noise is {}'.format(noise))
+            print('sinr is {}'.format(sinr))
+            print('spectral_efficiency is {}'.format(spectral_efficiency))
+            print('estimated_capacity is {}'.format(estimated_capacity))
+            print('path_loss is {}'.format(path_loss))
+            print('-----------------------------')
 
         return results
 
@@ -482,14 +481,18 @@ class NetworkManager(object):
             idx.insert(0, Point(transmitter.coordinates).bounds, transmitter)
 
         number_of_transmitters = len(self.transmitters.values())
-
+        
         all_closest_transmitters =  list(
             idx.nearest(
                 Point(receiver.coordinates).bounds,
                 number_of_transmitters, objects='raw')
                 )
 
-        return all_closest_transmitters
+        closest_transmitter = all_closest_transmitters[0]
+
+        interfering_transmitters = all_closest_transmitters[1:4]
+
+        return closest_transmitter, interfering_transmitters
 
     def calculate_path_loss(self, closest_transmitter,
         receiver, frequency, environment):
@@ -574,7 +577,7 @@ class NetworkManager(object):
             receiver.misc_losses + \
             receiver.gain - \
             receiver.losses
-        print('received power is {}'.format(received_power))
+        # print('received power is {}'.format(received_power))
         return received_power
 
     def calculate_interference(
@@ -587,8 +590,6 @@ class NetworkManager(object):
         is the actual cell in use)
 
         """
-        three_closest_transmitters = closest_transmitters[1:4]
-
         interference = []
 
         x1_receiver, y1_receiver = transform_coordinates(
@@ -597,10 +598,10 @@ class NetworkManager(object):
             receiver.coordinates[0],
             receiver.coordinates[1]
             )
-
+            
         #calculate interference from other power sources
-        for interference_transmitter in three_closest_transmitters:
-
+        for interference_transmitter in closest_transmitters:
+            
             #get distance
             x2_interference = interference_transmitter.coordinates[0]
             y2_interference = interference_transmitter.coordinates[1]
@@ -646,7 +647,11 @@ class NetworkManager(object):
                 above_roof,
                 indoor,
                 )
-            # print('path loss of {} is {}'.format(interference_transmitter.id, path_loss))
+            
+            print('path loss for {} to {} is {}'.format(
+                receiver.id, interference_transmitter.id, path_loss)
+                )
+
             #calc interference from other cells
             received_interference = self.calc_received_power(
                 interference_transmitter,
@@ -693,18 +698,19 @@ class NetworkManager(object):
         Calculate the Signal-to-Interference-plus-Noise-Ration (SINR).
 
         """
+        raw_received_power = 10**received_power
 
         interference_values = []
         for value in interference:
             output_value = 10**value
             interference_values.append(output_value)
 
-        sum_of_interference = sum(interference_values)
+        raw_sum_of_interference = sum(interference_values)
         raw_noise = 10**noise
 
-        interference_plus_noise = np.log10(sum_of_interference + raw_noise)
-
-        sinr = received_power / interference_plus_noise
+        sinr = np.log10(
+            raw_received_power / (raw_sum_of_interference + raw_noise)
+            )
 
         return round(sinr, 2)
 
