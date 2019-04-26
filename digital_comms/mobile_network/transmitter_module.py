@@ -835,9 +835,10 @@ class NetworkManager(object):
 
         Parameters
         ----------
-
         total_power_dbm : float
-            Total dbm for all cells in use.
+            Total dbm for all sites for a single cell.
+        watts_for_1_cell_per_site : float
+            Total watts for all sites for a single cell.
         total_power_watts : float
             Total watts for all cells in use.
 
@@ -848,11 +849,12 @@ class NetworkManager(object):
         sites_in_area = self.find_sites_in_area()
         # print('number of sites_in_area {}'.format(len(sites_in_area)))
         total_power_dbm = (
-            sum([round(a.power) for a in sites_in_area]) * \
-            cells_per_site
+            sum([round(a.power) for a in sites_in_area])
             )
         # print('total_power_dbm {}'.format(total_power_dbm))
-        total_power_watts = 1 * 10**(total_power_dbm / 10) / 1000
+        watts_for_1_cell_per_site = 1 * 10**(total_power_dbm / 10) / 1000
+
+        total_power_watts = watts_for_1_cell_per_site * cells_per_site
         # print('total_power_watts {}'.format(total_power_watts/1000000))
         return total_power_watts
 
