@@ -456,7 +456,7 @@ class NetworkManager(object):
 
             data = {
                 'spectral_efficiency': spectral_efficiency,
-                'sinr': sinr, 
+                'sinr': sinr,
                 'capacity_mbps': estimated_capacity
                 }
 
@@ -485,7 +485,7 @@ class NetworkManager(object):
             idx.insert(0, Point(site.coordinates).bounds, site)
 
         number_of_sites = len(self.sites.values())
-        
+
         all_closest_sites =  list(
             idx.nearest(
                 Point(receiver.coordinates).bounds,
@@ -602,10 +602,10 @@ class NetworkManager(object):
             receiver.coordinates[0],
             receiver.coordinates[1]
             )
-            
+
         #calculate interference from other power sources
         for interference_site in closest_sites:
-            
+
             #get distance
             x2_interference = interference_site.coordinates[0]
             y2_interference = interference_site.coordinates[1]
@@ -651,7 +651,7 @@ class NetworkManager(object):
                 above_roof,
                 indoor,
                 )
-            
+
             # print('path loss for {} to {} is {}'.format(
             #     receiver.id, interference_site.id, path_loss)
             #     )
@@ -754,7 +754,7 @@ class NetworkManager(object):
         return link_budget_capacity_mbps
 
     def find_sites_in_area(self):
-        
+
         if not self.sites:
             return 0
 
@@ -839,7 +839,7 @@ class NetworkManager(object):
         total_power_dbm : float
             Total dbm for all cells in use.
         total_power_watts : float
-            Total watts for all cells in use.  
+            Total watts for all cells in use.
 
         """
         if not self.area:
@@ -879,10 +879,10 @@ class Area(object):
 
     def add_site(self, site):
         self._sites[site.id] = site
-        
+
     def add_receiver(self, receiver):
         self._receivers[receiver.id] = receiver
-    
+
 class Transmitter(object):
     """
     A site object is specific site.
@@ -905,7 +905,7 @@ class Transmitter(object):
 
 class Receiver(object):
     """
-    A receiver object is a piece of user equipment which can 
+    A receiver object is a piece of user equipment which can
     connect to a site.
 
     """
@@ -955,7 +955,7 @@ def obtain_threshold_values(results, percentile):
         spectral_efficency.append(result['spectral_efficiency'])
         sinr.append(result['sinr'])
         threshold_capacity_value.append(result['capacity_mbps'])
-    
+
     spectral_efficency = np.percentile(spectral_efficency, percentile)
     sinr = np.percentile(sinr, percentile)
     capacity_mbps = np.percentile(threshold_capacity_value, percentile)
@@ -1025,8 +1025,8 @@ def write_results(results, frequency, bandwidth, site_density,
     results_file.close()
 
 def write_lookup_table(
-    cell_edge_spectral_efficency, cell_edge_sinr, area_capacity_mbps, 
-    network_efficiency, environment, operator, technology, 
+    cell_edge_spectral_efficency, cell_edge_sinr, area_capacity_mbps,
+    network_efficiency, environment, operator, technology,
     frequency, bandwidth, area_site_density, area_isd, postcode_sector_name):
 
     suffix = 'lookup_table_{}'.format(postcode_sector_name)
@@ -1042,9 +1042,9 @@ def write_lookup_table(
         lut_file = open(directory, 'w', newline='')
         lut_writer = csv.writer(lut_file)
         lut_writer.writerow(
-            ('environment', 'operator', 'technology', 
+            ('environment', 'operator', 'technology',
             'frequency', 'bandwidth','area_site_density', 'area_isd',
-            'cell_edge_spectral_efficency', 'cell_edge_sinr', 
+            'cell_edge_spectral_efficency', 'cell_edge_sinr',
             'area_capacity_mbps', 'network_efficiency')
             )
     else:
@@ -1264,7 +1264,7 @@ if __name__ == "__main__":
     geojson_postcode_sector['properties']['local_authority_ids'] = (
         local_authority_ids
         )
-    
+
     #get the probability for inside versus outside calls
     postcode_sector_lut = import_area_lut(
         postcode_sector_name, local_authority_ids
@@ -1299,7 +1299,7 @@ if __name__ == "__main__":
         MANAGER = NetworkManager(
             geojson_postcode_sector, TRANSMITTERS, RECEIVERS
             )
-        
+
         #calculate site density
         starting_site_density = MANAGER.site_density()
 
@@ -1327,7 +1327,7 @@ if __name__ == "__main__":
 
             #build a new site
             NEW_TRANSMITTERS = find_and_deploy_new_site(
-                MANAGER.sites, number_of_new_sites, 
+                MANAGER.sites, number_of_new_sites,
                 geojson_postcode_sector, IDX
                 )
 
@@ -1358,11 +1358,11 @@ if __name__ == "__main__":
             spectral_efficency, sinr, capacity_mbps = (
                 obtain_threshold_values(results, PERCENTILE)
                 )
-            
+
             network_efficiency = (
                 spectral_efficency / MANAGER.energy_consumption(SECTORISATION)
                 )
-            
+
             area_capacity_mbps = capacity_mbps * SECTORISATION
 
             # print('spectral_efficency is {}'.format(spectral_efficency))
@@ -1372,7 +1372,7 @@ if __name__ == "__main__":
             #env, frequency, bandwidth, site_density, capacity
             write_lookup_table(
                 spectral_efficency, sinr, area_capacity_mbps,
-                network_efficiency, environment, operator, technology, 
+                network_efficiency, environment, operator, technology,
                 frequency, bandwidth, site_density, isd, postcode_sector_name
                 )
 

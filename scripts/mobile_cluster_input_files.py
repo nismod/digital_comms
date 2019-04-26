@@ -18,7 +18,9 @@ DATA_RAW_SHAPES = os.path.join(BASE_PATH, 'raw', 'd_shapes')
 #####################################
 
 def read_postcode_sectors():
-    with fiona.open(os.path.join(DATA_RAW_SHAPES,'postcode_sectors', '_postcode_sectors.shp'), 'r') as source:
+    with fiona.open(os.path.join(
+        DATA_RAW_SHAPES,'postcode_sectors', '_postcode_sectors.shp'
+        ), 'r') as source:
         return [pcd_sector for pcd_sector in source]
 
 ####################################
@@ -30,11 +32,14 @@ if __name__ == "__main__":
     selection = []
 
     SYSTEM_INPUT = os.path.join('data', 'digital_comms', 'raw')
-    
+
     if len(sys.argv) < 2 or sys.argv[1] == 'national':
 
         pcd_sectors = read_postcode_sectors()
-        selection = [(pcd_sector['properties']['postcode']) for pcd_sector in pcd_sectors] 
+        selection = [
+            (pcd_sector['properties']['postcode'].replace(' ', ''))
+            for pcd_sector in pcd_sectors
+            ]
 
     elif sys.argv[1] == 'testbeds':
         selection = [
