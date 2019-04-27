@@ -1220,11 +1220,11 @@ def joint_plot(data, postcode_sector_name):
 #####################################
 
 SPECTRUM_PORTFOLIO = [
-    # ('O2 Telefonica', 'FDD DL', 0.7, 10),
-    # ('O2 Telefonica', 'FDD DL', 0.8, 10),
-    # ('O2 Telefonica', 'FDD DL', 0.9, 17.4),
-    # ('O2 Telefonica', 'FDD DL', 1.8, 5.8),
-    # ('O2 Telefonica', 'FDD DL', 2.1, 10),
+    ('O2 Telefonica', 'FDD DL', 0.7, 10),
+    ('O2 Telefonica', 'FDD DL', 0.8, 10),
+    ('O2 Telefonica', 'FDD DL', 0.9, 17.4),
+    ('O2 Telefonica', 'FDD DL', 1.8, 5.8),
+    ('O2 Telefonica', 'FDD DL', 2.1, 10),
     ('O2 Telefonica', 'FDD DL', 3.5, 40),
     # ('Vodafone', 'FDD DL', 0.7, 10),
     # ('Vodafone', 'FDD DL', 0.8, 10),
