@@ -394,7 +394,6 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
     float: path_loss (dB)
 
     """
-
     # Calculate breakpoint dist urban (d'BP)
     #d’BP  = 4 h’BS h’UT fc/c, where fc is the centre frequency in Hz, c = 3.0108 m/s
     #f is in Hz and c is the speed of light (3*10^8)
@@ -467,7 +466,10 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
             )
 
         else:
-
+            print(
+                'ant_type {}, settlement_type {}, type_of_sight {}, distance {}'
+                .format(ant_type, settlement_type, type_of_sight, distance)
+                )
             print("distance is out of cell range at {}m".format(distance))
             #fallback value needs refining
             path_loss = 250
@@ -488,7 +490,10 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
             )
 
         else:
-
+            print(
+                'ant_type {}, settlement_type {}, type_of_sight {}, distance {}'
+                .format(ant_type, settlement_type, type_of_sight, distance)
+                )
             print("parameters not in 3GPP applicability ranges")
             #fallback value needs refining
             path_loss = 250
@@ -522,14 +527,17 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
 
             path_loss = suburban_los_pl1(distance)
 
-        elif (breakpoint_suburban_rural < distance < 5000 and
+        elif (breakpoint_suburban_rural < distance < 10000 and
             check_applicability(building_height, street_width, ant_height, ue_height)):
 
             pl1 = suburban_los_pl1(breakpoint_suburban_rural)
             path_loss = pl1 + suburban_los_pl2(distance)
 
         else:
-
+            print(
+                'ant_type {}, settlement_type {}, type_of_sight {}, distance {}'
+                .format(ant_type, settlement_type, type_of_sight, distance)
+                )
             print("parameters not in 3GPP applicability ranges")
             #fallback value needs refining
             path_loss = 250
@@ -552,17 +560,19 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
             )
 
         elif distance <= 10:
-
-            pass
+            path_loss = 250
 
         else:
-
+            print(
+                'ant_type {}, settlement_type {}, type_of_sight {}, distance {}'
+                .format(ant_type, settlement_type, type_of_sight, distance)
+                )
             print("parameters not in 3GPP applicability ranges")
             #fallback value needs refining
             path_loss = 250
 
     else:
-
+        path_loss = 250
         raise ValueError('Did not recognise parameter combination')
 
     return round(path_loss, 2)

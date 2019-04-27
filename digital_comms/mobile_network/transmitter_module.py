@@ -990,6 +990,17 @@ def pairwise(iterable):
     next(b, None)
     return zip(a, b)
 
+def calculate_network_efficiency(spectral_efficency, energy_consumption):
+
+    if spectral_efficency == 0 or energy_consumption == 0:
+        network_efficiency = 0
+    else:
+        network_efficiency = (
+            float(spectral_efficency) // float(MANAGER.energy_consumption(SECTORISATION))
+            )
+
+    return network_efficiency
+
 def write_results(results, frequency, bandwidth, site_density,
     r_density, postcode_sector_name):
 
@@ -1209,11 +1220,11 @@ def joint_plot(data, postcode_sector_name):
 #####################################
 
 SPECTRUM_PORTFOLIO = [
-    ('O2 Telefonica', 'FDD DL', 0.7, 10),
-    ('O2 Telefonica', 'FDD DL', 0.8, 10),
-    ('O2 Telefonica', 'FDD DL', 0.9, 17.4),
-    ('O2 Telefonica', 'FDD DL', 1.8, 5.8),
-    ('O2 Telefonica', 'FDD DL', 2.1, 10),
+    # ('O2 Telefonica', 'FDD DL', 0.7, 10),
+    # ('O2 Telefonica', 'FDD DL', 0.8, 10),
+    # ('O2 Telefonica', 'FDD DL', 0.9, 17.4),
+    # ('O2 Telefonica', 'FDD DL', 1.8, 5.8),
+    # ('O2 Telefonica', 'FDD DL', 2.1, 10),
     ('O2 Telefonica', 'FDD DL', 3.5, 40),
     # ('Vodafone', 'FDD DL', 0.7, 10),
     # ('Vodafone', 'FDD DL', 0.8, 10),
@@ -1364,8 +1375,9 @@ if __name__ == "__main__":
                 obtain_threshold_values(results, PERCENTILE)
                 )
 
-            network_efficiency = (
-                spectral_efficency / MANAGER.energy_consumption(SECTORISATION)
+            network_efficiency = calculate_network_efficiency(
+                spectral_efficency,
+                MANAGER.energy_consumption(SECTORISATION)
                 )
 
             area_capacity_mbps = capacity_mbps * SECTORISATION
