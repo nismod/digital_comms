@@ -249,9 +249,9 @@ def technology():
 @pytest.fixture
 def small_system_40(base_system, technology):
 
-    #40% want to adopt in total
+    # 40% want to adopt in total
     distribution_adoption_desirability_ids = update_adoption_desirability(
-        base_system._distributions, 40, technology
+        base_system._distributions, 40
     )
 
     #update model adoption desirability
@@ -262,12 +262,12 @@ def small_system_40(base_system, technology):
 @pytest.fixture
 def small_system_80(base_system):
 
-    #40% want to adopt in total
+    # 40% want to adopt in total
     distribution_adoption_desirability_ids = update_adoption_desirability(
-        base_system._distributions, 80, technology
+        base_system._distributions, 80
     )
 
-    #update model adoption desirability
+    # update model adoption desirability
     base_system.update_adoption_desirability(distribution_adoption_desirability_ids)
 
     return base_system
@@ -492,7 +492,7 @@ def test_fttp_s1(small_system_40):
     service_obligation_capacity = 10
 
     fttp_s1_expected_built_interventions = [
-        ('distribution_{EACAM}{2}', 'fttp', 's1_market_based_roll_out', 'market_based', 26880, 2087, 13)
+        ('distribution_{EACAM}{2}', 'fttp', 's1_market_based_roll_out', 'market_based', 26880.0, 2087, 12.879731672256828)
     ]
 
     #Total cost for the distribution downwards should be £2087
@@ -522,8 +522,8 @@ def test_fttp_s1_from_exchange(small_system_40):
     service_obligation_capacity = 10
 
     fttp_s1_expected_built_interventions = [
-        ('exchange_EACAM', 'fttp', 's1_market_based_roll_out', 'market_based', 49920, 57811, 1),
-        #('exchange_EACOM', 'fttp', 's1_market_based_roll_out', 'market_based', 57474)
+        ('exchange_EACAM', 'fttp', 's1_market_based_roll_out', 'market_based', 49920.0, 57811, 0.8635034854958399),
+        #('exchange_EACOM', 'fttp', 's1_market_based_roll_out', 'market_based', 57474.0)
     ]
 
     #Total cost for exchange_EACAM should be:
@@ -551,7 +551,7 @@ def test_fttp_s1_from_cabinet(small_system_40):
     service_obligation_capacity = 10
 
     fttp_s1_expected_built_interventions = [
-        ('cabinet_{EACAM}{P100}', 'fttp', 's1_market_based_roll_out', 'market_based', 49920, 7811, 6)
+        ('cabinet_{EACAM}{P100}', 'fttp', 's1_market_based_roll_out', 'market_based', 49920.0, 7811, 6.390987069517347)
     ]
 
     #Total cost for exchange_EACOM should be:
@@ -578,8 +578,8 @@ def test_fttp_s2_from_exchange(small_system_40):
     service_obligation_capacity = 10
 
     fttp_s2_expected_built_interventions = [
-        ('exchange_EACAM', 'fttp', 's2_rural_based_subsidy', 'market_based', 49920, 57811, 1),
-        ('exchange_EACOM', 'fttp', 's2_rural_based_subsidy', 'subsidy_based', 0, 57474, 0),
+        ('exchange_EACAM', 'fttp', 's2_rural_based_subsidy', 'market_based', 49920.0, 57811, 0.8635034854958399),
+        ('exchange_EACOM', 'fttp', 's2_rural_based_subsidy', 'subsidy_based', 0, 57474.0, 0),
         ]
 
     #build interventions
@@ -601,8 +601,8 @@ def test_fttp_s3(small_system_40):
     service_obligation_capacity = 10
 
     fttp_s3_expected_built_interventions = [
-        ('exchange_EACAM', 'fttp', 's3_outside_in_subsidy', 'market_based', 49920, 57811, 1),
-        ('exchange_EACOM', 'fttp', 's3_outside_in_subsidy', 'subsidy_based', 0, 57474, 0),
+        ('exchange_EACAM', 'fttp', 's3_outside_in_subsidy', 'market_based', 49920.0, 57811, 0.8635034854958399),
+        ('exchange_EACOM', 'fttp', 's3_outside_in_subsidy', 'subsidy_based', 0, 57474.0, 0.0),
         ]
 
     #Total cost should be £1837
@@ -647,7 +647,7 @@ def test_fttdp_s1_from_exchange(small_system_40):
     service_obligation_capacity = 10
 
     fttdp_s1_expected_built_interventions = [
-        ('exchange_EACAM', 'fttdp', 's1_market_based_roll_out', 'market_based',  49920, 32450, 2),
+        ('exchange_EACAM', 'fttdp', 's1_market_based_roll_out', 'market_based',  49920.0, 32450, 1.538366718027735),
     ]
 
     #Total cost should be £32400
@@ -676,7 +676,7 @@ def test_budget(small_system_80):
     service_obligation_capacity = 10
 
     expected_budget_constrained_interventions = [
-        ('distribution_{EACAM}{1}', 'fttp', 's1_market_based_roll_out', 'market_based', 30720, 1837, 17)
+        ('distribution_{EACAM}{1}', 'fttp', 's1_market_based_roll_out', 'market_based', 30720.0, 1837, 16.72291780076211)
     ]
 
     #Total cost should be £1837
