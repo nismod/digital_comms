@@ -295,7 +295,7 @@ if __name__ == "__main__":
     SYSTEM_INPUT = os.path.join('data', 'raw')
 
     if len(sys.argv) != 2:
-        print("Error: no exchange or abbreviation provided")
+        print("Error: no area or abbreviation provided")
         print("Usage: {} <lad>".format(os.path.basename(__file__)))
         exit(-1)
 
