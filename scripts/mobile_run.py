@@ -1,6 +1,8 @@
-"""Model runner to use in place of smif for standalone modelruns
+"""
+Model runner to use in place of smif for standalone modelruns
 - run over multiple years
 - make rule-based intervention decisions at each timestep
+
 """
 # pylint: disable=C0103
 import configparser
@@ -8,6 +10,8 @@ import csv
 import itertools
 import os
 import pprint
+
+import fiona
 
 from collections import defaultdict
 
@@ -25,6 +29,7 @@ CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
 SYSTEM_INPUT_PATH = os.path.join(BASE_PATH, 'raw', 'mobile_model_1.0')
+SHAPES_INPUT_PATH = os.path.join(BASE_PATH, 'raw', 'd_shapes')
 SYSTEM_OUTPUT_PATH = os.path.join(BASE_PATH, 'processed', 'mobile_model_1.0')
 
 BASE_YEAR = 2016
@@ -68,23 +73,24 @@ NETWORKS_TO_INCLUDE = ('A',)
 ################################################################
 print('Loading regions')
 
-# lads = [
-# 	{
-# 		"id": 1,
-# 		"name": "Cambridge"
-# 	},
-# ]
-lads = []
-LAD_FILENAME = os.path.join(SYSTEM_INPUT_PATH, 'initial_system', 'lads.csv')
+def load_lads():
+    
+    lads = []
 
-with open(LAD_FILENAME, 'r') as lad_file:
-    reader = csv.reader(lad_file)
-    next(reader)  # skip header
-    for lad_id, name in reader:
-        lads.append({
-            "id": lad_id,
-            "name": name
-        })
+    lad_shapes = os.path.join(
+        SHAPES_INPUT_PATH, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'
+        )
+
+    with fiona.open(lad_shapes, 'r') as lad_shape:
+        for lad in lad_shape:
+            lads.append({
+                "id": lad['properties']['name'],
+                "name": lad['properties']['desc'],
+            })
+    
+    return lads
+
+# print([l for l in load_lads()])
 
 # Read in postcode sectors (without population)
 # pcd_sectors = [
@@ -95,17 +101,24 @@ with open(LAD_FILENAME, 'r') as lad_file:
 # 		"area": 2,
 # 	},
 # ]
-pcd_sectors = []
-PCD_SECTOR_FILENAME = os.path.join(SYSTEM_INPUT_PATH, 'initial_system', 'pcd_sectors.csv')
-with open(PCD_SECTOR_FILENAME, 'r') as pcd_sector_file:
-    reader = csv.reader(pcd_sector_file)
-    next(reader)  # skip header
-    for lad_id, pcd_sector, _, area in reader:
-        pcd_sectors.append({
-            "id": pcd_sector.replace(" ", ""),
-            "lad_id": lad_id,
-            "area": float(area)
-        })
+def read_postcode_sectors():
+
+    postcode_sectors = []
+
+    postcode_sector_shapes = os.path.join(
+        SHAPES_INPUT_PATH, 'postcode_sectors', '_postcode_sectors.shp'
+        )
+    
+    with fiona.open(postcode_sector_shapes, 'r') as pcd_sector_shapes:
+        for pcd_sector in pcd_sector_shapes:
+            # print(pcd_sector)
+            postcode_sectors.append({
+                "id": pcd_sector['properties']['postcode'].replace(" ", ""),
+                # "lad_id": lad_id,
+                "area": pcd_sector['properties']['area']
+            })
+    
+    return postcode_sectors
 
 ################################################################
 # LOAD SCENARIO DATA
