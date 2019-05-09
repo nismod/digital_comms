@@ -1,3 +1,16 @@
+"""
+April 2019
+Written by Edward Oughton
+
+This script using building information to generate a set of geotype
+lookup tables for each postcode sector.
+
+Gotcha: Results for S12000026 in the pcd_sector_to_lad_lut.csv LUT
+were placed incorrectly, with both collumns offset to the right by
+one column. Be aware this might happen again for postcodes starting
+with TD1 - TD9.
+
+"""
 import os
 import sys
 import configparser
@@ -238,7 +251,7 @@ def get_geotype_information(postcode_sector, buildings):
     print('residential_count is {}'.format(residential_count))
     #get area in km^2
     geom = shape(postcode_sector['geometry'])
-    area = geom.area/1000000
+    area = geom.area/10e6
     print('non_residential_count is {}'.format(non_residential_count))
     return residential_count, non_residential_count, area
 
