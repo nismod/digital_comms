@@ -233,38 +233,37 @@ def allocate_4G_coverage(postcode_sectors, lad_lut):
                 var = sector['properties']['premises_density']
             except KeyError:
                 print('problem with {}'.format(sector['properties']['postcode']))
+                print(sector['properties'])
+                pass
 
-        # total_area = sum([s['properties']['area'] for s in sectors_in_lad])/10e6
-        # print('total_area (km^2) is {}'.format(total_area))
-        # coverage_data = load_coverage_data(lad_id)
+        total_area = sum([s['properties']['area'] for s in sectors_in_lad])/10e6
+        print('total_area (km^2) is {}'.format(total_area))
+        coverage_data = load_coverage_data(lad_id)
 
-        # coverage_amount = float(coverage_data['4G_geo_out_4'])
+        coverage_amount = float(coverage_data['4G_geo_out_4'])
         # print('coverage_amount (%) is {}'.format(coverage_amount))
-        # covered_area = total_area * (coverage_amount/100)
+        covered_area = total_area * (coverage_amount/100)
         # print('covered_area (km^2) is {}'.format(covered_area))
         ranked_postcode_sectors = sorted(sectors_in_lad, key=lambda x: x['properties']['premises_density'], reverse=True)
         # print('covered (%) {}'.format(covered_area/total_area*100))
-        # area_allocated = 0
-        print([p['properties']['premises_density'] for p in ranked_postcode_sectors])
-        #     for sector in get_postcode_sectors_in_lad(postcode_sectors, lad_id):
-        #         id_1 = postcode_sector_lookup['postcode_sector']
-        #         id_2 = sector['properties']['postcode']
-        #         if id_1 == id_2:
-        #             area = sector['properties']['area'] / 10e6
-        #             total = area + area_allocated
-        #             if total < covered_area:
-        #                 sector['properties']['lte'] = 1
-        #                 # print('id is {}'.format(id_1))
-        #                 # print('area is {}'.format(area))
-        #                 # print('pre-area_allocated {}'.format(area_allocated))
-        #                 output.append(sector)
-        #                 area_allocated += area
-        #                 print('post-area_allocated is {}'.format(area_allocated))
-        #             else:
-        #                 sector['properties']['lte'] = 0
-        #                 output.append(sector)
-        #                 print('final coverage is {}'.format(area_allocated))
-        #                 continue
+        area_allocated = 0
+        # print([p['properties']['premises_density'] for p in ranked_postcode_sectors])
+        for sector in ranked_postcode_sectors:
+            area = sector['properties']['area'] / 10e6
+            total = area + area_allocated
+            if total < covered_area:
+                sector['properties']['lte'] = 1
+                # print('id is {}'.format(id_1))
+                # print('area is {}'.format(area))
+                # print('pre-area_allocated {}'.format(area_allocated))
+                output.append(sector)
+                area_allocated += area
+                print('post-area_allocated is {}'.format(area_allocated))
+            else:
+                sector['properties']['lte'] = 0
+                output.append(sector)
+                print('final coverage is {}'.format(area_allocated))
+                break
 
 
             # print('completed {}'.format(lad_id))
