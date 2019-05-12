@@ -4,14 +4,11 @@ from collections import defaultdict
 from itertools import tee
 from pprint import pprint
 
-PERCENTAGE_OF_TRAFFIC_IN_BUSY_HOUR = 0.15
-
-SERVICE_OBLIGATION_CAPACITY = 10
-
-class ICTManager(object):
+class NetworkManager(object):
     """Model controller class.
 
-    Represents local area districts and postcode sectors with their assets, capacities and clutters.
+    Represents local area districts and postcode sectors 
+    with their assets, capacities and clutters.
 
     Parameters
     ----------
@@ -45,7 +42,7 @@ class ICTManager(object):
         * site_ngr: :obj:`int`
             Unique site reference number
         * technology: :obj:`str`
-            Abbreviation of the asset technology (LTE, 3G, 4G, ..)
+            Abbreviation of the asset technology (LTE,5G etc.)
         * frequency: :obj:`str`
             Frequency of the asset (800, 2600, ..)
         * bandwidth: :obj:`str`
@@ -54,7 +51,9 @@ class ICTManager(object):
             Build year of the asset
 
     capacity_lookup_table: dict
-        Dictionary that represents the capacity of an asset configuration as a function of population density, per district type
+        Dictionary that represents the capacity of an asset 
+        configuration as a function of population density, 
+        per district type.
 
         * key: :obj:`tuple`
             * 0: :obj:`str`
@@ -77,26 +76,29 @@ class ICTManager(object):
             TODO
         * 1: :obj:`int`
             TODO
+
     """
-
-    def __init__(self, lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup):
-        """ Load the `lads` in local :obj:`dict` attribute `lad`
-        Record the assets, capacity and clutter per postcode sector in the :obj:`dict` attribute `postcode_sectors`
+    def __init__(self, lads, pcd_sectors, assets, 
+        capacity_lookup_table, clutter_lookup, 
+        service_obligation_capacity, traffic, market_share):
+        """ 
+        Load the `lads` in local :obj:`dict` attribute `lad`
+        
+        Record the assets, capacity and clutter per postcode 
+        
+        :obj:`dict` attribute `postcode_sectors`
+        
         """
-
-        # Area ID (integer?) => Area
         self.lads = {}
 
-        # List of all postcode sectors
         self.postcode_sectors = {}
 
-        # lad_data in lads <-'lads' is the list of dicts of lad data
         for lad_data in lads:
-            # find ID out of lads list of dicts
             lad_id = lad_data["id"]
-            # create LAD object using lad_data and put in self.lads dict
-            self.lads[lad_id] = LAD(lad_data) # <- create lower level LAD object here
-
+            self.lads[lad_id] = LAD(
+                lad_data, service_obligation_capacity
+                ) 
+            
         assets_by_pcd = defaultdict(list)
         for asset in assets:
             assets_by_pcd[asset['pcd_sector']].append(asset)
@@ -106,20 +108,19 @@ class ICTManager(object):
             pcd_sector_id = pcd_sector_data["id"]
             assets = assets_by_pcd[pcd_sector_id]
             pcd_sector = PostcodeSector(
-                pcd_sector_data, assets, capacity_lookup_table, clutter_lookup) # <- create lower level PostcodeSector object here
+                pcd_sector_data, assets, 
+                capacity_lookup_table, clutter_lookup,
+                service_obligation_capacity, traffic, market_share) 
 
-            # add PostcodeSector to simple list
             self.postcode_sectors[pcd_sector_id] = pcd_sector
 
-            # add PostcodeSector to LAD
             lad_containing_pcd_sector = self.lads[lad_id]
             lad_containing_pcd_sector.add_pcd_sector(pcd_sector)
 
-    def results(self):
-        raise NotImplementedError("Mobile ICTManager results method not yet implemented")
 
 class LAD(object):
-    """Local area district.
+    """
+    Local area district.
 
     Represents an area to be modelled, contains data for demand
     characterisation and assets for supply assessment.
@@ -134,18 +135,20 @@ class LAD(object):
         * name: :obj:`str`
             Name of the LAD
     """
-    def __init__(self, data):
+    def __init__(self, data, service_obligation_capacity):
         self.id = data["id"]
         self.name = data["name"]
-        self._pcd_sectors = {} #single underscore indicates it's a private variable which cannot be accessed excepted from within the object
-        #this means that code can add pcd_sectors and get summary states (capacity, pop_density etc.), while not having direct access
+        self.service_obligation_capacity = service_obligation_capacity
+        self._pcd_sectors = {} 
 
     def __repr__(self):
         return "<LAD id:{} name:{}>".format(self.id, self.name)
 
     @property
     def population(self):
-        """obj: Sum of all postcode sectors populations in the local area district
+        """
+        obj: Sum of all sectors populations in the LAD.
+        
         """
         return sum([
             pcd_sector.population
@@ -174,39 +177,9 @@ class LAD(object):
         """
         self._pcd_sectors[pcd_sector.id] = pcd_sector
 
-    def add_asset(self, asset):
-        """Add an asset to postcode sector
-
-        Arguments
-        ---------
-        asset: TODO
-            TODO
-        """
-        pcd_sector_id = asset.pcd_sector
-        self._pcd_sectors[pcd_sector_id].add_asset(asset)
-
-    def system(self):
-        """Populates a dict with all existing assets
-        Which in total represents the system.
-
-        Returns
-        -------
-        dict
-            TODO
-        """
-        system = {}
-        for pcd_sector in self._pcd_sectors.values():
-            pcd_system = pcd_sector.system()
-            for tech, cells in pcd_system.items():
-                # check tech is in system
-                if tech not in system:
-                    system[tech] = 0
-                # add number of cells to tech in area
-                system[tech] += cells
-        return system
-
     def capacity(self):
-        """Calculate mean capacity from all nested postcode sectors
+        """
+        Calculate mean capacity from all nested sectors
 
         Returns
         -------
@@ -215,7 +188,9 @@ class LAD(object):
 
         Notes
         -----
-        Function returns `0` when no postcode sectors are configured to the LAD.
+        Function returns `0` when no postcode sectors are 
+        configured to the LAD.
+
         """
         if not self._pcd_sectors:
             return 0
@@ -223,10 +198,13 @@ class LAD(object):
         summed_capacity = sum([
             pcd_sector.capacity
             for pcd_sector in self._pcd_sectors.values()])
+        
         return summed_capacity / len(self._pcd_sectors)
 
     def demand(self):
-        """Calculate demand per square kilometer (Mbps km^2) from all nested postcode sectors
+        """
+        Calculate demand per square kilometer (Mbps km^2) 
+        from all nested postcode sectors
 
         Returns
         -------
@@ -235,7 +213,9 @@ class LAD(object):
 
         Notes
         -----
-        Function returns `0` when no postcode sectors are configured to the LAD.
+        Function returns `0` when no postcode sectors 
+        are configured to the LAD.
+        
         """
         if not self._pcd_sectors:
             return 0
@@ -251,7 +231,9 @@ class LAD(object):
         return summed_demand / summed_area
 
     def coverage(self):
-        """Calculate coverage as the proportion of the population able to obtain the specified capacity threshold
+        """
+        Calculate coverage as the proportion of the population 
+        able to obtain the specified capacity threshold
 
         Returns
         -------
@@ -260,7 +242,9 @@ class LAD(object):
 
         Notes
         -----
-        Function returns `0` when no postcode sectors are configured to the LAD.
+        Function returns `0` when no postcode sectors are 
+        configured to the LAD.
+        
         """
         if not self._pcd_sectors:
             return 0
@@ -268,24 +252,35 @@ class LAD(object):
         population_with_coverage = sum([
             pcd_sector.population
             for pcd_sector in self._pcd_sectors.values()
-            if pcd_sector.capacity >= SERVICE_OBLIGATION_CAPACITY])
+            if pcd_sector.capacity >= self.service_obligation_capacity])
+
         total_pop = sum([
             pcd_sector.population
             for pcd_sector in self._pcd_sectors.values()])
+
         return float(population_with_coverage) / total_pop
 
 
 class PostcodeSector(object):
-    """Represents a Postcode sector to be modelled
     """
-    def __init__(self, data, assets, capacity_lookup_table, clutter_lookup):
+    Represents a Postcode sector to be modelled
+    
+    """
+    def __init__(self, data, assets, capacity_lookup_table, 
+        clutter_lookup, service_obligation_capacity, 
+        traffic, market_share):
+
         self.id = data["id"]
         self.lad_id = data["lad_id"]
         self.population = data["population"]
         self.area = data["area"]
 
         self.user_throughput = data["user_throughput"]
-        self.user_demand = self._calculate_user_demand(self.user_throughput)
+        self.user_demand = self._calculate_user_demand(
+            self.user_throughput, traffic
+            )
+        self.market_share = market_share 
+        self.service_obligation_capacity = service_obligation_capacity
 
         self._capacity_lookup_table = capacity_lookup_table
         self._clutter_lookup = clutter_lookup
@@ -300,13 +295,17 @@ class PostcodeSector(object):
 
         # Keep list of assets
         self.assets = assets
-        self.capacity = self._macrocell_site_capacity() + self._small_cell_capacity()
+        self.capacity = (
+            self._macrocell_site_capacity() + 
+            self._small_cell_capacity()
+            )
 
     def __repr__(self):
         return "<PostcodeSector id:{}>".format(self.id)
 
-    def _calculate_user_demand(self, user_throughput):
-        """Calculate Mb/second from GB/month supplied as throughput scenario
+    def _calculate_user_demand(self, user_throughput, traffic):
+        """
+        Calculate Mb/second from GB/month supplied as throughput scenario
 
         Notes
         -----
@@ -314,20 +313,20 @@ class PostcodeSector(object):
             2 GB per month
                 * 1024 to find MB
                 * 8 to covert bytes to bits
-                * 0.075 represents 7.5% of daily traffic taking place in the busy hour
+                * traffic represents demand in the busy hour
                 * 1/30 assuming 30 days per month
                 * 1/3600 converting hours to seconds,
             = ~0.01 Mbps required per user
         """
-        return user_throughput * 1024 * 8 * PERCENTAGE_OF_TRAFFIC_IN_BUSY_HOUR / 30 / 3600 ### i have removed market share and place in def demand below
-        #return user_throughput / 20 # assume we want to give X Mbps per second, with an OBF of  20
-
-    def threshold_demand(self, SERVICE_OBLIGATION_CAPACITY):
-        """Calculate capacity required to meet a service obligation.
+        return user_throughput * 1024 * 8 * traffic / 30 / 3600 
+        
+    def threshold_demand(self):
+        """
+        Calculate capacity required to meet a service obligation.
 
         Parameters
         ----------
-        SERVICE_OBLIGATION_CAPACITY: int
+        service_obligation_capacity: int
             The required service obligation in Mb/s
 
         Returns
@@ -346,28 +345,35 @@ class PostcodeSector(object):
             * 2 Mb/s/person service obligation
             / 10 km^2 area
             = ~4.8 Mbps/km^2
+        
         """
-        ### MARKET SHARE? ###
-        threshold_demand = self.population * self.penetration * SERVICE_OBLIGATION_CAPACITY / self.area ##Do we not need to put market share in here?
+        threshold_demand = (
+            self.population * self.penetration *  self.market_share \
+                * self.service_obligation_capacity / self.area
+            )
+
         return threshold_demand
 
     @property
     def demand(self):
-        """obj: The demand in capacity per km^2
-        TODO Double check
+        """
+        obj: The demand in capacity per km^2
 
         Notes
         -----
-            0.02 Mbps per user during busy hours
-                * 100 population
-                * 0.8 penetration
-                / 10 km^2 area
-            = ~0.16 Mbps/km^2 area capacity demand
+            users = population * penetration * market_share
+            100 = 500*0.8*0.25
+            user_throughput = users * user_demand 
+            2.275 = 100 * 0.02275 Mbps
+            demand_km^2 = demand / area
+            1.1375Mbps km^2 = 200 / 2
+
         """
-        users = self.population * self.penetration * 0.3 #market share
+        users = self.population * self.penetration * self.market_share
         user_throughput = users * self.user_demand
-        capacity_per_kmsq = user_throughput / self.area
-        return capacity_per_kmsq
+        demand_per_kmsq = user_throughput / self.area
+        
+        return demand_per_kmsq
 
     @property
     def population_density(self):
@@ -379,7 +385,6 @@ class PostcodeSector(object):
         capacity = 0
 
         for frequency in ['800', '2600', '700', '3500']:
-            # count sites with this frequency/bandwidth combination
             num_sites = 0
             for asset in self.assets:
                 if asset['frequency'] == frequency:
@@ -395,6 +400,7 @@ class PostcodeSector(object):
                 frequency,
                 "2x10MHz",
                 site_density)
+
             capacity += tech_capacity
 
         return capacity
@@ -408,7 +414,7 @@ class PostcodeSector(object):
         ])
         # sites/km^2 : divide num_small_cells/area
         site_density = float(num_small_cells) / self.area
-
+        
         # for a given site density and spectrum band, look up capacity
         capacity = lookup_capacity(
             self._capacity_lookup_table,
@@ -596,92 +602,3 @@ def interpolate(x0, y0, x1, y1, x):
     """
     y = (y0 * (x1 - x) + y1 * (x - x0)) / (x1 - x0)
     return y
-
-# __name__ == '__main__' means that the module is bring run in standalone by the user
-if __name__ == '__main__':
-    LADS = [
-        {
-            "id": 1,
-            "name": "Cambridge",
-        }
-    ]
-    PCD_SECTORS = [
-        {
-            "id": "CB11",
-            "lad_id": 1,
-            "population": 500,
-            "area": 2,
-            "user_throughput": 2
-        },
-        {
-            "id": "CB12",
-            "lad_id": 1,
-            "population": 200,
-            "area": 2,
-            "user_throughput": 2
-        }
-    ]
-    ASSETS = [
-        {
-            "pcd_sector": "CB11",
-            "site_ngr": 100,
-            "technology": "LTE",
-            "frequency": "800",
-            "bandwidth": "2x10MHz",
-            "build_date": 2017,
-            "type": 'macro'
-        },
-        {
-            "pcd_sector": "CB12",
-            "site_ngr": 200,
-            "technology": "LTE",
-            "frequency": "2600",
-            "bandwidth": "2x10MHz",
-            "build_date": 2017,
-            "type": 'macro'
-        },
-        {
-            "pcd_sector": "CB12",
-            "site_ngr": 101,
-            "technology": "LTE",
-            "frequency": "3500",
-            "bandwidth": "2x25MHz",
-            "build_date": 2017,
-            "type": 'small_cell'
-        }
-    ]
-
-    CAPACITY_LOOKUP = {
-        ("Urban", "700", "2x10MHz"): [
-            (0, 1),
-            (1, 2),
-        ],
-        ("Urban", "800", "2x10MHz"): [
-            (0, 1),
-            (1, 2),
-        ],
-        ("Urban", "2600", "2x10MHz"): [
-            (0, 3),
-            (3, 5),
-        ],
-        ("Urban", "3500", "2x10MHz"): [
-            (0, 3),
-            (3, 5),
-        ],
-        ("Small cells", "3700", "2x25MHz"): [
-            (0, 3),
-            (3, 5),
-        ]
-    }
-
-    CLUTTER_LOOKUP = [
-        (5, "Urban")
-    ]
-
-    MANAGER = ICTManager(LADS, PCD_SECTORS, ASSETS, CAPACITY_LOOKUP, CLUTTER_LOOKUP)
-    pprint(MANAGER.results())
-
-    for lad in MANAGER.lads.values():
-        pprint(lad)
-        for pcd in lad._pcd_sectors.values():
-            print(" ", pcd, "capacity:{:.2f} demand:{:.2f}".format(pcd.capacity, pcd.demand))
