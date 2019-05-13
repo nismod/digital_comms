@@ -1,6 +1,7 @@
 import fiona
 import os
 import configparser
+import csv
 
 from shapely.geometry import Point, LineString, mapping
 from collections import OrderedDict
@@ -14,8 +15,12 @@ CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
 # Config
+<<<<<<< HEAD
 fixed_input_shapefiles_dir = os.path.join('tests', 'fixed_network', 'fixtures')
 mobile_input_shapefiles_dir = os.path.join('tests', 'mobile_network', 'fixtures')
+=======
+WRITE_DIRECTORY = os.path.join('tests', 'fixed_network', 'fixtures')
+>>>>>>> master
 
 # Helper functions
 def write_points_to_shp(filename, data, schema):
@@ -208,6 +213,7 @@ setup_assets_layer2_exchanges = [
     (Point(0.121507260074479, 52.2047310714094), OrderedDict([('id', 'exchange_1'), ('connection', 'cabinet_1'), ('FTTP', 1), ('GFast', 0), ('FTTC', 0), ('DOCSIS3', 1), ('ADSL', 0)])),
 ]
 
+<<<<<<< HEAD
 #######################
 # MOBILE 
 #######################
@@ -353,5 +359,51 @@ write_points_to_shp(os.path.join(fixed_input_shapefiles_dir, 'assets_layer2_exch
 #mobile
 write_points_to_shp(os.path.join(mobile_input_shapefiles_dir, 'assets_transmitters.shp'), setup_assets_transmitters, setup_assets_transmitter_schema)
 write_points_to_shp(os.path.join(mobile_input_shapefiles_dir, 'assets_receivers.shp'), setup_assets_receivers, setup_assets_receiver_schema)
+=======
+write_points_to_shp(os.path.join(WRITE_DIRECTORY, 'assets_layer5_premises.shp'), setup_assets_layer5_premises, setup_assets_layer5_premises_schema)
+write_points_to_shp(os.path.join(WRITE_DIRECTORY, 'links_layer5_premises.shp'), setup_links_layer5_premises, setup_links_layer5_premises_schema)
+write_points_to_shp(os.path.join(WRITE_DIRECTORY, 'assets_layer4_distributions.shp'), setup_assets_layer4_distributions, setup_assets_layer4_distributions_schema)
+write_points_to_shp(os.path.join(WRITE_DIRECTORY, 'links_layer4_distributions.shp'), setup_links_layer4_distributions, setup_links_layer4_distributions_schema)
+write_points_to_shp(os.path.join(WRITE_DIRECTORY, 'assets_layer3_cabinets.shp'), setup_assets_layer3_cabinets, setup_assets_layer3_cabinets_schema)
+write_points_to_shp(os.path.join(WRITE_DIRECTORY, 'links_layer3_cabinets.shp'), setup_links_layer3_cabinets, setup_links_layer3_cabinets_schema)
+write_points_to_shp(os.path.join(WRITE_DIRECTORY, 'assets_layer2_exchanges.shp'), setup_assets_layer2_exchanges, setup_assets_layer2_exchanges_schema)
+
+
+def write_points_to_csv(filename, data):
+
+    fieldnames = []
+
+    for name, value in data[0].items():
+        fieldnames.append(name)
+
+    with open(filename, 'w') as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
+        writer.writeheader()
+        writer.writerows(data)
+
+distribution_points = [
+    {'id': 'distribution_{EACAM}{1}', 'connection': 'cabinet_{EACAM}{1}', 'wta': 0.1,
+    'wtp': 200, 'fttp': 0, 'fttdp': 0, 'fttc': 18, 'docsis3': 15, 'adsl': 20, 'total_prems': 20},
+    {'id': 'distribution_{EACAM}{2}', 'connection': 'cabinet_{EACAM}{1}', 'wta': 0.2,
+    'wtp': 200, 'fttp': 0, 'fttdp': 0, 'fttc': 18, 'docsis3': 15, 'adsl': 20, 'total_prems': 20},
+    {'id': 'distribution_{EACAM}{3}', 'connection': 'cabinet_{EACAM}{1}', 'wta': 0.3,
+    'wtp': 200, 'fttp': 0, 'fttdp': 0, 'fttc': 18, 'docsis3': 15, 'adsl': 20, 'total_prems': 20},
+    {'id': 'distribution_{EACAM}{4}', 'connection': 'cabinet_{EACAM}{1}', 'wta': 0.4,
+    'wtp': 200, 'fttp': 5, 'fttdp': 5, 'fttc': 18, 'docsis3': 15, 'adsl': 20, 'total_prems': 20},
+    {'id': 'distribution_{EACAM}{5}', 'connection': 'cabinet_{EACAM}{1}', 'wta': 0.5,
+    'wtp': 200, 'fttp': 10, 'fttdp': 10, 'fttc': 18, 'docsis3': 15, 'adsl': 20, 'total_prems': 20},
+]
+
+distribution_point_links = [
+    {'origin': 'premises_1', 'dest': 'distribution_{EACAM}{1}', 'length': 20, 'technology': 'copper'},
+    {'origin': 'premises_2', 'dest': 'distribution_{EACAM}{2}', 'length': 40, 'technology': 'copper'},
+    {'origin': 'premises_3', 'dest': 'distribution_{EACAM}{3}', 'length': 60, 'technology': 'copper'},
+    {'origin': 'premises_4', 'dest': 'distribution_{EACAM}{4}', 'length': 80, 'technology': 'fibre'},
+    {'origin': 'premises_5', 'dest': 'distribution_{EACAM}{5}', 'length': 100, 'technology': 'fibre'},
+]
+
+write_points_to_csv(os.path.join(WRITE_DIRECTORY, 'dummy_dists.csv'), distribution_points)
+write_points_to_csv(os.path.join(WRITE_DIRECTORY, 'dummy_links.csv'), distribution_point_links)
+>>>>>>> master
 
 print('Done... Files are generated')
