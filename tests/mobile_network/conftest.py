@@ -7,7 +7,7 @@ from pytest import fixture
 from shapely.geometry import Point, LineString
 import os
 
-from digital_comms.mobile_network.model import ICTManager
+from digital_comms.mobile_network.model import NetworkManager
 
 @pytest.fixture
 def rootdir():
@@ -139,6 +139,6 @@ def setup_fixed_model_links():
 def setup_fixed_network(setup_fixed_model_pcp, setup_fixed_model_exchanges, setup_fixed_model_links):
     empty_data = {}
 
-    return ICTManager(empty_data, empty_data, setup_fixed_model_pcp,
+    return NetworkManager(empty_data, empty_data, setup_fixed_model_pcp,
                       setup_fixed_model_exchanges, empty_data,
                       setup_fixed_model_links)

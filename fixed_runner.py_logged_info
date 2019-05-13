@@ -1,0 +1,284 @@
+INFO:root:--
+INFO:root:Loading scenario data
+INFO:root:annual_budget is 50000000
+INFO:root:telco match funding is 2500000
+INFO:root:government subsidy is 2500000
+INFO:root:USO is 10
+INFO:root:--
+INFO:root:Running: baseline, fttp, s3_outside_in_subsidy
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Running: baseline, fttp, s2_rural_based_subsidy
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Running: baseline, fttp, s1_market_based_roll_out
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Loading scenario data
+INFO:root:annual_budget is 50000000
+INFO:root:telco match funding is 2500000
+INFO:root:government subsidy is 2500000
+INFO:root:USO is 10
+INFO:root:--
+INFO:root:Running: baseline, fttp, s1_market_based_roll_out
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Running: baseline, fttp, s2_rural_based_subsidy
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Running: baseline, fttp, s3_outside_in_subsidy
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Loading scenario data
+INFO:root:annual_budget is 50000000
+INFO:root:telco match funding is 2500000
+INFO:root:government subsidy is 2500000
+INFO:root:USO is 10
+INFO:root:--
+INFO:root:Running: baseline, fttp, s1_market_based_roll_out
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Running: baseline, fttp, s2_rural_based_subsidy
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Running: baseline, fttp, s3_outside_in_subsidy
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Loading scenario data
+INFO:root:annual_budget is 50000000
+INFO:root:telco match funding is 2500000
+INFO:root:government subsidy is 2500000
+INFO:root:USO is 10
+INFO:root:--
+INFO:root:Running: baseline, fttp, s2_rural_based_subsidy
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Running: baseline, fttp, s1_market_based_roll_out
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Running: baseline, fttp, s3_outside_in_subsidy
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Loading scenario data
+INFO:root:annual_budget is 50000000
+INFO:root:telco match funding is 2500000
+INFO:root:government subsidy is 2500000
+INFO:root:USO is 10
+INFO:root:--
+INFO:root:Running: baseline, fttp, s3_outside_in_subsidy
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Running: baseline, fttp, s2_rural_based_subsidy
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Running: baseline, fttp, s1_market_based_roll_out
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Loading scenario data
+INFO:root:annual_budget is 50000000
+INFO:root:telco match funding is 2500000
+INFO:root:government subsidy is 2500000
+INFO:root:USO is 10
+INFO:root:--
+INFO:root:Running: baseline, fttp, s3_outside_in_subsidy
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Running: baseline, fttp, s1_market_based_roll_out
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:--
+INFO:root:Loading scenario data
+INFO:root:annual_budget is 50000000
+INFO:root:telco match funding is 2500000
+INFO:root:government subsidy is 2500000
+INFO:root:USO is 10
+INFO:root:--
+INFO:root:Running: baseline, fttp, s1_market_based_roll_out
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Running: baseline, fttp, s3_outside_in_subsidy
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Running: baseline, fttp, s2_rural_based_subsidy
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Loading scenario data
+INFO:root:annual_budget is 50000000
+INFO:root:telco match funding is 2500000
+INFO:root:government subsidy is 2500000
+INFO:root:USO is 10
+INFO:root:--
+INFO:root:Running: baseline, fttp, s1_market_based_roll_out
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Running: baseline, fttp, s2_rural_based_subsidy
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Running: baseline, fttp, s3_outside_in_subsidy
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Loading scenario data
+INFO:root:annual_budget is 50000000
+INFO:root:telco match funding is 2500000
+INFO:root:government subsidy is 2500000
+INFO:root:USO is 10
+INFO:root:--
+INFO:root:Running: baseline, fttp, s3_outside_in_subsidy
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Running: baseline, fttp, s1_market_based_roll_out
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0
+INFO:root:--
+INFO:root:Running: baseline, fttp, s2_rural_based_subsidy
+INFO:root:--
+INFO:root:-2019
+INFO:root:Annual scenario adoption rate is 1.0
+INFO:root:-2020
+INFO:root:Annual scenario adoption rate is 3.0
+INFO:root:-2021
+INFO:root:Annual scenario adoption rate is 5.0

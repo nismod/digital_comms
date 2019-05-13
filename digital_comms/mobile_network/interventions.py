@@ -142,13 +142,13 @@ def decide_interventions(strategy, budget, service_obligation_capacity,
         Annual budget in GBP
     service_obligation_capacity : float
         Threshold for universal mobile service, in Mbps/km^2
-    system : ICTManager
+    system : NetworkManager
         Gives areas (postcode sectors) with population density, demand
 
     Returns
     -------
     tuple
-        0: `obj`:`list` of `obj`:`dict`  
+        0: `obj`:`list` of `obj`:`dict`
             Details of the assets that were built
 
             Each containing the keys

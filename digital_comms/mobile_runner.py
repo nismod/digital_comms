@@ -1,8 +1,6 @@
-"""Model runner to use in place of smif for standalone modelruns
-- run over multiple years
-- make rule-based intervention decisions at each timestep
-"""
-# pylint: disable=C0103
+print("Running fixed broadband runner.py")
+
+import fiona
 import configparser
 import csv
 import itertools
@@ -11,7 +9,7 @@ import pprint
 
 from collections import defaultdict
 
-from digital_comms.mobile_network.model import ICTManager
+from digital_comms.mobile_network.model import NetworkManager
 from digital_comms.mobile_network.interventions import decide_interventions
 
 ################################################################
@@ -21,11 +19,12 @@ from digital_comms.mobile_network.interventions import decide_interventions
 ################################################################
 
 CONFIG = configparser.ConfigParser()
-CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
+CONFIG.read(os.path.join(os.path.dirname(__file__), '..', 'scripts', 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
-SYSTEM_INPUT_PATH = os.path.join(BASE_PATH, 'raw', 'mobile_model_1.0')
-SYSTEM_OUTPUT_PATH = os.path.join(BASE_PATH, 'processed', 'mobile_model_1.0')
+SYSTEM_INPUT_PATH = os.path.join(BASE_PATH, 'raw', 'b_mobile_model', 'mobile_model_1.0')
+SHAPES_INPUT_PATH = os.path.join(BASE_PATH, 'raw', 'd_shapes')
+SYSTEM_OUTPUT_PATH = os.path.join(BASE_PATH, '..', 'results', 'mobile_network')
 
 BASE_YEAR = 2016
 END_YEAR = 2030
@@ -68,6 +67,14 @@ NETWORKS_TO_INCLUDE = ('A',)
 ################################################################
 print('Loading regions')
 
+# def read_lads(file):
+#     with fiona.open(file, 'r') as source:
+#         for feature in source:
+#             yield {
+#                 'id': feature['properties']['name'],
+#                 'name': feature['properties']['desc']
+#             }
+# lads = read_lads(os.path.join(SHAPES_INPUT_PATH, 'lad_uk_2016-12'))
 # lads = [
 # 	{
 # 		"id": 1,
@@ -86,15 +93,25 @@ with open(LAD_FILENAME, 'r') as lad_file:
             "name": name
         })
 
+# def read_postcode_sectors(file):
+#     with fiona.open(file, 'r') as source:
+#         for feature in source:
+#             yield {
+#                 'id': feature['properties']['name'],
+#                 'name': feature['properties']['desc']
+#             }
+# lads = read_lads(os.path.join(SHAPES_INPUT_PATH, 'postcode_sectors'))
+
 # Read in postcode sectors (without population)
-# pcd_sectors = [
-# 	{
-# 		"id": "CB1G",
-# 		"lad_id": 1,
-# 		"population": 50000,  # to be loaded from scenario data
-# 		"area": 2,
-# 	},
-# ]
+pcd_sectors = [
+	{
+		"id": "CB1G",
+		"lad_id": 1,
+		"population": 50000,  # to be loaded from scenario data
+		"area": 2,
+	},
+]
+
 pcd_sectors = []
 PCD_SECTOR_FILENAME = os.path.join(SYSTEM_INPUT_PATH, 'initial_system', 'pcd_sectors.csv')
 with open(PCD_SECTOR_FILENAME, 'r') as pcd_sector_file:
@@ -106,6 +123,7 @@ with open(PCD_SECTOR_FILENAME, 'r') as pcd_sector_file:
             "lad_id": lad_id,
             "area": float(area)
         })
+
 
 ################################################################
 # LOAD SCENARIO DATA
@@ -246,7 +264,7 @@ with open(CLUTTER_GEOTYPE_FILENAME, 'r') as clutter_geotype_file:
 def write_lad_results(ict_manager, year, pop_scenario, throughput_scenario,
                       intervention_strategy, cost_by_lad):
     suffix = _get_suffix(pop_scenario, throughput_scenario, intervention_strategy)
-    metrics_filename = os.path.join(SYSTEM_INPUT_PATH, 'outputs', 'metrics_{}.csv'.format(suffix))
+    metrics_filename = os.path.join(SYSTEM_OUTPUT_PATH, 'metrics_{}.csv'.format(suffix))
 
     if year == BASE_YEAR:
         metrics_file = open(metrics_filename, 'w', newline='')
@@ -277,7 +295,7 @@ def write_lad_results(ict_manager, year, pop_scenario, throughput_scenario,
 def write_pcd_results(ict_manager, year, pop_scenario, throughput_scenario,
                       intervention_strategy, cost_by_pcd):
     suffix = _get_suffix(pop_scenario, throughput_scenario, intervention_strategy)
-    metrics_filename = os.path.join(SYSTEM_INPUT_PATH, 'outputs', 'pcd_metrics_{}.csv'.format(suffix))
+    metrics_filename = os.path.join(SYSTEM_OUTPUT_PATH, 'pcd_metrics_{}.csv'.format(suffix))
 
     if year == BASE_YEAR:
         metrics_file = open(metrics_filename, 'w', newline='')
@@ -306,7 +324,7 @@ def write_pcd_results(ict_manager, year, pop_scenario, throughput_scenario,
 
 def write_decisions(decisions, year, pop_scenario, throughput_scenario, intervention_strategy):
     suffix = _get_suffix(pop_scenario, throughput_scenario, intervention_strategy)
-    decisions_filename = os.path.join(SYSTEM_INPUT_PATH, 'outputs', 'decisions_{}.csv'.format(suffix))
+    decisions_filename = os.path.join(SYSTEM_OUTPUT_PATH, 'decisions_{}.csv'.format(suffix))
 
     if year == BASE_YEAR:
         decisions_file = open(decisions_filename, 'w', newline='')
@@ -335,7 +353,7 @@ def write_decisions(decisions, year, pop_scenario, throughput_scenario, interven
 
 def write_spend(spend, year, pop_scenario, throughput_scenario, intervention_strategy):
     suffix = _get_suffix(pop_scenario, throughput_scenario, intervention_strategy)
-    spend_filename = os.path.join(SYSTEM_INPUT_PATH, 'outputs', 'spend_{}.csv'.format(suffix))
+    spend_filename = os.path.join(SYSTEM_OUTPUT_PATH, 'spend_{}.csv'.format(suffix))
 
     if year == BASE_YEAR:
         spend_file = open(spend_filename, 'w', newline='')
@@ -372,27 +390,22 @@ for pop_scenario, throughput_scenario, intervention_strategy in [
         ('low', 'low', 'minimal'),
         ('baseline', 'baseline', 'minimal'),
         ('high', 'high', 'minimal'),
-        ('static2017', 'baseline', 'minimal'),
 
         ('low', 'low', 'macrocell'),
         ('baseline', 'baseline', 'macrocell'),
         ('high', 'high', 'macrocell'),
-        ('static2017', 'baseline', 'macrocell'),
 
         ('low', 'low', 'macrocell_700'),
         ('baseline', 'baseline', 'macrocell_700'),
         ('high', 'high', 'macrocell_700'),
-        ('static2017', 'baseline', 'macrocell_700'),
 
         ('low', 'low', 'small_cell'),
         ('baseline', 'baseline', 'small_cell'),
         ('high', 'high', 'small_cell'),
-        ('static2017', 'baseline', 'small_cell'),
 
         ('low', 'low', 'small_cell_and_spectrum'),
         ('baseline', 'baseline', 'small_cell_and_spectrum'),
         ('high', 'high', 'small_cell_and_spectrum'),
-        ('static2017', 'baseline', 'small_cell_and_spectrum')
     ]:
     print("Running:", pop_scenario, throughput_scenario, intervention_strategy)
 
@@ -412,7 +425,7 @@ for pop_scenario, throughput_scenario, intervention_strategy in [
 
         # simulate first
         if year == BASE_YEAR:
-            system = ICTManager(lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup)
+            system = NetworkManager(lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup)
 
         # decide
         interventions_built, budget, spend = decide_interventions(intervention_strategy, budget, service_obligation_capacity, system, year)
@@ -421,7 +434,7 @@ for pop_scenario, throughput_scenario, intervention_strategy in [
         assets += interventions_built
 
         # simulate with decisions
-        system = ICTManager(lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup)
+        system = NetworkManager(lads, pcd_sectors, assets, capacity_lookup_table, clutter_lookup)
 
         cost_by_lad = defaultdict(int)
         cost_by_pcd = defaultdict(int)

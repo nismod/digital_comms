@@ -3,15 +3,18 @@ import sys
 import configparser
 import csv
 import re
+
 from collections import defaultdict, OrderedDict
+
 import fiona
 import glob
 import itertools
 from shapely.geometry import shape, Polygon, MultiPolygon, mapping
 from shapely.ops import unary_union
+from rtree import index
+from tqdm import tqdm 
 from shapely.prepared import prep
 from shapely.wkt import loads
-from rtree import index
 from tqdm import tqdm
 
 CONFIG = configparser.ConfigParser()
@@ -29,8 +32,9 @@ DATA_BUILDING_DATA = os.path.join(BASE_PATH, 'raw', 'e_dem_and_buildings')
 
 def get_unique_postcodes_by_exchanges(lower_units):
     """
-    Function to get unique postcodes by exchange.
-    Produce a dict with the key being the grouping variable and the value being a list.
+    Function to get unique postcodes by exchange. 
+    Produce a dict with the key being the grouping variable and the value being a list.  
+
     """
 
     all_data = []
@@ -212,8 +216,8 @@ def get_unique_postcodes_to_cabs_by_exchange(lower_units):
     """
     Function to get unique postcodes by exchange.
     Produce a dict with the key being the grouping variable and the value being a list.
-    """
 
+    """
     all_data = []
 
     for item in lower_units:
@@ -245,8 +249,8 @@ def read_exchange_areas():
     -----------
     * id: 'string'
         Unique exchange id
-    """
 
+    """
     with fiona.open(os.path.join(DATA_RAW_SHAPES, 'all_exchange_areas', '_exchange_areas.shp'), 'r') as source:
         return [feature for feature in source]
 
@@ -260,7 +264,7 @@ def load_exchange_properties():
     * id: 'string'
         Unique exchange id
 
-    """
+    """    
     exchange_postcodes_path = os.path.join(DATA_RAW_INPUTS, 'exchange_geotypes', 'exchange_properties.csv')
 
     output = []
@@ -820,6 +824,7 @@ def get_oa_to_exchange_lut(exchange_areas):
     return output_lut
 
 #####################################################################################
+>>>>>>> master
 # Write out data
 #####################################################################################
 
@@ -830,6 +835,7 @@ def write_to_csv(data, folder, file_prefix, fieldnames):
 
     # Create path
     directory = os.path.join(DATA_INTERMEDIATE, folder)
+
     if not os.path.exists(directory):
         os.makedirs(directory)
 
@@ -843,6 +849,7 @@ def write_to_csv(data, folder, file_prefix, fieldnames):
                 writer.writerows(value)
         else:
             pass
+
 
 ###############################################################################
 
@@ -907,3 +914,4 @@ write_single_exchange_shapefile(problem_exchange_shapes, PC_OUT_PATH)
 # oa_to_ex_lut = get_oa_to_exchange_lut(exchange_areas)
 # fieldnames = ['oa']
 # write_to_csv(oa_to_ex_lut, 'oa_to_ex_lut', '', fieldnames)
+>>>>>>> master

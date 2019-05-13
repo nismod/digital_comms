@@ -8,7 +8,7 @@ PERCENTAGE_OF_TRAFFIC_IN_BUSY_HOUR = 0.15
 
 SERVICE_OBLIGATION_CAPACITY = 10
 
-class ICTManager(object):
+class NetworkManager(object):
     """Model controller class.
 
     Represents local area districts and postcode sectors with their assets, capacities and clutters.
@@ -84,18 +84,13 @@ class ICTManager(object):
         Record the assets, capacity and clutter per postcode sector in the :obj:`dict` attribute `postcode_sectors`
         """
 
-        # Area ID (integer?) => Area
         self.lads = {}
 
-        # List of all postcode sectors
         self.postcode_sectors = {}
 
-        # lad_data in lads <-'lads' is the list of dicts of lad data
         for lad_data in lads:
-            # find ID out of lads list of dicts
             lad_id = lad_data["id"]
-            # create LAD object using lad_data and put in self.lads dict
-            self.lads[lad_id] = LAD(lad_data) # <- create lower level LAD object here
+            self.lads[lad_id] = LAD(lad_data)
 
         assets_by_pcd = defaultdict(list)
         for asset in assets:
@@ -106,12 +101,10 @@ class ICTManager(object):
             pcd_sector_id = pcd_sector_data["id"]
             assets = assets_by_pcd[pcd_sector_id]
             pcd_sector = PostcodeSector(
-                pcd_sector_data, assets, capacity_lookup_table, clutter_lookup) # <- create lower level PostcodeSector object here
+                pcd_sector_data, assets, capacity_lookup_table, clutter_lookup)
 
-            # add PostcodeSector to simple list
             self.postcode_sectors[pcd_sector_id] = pcd_sector
 
-            # add PostcodeSector to LAD
             lad_containing_pcd_sector = self.lads[lad_id]
             lad_containing_pcd_sector.add_pcd_sector(pcd_sector)
 
@@ -273,7 +266,6 @@ class LAD(object):
             pcd_sector.population
             for pcd_sector in self._pcd_sectors.values()])
         return float(population_with_coverage) / total_pop
-
 
 class PostcodeSector(object):
     """Represents a Postcode sector to be modelled
@@ -678,7 +670,7 @@ if __name__ == '__main__':
         (5, "Urban")
     ]
 
-    MANAGER = ICTManager(LADS, PCD_SECTORS, ASSETS, CAPACITY_LOOKUP, CLUTTER_LOOKUP)
+    MANAGER = NetworkManager(LADS, PCD_SECTORS, ASSETS, CAPACITY_LOOKUP, CLUTTER_LOOKUP)
     pprint(MANAGER.results())
 
     for lad in MANAGER.lads.values():

@@ -238,6 +238,7 @@ def read_pcd_to_exchange_lut(exchange_abbr):
 
     return pcd_to_exchange_data
 
+>>>>>>> master
 def read_pcd_to_cabinet_lut(exchange_abbr):
     """
     Reads in all postcode-to-cabinet combinations from available data, including:
@@ -254,6 +255,7 @@ def read_pcd_to_cabinet_lut(exchange_abbr):
     Returns
     -------
     pcp_data: list of dicts
+    
     """
     pcp_data = defaultdict(list)
 
@@ -1434,7 +1436,6 @@ if __name__ == "__main__":
     ### IMPORT MAIN DATA
     print('Read exchange area')
     exchange_area = read_exchange_area(exchange_name)
-
     print('Reading premises data')
     premises = read_premises_data(exchange_area)
 
@@ -1498,7 +1499,6 @@ if __name__ == "__main__":
 
     print('generate exchange areas')
     geojson_exchange_areas = generate_exchange_area(geojson_postcode_areas)
-
     ##########################################################################################################
     # Connect assets
     print('connect premises to distributions')
@@ -1572,16 +1572,16 @@ if __name__ == "__main__":
     ########
     ### WRITE OUT
     ###########_link################################################################################################
-####
-    # #    #  debug pupremises_links('write postcode_areas')
+    # print('write postcode_areas')
     ######## write_shapefile(geojson_postcode_areas,  exchange_name, '_postcode_areas.shp')
 
-    # print('write distribution_areas')
-    # write_shapefile(geojson_distribution_areas,  exchange_name, '_distribution_areas.shp')
 
-    # print('write cabinet_areas')
-    # write_shapefile(geojson_cabinet_areas,  exchange_name, '_cabinet_areas.shp')
+    # # print('write distribution_areas')
+    # # write_shapefile(geojson_distribution_areas,  exchange_name, '_distribution_areas.shp')
 
+    # # print('write cabinet_areas')
+    # # write_shapefile(geojson_cabinet_areas,  exchange_name, '_cabinet_areas.shp')
+   
     # print('write exchange_area')
     # write_exchange_area =[]
     # write_exchange_area.append(exchange_area)
@@ -1630,6 +1630,7 @@ if __name__ == "__main__":
     # print('write links layer3')
     # write_shapefile(exchange_sl_links,  exchange_name, 'links_sl_layer3_cabinets.shp')
     csv_writer(exchange_sl_links, exchange_name, 'links_sl_exchanges.csv', 1)
+>>>>>>> master
 
     print("script finished")
     #print("script took {} minutes to complete".format(round((end - start)/60, 2)))
