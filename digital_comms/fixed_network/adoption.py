@@ -1,58 +1,87 @@
 
 """Decide who adopts
 """
+from logging import getLogger
 
-################################################################
-# Decide who adopts
-################################################################
 
-def update_adoption_desirability(system, annual_adoption_rate):
+LOGGER = getLogger(__name__)
+
+
+def update_adoption_desirability(distributions, annual_adoption_rate):
     """
-    Given adoption parameters and a premises, return likely adoptees
+    Given adoption parameters and a set of distribution points, return likely adoptees.
 
-    scenario - scenario name
-    number_of_adopters - aggregate number wanting to adopt
-    premises - premises objects
-    timestep - year
+    Utilises wta variable (Willingness To Adopt).
 
-    1) access list of wta for all premises
-    2) rank premises based on wta
-    3) select top n % of premises in ranking
-    4) if premises in top n % adoption_desirability = True
+    1) access list of summed wta for all premises at the distribution point level.
+    2) rank distribution points based on wta
+    3) select top n % of new premises wanting to adopt
 
+    Arguments
+    ---------
+    distributions : digital_comms.fixed_network.Distribution
+    annual_adoption_rate
     """
 
-    premises_not_wanting_to_adopt = [
-        premise for premise in system._premises
-        if premise.adoption_desirability is not True
+    # Step 1
+    # Work out the number of raw new premises wanting to adopt in a single year
+    distributions_already_wanting_to_adopt = [
+        distribution for distribution in distributions
+        if distribution.adoption_desirability is True
     ]
 
-    premises_already_wanting_to_adopt = [
-        premise for premise in system._premises
-        if premise.adoption_desirability is True
+    # get total premises needing to be served in current system
+    count_of_premises_already_wanting_to_adopt = 0
+    for distribution in distributions_already_wanting_to_adopt:
+        count_of_premises_already_wanting_to_adopt += distribution.total_prems
+
+    # get total premises needing to be served in current system
+    total_premises = 0
+    for distribution in distributions:
+        total_premises += distribution.total_prems
+
+    # get raw annual premises adoption
+    raw_annual_premises_adoption = round(total_premises*(annual_adoption_rate/100))
+
+    # get raw new premises wanting to adopt
+    raw_new_premises_wanting_to_adopt = (
+        raw_annual_premises_adoption - count_of_premises_already_wanting_to_adopt)
+
+    distributions_not_wanting_to_adopt = [
+        distribution for distribution in distributions
+        if distribution.adoption_desirability is not True
     ]
-    #rank premises based on household wta
-    premises_not_wanting_to_adopt = sorted(premises_not_wanting_to_adopt, key=lambda item: item.wta)
 
-    #get number of premises to select = convert adopt rate into raw premises
-    to_adopt = (len(system._premises) * annual_adoption_rate) / 100
+    # rank distributions based on household wta
+    distributions_not_wanting_to_adopt = sorted(
+        distributions_not_wanting_to_adopt, key=lambda item: item.wta, reverse=True)
 
-    #select number of premises ready to adopt
-    new_premises_wanting_to_adopt = premises_not_wanting_to_adopt[1:int(to_adopt)]
+    new_distributions_wanting_to_adopt = []
+    premises_wanting_to_adopt = 0
+    for distribution in distributions_not_wanting_to_adopt:
+        if premises_wanting_to_adopt + distribution.total_prems <= raw_new_premises_wanting_to_adopt:
+            new_distributions_wanting_to_adopt.append(distribution)
+            premises_wanting_to_adopt += distribution.total_prems
+        else:
+            break
 
-    # logger.info("-- premises not wanting to connect {}".format(len(premises_not_wanting_to_adopt)))
-    # logger.info("-- premises wanting to connect {}".format(len(new_premises_wanting_to_adopt)))
-    # logger.info("-- total premises {}".format((len(premises_already_wanting_to_adopt) + len(premises_not_wanting_to_adopt))))
+    LOGGER.debug("-- premises not wanting to connect %s",
+                 len([dist.total_prems for dist in distributions_not_wanting_to_adopt]))
+    LOGGER.debug("-- premises wanting to connect %s",
+                 sum([dist.total_prems for dist in new_distributions_wanting_to_adopt]))
+    LOGGER.debug("-- total premises %s",
+                 sum([dist.total_prems for dist in distributions_already_wanting_to_adopt]) +
+                 sum([dist.total_prems for dist in distributions_not_wanting_to_adopt]))
 
-    premises_adoption = []
+    distribution_adoption = []
 
-    #cycle through number of premises
-    for premises in new_premises_wanting_to_adopt:
+    # cycle through number of premises
+    for distribution in new_distributions_wanting_to_adopt:
 
-        #turn adoption_desirability to True
-        premises.adoption_desirability = True
+        # turn adoption_desirability to True
+        distribution.adoption_desirability = True
 
-        #append adopted premises to list
-        premises_adoption.append((premises.id, premises.adoption_desirability))
+        # append adopted premises to list
+        distribution_adoption.append((distribution.id, distribution.adoption_desirability))
 
-    return premises_adoption
+    return distribution_adoption

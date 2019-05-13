@@ -1,7 +1,6 @@
 classname: DigitalCommsWrapper
 description: The Cambridge Communications Assessment Model provides analytics for
-  decision-makers on (i) capacity-demand and (ii) risk, vulnerability and resilience.
-  The fixed, wireless and satellite sectors are currently under development.
+  decision-makers on the capacity, coverage and cost of digital infrastructure strategies.
 initial_conditions: []
 inputs:
 - name: adoption
@@ -38,7 +37,7 @@ outputs:
 - name: premises_by_distribution
   spatial_resolution: broadband_distributions
   temporal_resolution: annual
-  units: premises 
+  units: premises
 - name: premises_adoption_desirability
   spatial_resolution: national
   temporal_resolution: annual
@@ -54,7 +53,7 @@ outputs:
 - name: percentage_of_premises_passed_with_fttp
   spatial_resolution: national
   temporal_resolution: annual
-  units: premises 
+  units: premises
 - name: premises_connected_with_fttp
   spatial_resolution: national
   temporal_resolution: annual
@@ -62,7 +61,7 @@ outputs:
 - name: percentage_of_premises_connected_with_fttp
   spatial_resolution: national
   temporal_resolution: annual
-  units: premises 
+  units: premises
 - name: premises_passed_with_fttdp
   spatial_resolution: national
   temporal_resolution: annual
@@ -70,7 +69,7 @@ outputs:
 - name: percentage_of_premises_passed_with_fttdp
   spatial_resolution: national
   temporal_resolution: annual
-  units: premises 
+  units: premises
 - name: premises_connected_with_fttdp
   spatial_resolution: national
   temporal_resolution: annual
@@ -78,7 +77,7 @@ outputs:
 - name: percentage_of_premises_connected_with_fttdp
   spatial_resolution: national
   temporal_resolution: annual
-  units: premises   
+  units: premises
 - name: percentage_of_premises_with_fttc
   spatial_resolution: national
   temporal_resolution: annual
@@ -108,8 +107,8 @@ parameters:
   units: 'text'
 - absolute_range: (0, 1000)
   default_value: 10
-  description: The cost of installing a fiber link
-  name: costs_links_fiber_meter
+  description: The cost of installing a fibre link
+  name: costs_links_fibre_meter
   suggested_range: (0, 100)
   units: GBP
 - absolute_range: (0, 1000)
@@ -126,7 +125,7 @@ parameters:
   units: GBP
 - absolute_range: (0, 100000)
   default_value: 20000
-  description: The costs to enable an exchange to service GFast
+  description: The costs to enable an exchange to service fttdp
   name: costs_assets_exchange_fttdp
   suggested_range: (0, 100000)
   units: GBP
@@ -145,12 +144,12 @@ parameters:
 - absolute_range: (0, 100000)
   default_value: 500
   description: The costs to enable a cabinet to service FTTP
-  name: costs_assets_upgrade_cabinet_fttp
+  name: costs_assets_cabinet_fttp
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 100000)
   default_value: 2000
-  description: The costs to enable a cabinet to service GFast
+  description: The costs to enable a cabinet to service fttdp
   name: costs_assets_cabinet_fttdp
   suggested_range: (0, 100000)
   units: GBP
@@ -168,7 +167,7 @@ parameters:
   units: GBP
 - absolute_range: (0, 100000)
   default_value: 400
-  description: The costs to enable a distribution to service GFast
+  description: The costs to enable a distribution to service fttdp
   name: costs_assets_distribution_fttdp_8_ports
   suggested_range: (0, 100000)
   units: GBP
@@ -210,7 +209,7 @@ parameters:
   units: GBP
 - absolute_range: (0, 100000)
   default_value: 37
-  description: The costs to enable a premise to receive GFast
+  description: The costs to enable a premise to receive fttdp
   name: costs_assets_premise_fttdp_modem
   suggested_range: (0, 100000)
   units: GBP
@@ -234,7 +233,7 @@ parameters:
 #   units: GBP
 # - absolute_range: (0, 100000)
 #   default_value: 10000
-#   description: The benefits to enable a premise to receive GFast
+#   description: The benefits to enable a premise to receive fttdp
 #   name: benefits_assets_premise_fttdp
 #   suggested_range: (0, 100000)
 #   units: GBP
@@ -251,7 +250,7 @@ parameters:
   suggested_range: (0, 100000)
   units: GBP
 - absolute_range: (0, 10000000000)
-  default_value: 5000000
+  default_value: 50000000
   description: The yearly budget to spend on infrastructure
   name: annual_budget
   suggested_range: (0, 1000000000)

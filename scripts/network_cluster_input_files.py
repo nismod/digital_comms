@@ -32,6 +32,8 @@ DATA_RAW_DATA = os.path.join(BASE_PATH, 'raw', 'a_fixed_model')
 DATA_RAW_SHAPES = os.path.join(BASE_PATH, 'raw', 'd_shapes')
 DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 
+print('running network_cluster_input_files.py')
+
 #####################################
 # READ LOOK UP TABLE (LUT) DATA
 #####################################
@@ -485,14 +487,14 @@ if __name__ == "__main__":
 
     elif sys.argv[1] == 'geotype_selection':
         selection = [
-            'WEWPRI', # Primrose Hill (Inner London)
-            'MYCHA', # Chapeltown (Major City)
-            'STBNMTH', # Bournemouth (Minor City)
-            'EACAM', # Cambridge (>20,000)
-            'NEILB', # Ingleby Barwick(>10,000)
-            'STWINCH', #Winchester (>3,000)
-            'WWTORQ', #Torquay (>,1000)
-            'EACOM', #Comberton (<1000)
+            'exchange_WEWPRI', # Primrose Hill (Inner London)
+            'exchange_MYCHA', # Chapeltown (Major City)
+            'exchange_STBNMTH', # Bournemouth (Minor City)
+            'exchange_EACAM', # Cambridge (>20,000)
+            'exchange_NEILB', # Ingleby Barwick(>10,000)
+            'exchange_STWINCH', #Winchester (>3,000)
+            'exchange_WWTORQ', #Torquay (>,1000)
+            'exchange_EACOM', #Comberton (<1000)
         ]
 
     elif sys.argv[1] == 'sample':
@@ -737,6 +739,84 @@ if __name__ == "__main__":
             'exchange_NEWYL',
             'exchange_NEWYL',
             'exchange_NENTW',
+        ]
+        
+    elif sys.argv[1] == 'cambridgeshire':
+       selection = [
+           'exchange_EAARR',
+           'exchange_EABTM',
+           'exchange_EABWL',
+           'exchange_EACAM',
+           'exchange_EACAX',
+           'exchange_EACFH',
+           'exchange_EACHY',
+           'exchange_EACOM',
+           'exchange_EACRH',
+           'exchange_EACTM',
+           'exchange_EACTP',
+           'exchange_EAELY',
+           'exchange_EAESW',
+           'exchange_EAFDM',
+           'exchange_EAFOW',
+           'exchange_EAFUL',
+           'exchange_EAGIR',
+           'exchange_EAHDM',
+           'exchange_EAHIS',
+           'exchange_EAHST',
+           'exchange_EAKEN',
+           'exchange_EALNT',
+           'exchange_EALPT',
+           'exchange_EAMBN',
+           'exchange_EAPRI',
+           'exchange_EAPYM',
+           'exchange_EASCI',
+           'exchange_EASIX',
+           'exchange_EASMD',
+           'exchange_EASOH',
+           'exchange_EASRM',
+           'exchange_EASST',
+           'exchange_EASTW',
+           'exchange_EASUT',
+           'exchange_EASWV',
+           'exchange_EATEV',
+           'exchange_EATRU',
+           'exchange_EAWLM',
+           'exchange_EAWTB',
+           'exchange_EAWWR',
+           'exchange_EMABRIP',
+           'exchange_EMBENWI',
+           'exchange_EMBUCKD',
+           'exchange_EMBYTHO',
+           'exchange_EMCHATT',
+           'exchange_EMCHRIS',
+           'exchange_EMCROXT',
+           'exchange_EMDODDI',
+           'exchange_EMELTON',
+           'exchange_EMFRIDA',
+           'exchange_EMGUYHI',
+           'exchange_EMHNDON',
+           'exchange_EMKMBLT',
+           'exchange_EMMAARC',
+           'exchange_EMMANEA',
+           'exchange_EMMERES',
+           'exchange_EMNWTON',
+           'exchange_EMPADVE',
+           'exchange_EMPAPSA',
+           'exchange_EMRMSEY',
+           'exchange_EMSAWTR',
+           'exchange_EMSOSHM',
+           'exchange_EMSTIVE',
+           'exchange_EMSTNEO',
+           'exchange_EMTRVES',
+           'exchange_EMWARBY',
+           'exchange_EMWHITT',
+           'exchange_EMWINWI',
+           'exchange_EMWISSM',
+           'exchange_EMWOLEY',
+           'exchange_EMWSBCH',
+           'exchange_EMYXLEY',
+           'exchange_SMGA',
+           'exchange_SMGG',
         ]
 
     print(*selection, sep='\n')

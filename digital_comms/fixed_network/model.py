@@ -1,63 +1,85 @@
 """Cambridge Communications Assessment Model
 """
 from collections import defaultdict
-from itertools import tee
-from pprint import pprint
 from math import ceil
+from abc import abstractmethod, abstractproperty, ABCMeta
+from typing import Dict
 
 #####################
 # MODEL
 #####################
 
-class ICTManager(object):
-    """Model controller class."""
 
+class NetworkManager():
+    """Model controller class.
+
+    Parameters
+    ----------
+    assets : dict
+        Contains keys for Premises, Distribution Points, Cabinets and Exchanges,
+        with each value constituting a list of respective assets.
+    links : list_of_dicts
+        Contains all links between Premises, Distribution Points, Cabinets and Exchanges.
+    parameters : dict
+        Contains all parameters from 'digital_comms.yml'.
+
+    Attributes
+    ----------
+    assets
+    links
+    number_of_assets
+    number_of_links
+    total_link_length
+    avg_link_length
+    lads
+
+    Methods
+    -------
+    update_adoption_desirability
+        Takes exogenously defined annual demand and updates premises adoption desirability.
+    coverage
+        Allocates premises-level technology technologies to a dict of coverage_results by
+        Local Authority District.
+    aggregate_coverage
+        Calculates the sum and percentage coverage of premises-level technology by Local
+        Authority District.
+    capacity
+        Calculates the average premises connection.
+
+    """
     def __init__(self, assets, links, parameters):
-        self._links = {
-        }
 
-        self._links_from_premises = []
-        self._links_from_distributions = []
-        self._links_from_cabinets = []
-        self._links_from_exchanges = []
+        self._links = {}
+
+        self._links_distributions = []
+        self._links_cabinets = []
+        self._links_exchanges = []
+
         for link_dict in links:
             link = Link(link_dict, parameters)
-            origin = link.origin
-            self._links[origin] = link
-            if origin.startswith('premise'):
-                self._links_from_premises.append(link)
-            elif origin.startswith('distribution'):
-                self._links_from_distributions.append(link)
-            elif origin.startswith('cabinet'):
-                self._links_from_cabinets.append(link)
-            elif origin.startswith('exchange'):
-                self._links_from_exchanges.append(link)
 
-        self._premises = []
-        self._premises_by_id = {}
-        self._premises_by_lad = defaultdict(list)
-        self._premises_by_dist = defaultdict(list)
-        for premise in assets['premises']:
-            premise = Premise(
-                premise,
-                self._links.get(premise['id'], None),
-                parameters
-            )
-            self._premises.append(premise)
-            self._premises_by_id[premise.id] = premise
-            self._premises_by_lad[premise.lad].append(premise)
-            self._premises_by_dist[premise.connection].append(premise)
+            destination = link.dest
+            self._links[destination] = link
+
+            if destination.startswith('distribution'):
+                self._links_distributions.append(link)
+            elif destination.startswith('cabinet'):
+                self._links_cabinets.append(link)
+            elif destination.startswith('exchange'):
+                self._links_exchanges.append(link)
 
         self._distributions = []
+        self._distributions_by_lad = defaultdict(list)
         self._distributions_by_cab = defaultdict(list)
         for distribution in assets['distributions']:
             distribution = Distribution(
                 distribution,
-                self._premises_by_dist[distribution['id']],
                 self._links.get(distribution['id'], None),
-                parameters
+                parameters,
             )
+
             self._distributions.append(distribution)
+            self._distributions_by_lad[distribution.lad].append(distribution)
             self._distributions_by_cab[distribution.connection].append(distribution)
 
         self._cabinets = []
@@ -77,76 +99,190 @@ class ICTManager(object):
             exchange = Exchange(
                 exchange,
                 self._cabinets_by_exchange[exchange['id']],
+                self._links.get(exchange['id'], None),
                 parameters
             )
             self._exchanges.append(exchange)
 
     def upgrade(self, interventions):
+        """Upgrades the system with a list of ``interventions``
 
-        for asset_id, action, costs in interventions:
+        Arguments
+        ---------
+        interventions: list of tuple
+            A list of intervention tuples containing asset id and technology
+        """
+        for intervention in interventions:
+
+            asset_id = intervention[0]
+            technology = intervention[1]
 
             if asset_id.startswith('distribution'):
-                distribution = [distribution for distribution in self._distributions if distribution.id == asset_id][0]
-                distribution.upgrade(action)
+                distribution = [
+                    distribution
+                    for distribution in self._distributions
+                    if distribution.id == asset_id
+                ][0]
+                distribution.upgrade(technology)
+                print('upgrade')
 
             if asset_id.startswith('cabinet'):
                 cabinet = [cabinet for cabinet in self._cabinets if cabinet.id == asset_id][0]
-                cabinet.upgrade(action)
+                cabinet.upgrade(technology)
+
+            if asset_id.startswith('exchange'):
+                exchange = [exchange for exchange in self._exchanges if exchange.id == asset_id][0]
+                exchange.upgrade(technology)
 
     def update_adoption_desirability(self, adoption_desirability):
+        """
 
-        for premises_id, desirability_to_adopt in adoption_desirability:
-            premises = self._premises_by_id[premises_id]
-            premises.uprade_desirability_to_adopt(desirability_to_adopt)
+        Updates the state of the set of distributions, then computes new statistics
+        at the cabinet and exchange levels
+
+        Arguments
+        ---------
+        adoption_desirability : list of tuple
+        """
+
+        for distribution_id, desirability_to_adopt in adoption_desirability:
+            for distribution in self._distributions:
+                if distribution_id == distribution.id:
+                    distribution.update_desirability_to_adopt(desirability_to_adopt)
+
+        for cabinet in self._cabinets:
+            cabinet.compute()
+
+        for exchange in self._exchanges:
+            exchange.compute()
+
+    def get_total_upgrade_costs(self, tech):
+        upgrade_costs = {}
+
+        #find upgrade costs for dist, cab, exchange
+        for exchange in self._exchanges:
+            exchange_id = exchange.id
+            exchange_cost = exchange.upgrade_costs[tech]
+            cabs = self._cabinets_by_exchange[exchange_id]
+            for cab in cabs:
+                cab_id = cab.id
+                cab_cost = cab.upgrade_costs[tech]
+                dps = self._distributions_by_cab[cab_id]
+                for dp in dps:
+                    dp_id = dp.id
+                    dp_cost = dp.upgrade_costs[tech]
+                    upgrade_costs[dp_id] = (dp_cost, cab_cost, exchange_cost)
+
+        return upgrade_costs
+
+    def get_total_benefit(self, tech):
+        rollout_benefits = {}
+
+        #find upgrade costs for dist, cab, exchange
+        for exchange in self._exchanges:
+            exchange_id = exchange.id
+            exchange_benefit = exchange.rollout_benefits[tech]
+            cabs = self._cabinets_by_exchange[exchange_id]
+            for cab in cabs:
+                cab_id = cab.id
+                cab_benefit = cab.rollout_benefits[tech]
+                dps = self._distributions_by_cab[cab_id]
+                for dp in dps:
+                    dp_id = dp.id
+                    dp_benefit = dp.rollout_benefits[tech]
+                    rollout_benefits[dp_id] = (dp_benefit, cab_benefit, exchange_benefit)
+
+        return rollout_benefits
 
     def coverage(self):
         """
         define coverage
         """
-        premises_per_lad = self._premises_by_lad
+        distributions_per_lad = self._distributions_by_lad
 
         # run statistics on each lad
         coverage_results = {}
 
-        for lad in premises_per_lad:
-            sum_of_fttp = sum(premise.fttp for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
-            sum_of_fttdp = sum(premise.fttdp for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
-            sum_of_fttc = sum(premise.fttc for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
-            sum_of_adsl = sum(premise.adsl for premise in premises_per_lad[lad]) # contain  list of premises objects in the lad
+        for lad in distributions_per_lad:
+            # contain  list of premises objects in the lad
+            sum_of_fttp = sum(distribution.fttp for distribution in distributions_per_lad[lad])
 
-            num_premises = len(premises_per_lad[lad])
+            # contain  list of premises objects in the lad
+            sum_of_fttdp = sum(distribution.fttdp for distribution in distributions_per_lad[lad])
+
+            # contain  list of premises objects in the lad
+            sum_of_fttc = sum(distribution.fttc for distribution in distributions_per_lad[lad])
+
+            # contain  list of premises objects in the lad
+            sum_of_docsis3 = sum(distribution.docsis3 for distribution in distributions_per_lad[lad])
+
+            # contain  list of premises objects in the lad
+            sum_of_adsl = sum(distribution.adsl for distribution in distributions_per_lad[lad])
+
+            # contain  list of premises objects in the lad
+            num_premises = sum(distribution.total_prems for distribution in distributions_per_lad[lad])
 
             coverage_results[lad] = {
                 'num_premises': num_premises,
                 'num_fttp': sum_of_fttp,
                 'num_fttdp': sum_of_fttdp,
                 'num_fttc': sum_of_fttc,
+                'num_docsis3': sum_of_docsis3,
                 'num_adsl': sum_of_adsl
             }
 
         return coverage_results
 
-    def aggregate_coverage(self):
+    def aggregate_coverage(self, aggregation_geography):
         """
         define aggregate coverage
         """
-        premises_per_lad = self._premises_by_lad
-
         coverage_results = []
-        for lad in premises_per_lad.keys():
-            sum_of_fttp = sum(premise.fttp for premise in premises_per_lad[lad])
-            sum_of_fttdp = sum(premise.fttdp for premise in premises_per_lad[lad])
-            sum_of_fttc = sum(premise.fttc for premise in premises_per_lad[lad])
-            sum_of_adsl = sum(premise.adsl for premise in premises_per_lad[lad])
-            sum_of_premises = len(premises_per_lad[lad])
 
-            coverage_results.append({
-                'sum_of_fttp': sum_of_fttp,
-                'sum_of_fttdp': sum_of_fttdp,
-                'sum_of_fttc': sum_of_fttc,
-                'sum_of_adsl': sum_of_adsl,
-                'sum_of_premises': sum_of_premises
-            })
+        if aggregation_geography == 'exchange':
+
+            for exchange in self._exchanges:
+
+                coverage_results.append({
+                    'id': exchange.id,
+                    'sum_of_fttp': exchange.fttp,
+                    'sum_of_fttdp': exchange.fttdp,
+                    'sum_of_fttc': exchange.fttc,
+                    'sum_of_docsis3': exchange.docsis3,
+                    'sum_of_adsl': exchange.adsl,
+                    'sum_of_premises': exchange.total_prems,
+                })
+
+        elif aggregation_geography == 'lad':
+
+            assets_by_geography = self._distributions_by_lad
+
+            for area in assets_by_geography.keys():
+                sum_of_fttp = sum(
+                    distribution.fttp for distribution in assets_by_geography[area])
+                sum_of_fttdp = sum(
+                    distribution.fttdp for distribution in assets_by_geography[area])
+                sum_of_fttc = sum(
+                    distribution.fttc for distribution in assets_by_geography[area])
+                sum_of_docsis3 = sum(
+                    distribution.docsis3 for distribution in assets_by_geography[area])
+                sum_of_adsl = sum(
+                    distribution.adsl for distribution in assets_by_geography[area])
+                sum_of_premises = sum(
+                    distribution.total_prems for distribution in assets_by_geography[area])
+
+                coverage_results.append({
+                    'id': area,
+                    'sum_of_fttp': sum_of_fttp,
+                    'sum_of_fttdp': sum_of_fttdp,
+                    'sum_of_fttc': sum_of_fttc,
+                    'sum_of_docsis3': sum_of_docsis3,
+                    'sum_of_adsl': sum_of_adsl,
+                    'sum_of_premises': sum_of_premises
+                })
+
+        else:
+            raise ValueError('Did not recognise aggregation_geography')
 
         output = []
 
@@ -154,45 +290,137 @@ class ICTManager(object):
             aggregate_fttp = sum(item['sum_of_fttp'] for item in coverage_results)
             aggregate_fttdp = sum(item['sum_of_fttdp'] for item in coverage_results)
             aggregate_fttc = sum(item['sum_of_fttc'] for item in coverage_results)
+            aggregate_docsis3 = sum(item['sum_of_docsis3'] for item in coverage_results)
             aggregate_adsl = sum(item['sum_of_adsl'] for item in coverage_results)
             aggregate_premises = sum(item['sum_of_premises'] for item in coverage_results)
 
             output.append({
-                'percentage_of_premises_with_fttp': aggregate_fttp,
-                'percentage_of_premises_with_fttdp': aggregate_fttdp,
-                'percentage_of_premises_with_fttc': aggregate_fttc,
-                'percentage_of_premises_with_adsl': aggregate_adsl,
+                'id': item['id'],
+                'percentage_of_premises_with_fttp': round(aggregate_fttp / aggregate_premises * 100),
+                'percentage_of_premises_with_fttdp': round(aggregate_fttdp / aggregate_premises * 100),
+                'percentage_of_premises_with_fttc': round(aggregate_fttc / aggregate_premises * 100),
+                'percentage_of_premises_with_docsis3': round(aggregate_docsis3 / aggregate_premises * 100),
+                'percentage_of_premises_with_adsl': round(aggregate_adsl / aggregate_premises * 100),
                 'sum_of_premises': aggregate_premises
             })
 
         return output
 
-    def capacity(self):
+    def capacity(self, aggregation_geography):
         """
         define capacity
         """
+        technologies = ['fttp', 'fttdp', 'fttc', 'docsis3', 'adsl']
 
-        # group premises by lads
-        premises_per_lad = self._premises_by_lad
+        capacity_results = []
 
-        capacity_results = defaultdict(dict)
+        if aggregation_geography == 'exchange':
 
-        for lad in premises_per_lad.keys():
-            summed_capacity = sum(premise.connection_capacity for premise in premises_per_lad[lad])
-            number_of_connections = len(premises_per_lad[lad])
+            for asset in self._exchanges:
+                capacity_by_technology = []
+                total_prems = getattr(asset, 'total_prems')
 
-            capacity_results[lad] = {
-                'average_capacity': round(summed_capacity / number_of_connections, 2),
-            }
+                if asset.fttp == total_prems:
+                    #so expect 20 prems at 1000 each = 1000 mean
+                    average_capacity = (
+                        asset.fttp * asset.connection_capacity('fttp')
+                        / asset.total_prems
+                    )
+                elif asset.fttdp == total_prems:
+                    #so expect 20 prems at 300 each = 300 mean
+                    if asset.fttp == 0:
+                        average_capacity = (
+                            asset.fttdp * asset.connection_capacity('fttdp')
+                            / asset.total_prems
+                        )
+                    else:
+                    #so expect 10 prems at 300 each and 10 at 1000 = 650 mean
+                        new_fttdp = asset.fttp - asset.fttdp
+                        average_capacity = (
+                            ((asset.fttp * asset.connection_capacity('fttp')) +
+                            (new_fttdp * asset.connection_capacity('fttdp'))) /
+                            asset.total_prems
+                        )
+                else:
+                    for technology in technologies:
+                        number_of_premises_with_technology = getattr(asset, technology)
+                        if technology == 'adsl':
+                            fttp = getattr(asset, 'fttp')
+                            fttdp = getattr(asset, 'fttdp')
+                            fttc = getattr(asset, 'fttc')
+                            docsis3 = getattr(asset, 'docsis3')
+
+                            number_of_premises_with_technology = total_prems - (
+                                fttp + fttdp + fttc + docsis3
+                            )
+
+                            if number_of_premises_with_technology < 0:
+                                number_of_premises_with_technology == 0
+                            else:
+                                pass
+
+                        technology_capacity = asset.connection_capacity(technology)
+                        capacity = technology_capacity * number_of_premises_with_technology
+                        capacity_by_technology.append(capacity)
+
+                    summed_capacity = sum(capacity_by_technology)
+
+                    number_of_connections = asset.total_prems
+
+                    average_capacity = round(summed_capacity / number_of_connections)
+
+                capacity_results.append({
+                    'id': asset.id,
+                    'average_capacity': average_capacity,
+                })
+
+        elif aggregation_geography == 'lad':
+
+            assets_by_area = self._distributions_by_lad
+
+            for area in assets_by_area.keys():
+
+                capacity_by_technology = []
+
+                for asset in assets_by_area[area]:
+                    for technology in technologies:
+                        number_of_premises_with_technology = getattr(
+                            asset, technology)
+
+                        if technology == 'adsl':
+
+                            fttp = getattr(asset, 'fttp')
+                            fttdp = getattr(asset, 'fttdp')
+                            fttc = getattr(asset, 'fttc')
+                            docsis3 = getattr(asset, 'docsis3')
+                            total_prems = getattr(asset, 'total_prems')
+
+                            number_of_premises_with_technology = total_prems - (
+                                fttp + fttdp + fttc + docsis3
+                            )
+
+                        technology_capacity = asset.connection_capacity(technology)
+                        capacity = technology_capacity * number_of_premises_with_technology
+                        capacity_by_technology.append(capacity)
+
+                summed_capacity = sum(capacity_by_technology)
+
+                number_of_connections = sum([asset.total_prems for asset in assets_by_area[area]])
+
+                capacity_results.append({
+                    'id': area,
+                    'average_capacity': round(summed_capacity / number_of_connections),
+                })
+
+        else:
+            raise ValueError('Did not recognise aggregation_geography')
 
         return capacity_results
 
-
-    @property # shortcut for creating a read-only property
+    @property  # shortcut for creating a read-only property
     def assets(self):
         """Returns a certain subset of links"""
         return {
-            'premises':         self._premises,
             'distributions':    self._distributions,
             'cabinets':         self._cabinets,
             'exchanges':        self._exchanges
@@ -202,397 +430,511 @@ class ICTManager(object):
     def links(self):
         """Returns a certain subset of links"""
         return {
-            'premises':         self._links_from_premises,
-            'distributions':    self._links_from_distributions,
-            'cabinets':         self._links_from_cabinets,
-            'exchanges':        self._links_from_exchanges
+            'distributions':    self._links_distributions,
+            'cabinets':         self._links_cabinets,
+            'exchanges':        self._links_exchanges,
         }
 
+
+class Asset(metaclass=ABCMeta):
+    """Abstract fixed network node
+
+    An Asset with no ``clients`` is a distribution point
+
+    Arguments
+    ---------
+    clients : list, optional
+        An optional list of digital_comms.fixed_network.model:`Asset`
+    """
+
+    def __init__(self, clients=None):
+        self.id = None
+        if clients:
+            self._clients = clients
+        else:
+            self._clients = []
+        self.link = None
+
+    @abstractmethod
+    def compute(self):
+        raise NotImplementedError
+
+    @abstractproperty
+    def upgrade_costs(self):
+        return NotImplementedError
+
     @property
-    def number_of_assets(self):
-        """obj: Number of assets in the model
+    def fttp(self):
+        return sum([client.fttp for client in self._clients])
+
+    @property
+    def fttdp(self):
+        return sum([client.fttdp for client in self._clients])
+
+    @property
+    def fttc(self):
+        return sum([client.fttc for client in self._clients])
+
+    @property
+    def docsis3(self):
+        return sum([client.docsis3 for client in self._clients])
+
+    @property
+    def adsl(self):
+        return sum([client.adsl for client in self._clients])
+
+    @property
+    def total_prems(self):
+        return sum([client.total_prems for client in self._clients])
+
+    def upgrade(self, action):
+        """Upgrade the asset's clients with an ``action``
+
+        If a leaf asset (e.g. an Asset with no clients), upgrade
+        self.
+
+        Arguments
+        ---------
+        action : str
+
+        Notes
+        -----
+        Could check whether self is an instance of Distribution instead
+
         """
-        return {
-            'premises':         len(self.assets['premises']),
-            'distributions':    len(self.assets['distributions']),
-            'cabinets':         len(self.assets['cabinets']),
-            'exchanges':        len(self.assets['exchanges']),
-        }
+        if self._clients:
+            if self.link is not None:
+                self.link.upgrade('fibre')
+            for client in self._clients:
+                client.upgrade(action)
 
-    @property
-    def number_of_links(self):
-        """obj: Number of links in the model
-        """
-        return {
-            'premises':         len(self.links['premises']),
-            'distributions':    len(self.links['distributions']),
-            'cabinets':         len(self.links['cabinets']),
-            'exchanges':        len(self.links['exchanges']),
-        }
+        else:
+            if action in ('fttp'):
+                self._fttp = self.total_prems
+                self._fttdp = 0
+                self._fttc = 0
+                self._docsis3 = 0
+                self._adsl = 0
+                if self.link is not None:
+                    self.link.upgrade('fibre')
 
-    @property
-    def total_link_length(self):
-        """obj: Total link length in the model
-        """
-        return {
-            'premises':         sum(link.length for link in self.links['premises']),
-            'distributions':    sum(link.length for link in self.links['distributions']),
-            'cabinets':         sum(link.length for link in self.links['cabinets'])
-        }
-
-    @property
-    def avg_link_length(self):
-        return {
-            'premises':         self.total_link_length['premises'] / self.number_of_links['premises'],
-            'distributions':    self.total_link_length['distributions'] / self.number_of_links['distributions'],
-            'cabinets':         self.total_link_length['cabinets'] / self.number_of_links['cabinets']
-        }
-
-    @property
-    def lads(self):
-        """Returns a list of lads which have premises
-        """
-        return list(self._premises_by_lad.keys())
-
-class Exchange(object):
-    """Exchanges"""
-
-    def __init__(self, data, clients, parameters):
-        self.id = data["id"]
-        self.fttp = data["FTTP"]
-        self.fttdp = data["GFast"]
-        self.fttc = data["FTTC"]
-        self.adsl = data["ADSL"]
-
-        self.parameters = parameters
-        self._clients = clients
+            elif action in ('fttdp'):
+                self._fttp = 0
+                self._fttdp = self.total_prems
+                self._fttc = 0
+                self._docsis3 = 0
+                self._adsl = 0
 
         self.compute()
 
+    @property
+    def rollout_costs(self) -> Dict:
+        rollout_costs = {}
+        upgrade_costs = self.upgrade_costs
+        costs = [client.rollout_costs for client in self._clients]
+
+        for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
+            rollout_costs[tech] = upgrade_costs[tech] + \
+                sum(cost[tech] for cost in costs)
+        return rollout_costs
+
+    @property
+    def rollout_benefits(self) -> Dict:
+        rollout_benefits = {}
+        benefits = [client.rollout_benefits for client in self._clients]
+        for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
+            rollout_benefits[tech] = sum(benefit[tech] for benefit in benefits)
+        return rollout_benefits
+
+    @property
+    def rollout_bcr(self) -> Dict:
+        rollout_bcr = {}
+        benefits = self.rollout_benefits
+        costs = self.rollout_costs
+        for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
+            rollout_bcr[tech] = _calculate_benefit_cost_ratio(
+                benefits[tech], costs[tech])
+        return rollout_bcr
+
+    @property
+    def total_potential_benefit(self) -> Dict:
+        total_potential_benefit = {}
+        benefits = [client.total_potential_benefit for client in self._clients]
+        for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
+            total_potential_benefit[tech] = sum(benefit[tech] for benefit in benefits)
+        return total_potential_benefit
+
+    @property
+    def total_potential_bcr(self) -> Dict:
+        total_potential_bcr = {}
+        benefit = self.total_potential_benefit
+        cost = self.rollout_costs
+        for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
+            total_potential_bcr[tech] = _calculate_benefit_cost_ratio(
+                benefit[tech],
+                cost[tech]
+                )
+        return total_potential_bcr
+
+
+class Exchange(Asset):
+    """Exchange object
+
+    Arguments
+    ---------
+    data : dict
+        Contains asset data including, id, name, postcode, region, county and available
+        technologies.
+    clients : list_of_objects
+        Contains all assets (Cabinets) served by an Exchange.
+    link
+    parameters : dict
+        Contains all parameters from 'digital_comms.yml'.
+
+    """
+
+    def __init__(self, data, clients, link, parameters):
+        super().__init__(clients)
+        self.id = data["id"]
+        self.parameters = parameters
+        self._clients = clients
+
+        self.link = link
+
+        self.compute()
+
+    @property
+    def upgrade_costs(self) -> Dict:
+        upgrade_costs = {}
+        upgrade_costs['fttp'] = (
+            (self.parameters['costs_assets_exchange_fttp'] if self.fttp == 0 else 0)
+            +
+            (self.link.upgrade_costs['fibre'] if self.link is not None else 0))
+        upgrade_costs['fttdp'] = (
+            (self.parameters['costs_assets_exchange_fttdp'] if self.fttdp == 0 else 0)
+            +
+            (self.link.upgrade_costs['fibre'] if self.link is not None else 0))
+        upgrade_costs['fttc'] = (
+            (self.parameters['costs_assets_exchange_fttc'] if self.fttc == 0 else 0)
+            +
+            (self.link.upgrade_costs['fibre'] if self.link is not None else 0))
+        upgrade_costs['adsl'] = (
+            self.parameters['costs_assets_exchange_adsl'] if self.adsl == 0 else 0)
+        return upgrade_costs
+
     def compute(self):
-        # Upgrade costs
-        self.upgrade_costs = {}
-        self.upgrade_costs['fttp'] = self.parameters['costs_assets_exchange_fttp'] if self.fttp == 0 else 0
-        self.upgrade_costs['fttdp'] = self.parameters['costs_assets_exchange_fttdp'] if self.fttdp == 0 else 0
-        self.upgrade_costs['fttc'] = self.parameters['costs_assets_exchange_fttc'] if self.fttc == 0 else 0
-        self.upgrade_costs['adsl'] = self.parameters['costs_assets_exchange_adsl'] if self.adsl == 0 else 0
+        """Calculate upgrade costs and benefits
+        """
 
-        # Rollout costs
-        self.rollout_costs = {}
-        self.rollout_costs['fttp'] = self.upgrade_costs['fttp'] + sum(client.rollout_costs['fttp'] for client in self._clients)
-        self.rollout_costs['fttdp'] = self.upgrade_costs['fttdp'] + sum(client.rollout_costs['fttdp'] for client in self._clients)
-        self.rollout_costs['fttc'] = self.upgrade_costs['fttc'] + sum(client.rollout_costs['fttc'] for client in self._clients)
-        self.rollout_costs['adsl'] = self.upgrade_costs['adsl'] + sum(client.rollout_costs['adsl'] for client in self._clients)
-
-        # Rollout benefits
-        self.rollout_benefits = {}
-        self.rollout_benefits['fttp'] = sum(client.rollout_benefits['fttp'] for client in self._clients)
-        self.rollout_benefits['fttdp'] = sum(client.rollout_benefits['fttdp'] for client in self._clients)
-        self.rollout_benefits['fttc'] = sum(client.rollout_benefits['fttc'] for client in self._clients)
-        self.rollout_benefits['adsl'] = sum(client.rollout_benefits['adsl'] for client in self._clients)
-
-        # Benefit-cost ratio
-        self.rollout_bcr = {}
-        self.rollout_bcr['fttp'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttp'], self.rollout_costs['fttp'])
-        self.rollout_bcr['fttdp'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttdp'], self.rollout_costs['fttdp'])
-        self.rollout_bcr['fttc'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttc'], self.rollout_costs['fttc'])
-        self.rollout_bcr['adsl'] = _calculate_benefit_cost_ratio(self.rollout_benefits['adsl'], self.rollout_costs['adsl'])
+        self.list_of_asset_costs = []
+        self.list_of_asset_costs.append({
+            'id': self.id,
+            'costs_assets_exchange_fttp':
+                (self.parameters['costs_assets_exchange_fttp'] if self.fttp == 0 else 0),
+            'link_upgrade_costs':
+                (self.link.upgrade_costs['fibre'] if self.link is not None else 0),
+            'total_cost': (
+                (self.parameters['costs_assets_exchange_fttp'] if self.fttp == 0 else 0)
+                +
+                (self.link.upgrade_costs['fibre'] if self.link is not None else 0))
+        })
 
     def __repr__(self):
         return "<Exchange id:{}>".format(self.id)
 
+    def connection_capacity(self, technology):
+        capacity = _generic_connection_capacity(technology)
+        return capacity
 
-class Cabinet(object):
-    """Cabinets"""
+
+class Cabinet(Asset):
+    """Cabinet object
+
+    Parameters
+    ----------
+    data : dict
+        Contains asset data including, id, name, connection and available technologies.
+    clients : list_of_objects
+        Contains all assets served.
+    link : TODO
+        TODO
+    parameters : dict
+        Contains all parameters from 'digital_comms.yml'.
+
+    """
+    def __init__(self, data, clients, link, parameters):
+        super().__init__(clients)
+        # Asset parameters
+        self.id = data["id"]
+        self.connection = data["connection"]
+        self.parameters = parameters
+        self._clients = clients
+
+        self.link = link
+
+        self.compute()
+
     def __repr__(self):
         return "<Cabinet id:{}>".format(self.id)
 
-    def __init__(self, data, clients, link, parameters):
+    @property
+    def upgrade_costs(self) -> Dict:
 
-        # Asset parameters
-        self.id = data["id"]
-        self.connection = data["connection"]
-        self.fttp = data["FTTP"]
-        self.fttdp = data["GFast"]
-        self.fttc = data["FTTC"]
-        self.adsl = data["ADSL"]
-        self.parameters = parameters
+        upgrade_costs = {}
 
-        # Link parameters
-        self._clients = clients
-        self.link = link
-
-        self.compute()
-
-    def compute(self):
-
-        # Upgrade costs
-        self.upgrade_costs = {}
-        self.upgrade_costs['fttp'] = (
-            (self.parameters['costs_assets_upgrade_cabinet_fttp'] * ceil(len(self._clients) / 32)
-             if self.fttp == 0 else 0)
+        upgrade_costs['fttp'] = (
+            (
+                self.parameters['costs_assets_cabinet_fttp'] \
+                * ceil(len(self._clients) / 32) \
+                if self.fttp == 0 else 0
+            )
             +
-            (self.link.upgrade_costs['fiber'] if self.link != None else 0)
+            (self.link.upgrade_costs['fibre'] if self.link is not None else 0)
         )
-        self.upgrade_costs['fttdp'] = (
+        upgrade_costs['fttdp'] = (
             (self.parameters['costs_assets_cabinet_fttdp'] if self.fttdp == 0 else 0)
             +
-            (self.link.upgrade_costs['fiber'] if self.link != None else 0)
+            (self.link.upgrade_costs['fibre'] if self.link is not None else 0)
         )
-        self.upgrade_costs['fttc'] = (
+        upgrade_costs['fttc'] = (
             (self.parameters['costs_assets_cabinet_fttc'] if self.fttc == 0 else 0)
             +
-            (self.link.upgrade_costs['fiber'] if self.link != None else 0)
+            (self.link.upgrade_costs['fibre'] if self.link is not None else 0)
         )
-        self.upgrade_costs['adsl'] = (
+        upgrade_costs['adsl'] = (
             (self.parameters['costs_assets_cabinet_adsl'] if self.adsl == 0 else 0)
             +
-            (self.link.upgrade_costs['copper'] if self.link != None else 0)
+            (self.link.upgrade_costs['copper'] if self.link is not None else 0)
         )
 
-        # Rollout costs
-        self.rollout_costs = {}
-        self.rollout_costs['fttp'] = self.upgrade_costs['fttp'] + sum(client.rollout_costs['fttp'] for client in self._clients)
-        self.rollout_costs['fttdp'] = self.upgrade_costs['fttdp'] + sum(client.rollout_costs['fttdp'] for client in self._clients)
-        self.rollout_costs['fttc'] = self.upgrade_costs['fttc'] + sum(client.rollout_costs['fttc'] for client in self._clients)
-        self.rollout_costs['adsl'] = self.upgrade_costs['adsl'] + sum(client.rollout_costs['adsl'] for client in self._clients)
+        return upgrade_costs
 
-        # Rollout benefits
-        self.rollout_benefits = {}
-        self.rollout_benefits['fttp'] = sum(client.rollout_benefits['fttp'] for client in self._clients)
-        self.rollout_benefits['fttdp'] = sum(client.rollout_benefits['fttdp'] for client in self._clients)
-        self.rollout_benefits['fttc'] = sum(client.rollout_benefits['fttc'] for client in self._clients)
-        self.rollout_benefits['adsl'] = sum(client.rollout_benefits['adsl'] for client in self._clients)
+    def compute(self):
+        """Calculates upgrade costs and benefits.
+        """
 
-        # Benefit-cost ratio
-        self.rollout_bcr = {}
-        self.rollout_bcr['fttp'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttp'], self.rollout_costs['fttp'])
-        self.rollout_bcr['fttdp'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttdp'], self.rollout_costs['fttdp'])
-        self.rollout_bcr['fttc'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttc'], self.rollout_costs['fttc'])
-        self.rollout_bcr['adsl'] = _calculate_benefit_cost_ratio(self.rollout_benefits['adsl'], self.rollout_costs['adsl'])
-
-    def upgrade(self, action):
-
-        if action == 'rollout_fttp':
-            self.fttp = 1
-            if self.link != None:
-                self.link.upgrade('fiber')
-            for client in self._clients:
-                client.upgrade(action)
-
-        if action == 'rollout_fttdp':
-            self.fttp = 1
-            if self.link != None:
-                self.link.upgrade('fiber')
-            for client in self._clients:
-                client.upgrade(action)
-
-        self.compute()
+        self.list_of_asset_costs = []
+        self.list_of_asset_costs.append({
+            'id': self.id,
+            'costs_assets_cabinet_fttp': (self.parameters['costs_assets_cabinet_fttp'] \
+                * ceil(len(self._clients) / 32) \
+                if self.fttp == 0 else 0),
+            'link_upgrade_costs': (self.link.upgrade_costs['fibre'] if self.link is not None else 0),
+            'total_cost': (
+            (
+                self.parameters['costs_assets_cabinet_fttp'] \
+                * ceil(len(self._clients) / 32) \
+                if self.fttp == 0 else 0
+            )
+            +
+            (self.link.upgrade_costs['fibre'] if self.link is not None else 0)
+        )
+        })
 
 
-class Distribution(object):
-    """Distribution"""
+class Distribution(Asset):
+    """Distribution object
 
-    def __init__(self, data, clients, link, parameters):
-
+    Parameters
+    ----------
+    data : dict
+        Contains asset data including, id, name, connection and available technologies.
+    clients : list_of_objects
+        Contains all assets served.
+    link : TODO
+        TODO
+    parameters : dict
+        Contains all parameters from 'digital_comms.yml'.
+    """
+    def __init__(self, data, link, parameters):
+        super().__init__()
         # Asset parameters
         self.id = data["id"]
+        self.lad = data["lad"]
         self.connection = data["connection"]
-        self.fttp = data["FTTP"]
-        self.fttdp = data["GFast"]
-        self.fttc = data["FTTC"]
-        self.adsl = data["ADSL"]
+        self._fttp = int(data["fttp"])
+        self._fttdp = int(data["fttdp"])
+        self._fttc = int(data["fttc"])
+        self._docsis3 = int(data["docsis3"])
+        self._adsl = int(data["adsl"])
+        self._total_prems = int(data['total_prems'])
+        self.wta = float(data["wta"])
+        self.wtp = int(data["wtp"])
+        self.adoption_desirability = False  # type: bool
+
         self.parameters = parameters
 
         # Link parameters
-        self._clients = clients
         self.link = link
 
         self.compute()
 
+    @property
+    def fttp(self):
+        return self._fttp
+
+    @property
+    def fttdp(self):
+        return self._fttdp
+
+    @property
+    def fttc(self):
+        return self._fttc
+
+    @property
+    def docsis3(self):
+        return self._docsis3
+
+    @property
+    def adsl(self):
+        return self._adsl
+
+    @property
+    def total_prems(self):
+        return self._total_prems
+
     def compute(self):
 
+        self.list_of_asset_costs = []
+        self.list_of_asset_costs.append({
+            'id': self.id ,
+            'costs_assets_premise_fttp_modem': (self.parameters['costs_assets_premise_fttp_modem'] * self.total_prems),
+            'costs_assets_premise_fttp_optical_network_terminator': (self.parameters['costs_assets_premise_fttp_optical_network_terminator'] * self.total_prems if self.fttp == 0 else 0),
+            'planning_administration_cost': (self.parameters['planning_administration_cost'] * self.total_prems if self.fttp == 0 else 0),
+            'costs_assets_premise_fttp_optical_connection_point': (self.parameters['costs_assets_premise_fttp_optical_connection_point'] * (-(-self.total_prems // 32)) if self.fttp == 0 else 0),
+            'link_upgrade_costs': (self.link.upgrade_costs['fibre'] if self.link is not None else 0),
+            'total_cost': (
+            (self.parameters['costs_assets_premise_fttp_modem'] * self.total_prems) +
+            (self.parameters['costs_assets_premise_fttp_optical_network_terminator'] \
+                * self.total_prems if self.fttp == 0 else 0) +
+            (self.parameters['planning_administration_cost'] * self.total_prems \
+                if self.fttp == 0 else 0) +
+            (self.parameters['costs_assets_premise_fttp_optical_connection_point'] \
+                * (-(-self.total_prems // 32)) if self.fttp == 0 else 0) +
+            (self.link.upgrade_costs['fibre'] if self.link is not None else 0)
+        )
+        })
+
+    @property
+    def upgrade_costs(self):
         # Upgrade costs
-        self.upgrade_costs = {}
-        self.upgrade_costs['fttp'] = (
-            (self.parameters['costs_assets_premise_fttp_optical_connection_point'] * ceil(len(self._clients) / 32)
-             if self.fttp == 0 else 0)
-            +
-            (self.link.upgrade_costs['fiber'] if self.link != None else 0)
+        upgrade_costs = {}
+        upgrade_costs['fttp'] = (
+            (self.parameters['costs_assets_premise_fttp_modem'] * self.total_prems) +
+            (self.parameters['costs_assets_premise_fttp_optical_network_terminator']
+                * self.total_prems if self.fttp == 0 else 0) +
+            (self.parameters['planning_administration_cost'] * self.total_prems
+                if self.fttp == 0 else 0) +
+            (self.parameters['costs_assets_premise_fttp_optical_connection_point']
+                * (-(-self.total_prems // 32))) +
+            (self.link.upgrade_costs['fibre'] if self.link is not None else 0)
         )
-        self.upgrade_costs['fttdp'] = (
-            (self.parameters['costs_assets_distribution_fttdp_8_ports'] * ceil(len(self._clients) / 8)
-             if self.fttdp == 0 else 0)
-            +
-            (self.link.upgrade_costs['fiber'] if self.link != None else 0)
+        upgrade_costs['fttdp'] = (
+            (self.parameters['costs_assets_distribution_fttdp_8_ports']
+                * (-(-self.total_prems // 8)) if self.fttdp == 0 else 0) +
+            (self.parameters['costs_assets_premise_fttdp_modem'] * self.total_prems
+                if self.fttdp == 0 else 0)
         )
-        self.upgrade_costs['fttc'] = (
-            (self.parameters['costs_assets_distribution_fttc'] if self.fttc == 0 else 0)
-            +
-            (self.link.upgrade_costs['copper'] if self.link != None else 0)
+        upgrade_costs['fttc'] = (
+            (self.parameters['costs_assets_distribution_fttc'] if self.fttc == 0 else 0) +
+            (self.parameters['costs_assets_premise_fttc_modem'] if self.fttc == 0 else 0) +
+            (self.link.upgrade_costs['copper'] if self.link is not None else 0)
         )
-        self.upgrade_costs['adsl'] = (
-            (self.parameters['costs_assets_distribution_adsl'] if self.adsl == 0 else 0)
-            +
-            (self.link.upgrade_costs['copper'] if self.link != None else 0)
+        upgrade_costs['adsl'] = (
+            (self.parameters['costs_assets_distribution_adsl'] if self.adsl == 0 else 0) +
+            (self.parameters['costs_assets_premise_adsl_modem'] if self.adsl == 0 else 0) +
+            (self.link.upgrade_costs['copper'] if self.link is not None else 0)
         )
+        return upgrade_costs
 
-        # Rollout costs
-        self.rollout_costs = {}
-        self.rollout_costs['fttp'] = self.upgrade_costs['fttp'] + sum(client.rollout_costs['fttp'] for client in self._clients)
-        self.rollout_costs['fttdp'] = self.upgrade_costs['fttdp'] + sum(client.rollout_costs['fttdp'] for client in self._clients)
-        self.rollout_costs['fttc'] = self.upgrade_costs['fttc'] + sum(client.rollout_costs['fttc'] for client in self._clients)
-        self.rollout_costs['adsl'] = self.upgrade_costs['adsl'] + sum(client.rollout_costs['adsl'] for client in self._clients)
+    @property
+    def rollout_benefits(self):
+        """Compute the benefit of rolling out the technologies
 
-        # Rollout benefits
-        self.rollout_benefits = {}
-        self.rollout_benefits['fttp'] = sum(client.rollout_benefits['fttp'] for client in self._clients)
-        self.rollout_benefits['fttdp'] = sum(client.rollout_benefits['fttdp'] for client in self._clients)
-        self.rollout_benefits['fttc'] = sum(client.rollout_benefits['fttc'] for client in self._clients)
-        self.rollout_benefits['adsl'] = sum(client.rollout_benefits['adsl'] for client in self._clients)
+        Notes
+        -----
+        Problem: wtp is now aggregated to the distribution point
+        But households will adopt at different times
+        scenario adoption should really be done before the aggregation
+        or a logic developed which relies on the overall attractiveness
+        of the distribution point.
 
-        # Benefit-cost ratio
-        self.rollout_bcr = {}
-        self.rollout_bcr['fttp'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttp'], self.rollout_costs['fttp'])
-        self.rollout_bcr['fttdp'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttdp'], self.rollout_costs['fttdp'])
-        self.rollout_bcr['fttc'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttc'], self.rollout_costs['fttc'])
-        self.rollout_bcr['adsl'] = _calculate_benefit_cost_ratio(self.rollout_benefits['adsl'], self.rollout_costs['adsl'])
+        """
+        rollout_benefits = {}
+
+        benefit = self._calculate_revenue()
+
+        for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
+            if self.adoption_desirability:
+                if getattr(self, tech) == 0:
+                    rollout_benefits[tech] = benefit
+                else:
+                    rollout_benefits[tech] = 0
+            else:
+                rollout_benefits[tech] = 0
+        return rollout_benefits
+
+    @property
+    def total_potential_benefit(self):
+        total_potential_benefit = {}
+
+        benefit = self._calculate_revenue()
+
+        for tech in ['fttp', 'fttdp', 'fttc', 'adsl']:
+            total_potential_benefit[tech] = benefit
+        return total_potential_benefit
+
+    def _calculate_revenue(self):
+        return _calculate_potential_revenue(
+                self.wtp, self.parameters['months_per_year'],
+                self.parameters['payback_period'],
+                self.parameters['profit_margin'])
+
+    def connection_capacity(self, technology):
+        capacity = _generic_connection_capacity(technology)
+        return capacity
 
     def __repr__(self):
         return "<Distribution id:{}>".format(self.id)
 
-    def upgrade(self, action):
-
-        if action in ('rollout_fttp', 'subsidised_fttp'):
-            action = 'rollout_fttp'
-            self.fttp = 1
-            if self.link != None:
-                self.link.upgrade('fiber')
-            for client in self._clients:
-                client.upgrade(action)
-
-        if action in ('rollout_fttdp', 'subsidised_fttdp'):
-            action = 'rollout_fttdp'
-            self.fttdp = 1
-            if self.link != None:
-                self.link.upgrade('fiber')
-            for client in self._clients:
-                client.upgrade(action)
-
-        self.compute()
-
-class Premise(object):
-    """Premise"""
-
-    def __init__(self, data, link, parameters):
-
-        # Parameters
-        self.id = data['id']
-        self.connection = data['connection']
-        self.fttp = 0 #data['FTTP']
-        self.fttdp = 0 #data['FTTdp'] # FTTdp indicator is incorrect. Probably counting DOCSIS. Using FTTP for now. 
-        self.fttc = data['FTTC']
-        self.adsl = data['ADSL']
-        self.lad = data['lad']
-        self.wta = int(data['wta'])
-        self.wtp = int(data['wtp']) 
-        self.adoption_desirability = False
-
-        self.parameters = parameters
-
-        # Link parameters
-        self.link = link
-        self.compute()
-
-    def compute(self):
-
-        # Upgrade costs
-        self.upgrade_costs = {}
-        self.upgrade_costs['fttp'] = (
-              (self.parameters['costs_assets_premise_fttp_modem'] if self.fttp == 0 else 0)
-            + (self.parameters['costs_assets_premise_fttp_optical_network_terminator'] if self.fttp == 0 else 0)
-            + (self.parameters['planning_administration_cost'] if self.fttp == 0 else 0)
-            + self.link.upgrade_costs['fiber']
-        )
-        self.upgrade_costs['fttdp'] = (
-              (self.parameters['costs_assets_premise_fttdp_modem'] if self.fttdp == 0 else 0)
-            + self.link.upgrade_costs['copper']
-        )
-        self.upgrade_costs['fttc'] = (
-              (self.parameters['costs_assets_premise_fttc_modem'] if self.fttc == 0 else 0)
-            + self.link.upgrade_costs['copper']
-        )
-        self.upgrade_costs['adsl'] = (
-              (self.parameters['costs_assets_premise_adsl_modem'] if self.adsl == 0 else 0)
-            + self.link.upgrade_costs['copper']
-        )
-        # Rollout costs
-        self.rollout_costs = {}
-        self.rollout_costs['fttp'] = int(round(self.upgrade_costs['fttp'],0))
-        self.rollout_costs['fttdp'] = int(round(self.upgrade_costs['fttdp'],0))
-        self.rollout_costs['fttc'] = self.upgrade_costs['fttc']
-        self.rollout_costs['adsl'] = self.upgrade_costs['adsl']
-
-        # Rollout benefits 
-        self.rollout_benefits = {} 
-        self.rollout_benefits['fttp'] = (self.wtp * self.parameters['months_per_year'] * self.parameters['payback_period'] * ((100-self.parameters['profit_margin'])/100)) if self.adoption_desirability else 0
-        self.rollout_benefits['fttdp'] = (self.wtp * self.parameters['months_per_year'] * self.parameters['payback_period'] * ((100-self.parameters['profit_margin'])/100)) if self.adoption_desirability else 0
-        self.rollout_benefits['fttc'] = (self.wtp * self.parameters['months_per_year'] * self.parameters['payback_period'] * ((100-self.parameters['profit_margin'])/100)) if self.adoption_desirability else 0
-        self.rollout_benefits['adsl'] = (self.wtp * self.parameters['months_per_year'] * self.parameters['payback_period'] * ((100-self.parameters['profit_margin'])/100)) if self.adoption_desirability else 0
-
-        # Benefit-cost ratio
-        self.rollout_bcr = {}
-        self.rollout_bcr['fttp'] = int(_calculate_benefit_cost_ratio(self.rollout_benefits['fttp'], self.rollout_costs['fttp']))
-        self.rollout_bcr['fttdp'] = int(_calculate_benefit_cost_ratio(self.rollout_benefits['fttdp'], self.rollout_costs['fttdp']))
-        self.rollout_bcr['fttc'] = _calculate_benefit_cost_ratio(self.rollout_benefits['fttc'], self.rollout_costs['fttc'])
-        self.rollout_bcr['adsl'] = _calculate_benefit_cost_ratio(self.rollout_benefits['adsl'], self.rollout_costs['adsl'])
-
-        #determine best_connection:
-        if self.fttp == 1:
-            self.best_connection = 'fttp'
-        elif self.fttdp == 1:
-            self.best_connection = 'fttdp'
-        elif self.fttc == 1:
-            self.best_connection = 'fttc'
-        else:
-            self.best_connection = 'adsl'
-
-        #determine connection_capacity
-        if self.best_connection == 'fttp' :
-            self.connection_capacity = 250
-        elif self.best_connection == 'fttdp':
-            self.connection_capacity = 100
-        elif self.best_connection == 'fttc':
-            self.connection_capacity = 50
-        else:
-            self.connection_capacity = 10
-
-    def __repr__(self):
-        return "<Premise id:{}>".format(self.id)
-
-    def upgrade(self, action):
-        if action in ('rollout_fttp', 'subsidised_fttp'):
-            action = 'rollout_fttp'
-            self.fttp = 1
-            self.link.upgrade('fiber')
-        if action in ('rollout_fttdp', 'subsidised_fttdp'):
-            action = 'rollout_fttdp'
-            self.fttdp = 1
-
-        self.compute()
-
     def update_desirability_to_adopt(self, desirability_to_adopt):
+        self.adoption_desirability = desirability_to_adopt
+        self.compute()
 
-        self.adoption_desirability = True
 
-class Link(object):
-    """Links"""
+class Link():
+    """Link object
+
+    Parameters
+    ----------
+    data : list_of_dicts
+        TODO
+    parameters : dict
+        Contains all parameters from 'digital_comms.yml'.
+
+    Attributes
+    ----------
+    origin
+    dest
+    technology
+    length
+    parameters
+    compute()
+
+    Methods
+    -------
+    compute
+        Calculates upgrade costs and benefits.
+    upgrade
+        Upgrades any links with new technology.
+
+    """
 
     def __init__(self, data, parameters):
         self.origin = data["origin"]
         self.dest = data["dest"]
         self.technology = data["technology"]
-        self.length = data["length"]
+        self.length = int(round(float(data["length"])))
 
         self.parameters = parameters
         self.compute()
@@ -601,20 +943,49 @@ class Link(object):
 
         # Upgrade costs
         self.upgrade_costs = {}
-        self.upgrade_costs['fiber'] = self.parameters['costs_links_fiber_meter'] * self.length if self.technology != 'fiber' else 0
-        self.upgrade_costs['copper'] = self.parameters['costs_links_copper_meter'] * self.length if self.technology != 'copper' else 0
+        self.upgrade_costs['fibre'] = self.parameters['costs_links_fibre_meter'] * \
+            float(self.length) if self.technology != 'fibre' else 0
+        self.upgrade_costs['copper'] = self.parameters['costs_links_copper_meter'] * \
+            float(self.length) if self.technology != 'copper' else 0
 
     def __repr__(self):
         return "<Link origin:{} dest:{} length:{}>".format(self.origin, self.dest, self.length)
 
     def upgrade(self, technology):
-        if technology == 'fiber':
-            self.technology = 'fiber'
+        if technology == 'fibre':
+            self.technology = 'fibre'
 
         self.compute()
+
 
 def _calculate_benefit_cost_ratio(benefits, costs):
     try:
         return benefits / costs
     except ZeroDivisionError:
         return 0
+
+
+def _calculate_potential_revenue(wtp, months, payback_period, profit_margin):
+
+    try:
+        return int(wtp) * months * payback_period \
+               * (100 - profit_margin) / 100
+    except ZeroDivisionError:
+        return 0
+
+
+def _generic_connection_capacity(technology):
+
+    # determine connection_capacity
+    if technology == 'fttp':
+        connection_capacity = 1000
+    elif technology == 'fttdp':
+        connection_capacity = 300
+    elif technology == 'fttc':
+        connection_capacity = 80
+    elif technology == 'docsis3':
+        connection_capacity = 150
+    else:
+        connection_capacity = 24
+
+    return connection_capacity

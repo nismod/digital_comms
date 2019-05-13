@@ -108,6 +108,9 @@ class NetworkManager(object):
             lad_containing_pcd_sector = self.lads[lad_id]
             lad_containing_pcd_sector.add_pcd_sector(pcd_sector)
 
+    def results(self):
+        raise NotImplementedError("Mobile ICTManager results method not yet implemented")
+
 class LAD(object):
     """Local area district.
 
