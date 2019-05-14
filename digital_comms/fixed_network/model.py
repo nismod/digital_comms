@@ -96,6 +96,7 @@ class NetworkManager():
 
         self._exchanges = []
         for exchange in assets['exchanges']:
+
             exchange = Exchange(
                 exchange,
                 self._cabinets_by_exchange[exchange['id']],
@@ -194,44 +195,78 @@ class NetworkManager():
 
         return rollout_benefits
 
-    def coverage(self):
+    def coverage(self, aggregation_geography):
         """
         define coverage
         """
-        distributions_per_lad = self._distributions_by_lad
-
         # run statistics on each lad
-        coverage_results = {}
+        coverage_results = []
 
-        for lad in distributions_per_lad:
-            # contain  list of premises objects in the lad
-            sum_of_fttp = sum(distribution.fttp for distribution in distributions_per_lad[lad])
+        if aggregation_geography == 'exchange':
 
-            # contain  list of premises objects in the lad
-            sum_of_fttdp = sum(distribution.fttdp for distribution in distributions_per_lad[lad])
+            for exchange in self._exchanges:
 
-            # contain  list of premises objects in the lad
-            sum_of_fttc = sum(distribution.fttc for distribution in distributions_per_lad[lad])
+                coverage_results.append({
+                    'id': exchange.id,
+                    'fttp': exchange.fttp,
+                    'fttdp': exchange.fttdp,
+                    'fttc': exchange.fttc,
+                    'docsis3': exchange.docsis3,
+                    'adsl': exchange.adsl,
+                    'premises': exchange.total_prems,
+                })
 
-            # contain  list of premises objects in the lad
-            sum_of_docsis3 = sum(distribution.docsis3 for distribution in distributions_per_lad[lad])
+        elif aggregation_geography == 'lad':
 
-            # contain  list of premises objects in the lad
-            sum_of_adsl = sum(distribution.adsl for distribution in distributions_per_lad[lad])
+            distributions_per_lad = self._distributions_by_lad
 
-            # contain  list of premises objects in the lad
-            num_premises = sum(distribution.total_prems for distribution in distributions_per_lad[lad])
+            for lad in distributions_per_lad:
+                # contain  list of premises objects in the lad
+                sum_of_fttp = sum(distribution.fttp for distribution in distributions_per_lad[lad])
 
-            coverage_results[lad] = {
-                'num_premises': num_premises,
-                'num_fttp': sum_of_fttp,
-                'num_fttdp': sum_of_fttdp,
-                'num_fttc': sum_of_fttc,
-                'num_docsis3': sum_of_docsis3,
-                'num_adsl': sum_of_adsl
-            }
+                # contain  list of premises objects in the lad
+                sum_of_fttdp = sum(distribution.fttdp for distribution in distributions_per_lad[lad])
 
-        return coverage_results
+                # contain  list of premises objects in the lad
+                sum_of_fttc = sum(distribution.fttc for distribution in distributions_per_lad[lad])
+
+                # contain  list of premises objects in the lad
+                sum_of_docsis3 = sum(distribution.docsis3 for distribution in distributions_per_lad[lad])
+
+                # contain  list of premises objects in the lad
+                sum_of_adsl = sum(distribution.adsl for distribution in distributions_per_lad[lad])
+
+                # contain  list of premises objects in the lad
+                num_premises = sum(distribution.total_prems for distribution in distributions_per_lad[lad])
+
+                coverage_results.append({
+                    'id': lad,
+                    'fttp': sum_of_fttp,
+                    'fttdp': sum_of_fttdp,
+                    'fttc': sum_of_fttc,
+                    'docsis3': sum_of_docsis3,
+                    'adsl': sum_of_adsl,
+                    'premises': num_premises,
+                })
+
+        else:
+            raise ValueError('Did not recognise aggregation_geography')
+
+        output = []
+
+        for item in coverage_results:
+
+            output.append({
+                'id': item['id'],
+                'percentage_of_premises_with_fttp': round(item['fttp'] / item['premises'] * 100),
+                'percentage_of_premises_with_fttdp': round(item['fttdp'] / item['premises'] * 100),
+                'percentage_of_premises_with_fttc': round(item['fttc'] / item['premises'] * 100),
+                'percentage_of_premises_with_docsis3': round(item['docsis3'] / item['premises'] * 100),
+                'percentage_of_premises_with_adsl': round(item['adsl'] / item['premises'] * 100),
+                'sum_of_premises': item['premises']
+            })
+
+        return output
 
     def aggregate_coverage(self, aggregation_geography):
         """

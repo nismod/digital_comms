@@ -25,9 +25,9 @@ strategies: []
 timesteps:
 - 2019
 - 2020
-# - 2021
-# - 2022
-# - 2023
+- 2021
+- 2022
+- 2023
 # - 2024
 # - 2025
 # - 2026
@@ -42,22 +42,22 @@ timesteps:
     #     ('high', 'high_adoption'),
     #     ('low', 'low_adoption'),
     # ]
-    
+
     # strategies = [
-    #     ('fttp_s1', 'fttp_s1_market_based_roll_out'),    
-    #     ('fttp_s2', 'fttp_s2_rural_based_subsidy'),   
-    #     ('fttp_s3', 'fttp_s3_outside_in_subsidy'),    
-    #     ('fttdp_s1', 'fttdp_s1_market_based_roll_out'), 
-    #     ('fttdp_s2', 'fttdp_s2_rural_based_subsidy'), 
-    #     ('fttdp_s3', 'fttdp_s3_outside_in_subsidy'),   
+    #     ('fttp_s1', 'fttp_s1_market_based_roll_out'),
+    #     ('fttp_s2', 'fttp_s2_rural_based_subsidy'),
+    #     ('fttp_s3', 'fttp_s3_outside_in_subsidy'),
+    #     ('fttdp_s1', 'fttdp_s1_market_based_roll_out'),
+    #     ('fttdp_s2', 'fttdp_s2_rural_based_subsidy'),
+    #     ('fttdp_s3', 'fttdp_s3_outside_in_subsidy'),
     # ]
 
     strategies = [
         ('fttp_s1', 'fttp_s1_market_based_roll_out'),
         ('fttp_s2', 'fttp_s2_rural_based_subsidy'),
-        ('fttp_s3', 'fttp_s3_outside_in_subsidy'),   
+        ('fttp_s3', 'fttp_s3_outside_in_subsidy'),
     ]
-    
+
     scenarios = [
         ('base', 'baseline_adoption'),
     ]
@@ -68,7 +68,7 @@ timesteps:
         for strategy_abbr, strategy in strategies:
             name = "digital_comms_{}_{}".format(scenario_abbr, strategy_abbr)
             fname = os.path.join(base_path, name + ".yml")
-            technology = strategy_abbr[:-2] 
+            technology = strategy_abbr[:-2]
             with open(fname, 'w') as fh:
                 fh.write(
                     template.format(strategy=strategy, scenario=scenario, name=name, technology=technology)

@@ -7,9 +7,9 @@ import os
 
 import yaml
 
-from digital_comms.fixed_network.model import NetworkManager
-from digital_comms.fixed_network.interventions import decide_interventions
-from digital_comms.fixed_network.adoption import update_adoption_desirability
+from fixed_network.model import NetworkManager
+from fixed_network.interventions import decide_interventions
+from fixed_network.adoption import update_adoption_desirability
 
 
 def read_csv(filepath):
@@ -380,7 +380,7 @@ def write_exchange_results(system, year, technology, policy):
         results_file = open(results_filename, 'a', newline='')
         results_writer = csv.writer(results_file)
 
-    coverage = system.aggregate_coverage('exchange')
+    coverage = system.coverage('exchange')
     capacity = system.capacity('exchange')
 
     for area_dict in coverage:
@@ -420,7 +420,7 @@ def write_lad_results(system, year, technology, policy):
         results_file = open(results_filename, 'a', newline='')
         results_writer = csv.writer(results_file)
 
-    coverage = system.aggregate_coverage('lad')
+    coverage = system.coverage('lad')
     capacity = system.capacity('lad')
 
     for area_dict in coverage:
@@ -498,7 +498,7 @@ def run():
 
             # update the number of premises wanting to adopt (adoption_desirability)
             distribution_adoption_desirability_ids = update_adoption_desirability(
-                system._distributions, percentage_annual_increase, technology)
+                system._distributions, percentage_annual_increase)
 
             system.update_adoption_desirability(distribution_adoption_desirability_ids)
 
