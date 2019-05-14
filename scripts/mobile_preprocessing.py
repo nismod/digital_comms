@@ -3,18 +3,13 @@ import sys
 import configparser
 import csv
 import fiona
-# import numpy as np
-# import glob
-# import random
 
-#import matplotlib.pyplot as plt
 from shapely.geometry import shape, Point, LineString, Polygon, MultiPolygon, mapping, MultiPoint
 from shapely.ops import unary_union, cascaded_union
 from shapely.wkt import loads
 from shapely.prepared import prep
 from pyproj import Proj, transform
-# from sklearn.cluster import KMeans #DBSCAN,
-# from scipy.spatial import Voronoi, voronoi_plot_2d
+
 from rtree import index
 import tqdm as tqdm
 
@@ -95,8 +90,8 @@ def load_geotype_lut(lad_id):
             yield {
                 'postcode_sector': line['postcode_sector'],
                 'total_premises': total_premises,
-                'area': float(line['area']),
-                'premises_density': total_premises / float(line['area']),
+                'area_km2': float(line['area']),
+                'premises_density_km2': total_premises / float(line['area']),
             }
 
 def read_postcode_sectors(path):
@@ -105,7 +100,7 @@ def read_postcode_sectors(path):
 
     """
     with fiona.open(path, 'r') as pcd_sector_shapes:
-        return [pcd for pcd in pcd_sector_shapes]# if pcd['properties']['postcode'].startswith('TA')]
+        return [pcd for pcd in pcd_sector_shapes]# if pcd['properties']['postcode'].startswith('CB')]
 
 
 def add_lad_to_postcode_sector(postcode_sectors, lads):
@@ -132,7 +127,7 @@ def add_lad_to_postcode_sector(postcode_sectors, lads):
                     'type': postcode_sector['type'],
                     'geometry': postcode_sector['geometry'],
                     'properties':{
-                        'postcode': postcode_sector['properties']['postcode'],
+                        'postcode': postcode_sector['properties']['RMSect'],
                         'lad': n.object['properties']['name'],
                         'area': postcode_sector_shape.area,
                         },
@@ -140,6 +135,121 @@ def add_lad_to_postcode_sector(postcode_sectors, lads):
                 break
 
     return final_postcode_sectors
+
+
+def load_coverage_data(lad_id):
+    """
+    Import Ofcom Connected Nations coverage data (2018).
+
+    """
+    path = os.path.join(
+        DATA_RAW_INPUTS, 'ofcom_2018', '201809_mobile_laua_r02.csv'
+        )
+
+    with open(path, 'r') as source:
+        reader = csv.DictReader(source)
+        for line in reader:
+            if line['laua'] == lad_id:
+                return {
+                    'lad_id': line['laua'],
+                    'lad_name': line['laua_name'],
+                    '4G_geo_out_0': line['4G_geo_out_0'],
+                    '4G_geo_out_1': line['4G_geo_out_1'],
+                    '4G_geo_out_2': line['4G_geo_out_2'],
+                    '4G_geo_out_3': line['4G_geo_out_3'],
+                    '4G_geo_out_4': line['4G_geo_out_4'],
+                }
+
+def add_geotype_information(postcode_sectors, load_geotype_lut):
+
+    output = []
+
+    for postcode_sector in postcode_sectors:
+        lad_id = postcode_sector['properties']['lad']
+        # if lad_id.startswith('E07000008'):
+        for geotype_lut in load_geotype_lut(lad_id):
+            if postcode_sector['properties']['postcode'] == geotype_lut['postcode_sector']:
+                try:
+                    output.append({
+                        'type': postcode_sector['type'],
+                        'geometry': postcode_sector['geometry'],
+                        'properties': {
+                            'postcode': postcode_sector['properties']['postcode'],
+                            'lad': postcode_sector['properties']['lad'],
+                            'area': float(postcode_sector['properties']['area']),
+                            'premises': int(geotype_lut['total_premises']),
+                            'premises_density': int(geotype_lut['total_premises']) /
+                                float(postcode_sector['properties']['area']),
+                        }
+                    })
+
+                except:
+                    output.append({
+                        'type': postcode_sector['type'],
+                        'geometry': postcode_sector['geometry'],
+                        'properties': {
+                            'postcode': postcode_sector['properties']['postcode'],
+                            'lad': postcode_sector['properties']['lad'],
+                            'area': float(postcode_sector['properties']['area']),
+                            'premises': 'unknown',
+                            'premises_density': 'unknown',
+                        }
+                    })
+
+    return output
+
+
+def get_postcode_sectors_in_lad(postcode_sectors, lad_id):
+
+    for postcode_sector in postcode_sectors:
+        if postcode_sector['properties']['lad'] == lad_id:
+            if isinstance(postcode_sector['properties']['premises_density'], float):
+                yield postcode_sector
+
+
+def allocate_4G_coverage(postcode_sectors, lad_lut):
+
+    output = []
+
+    for lad_id in lad_lut:
+
+        sectors_in_lad = get_postcode_sectors_in_lad(postcode_sectors, lad_id)
+
+        total_area = sum([s['properties']['area'] for s in \
+            get_postcode_sectors_in_lad(postcode_sectors, lad_id)])
+
+        coverage_data = load_coverage_data(lad_id)
+
+        coverage_amount = float(coverage_data['4G_geo_out_4'])
+
+        covered_area = total_area * (coverage_amount/100)
+
+        ranked_postcode_sectors = sorted(
+            sectors_in_lad, key=lambda x: x['properties']['premises_density'], reverse=True
+            )
+
+        area_allocated = 0
+
+        for sector in ranked_postcode_sectors:
+
+            area = sector['properties']['area']
+            total = area + area_allocated
+
+            if total < covered_area:
+
+                sector['properties']['lte'] = 1
+                output.append(sector)
+                area_allocated += area
+
+            else:
+
+                sector['properties']['lte'] = 0
+                output.append(sector)
+
+                continue
+
+    return output
+
 
 def import_sitefinder_data():
     """
@@ -175,102 +285,6 @@ def import_sitefinder_data():
             site_id += 1
 
 
-def load_coverage_data(lad_id):
-    """
-    Import Ofcom Connected Nations coverage data (2018).
-
-    """
-    path = os.path.join(
-        DATA_RAW_INPUTS, 'ofcom_2018', '201809_mobile_laua_r02.csv'
-        )
-
-    with open(path, 'r') as source:
-        reader = csv.DictReader(source)
-        for line in reader:
-            if line['laua'] == lad_id:
-                return {
-                    'lad_id': line['laua'],
-                    'lad_name': line['laua_name'],
-                    '4G_geo_out_0': line['4G_geo_out_0'],
-                    '4G_geo_out_1': line['4G_geo_out_1'],
-                    '4G_geo_out_2': line['4G_geo_out_2'],
-                    '4G_geo_out_3': line['4G_geo_out_3'],
-                    '4G_geo_out_4': line['4G_geo_out_4'],
-                }
-
-def add_geotype_information(postcode_sectors, load_geotype_lut):
-
-    for postcode_sector in postcode_sectors:
-        lad_id = postcode_sector['properties']['lad']
-        for geotype_lut in load_geotype_lut(lad_id):
-            if postcode_sector['properties']['postcode'] == geotype_lut['postcode_sector']:
-                area = float(postcode_sector['properties']['area'] / 10e6)
-                premises = int(geotype_lut['total_premises'])
-                density = float(premises/area)
-                postcode_sector['properties']['premises_density'] = density
-
-    return postcode_sectors
-
-
-def get_postcode_sectors_in_lad(postcode_sectors, lad_id):
-
-    # for postcode_sector in postcode_sectors:
-    #     if postcode_sector['properties']['lad'] == lad_id:
-    #         yield postcode_sector
-
-    return [postcode_sector for postcode_sector in postcode_sectors if postcode_sector['properties']['lad'] == lad_id]
-
-def allocate_4G_coverage(postcode_sectors, lad_lut):
-
-    output = []
-
-    for lad_id in lad_lut:
-
-        sectors_in_lad = get_postcode_sectors_in_lad(postcode_sectors, lad_id)
-
-        for sector in sectors_in_lad:
-            try:
-                var = sector['properties']['premises_density']
-            except KeyError:
-                print('problem with {}'.format(sector['properties']['postcode']))
-                print(sector['properties'])
-                pass
-
-        total_area = sum([s['properties']['area'] for s in sectors_in_lad])/10e6
-        print('total_area (km^2) is {}'.format(total_area))
-        coverage_data = load_coverage_data(lad_id)
-
-        coverage_amount = float(coverage_data['4G_geo_out_4'])
-        # print('coverage_amount (%) is {}'.format(coverage_amount))
-        covered_area = total_area * (coverage_amount/100)
-        # print('covered_area (km^2) is {}'.format(covered_area))
-        ranked_postcode_sectors = sorted(sectors_in_lad, key=lambda x: x['properties']['premises_density'], reverse=True)
-        # print('covered (%) {}'.format(covered_area/total_area*100))
-        area_allocated = 0
-        # print([p['properties']['premises_density'] for p in ranked_postcode_sectors])
-        for sector in ranked_postcode_sectors:
-            area = sector['properties']['area'] / 10e6
-            total = area + area_allocated
-            if total < covered_area:
-                sector['properties']['lte'] = 1
-                # print('id is {}'.format(id_1))
-                # print('area is {}'.format(area))
-                # print('pre-area_allocated {}'.format(area_allocated))
-                output.append(sector)
-                area_allocated += area
-                print('post-area_allocated is {}'.format(area_allocated))
-            else:
-                sector['properties']['lte'] = 0
-                output.append(sector)
-                print('final coverage is {}'.format(area_allocated))
-                break
-
-
-            # print('completed {}'.format(lad_id))
-    # print('length of output is {}'.format(len(output)))
-    return output
-
-
 def add_coverage_to_sites(sitefinder_data, postcode_sectors):
 
     final_sites = []
@@ -298,7 +312,7 @@ def add_coverage_to_sites(sitefinder_data, postcode_sectors):
                         'Powerdbw': n.object['properties']['Powerdbw'],
                         'Maxpwrdbw': n.object['properties']['Maxpwrdbw'],
                         'Maxpwrdbm': n.object['properties']['Maxpwrdbm'],
-                        '4G': n.object['properties']['lte']
+                        'lte_4G': postcode_sector['properties']['lte']
                         }
                     })
 
@@ -347,24 +361,22 @@ def read_exchange_areas():
             yield area
 
 
-def select_routing_points(origin_points, dest_points, areas):
+def select_routing_points(origin_point, dest_points, areas):
 
     idx = index.Index(
         (i, Point(dest_point['geometry']['coordinates']).bounds, dest_point)
         for i, dest_point in enumerate(dest_points)
         )
 
-    for site in origin_points:
+    nearest_exchange = list(idx.nearest(
+            Point(origin_point['geometry']['coordinates']).bounds,
+            1, objects='raw'))[0]
 
-        nearest_exchange = list(idx.nearest(
-                Point(site['geometry']['coordinates']).bounds,
-                1, objects='raw'))[0]
+    exchange_id = nearest_exchange['properties']['id']
 
-        exchange_id = nearest_exchange['properties']['id']
-
-        for exchange_area in areas:
-            if exchange_area['properties']['id'] == exchange_id:
-                yield site, nearest_exchange, exchange_area
+    for exchange_area in areas:
+        if exchange_area['properties']['id'] == exchange_id:
+            return nearest_exchange, exchange_area
 
 def return_object_coordinates(object):
 
@@ -389,8 +401,22 @@ def generate_shortest_path(origin_points, dest_points, areas):
     processed_sites = []
     links = []
 
-    for site, exchange, exchange_area in select_routing_points(
-        origin_points, dest_points, areas):
+    idx = index.Index(
+        (i, Point(dest_point['geometry']['coordinates']).bounds, dest_point)
+        for i, dest_point in enumerate(dest_points)
+        )
+
+    for site in origin_points:
+
+        exchange = list(idx.nearest(
+            Point(site['geometry']['coordinates']).bounds,
+            1, objects='raw'))[0]
+
+        exchange_id = exchange['properties']['id']
+
+        for exchange_polygon in areas:
+            if exchange_polygon['properties']['id'] == exchange_id:
+                exchange_area = exchange_polygon
 
         ox.config(log_file=False, log_console=False, use_cache=True)
 
@@ -462,7 +488,7 @@ def generate_shortest_path(origin_points, dest_points, areas):
                 'Powerdbw': site['properties']['Powerdbw'],
                 'Maxpwrdbw': site['properties']['Maxpwrdbw'],
                 'Maxpwrdbm': site['properties']['Maxpwrdbm'],
-                '4G': site['properties']['lte'],
+                'lte_4G': site['properties']['lte_4G'],
                 'exchange': exchange['properties']['id'],
                 'backhaul_length_m': LineString(line).length
                 }
@@ -483,6 +509,66 @@ def generate_shortest_path(origin_points, dest_points, areas):
         })
 
     return links, processed_sites
+
+def generate_link_straight_line(origin_points, dest_points):
+
+    idx = index.Index(
+        (i, Point(dest_point['geometry']['coordinates']).bounds, dest_point)
+        for i, dest_point in enumerate(dest_points)
+        )
+
+    processed_sites = []
+    links = []
+
+    for origin_point in origin_points:
+
+        try:
+            origin_x, origin_y = return_object_coordinates(origin_point)
+
+            exchange = list(idx.nearest(
+                Point(origin_point['geometry']['coordinates']).bounds,
+                1, objects='raw'))[0]
+
+            dest_x, dest_y = return_object_coordinates(exchange)
+
+            # Get length
+            geom = LineString([
+                (origin_x, origin_y), (dest_x, dest_y)
+                ])
+
+            processed_sites.append({
+                'type': 'Feature',
+                'geometry': origin_point['geometry'],
+                'properties':{
+                    'id': origin_point['properties']['id'],
+                    'Antennaht': origin_point['properties']['Antennaht'],
+                    'Transtype': origin_point['properties']['Transtype'],
+                    'Freqband': origin_point['properties']['Freqband'],
+                    'Anttype': origin_point['properties']['Anttype'],
+                    'Powerdbw': origin_point['properties']['Powerdbw'],
+                    'Maxpwrdbw': origin_point['properties']['Maxpwrdbw'],
+                    'Maxpwrdbm': origin_point['properties']['Maxpwrdbm'],
+                    'lte_4G': origin_point['properties']['lte_4G'],
+                    'exchange': exchange['properties']['id'],
+                    'backhaul_length_m': geom.length * 1.60934
+                    }
+                })
+
+            links.append({
+                'type': "Feature",
+                'geometry': mapping(geom),
+                'properties': {
+                    "origin_id": origin_point['properties']['id'],
+                    "dest_id": exchange['properties']['id'],
+                    "length": geom.length * 1.60934
+                }
+            })
+
+        except:
+            print('- Problem with straight line link for:')
+            print(origin_point['properties'])
+
+    return processed_sites, links
 
 
 def write_shapefile(data, folder_name, filename):
@@ -520,28 +606,18 @@ if __name__ == "__main__":
     print('Loading lad lookup')
     lad_lut = lad_lut(lads)
 
-    # print('Loading postcode sector shapes')
-    # path = os.path.join(
-    #     DATA_RAW_SHAPES, 'postcode_sectors', '_postcode_sectors.shp'
-    #     )
-    # postcode_sectors = read_postcode_sectors(path)
+    ####ADD LAD TO 'processed_postcode_sectors.shp'
 
-    # print('Adding lad IDs to postcode sectors')
-    # postcode_sectors = add_lad_to_postcode_sector(postcode_sectors, lads)
-
-    # print('Writing postcode sectors to intermediate shapes')
-    # write_shapefile(
-    #     postcode_sectors, 'postcode_sectors', '_processed_postcode_sectors.shp'
-    #     )
-
-    print('Loading processed postcode sector shapes')
+    print('Loading postcode sector shapes')
     path = os.path.join(
-        DATA_INTERMEDIATE, 'postcode_sectors', '_processed_postcode_sectors.shp'
+        DATA_RAW_SHAPES, 'datashare_pcd_sectors', 'PostalSector.shp'
         )
     postcode_sectors = read_postcode_sectors(path)
 
-    print('Importing sitefinder data')
-    sitefinder_data = import_sitefinder_data()
+    print('Adding lad IDs to postcode sectors')
+    postcode_sectors = add_lad_to_postcode_sector(postcode_sectors, lads)
+
+    ####DISAGGREGATE 4G LTE COVERAGE TO 'lte_coverage.shp'
 
     print('Allocate geotype info to postcode sectors')
     postcode_sectors = add_geotype_information(postcode_sectors, load_geotype_lut)
@@ -550,40 +626,37 @@ if __name__ == "__main__":
     postcode_sectors = allocate_4G_coverage(
         postcode_sectors, lad_lut
         )
-    # print('Writing postcode sectors to intermediate shapes')
-    # write_shapefile(
-    #     postcode_sectors, 'postcode_sectors', 'lte_coverage.shp'
-    #     )
+    print('postcode_sectors length is {}'.format(len(postcode_sectors)))
 
+    ####ADD 4G LTE COVERAGE TO SITES AND WRITE TO 'processed_sites.shp'
 
+    print('Importing sitefinder data')
+    sitefinder_data = import_sitefinder_data()
 
+    print('Allocate 4G coverage to sites from postcode sectors')
+    processed_sites = add_coverage_to_sites(sitefinder_data, postcode_sectors)
 
+    print('Reading exchanges')
+    exchanges = read_exchanges()
 
-    # print('Allocate 4G coverage to sites from postcode sectors')
-    # processed_sites = add_coverage_to_sites(sitefinder_data, postcode_sectors)
-
-    # print('Writing processed sites')
-    # write_shapefile(
-    #     processed_sites, 'sitefinder', 'processed_sites.shp'
-    #     )
-
-    # print('Reading exchanges')
-    # exchanges = read_exchanges()
-
-    # print('Reading exchange areas')
-    # exchange_areas = read_exchange_areas()
+    print('Reading exchange areas')
+    exchange_areas = read_exchange_areas()
 
     # print('Generating shortest path link')
     # backhaul_links, processed_sites = generate_shortest_path(
     #     processed_sites, exchanges, exchange_areas
     #     )
 
-    # ### WRITE ALL OUTPUTS ###
+    processed_sites, backhaul_links = generate_link_straight_line(processed_sites, exchanges)
 
-    # write_shapefile(
-    #     processed_sites, 'sitefinder', 'final_processed_sites.shp'
-    #     )
+    ### WRITE ALL OUTPUTS ###
 
-    # write_shapefile(
-    #     backhaul_links, 'backhaul_routes', 'backhaul_routes.shp'
-    #     )
+    write_shapefile(
+        postcode_sectors, 'postcode_sectors', '_processed_postcode_sectors.shp'
+        )
+    write_shapefile(
+        processed_sites, 'sitefinder', 'final_processed_sites.shp'
+        )
+    write_shapefile(
+        backhaul_links, 'sitefinder', 'backhaul_routes.shp'
+        )
