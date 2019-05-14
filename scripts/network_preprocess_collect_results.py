@@ -11,7 +11,7 @@ CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
 DATA_RAW = os.path.join(BASE_PATH, 'raw', 'a_fixed_model')
-DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
+DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate', 'intermediate_exchanges')
 DATA_PROCESSED = os.path.join(BASE_PATH, 'processed')
 
 def collect_results(selection, name):
@@ -19,8 +19,10 @@ def collect_results(selection, name):
     paths = []
     for entry in selection:
         paths.append(os.path.join(DATA_INTERMEDIATE, entry, name))
-
+    print('length of paths is {}'.format(len(paths)))
+    
     results = []
+    failures = set()
 
     for path in paths:
         try:
@@ -30,29 +32,41 @@ def collect_results(selection, name):
                 for line in reader:
                     results.append(dict(line))
         except:
-            print('Error: Cannot open results for ' + os.path.basename(path))
+            folder_path = (os.path.split(path)[0])
+            exchange = (os.path.split(folder_path)[1])
+            failures.add(exchange)
+           
+    return results, list(failures)
 
-    return results
 
-def csv_writer(data, filename):
+def csv_writer(data, filename, indicator):
 
     """
     Write data to a CSV file path
     """
-    fieldnames = []
-    for name, value in data[0].items():
-        fieldnames.append(name)
-
     # Create path
     directory = os.path.join(DATA_PROCESSED)
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    name = os.path.join(directory, filename)
-    with open(name, 'w') as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
-        writer.writeheader()
-        writer.writerows(data)
+    if indicator == 1:
+        fieldnames = []
+        for name, value in data[0].items():
+            fieldnames.append(name)
+        
+        name = os.path.join(directory, filename)
+        with open(name, 'w') as csv_file:
+            writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
+            writer.writeheader()
+            writer.writerows(data)
+            
+    else:
+        name = os.path.join(directory, filename)
+        with open(name, 'w') as csv_file:
+            writer = csv.writer(csv_file, lineterminator = '\n')
+            for item in data:
+                writer.writerow([item])
+    
 
 def write_shapefile(data, filename):
 
@@ -349,20 +363,38 @@ if __name__ == "__main__":
     elif sys.argv[1] == 'England':
         selection = get_exchange_ids('country', 'England')
 
-    links_exchanges = collect_results(selection, 'links_sl_exchanges.csv')
-    csv_writer(links_exchanges, 'links_exchanges.csv')
+    links_exchanges, failures = collect_results(
+        selection, 'links_sl_exchanges.csv'
+        )
+    csv_writer(links_exchanges, 'links_exchanges.csv', 1)
+    csv_writer(failures, 'links_exchanges_failures.csv', 0)
 
-    links_cabinets = collect_results(selection, 'links_sl_cabinets.csv')
-    csv_writer(links_cabinets, 'links_cabinets.csv')
+    links_cabinets, failures = collect_results(
+        selection, 'links_sl_cabinets.csv'
+        )
+    csv_writer(links_cabinets, 'links_cabinets.csv', 1)
+    csv_writer(failures, 'links_cabinets_failures.csv', 0)
 
-    links_distribution_points = collect_results(selection, 'links_sl_distribution_points.csv')
-    csv_writer(links_distribution_points, 'links_distribution_points.csv')
+    links_distribution_points, failures = collect_results(
+        selection, 'links_sl_distribution_points.csv'
+        )
+    csv_writer(links_distribution_points, 'links_distribution_points.csv', 1)
+    csv_writer(failures, 'links_distribution_points_failures.csv', 0)
 
-    assets_exchanges = collect_results(selection, 'assets_exchange.csv')
-    csv_writer(assets_exchanges, 'assets_exchanges.csv')
+    assets_exchanges, failures = collect_results(
+        selection, 'assets_exchange.csv'
+        )
+    csv_writer(assets_exchanges, 'assets_exchanges.csv', 1)
+    csv_writer(failures, 'assets_exchanges_failures.csv', 0)
 
-    assets_cabinets = collect_results(selection, 'assets_cabinets.csv')
-    csv_writer(assets_cabinets, 'assets_cabinets.csv')
+    assets_cabinets, failures = collect_results(
+        selection, 'assets_cabinets.csv'
+        )
+    csv_writer(assets_cabinets, 'assets_cabinets.csv', 1)
+    csv_writer(failures, 'assets_cabinets_failures.csv', 0)
 
-    assets_distribution_points = collect_results(selection, 'assets_distribution_points.csv')
-    csv_writer(assets_distribution_points, 'assets_distribution_points.csv')
+    assets_distribution_points, failures = collect_results(
+        selection, 'assets_distribution_points.csv'
+        )
+    csv_writer(assets_distribution_points, 'assets_distribution_points.csv', 1)
+    csv_writer(failures, 'assets_distribution_points_failures.csv', 0)

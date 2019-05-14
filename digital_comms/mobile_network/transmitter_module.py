@@ -41,6 +41,17 @@ DATA_RESULTS = os.path.join(BASE_PATH, '..' ,'results', 'system_simulator')
 #set numpy seed
 np.random.seed(42)
 
+#Define global simulation parameters
+TX_HEIGHT_BASE = 30
+TX_HEIGHT_HIGH = 40 
+TX_POWER = 40
+TX_GAIN = 20
+TX_LOSSES = 2
+RX_GAIN = 4
+RX_LOSSES = 4
+RX_MISC_LOSSES = 4
+RX_HEIGHT = 1.5
+
 def read_postcode_sector(postcode_sector):
 
     postcode_area = ''.join(
@@ -158,12 +169,12 @@ def get_sites(postcode_sector):
                             "tech": line['Transtype'],
                             "freq": line['Freqband'],
                             "type": line['Anttype'],
-                            "power": line['Powerdbw'],
+                            "power": TX_POWER,
                             # "power_dbw": line['Powerdbw'],
                             # "max_power_dbw": line['Maxpwrdbw'],
                             # "max_power_dbm": line['Maxpwrdbm'],
-                            "gain": 18,
-                            "losses": 2,
+                            "gain": TX_GAIN,
+                            "losses": TX_LOSSES,
                         }
                     })
 
@@ -232,9 +243,10 @@ def generate_receivers(postcode_sector, postcode_sector_lut, quantity):
                 'properties': {
                     'ue_id': "id_{}".format(id_number),
                     #"sitengr": 'TL4454059600',
-                    "misc_losses": 4,
-                    "gain": 4,
-                    "losses": 4,
+                    "misc_losses": RX_MISC_LOSSES,
+                    "gain": RX_GAIN,
+                    "losses": RX_LOSSES,
+                    "ue_height": RX_HEIGHT,
                     "indoor": (True if float(indoor_outdoor_probability) < \
                         float(indoor_probability) else False),
                 }
@@ -342,13 +354,13 @@ def find_and_deploy_new_site(
             'properties': {
                     "operator": 'unknown',
                     "sitengr": "{" + 'new' + "}{GEN" + str(idx) + '.' + str(n+1) + '}',
-                    "ant_height": 20,
+                    "ant_height": TX_HEIGHT_BASE,
                     "tech": 'LTE',
                     "freq": 700,
                     "type": 17,
-                    "power": 30,
-                    "gain": 18,
-                    "losses": 2,
+                    "power": TX_POWER,
+                    "gain": TX_GAIN,
+                    "losses": TX_LOSSES,
                 }
             })
 
@@ -900,10 +912,10 @@ class Transmitter(object):
         self.geometry = data['geometry']
         #antenna properties
         self.ant_type = 'macro'
-        self.ant_height = 20
-        self.power = 40
-        self.gain = 20
-        self.losses = 2
+        self.ant_height = TX_HEIGHT_BASE
+        self.power = TX_POWER
+        self.gain = TX_GAIN
+        self.losses = TX_LOSSES
 
     def __repr__(self):
         return "<Transmitter id:{}>".format(self.id)
@@ -923,7 +935,7 @@ class Receiver(object):
         self.misc_losses = data['properties']['misc_losses']
         self.gain = data['properties']['gain']
         self.losses = data['properties']['losses']
-        self.ue_height = 1.5
+        self.ue_height = data['properties']['ue_height']
         self.indoor = data['properties']['indoor']
 
     def __repr__(self):
@@ -1374,12 +1386,12 @@ if __name__ == "__main__":
             spectral_efficency, sinr, capacity_mbps = (
                 obtain_threshold_values(results, PERCENTILE)
                 )
-
+            
             network_efficiency = calculate_network_efficiency(
                 spectral_efficency,
                 MANAGER.energy_consumption(SECTORISATION)
                 )
-
+            
             area_capacity_mbps = capacity_mbps * SECTORISATION
 
             # print('spectral_efficency is {}'.format(spectral_efficency))
