@@ -88,7 +88,7 @@ def get_postcode_sectors(processed_postcode_sectors, lad_id):
     path = os.path.join(DATA_RAW, 'd_shapes', 'datashare_pcd_sectors', 'PostalSector.shp')
     with fiona.open(path, 'r') as source:
         for postcode_sector in source:
-            if postcode_sector['properties']['postcode'] not in processed_postcode_sectors:
+            if postcode_sector['properties']['RMSect'] not in processed_postcode_sectors:
                 all_postcode_sectors.append(postcode_sector)
             else:
                 pass
@@ -97,9 +97,9 @@ def get_postcode_sectors(processed_postcode_sectors, lad_id):
     postcode_sector_ids = []
 
     for postcode_sector in all_postcode_sectors:
-        if postcode_sector['properties']['postcode'] in pcd_sector_to_lad_lut:
+        if postcode_sector['properties']['RMSect'] in pcd_sector_to_lad_lut:
             intersecting_postcode_sectors.append(postcode_sector)
-            postcode_sector_ids.append(postcode_sector['properties']['postcode'])
+            postcode_sector_ids.append(postcode_sector['properties']['RMSect'])
 
     touching_lad_ids =  set()
 
@@ -342,8 +342,8 @@ if __name__ == "__main__":
 
         for postcode_sector in postcode_sectors:
 
-            print('processing {}'.format(postcode_sector['properties']['postcode']))
-            postcode_sector_name = postcode_sector['properties']['postcode']
+            print('processing {}'.format(postcode_sector['properties']['RMSect']))
+            postcode_sector_name = postcode_sector['properties']['RMSect']
 
             #intersect buildings and pcd_sector
             postcode_sector_buildings = get_intersecting_buildings(postcode_sector, buildings)
