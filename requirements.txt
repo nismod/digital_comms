@@ -6,7 +6,7 @@ geopandas
 Rtree>=0.8.3
 pyproj
 pysftp
-PyYAML
+PyYAML>=5.1
 scikit-learn>=0.19.1
 shapely>=1.6
 sphinx>=1.8
