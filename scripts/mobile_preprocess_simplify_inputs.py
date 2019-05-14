@@ -22,12 +22,14 @@ def get_postcode_sectors():
 
     all_postcode_sectors = []
 
-    directory = os.path.join(DATA_RAW, 'd_shapes', 'postcode_sectors')
-    pathlist = glob.iglob(directory + '/*.shp', recursive=True)
-    for path in pathlist:
-        with fiona.open(path, 'r') as source:
-            for sector in source:
-                all_postcode_sectors.append(sector)
+    # directory = os.path.join(DATA_RAW, 'd_shapes', 'postcode_sectors')
+    # pathlist = glob.iglob(directory + '/*.shp', recursive=True)
+    path = os.path.join(DATA_RAW, 'd_shapes', 'datashare_pcd_sectors', 'PostalSector.shp')
+
+    # for path in pathlist:
+    with fiona.open(path, 'r') as source:
+        for sector in source:
+            all_postcode_sectors.append(sector)
 
     return all_postcode_sectors
 
@@ -55,8 +57,9 @@ def intersect_boundaries(postcode_sectors, lads):
     # Join the two
     for lad in lads:
         lad_name = lad['properties']['name']
+        print('intersecting with {}'.format(lad))
         for n in idx.intersection((shape(lad['geometry']).bounds), objects='raw'):
-            pcd_sector_name = n['properties']['postcode']
+            pcd_sector_name = n['properties']['RMSect']
             lad_shape = shape(lad['geometry'])
             pcd_sector_shape = shape(n['geometry'])
             if lad_shape.intersects(pcd_sector_shape):
@@ -90,9 +93,7 @@ def csv_writer(data_for_writing, filename):
         lut_file = open(path, 'a', newline='')
         lut_writer = csv.writer(lut_file)
 
-    # output and report results for this timestep
     for datum in data_for_writing:
-        print(datum)
         lut_writer.writerow(
             (datum[0],
             datum[1])
@@ -106,12 +107,14 @@ def csv_writer(data_for_writing, filename):
 
 if __name__ == "__main__":
 
+    print('load postcode sectors')
     postcode_sectors = get_postcode_sectors()
 
-    postcode_sectors = postcode_sectors
-
+    print('get lads')
     lads = get_local_authority_districts()
 
+    print('intersect boundaries')
     lut = intersect_boundaries(postcode_sectors, lads)
 
+    print('write csv')
     csv_writer(lut, 'pcd_sector_to_lad_lut.csv')

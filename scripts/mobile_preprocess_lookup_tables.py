@@ -82,15 +82,16 @@ def get_postcode_sectors(processed_postcode_sectors, lad_id):
 
     all_postcode_sectors = []
 
-    directory = os.path.join(DATA_RAW, 'd_shapes', 'postcode_sectors')
-    pathlist = glob.iglob(directory + '/*.shp', recursive=True)
-    for path in pathlist:
-        with fiona.open(path, 'r') as source:
-            for postcode_sector in source:
-                if postcode_sector['properties']['postcode'] not in processed_postcode_sectors:
-                    all_postcode_sectors.append(postcode_sector)
-                else:
-                    pass
+    # directory = os.path.join(DATA_RAW, 'd_shapes', 'postcode_sectors')
+    # pathlist = glob.iglob(directory + '/*.shp', recursive=True)
+    # for path in pathlist:
+    path = os.path.join(DATA_RAW, 'd_shapes', 'datashare_pcd_sectors', 'PostalSector.shp')
+    with fiona.open(path, 'r') as source:
+        for postcode_sector in source:
+            if postcode_sector['properties']['postcode'] not in processed_postcode_sectors:
+                all_postcode_sectors.append(postcode_sector)
+            else:
+                pass
 
     intersecting_postcode_sectors = []
     postcode_sector_ids = []
