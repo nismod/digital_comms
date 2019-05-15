@@ -252,7 +252,7 @@ def get_geotype_information(postcode_sector, buildings):
     print('residential_count is {}'.format(residential_count))
     #get area in km^2
     geom = shape(postcode_sector['geometry'])
-    area = geom.area/10e6
+    area = geom.area/1e6
     print('non_residential_count is {}'.format(non_residential_count))
     return residential_count, non_residential_count, area
 

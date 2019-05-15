@@ -1,10 +1,10 @@
 import pytest
 import os
 
-from scripts.network_preprocess_sitefinder import process_asset_data
+from scripts.mobile_preprocess_sitefinder import process_asset_data
 
 """
-Test for scripts/network_preprocess_sitefinder.py.
+Test for scripts/mobile_preprocess_sitefinder.py.
 
 Written by Edward Oughton, 1st April 2019.
 

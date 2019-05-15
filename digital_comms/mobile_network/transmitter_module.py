@@ -43,7 +43,7 @@ np.random.seed(42)
 
 #Define global simulation parameters
 TX_HEIGHT_BASE = 30
-TX_HEIGHT_HIGH = 40 
+TX_HEIGHT_HIGH = 40
 TX_POWER = 40
 TX_GAIN = 20
 TX_LOSSES = 2
@@ -246,7 +246,7 @@ def generate_receivers(postcode_sector, postcode_sector_lut, quantity):
                     "misc_losses": RX_MISC_LOSSES,
                     "gain": RX_GAIN,
                     "losses": RX_LOSSES,
-                    "ue_height": RX_HEIGHT,
+                    "ue_height": float(RX_HEIGHT),
                     "indoor": (True if float(indoor_outdoor_probability) < \
                         float(indoor_probability) else False),
                 }
@@ -1386,12 +1386,12 @@ if __name__ == "__main__":
             spectral_efficency, sinr, capacity_mbps = (
                 obtain_threshold_values(results, PERCENTILE)
                 )
-            
+
             network_efficiency = calculate_network_efficiency(
                 spectral_efficency,
                 MANAGER.energy_consumption(SECTORISATION)
                 )
-            
+
             area_capacity_mbps = capacity_mbps * SECTORISATION
 
             # print('spectral_efficency is {}'.format(spectral_efficency))

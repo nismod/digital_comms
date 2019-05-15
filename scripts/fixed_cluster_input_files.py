@@ -53,7 +53,7 @@ def read_pcd_to_exchange_lut():
     * exchange_id: 'string'
         Unique Exchange ID
     * postcode: 'string'
-        Unique Postcode 
+        Unique Postcode
 
     Returns
     -------
@@ -113,7 +113,7 @@ def read_pcd_to_exchange_lut():
     return list({pcd['postcode']:pcd for pcd in pcd_to_exchange_data}.values())
 
 def read_postcode_areas():
-    
+
     """
     Reads all postcodes shapes, removing vertical postcodes, and merging with closest neighbour.
 
@@ -171,7 +171,7 @@ def read_postcode_areas():
                 merged_geom = unary_union([shape(neighbour['geometry']), vpost_geom])
 
                 #g = shape(pcd_area['geometry'])
-                merged_geom = merged_geom.buffer(1.0)          
+                merged_geom = merged_geom.buffer(1.0)
                 merged_geom = merged_geom.simplify(0.95, preserve_topology=False)
 
                 merged_postcode = {
@@ -194,7 +194,7 @@ def read_postcode_areas():
 def read_exchanges():
 
     """
-    Reads in exchanges from 'final_exchange_pcds.csv'. 
+    Reads in exchanges from 'final_exchange_pcds.csv'.
 
     Data Schema
     ----------
@@ -208,7 +208,7 @@ def read_exchanges():
         Region ID
     * County: 'string'
         County IS
-    
+
     Returns
     -------
     exchanges: List of dicts
@@ -219,7 +219,7 @@ def read_exchanges():
     with open(os.path.join(DATA_RAW_DATA, 'layer_2_exchanges', 'final_exchange_pcds.csv'), 'r') as system_file:
         reader = csv.reader(system_file)
         next(reader)
-    
+
         for line in reader:
             exchanges.append({
                 'type': "Feature",
@@ -256,10 +256,10 @@ def add_exchange_id_to_postcode_areas(exchanges, postcode_areas, exchange_to_pos
         List of Postcode Areas from read_postcode_areas()
     * exchange_to_postcode: 'list of dicts'
         List of Postcode to Exchange data procudes from read_pcd_to_exchange_lut()
-    
+
     Returns
     -------
-    postcode_areas: 'list of dicts'    
+    postcode_areas: 'list of dicts'
     """
     idx_exchanges = index.Index()
     lut_exchanges = {}
@@ -275,18 +275,18 @@ def add_exchange_id_to_postcode_areas(exchanges, postcode_areas, exchange_to_pos
             'Region': exchange['properties']['Region'],
             'County': exchange['properties']['County'],
         }
-    
+
     # Read the postcode-to-cabinet-to-exchange lookup file
     lut_pcb2cab = {}
 
     for idx, row in enumerate(exchange_to_postcode):
         lut_pcb2cab[row['postcode']] = row['exchange_id']
-        
+
     # Connect each postcode area to an exchange
     for postcode_area in postcode_areas:
 
         postcode = postcode_area['properties']['POSTCODE']
-        
+
         if postcode in lut_pcb2cab:
 
             # Postcode-to-cabinet-to-exchange association
@@ -299,7 +299,7 @@ def add_exchange_id_to_postcode_areas(exchanges, postcode_areas, exchange_to_pos
             nearest = [n.object for n in idx_exchanges.nearest((shape(postcode_area['geometry']).bounds), 1, objects=True)]
             postcode_area['properties']['EX_ID'] = nearest[0]
             postcode_area['properties']['EX_SRC'] = 'ESTIMATED NEAREST'
-        
+
         # Match the exchange ID with remaining exchange info
         if postcode_area['properties']['EX_ID'] in lut_exchanges:
             postcode_area['properties']['EX_NAME'] = lut_exchanges[postcode_area['properties']['EX_ID']]['Name']
@@ -315,7 +315,7 @@ def add_exchange_id_to_postcode_areas(exchanges, postcode_areas, exchange_to_pos
     return postcode_areas
 
 def generate_exchange_area(exchanges, merge=True):
-    
+
     exchanges_by_group = defaultdict(list)
 
     # Loop through all exchanges
@@ -378,8 +378,8 @@ def generate_exchange_area(exchanges, merge=True):
 
             # Write to output
             area['geometry'] = mapping(exterior)
-        
-        # Add islands that were removed because they were not 
+
+        # Add islands that were removed because they were not
         # connected to the main polygon and were not recovered
         # because they were on the edge of the map or inbetween
         # exchanges :-). Merge to largest intersecting exchange area.
@@ -435,7 +435,7 @@ def write_shapefile(data, folder, path):
             sink.write(feature)
 
 def return_file_count(exchange_id):
-    
+
     if not os.path.exists(os.path.join(DATA_INTERMEDIATE, exchange_id)):
         files = 'no files'
     else:
@@ -464,26 +464,26 @@ if __name__ == "__main__":
         # Write
         print('write postcode_areas')
         write_shapefile(geojson_postcode_areas, 'postcode_areas','_postcode_areas.shp')
-        
+
         print('read exchanges')
         geojson_layer2_exchanges = read_exchanges()
-        
+
         # Process/Estimate network hierarchy
         print('add exchange id to postcode areas')
         geojson_postcode_areas = add_exchange_id_to_postcode_areas(geojson_layer2_exchanges, geojson_postcode_areas, lut_pcd_to_exchange)
-        
+
         #generate exchange areas
         geojson_exchange_areas = generate_exchange_area(geojson_postcode_areas)
-        
+
         # Write
         print('write exchange_areas')
         write_shapefile(geojson_exchange_areas, 'exchange_areas', '_exchange_areas.shp')
 
-    
+
     if len(sys.argv) < 2 or sys.argv[1] == 'national':
 
         exchange_areas = read_exchange_area()
-        selection = [(exchange['properties']['id']) for exchange in exchange_areas if return_file_count(exchange['properties']['id']) < 11] 
+        selection = [(exchange['properties']['id']) for exchange in exchange_areas if return_file_count(exchange['properties']['id']) < 11]
 
     elif sys.argv[1] == 'geotype_selection':
         selection = [
@@ -740,7 +740,7 @@ if __name__ == "__main__":
             'exchange_NEWYL',
             'exchange_NENTW',
         ]
-        
+
     elif sys.argv[1] == 'cambridgeshire':
        selection = [
            'exchange_EAARR',
