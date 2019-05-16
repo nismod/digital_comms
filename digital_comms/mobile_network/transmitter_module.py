@@ -41,17 +41,6 @@ DATA_RESULTS = os.path.join(BASE_PATH, '..' ,'results', 'system_simulator')
 #set numpy seed
 np.random.seed(42)
 
-#Define global simulation parameters
-TX_HEIGHT_BASE = 30
-TX_HEIGHT_HIGH = 40
-TX_POWER = 40
-TX_GAIN = 20
-TX_LOSSES = 2
-RX_GAIN = 4
-RX_LOSSES = 4
-RX_MISC_LOSSES = 4
-RX_HEIGHT = 1.5
-
 def read_postcode_sector(postcode_sector):
 
     postcode_area = ''.join(
@@ -406,7 +395,8 @@ class NetworkManager(object):
                     area_containing_sites.add_site(site)
 
     def estimate_link_budget(
-        self, frequency, bandwidth, environment, modulation_and_coding_lut):
+        self, frequency, bandwidth, generation, mast_height,
+        environment, modulation_and_coding_lut):
         """
         Takes propagation parameters and calculates link budget capacity.
 
@@ -440,9 +430,9 @@ class NetworkManager(object):
             # print('closest_site is {}'.format(closest_site))
             # print('interfering_sites is {}'.format(interfering_sites))
             path_loss = self.calculate_path_loss(
-                closest_site, receiver, frequency, environment
+                closest_site, receiver, frequency, mast_height, environment
             )
-            # print('path_loss is {}'.format(path_loss))
+
             received_power = self.calc_received_power(
                 closest_site, receiver, path_loss
             )
@@ -459,7 +449,7 @@ class NetworkManager(object):
             )
 
             spectral_efficiency = self.modulation_scheme_and_coding_rate(
-                sinr, modulation_and_coding_lut
+                sinr, generation, modulation_and_coding_lut
             )
 
             estimated_capacity = self.link_budget_capacity(
@@ -510,8 +500,8 @@ class NetworkManager(object):
 
         return closest_site, interfering_sites
 
-    def calculate_path_loss(self, closest_site,
-        receiver, frequency, environment):
+    def calculate_path_loss(self, closest_site, receiver,
+        frequency, mast_height, environment):
 
         # for area in self.area.values():
         #     local_authority_ids = area.local_authority_ids
@@ -539,20 +529,16 @@ class NetworkManager(object):
 
         interference_strt_distance = round(i_strt_distance['s12'],0)
 
-        ant_height = 20 #ant_height = closest_site.ant_height
-        ant_type =  'macro' #ant_type = closest_site.ant_type
+        ant_height = mast_height
+        ant_type =  'macro'
 
         # type_of_sight, building_height, street_width = built_environment_module(
         # site_geom, receiver_geom
-        #
 
-        type_of_sight = randomly_select_los()
-        # if interference_strt_distance < 500 :
-        #     type_of_sight = find_line_of_sight(
-        #     x1_site, y1_site, x2_receiver, y2_receiver, local_authority_ids
-        #     )
-        # else:
-        #     type_of_sight = 'nlos'
+        if interference_strt_distance < 250 :
+            type_of_sight = 'los'
+        else:
+            type_of_sight = 'nlos'
 
         building_height = 20
         street_width = 20
@@ -730,8 +716,8 @@ class NetworkManager(object):
 
         return round(sinr, 2)
 
-    def modulation_scheme_and_coding_rate(
-        self, sinr, modulation_and_coding_lut):
+    def modulation_scheme_and_coding_rate(self, sinr,
+        generation, modulation_and_coding_lut):
         """
         Uses the SINR to allocate a modulation scheme and affliated
         coding rate.
@@ -740,12 +726,14 @@ class NetworkManager(object):
         spectral_efficiency = 0
 
         for lower, upper in pairwise(modulation_and_coding_lut):
-            lower_sinr = lower[4]
-            upper_sinr = upper[4]
+            if lower[0] and upper[0] == generation:
 
-            if sinr >= lower_sinr and sinr < upper_sinr:
-                spectral_efficiency = lower[3]
-                break
+                lower_sinr = lower[5]
+                upper_sinr = upper[5]
+
+                if sinr >= lower_sinr and sinr < upper_sinr:
+                    spectral_efficiency = lower[4]
+                    break
 
         return spectral_efficiency
 
@@ -1054,8 +1042,8 @@ def write_results(results, frequency, bandwidth, site_density,
 
 def write_lookup_table(
     cell_edge_spectral_efficency, cell_edge_sinr, area_capacity_mbps,
-    network_efficiency, environment, operator, technology,
-    frequency, bandwidth, area_site_density, area_isd, postcode_sector_name):
+    network_efficiency, environment, operator, technology,frequency,
+    bandwidth, mast_height, area_site_density, area_isd, postcode_sector_name):
 
     suffix = 'lookup_table_{}'.format(postcode_sector_name)
 
@@ -1071,7 +1059,8 @@ def write_lookup_table(
         lut_writer = csv.writer(lut_file)
         lut_writer.writerow(
             ('environment', 'operator', 'technology',
-            'frequency', 'bandwidth','area_site_density', 'area_isd',
+            'frequency', 'bandwidth', 'mast_height',
+            'area_site_density', 'area_isd',
             'cell_edge_spectral_efficency', 'cell_edge_sinr',
             'area_capacity_mbps', 'network_efficiency')
             )
@@ -1086,6 +1075,7 @@ def write_lookup_table(
         technology,
         frequency,
         bandwidth,
+        mast_height,
         area_site_density,
         area_isd,
         cell_edge_spectral_efficency,
@@ -1232,45 +1222,68 @@ def joint_plot(data, postcode_sector_name):
 #####################################
 
 SPECTRUM_PORTFOLIO = [
-    ('O2 Telefonica', 'FDD DL', 0.7, 10),
-    ('O2 Telefonica', 'FDD DL', 0.8, 10),
-    ('O2 Telefonica', 'FDD DL', 0.9, 17.4),
-    ('O2 Telefonica', 'FDD DL', 1.8, 5.8),
-    ('O2 Telefonica', 'FDD DL', 2.1, 10),
-    ('O2 Telefonica', 'FDD DL', 3.5, 40),
-    # ('Vodafone', 'FDD DL', 0.7, 10),
-    # ('Vodafone', 'FDD DL', 0.8, 10),
-    # ('Vodafone', 'FDD DL', 0.9, 17.4),
-    # ('Vodafone', 'FDD DL', 1.5, 20),
-    # ('Vodafone', 'FDD DL', 1.8, 5.8),
-    # ('Vodafone', 'FDD DL', 2.1, 14.8),
-    # ('Vodafone', 'FDD DL', 2.6, 20),
-    # ('Vodafone', 'FDD DL', 3.5, 40),
+    ('generic', 'FDD DL', 0.7, 10, '5G'),
+    ('generic', 'FDD DL', 0.8, 10, '4G'),
+    ('generic', 'FDD DL', 2.6, 10, '4G'),
+    ('generic', 'FDD DL', 3.5, 80, '5G'),
+]
+
+MAST_HEIGHT = [
+    (30),
+    (40)
 ]
 
 MODULATION_AND_CODING_LUT =[
     # CQI Index	Modulation	Coding rate
     # Spectral efficiency (bps/Hz) SINR estimate (dB)
-    (1,	'QPSK',	0.0762,	0.1523, -6.7),
-    (2,	'QPSK',	0.1172,	0.2344, -4.7),
-    (3,	'QPSK',	0.1885,	0.377, -2.3),
-    (4,	'QPSK',	0.3008,	0.6016, 0.2),
-    (5,	'QPSK',	0.4385,	0.877, 2.4),
-    (6,	'QPSK',	0.5879,	1.1758,	4.3),
-    (7,	'16QAM', 0.3691, 1.4766, 5.9),
-    (8,	'16QAM', 0.4785, 1.9141, 8.1),
-    (9,	'16QAM', 0.6016, 2.4063, 10.3),
-    (10, '64QAM', 0.4551, 2.7305, 11.7),
-    (11, '64QAM', 0.5537, 3.3223, 14.1),
-    (12, '64QAM', 0.6504, 3.9023, 16.3),
-    (13, '64QAM', 0.7539, 4.5234, 18.7),
-    (14, '64QAM', 0.8525, 5.1152, 21),
-    (15, '64QAM', 0.9258, 5.5547, 22.7),
-    (16, '256QAM', 1, 6, 200), #dummy data for now
+    ('4G', 1, 'QPSK',	0.0762,	0.1523, -6.7),
+    ('4G', 2, 'QPSK',	0.1172,	0.2344, -4.7),
+    ('4G', 3, 'QPSK',	0.1885,	0.377, -2.3),
+    ('4G', 4, 'QPSK',	0.3008,	0.6016, 0.2),
+    ('4G', 5, 'QPSK',	0.4385,	0.877, 2.4),
+    ('4G', 6, 'QPSK',	0.5879,	1.1758,	4.3),
+    ('4G', 7, '16QAM', 0.3691, 1.4766, 5.9),
+    ('4G', 8, '16QAM', 0.4785, 1.9141, 8.1),
+    ('4G', 9, '16QAM', 0.6016, 2.4063, 10.3),
+    ('4G', 10, '64QAM', 0.4551, 2.7305, 11.7),
+    ('4G', 11, '64QAM', 0.5537, 3.3223, 14.1),
+    ('4G', 12, '64QAM', 0.6504, 3.9023, 16.3),
+    ('4G', 13, '64QAM', 0.7539, 4.5234, 18.7),
+    ('4G', 14, '64QAM', 0.8525, 5.1152, 21),
+    ('4G', 15, '64QAM', 0.9258, 5.5547, 22.7),
+    ('5G', 1, 'QPSK', 78, 0.1523, -6.7),
+    ('5G', 2, 'QPSK', 193, 0.377, -4.7),
+    ('5G', 3, 'QPSK', 449, 0.877, -2.3),
+    ('5G', 4, '16QAM', 378, 1.4766, 0.2),
+    ('5G', 5, '16QAM', 490, 1.9141, 2.4),
+    ('5G', 6, '16QAM', 616, 2.4063, 4.3),
+    ('5G', 7, '64QAM', 466, 2.7305, 5.9),
+    ('5G', 8, '64QAM', 567, 3.3223, 8.1),
+    ('5G', 9, '64QAM', 666, 3.9023, 10.3),
+    ('5G', 10, '64QAM', 772, 4.5234, 11.7),
+    ('5G', 11, '64QAM', 873, 5.1152, 14.1),
+    ('5G', 12, '256QAM', 711, 5.5547, 16.3),
+    ('5G', 13, '256QAM', 797, 6.2266, 18.7),
+    ('5G', 14, '256QAM', 885, 6.9141, 21),
+    ('5G', 15, '256QAM', 948, 7.4063, 22.7),
 ]
 
 if __name__ == "__main__":
 
+    #Define global simulation parameters
+    ITERATIONS = 500
+    TX_HEIGHT_BASE = 30
+    TX_HEIGHT_HIGH = 40
+    TX_POWER = 40
+    TX_GAIN = 20
+    TX_LOSSES = 2
+    RX_GAIN = 4
+    RX_LOSSES = 4
+    RX_MISC_LOSSES = 4
+    RX_HEIGHT = 1.5
+    PERCENTILE = 95
+    DESIRED_TRANSMITTER_DENSITY = 10 #per km^2
+    SECTORISATION = 3
     SYSTEM_INPUT = os.path.join('data', 'raw')
 
     if len(sys.argv) != 2:
@@ -1311,103 +1324,99 @@ if __name__ == "__main__":
     RECEIVERS = generate_receivers(
         geojson_postcode_sector,
         postcode_sector_lut,
-        10
+        ITERATIONS
         )
 
-    joint_plot_data = []
+    idx = 0
 
-    IDX = 0
-    PERCENTILE = 95
-    DESIRED_TRANSMITTER_DENSITY = 10 #per km^2
-    SECTORISATION = 3
+    for mast_height in MAST_HEIGHT:
+        for operator, technology, frequency, bandwidth, generation in SPECTRUM_PORTFOLIO:
 
-    for operator, technology, frequency, bandwidth in SPECTRUM_PORTFOLIO:
-
-        #load system model with data
-        MANAGER = NetworkManager(
-            geojson_postcode_sector, TRANSMITTERS, RECEIVERS
-            )
-
-        #calculate site density
-        starting_site_density = MANAGER.site_density()
-
-        my_range = np.linspace(
-            starting_site_density, DESIRED_TRANSMITTER_DENSITY, 10
-            )
-        site_densities = list(set([round(x) for x in my_range]))
-
-        postcode_sector_object = [a for a in MANAGER.area.values()][0]
-        postcode_sector_area = postcode_sector_object.area/1000000
-
-        IDX = 0
-
-        for site_density in site_densities:
-
-            print("Running {} GHz with {} MHz bandwidth".format(
-                frequency, bandwidth
-                ))
-
-            current_site_density = MANAGER.site_density()
-
-            number_of_new_sites = int(
-                (site_density - current_site_density) * postcode_sector_area
-            )
-
-            #build a new site
-            NEW_TRANSMITTERS = find_and_deploy_new_site(
-                MANAGER.sites, number_of_new_sites,
-                geojson_postcode_sector, IDX
-                )
-
-            #add new site to network manageridx
-            MANAGER.build_new_assets(
-                NEW_TRANSMITTERS, geojson_postcode_sector
-                )
-
-            #run results simulation
-            results = MANAGER.estimate_link_budget(
-                frequency, bandwidth, environment, MODULATION_AND_CODING_LUT
+            #load system model with data
+            MANAGER = NetworkManager(
+                geojson_postcode_sector, TRANSMITTERS, RECEIVERS
                 )
 
             #calculate site density
-            site_density = MANAGER.site_density()
-            # print('site_density is {}'.format(site_density))
-
-            #isd = site_density
-            isd = 'tbc'
-            #calculate site density
-            r_density = MANAGER.receiver_density()
-
-            # write_results(results, frequency, bandwidth, site_density,
-            #     r_density, postcode_sector_name
+            starting_site_density = MANAGER.site_density()
+            # print('starting_site_density {}'.format(starting_site_density))
+            # my_range = np.linspace(
+            #     starting_site_density, DESIRED_TRANSMITTER_DENSITY, 10
             #     )
+            # site_densities = list(set([round(x) for x in my_range]))
+            site_densities = [starting_site_density, 10]
 
-            #find percentile values
-            spectral_efficency, sinr, capacity_mbps = (
-                obtain_threshold_values(results, PERCENTILE)
+            postcode_sector_object = [a for a in MANAGER.area.values()][0]
+
+            postcode_sector_area = postcode_sector_object.area/1e6
+
+            idx = 0
+
+            for site_density in site_densities:
+
+                print("{} GHz {}m Height {} Density".format(
+                    frequency, mast_height, round(site_density, 4)
+                    ))
+
+                current_site_density = MANAGER.site_density()
+
+                number_of_new_sites = int(
+                    (site_density - current_site_density) * postcode_sector_area
                 )
 
-            network_efficiency = calculate_network_efficiency(
-                spectral_efficency,
-                MANAGER.energy_consumption(SECTORISATION)
-                )
+                print('number_of_new_sites {}'.format(number_of_new_sites))
+                NEW_TRANSMITTERS = find_and_deploy_new_site(
+                    MANAGER.sites, number_of_new_sites,
+                    geojson_postcode_sector, idx
+                    )
 
-            area_capacity_mbps = capacity_mbps * SECTORISATION
+                MANAGER.build_new_assets(
+                    NEW_TRANSMITTERS, geojson_postcode_sector
+                    )
 
-            # print('spectral_efficency is {}'.format(spectral_efficency))
-            # print('sinr is {}'.format(sinr))
-            # print('capacity_mbps is {}'.format(capacity_mbps))
+                results = MANAGER.estimate_link_budget(
+                    frequency, bandwidth, generation, mast_height,
+                    environment, MODULATION_AND_CODING_LUT
+                    )
 
-            #env, frequency, bandwidth, site_density, capacity
-            write_lookup_table(
-                spectral_efficency, sinr, area_capacity_mbps,
-                network_efficiency, environment, operator, technology,
-                frequency, bandwidth, site_density, isd, postcode_sector_name
-                )
+                site_density = MANAGER.site_density()
+                # print('site_density is {}'.format(site_density))
 
-            IDX += 1
+                isd = 'tbc'
 
-            #print('------------------------------------')
+                r_density = MANAGER.receiver_density()
+
+                # write_results(results, frequency, bandwidth, site_density,
+                #     r_density, postcode_sector_name
+                #     )
+
+                #find percentile values
+                spectral_efficency, sinr, capacity_mbps = (
+                    obtain_threshold_values(results, PERCENTILE)
+                    )
+
+                network_efficiency = calculate_network_efficiency(
+                    spectral_efficency,
+                    MANAGER.energy_consumption(SECTORISATION)
+                    )
+
+                area_capacity_mbps = capacity_mbps * SECTORISATION
+
+                # print('spectral_efficency is {}'.format(spectral_efficency))
+                # print('sinr is {}'.format(sinr))
+                # print('capacity_mbps is {}'.format(capacity_mbps))
+
+                #env, frequency, bandwidth, site_density, capacity
+                write_lookup_table(
+                    spectral_efficency, sinr, area_capacity_mbps,
+                    network_efficiency, environment, operator, technology,
+                    frequency, bandwidth, mast_height, site_density, isd,
+                    postcode_sector_name
+                    )
+
+                idx += 1
+
+                #print('------------------------------------')
 
 #     # print('write buildings')
 #     # write_shapefile(buildings,  postcode_sector_name, 'buildings.shp')

@@ -231,7 +231,7 @@ with open(CLUTTER_GEOTYPE_FILENAME, 'r') as clutter_geotype_file:
 
     clutter_lookup.sort(key=lambda tup: tup[0])
 
-def write_lad_results(ict_manager, year, pop_scenario, throughput_scenario,
+def write_lad_results(network_manager, year, pop_scenario, throughput_scenario,
                       intervention_strategy, cost_by_lad):
     suffix = _get_suffix(
         pop_scenario, throughput_scenario, intervention_strategy
@@ -254,7 +254,7 @@ def write_lad_results(ict_manager, year, pop_scenario, throughput_scenario,
         metrics_file = open(metrics_filename, 'a', newline='')
         metrics_writer = csv.writer(metrics_file)
 
-    for lad in ict_manager.lads.values():
+    for lad in network_manager.lads.values():
         area_id = lad.id
         area_name = lad.name
         cost = cost_by_lad[lad.id]
@@ -271,7 +271,7 @@ def write_lad_results(ict_manager, year, pop_scenario, throughput_scenario,
 
     metrics_file.close()
 
-def write_pcd_results(ict_manager, year, pop_scenario, throughput_scenario,
+def write_pcd_results(network_manager, year, pop_scenario, throughput_scenario,
                       intervention_strategy, cost_by_pcd):
 
     suffix = _get_suffix(
@@ -289,22 +289,23 @@ def write_pcd_results(ict_manager, year, pop_scenario, throughput_scenario,
         metrics_writer = csv.writer(metrics_file)
         metrics_writer.writerow(
             ('year', 'postcode', 'cost', 'demand', 'capacity',
-            'capacity_deficit', 'population', 'pop_density'))
+            'capacity_deficit', 'population', 'pop_density', 'environment'))
     else:
         metrics_file = open(metrics_filename, 'a', newline='')
         metrics_writer = csv.writer(metrics_file)
 
-    for pcd in ict_manager.postcode_sectors.values():
+    for pcd in network_manager.postcode_sectors.values():
         demand = pcd.demand
         capacity = pcd.capacity
         capacity_deficit = capacity - demand
         pop = pcd.population
         pop_d = pcd.population_density
+        environment = pcd.clutter_environment
         cost = cost_by_pcd[pcd.id]
 
         metrics_writer.writerow(
             (year, pcd.id, cost, demand, capacity,
-            capacity_deficit, pop, pop_d)
+            capacity_deficit, pop, pop_d, environment)
             )
 
     metrics_file.close()
@@ -394,41 +395,41 @@ def _get_suffix(pop_scenario, throughput_scenario,
 ################################################################
 
 for pop_scenario, throughput_scenario, intervention_strategy in [
-        ('low', 'low', 'minimal'),
-        ('baseline', 'baseline', 'minimal'),
-        ('high', 'high', 'minimal'),
+        # # ('low', 'low', 'minimal'),
+        # ('baseline', 'baseline', 'minimal'),
+        # # ('high', 'high', 'minimal'),
 
-        ('low', 'low', 'macrocell'),
-        ('baseline', 'baseline', 'macrocell'),
-        ('high', 'high', 'macrocell'),
+        # # ('low', 'low', 'macrocell_700_3500'),
+        ('baseline', 'baseline', 'macrocell_700_3500'),
+        # # ('high', 'high', 'macrocell_700_3500'),
 
-        ('low', 'low', 'macrocell_700'),
-        ('baseline', 'baseline', 'macrocell_700'),
-        ('high', 'high', 'macrocell_700'),
+        # # ('low', 'low', 'macrocell_700'),
+        # ('baseline', 'baseline', 'macrocell_700'),
+        # # ('high', 'high', 'macrocell_700'),
 
-        ('low', 'low', 'sectorisation'),
-        ('baseline', 'baseline', 'sectorisation'),
-        ('high', 'high', 'sectorisation'),
+        # ('low', 'low', 'sectorisation'),
+        # ('baseline', 'baseline', 'sectorisation'),
+        # ('high', 'high', 'sectorisation'),
 
-        ('low', 'low', 'macro_densification'),
-        ('baseline', 'baseline', 'macro_densification'),
-        ('high', 'high', 'macro_densification'),
+        # ('low', 'low', 'macro_densification'),
+        # ('baseline', 'baseline', 'macro_densification'),
+        # ('high', 'high', 'macro_densification'),
 
-        ('low', 'low', 'deregulation'),
-        ('baseline', 'baseline', 'deregulation'),
-        ('high', 'high', 'deregulation'),
+        # ('low', 'low', 'deregulation'),
+        # ('baseline', 'baseline', 'deregulation'),
+        # ('high', 'high', 'deregulation'),
 
-        ('low', 'low', 'cloud_ran'),
-        ('baseline', 'baseline', 'cloud_ran'),
-        ('high', 'high', 'cloud_ran'),
+        # ('low', 'low', 'cloud_ran'),
+        # ('baseline', 'baseline', 'cloud_ran'),
+        # ('high', 'high', 'cloud_ran'),
 
-        ('low', 'low', 'small_cell'),
-        ('baseline', 'baseline', 'small_cell'),
-        ('high', 'high', 'small_cell'),
+        # ('low', 'low', 'small_cell'),
+        # ('baseline', 'baseline', 'small_cell'),
+        # ('high', 'high', 'small_cell'),
 
-        ('low', 'low', 'small_cell_and_spectrum'),
-        ('baseline', 'baseline', 'small_cell_and_spectrum'),
-        ('high', 'high', 'small_cell_and_spectrum'),
+        # ('low', 'low', 'small_cell_and_spectrum'),
+        # ('baseline', 'baseline', 'small_cell_and_spectrum'),
+        # ('high', 'high', 'small_cell_and_spectrum'),
 
     ]:
     print("Running:", pop_scenario, throughput_scenario, \

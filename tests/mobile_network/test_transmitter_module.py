@@ -414,7 +414,7 @@ def test_calculate_path_loss(base_system):
         )
 
     actual_result = base_system.calculate_path_loss(
-        transmitter, receiver, frequency, 'urban'
+        transmitter, receiver, frequency, ant_height, 'urban'
         )
 
     #model requires frequency in MHz rather than GHz.
@@ -583,28 +583,51 @@ def test_modulation_scheme_and_coding_rate(base_system):
 
     MODULATION_AND_CODING_LUT =[
         #CQI Index	Modulation	Coding rate	Spectral efficiency (bps/Hz) SINR estimate (dB)
-        (1,	'QPSK',	0.0762,	0.1523, -6.7),
-        (2,	'QPSK',	0.1172,	0.2344, -4.7),
-        (3,	'QPSK',	0.1885,	0.377, -2.3),
-        (4,	'QPSK',	0.3008,	0.6016, 0.2),
-        (5,	'QPSK',	0.4385,	0.877, 2.4),
-        (6,	'QPSK',	0.5879,	1.1758,	4.3),
-        (7,	'16QAM', 0.3691, 1.4766, 5.9),
-        (8,	'16QAM', 0.4785, 1.9141, 8.1),
-        (9,	'16QAM', 0.6016, 2.4063, 10.3),
-        (10, '64QAM', 0.4551, 2.7305, 11.7),
-        (11, '64QAM', 0.5537, 3.3223, 14.1),
-        (12, '64QAM', 0.6504, 3.9023, 16.3),
-        (13, '64QAM', 0.7539, 4.5234, 18.7),
-        (14, '64QAM', 0.8525, 5.1152, 21),
-        (15, '64QAM', 0.9258, 5.5547, 22.7),
+        ('4G', 1, 'QPSK',	0.0762,	0.1523, -6.7),
+        ('4G', 2, 'QPSK',	0.1172,	0.2344, -4.7),
+        ('4G', 3, 'QPSK',	0.1885,	0.377, -2.3),
+        ('4G', 4, 'QPSK',	0.3008,	0.6016, 0.2),
+        ('4G', 5, 'QPSK',	0.4385,	0.877, 2.4),
+        ('4G', 6, 'QPSK',	0.5879,	1.1758,	4.3),
+        ('4G', 7, '16QAM', 0.3691, 1.4766, 5.9),
+        ('4G', 8, '16QAM', 0.4785, 1.9141, 8.1),
+        ('4G', 9, '16QAM', 0.6016, 2.4063, 10.3),
+        ('4G', 10, '64QAM', 0.4551, 2.7305, 11.7),
+        ('4G', 11, '64QAM', 0.5537, 3.3223, 14.1),
+        ('4G', 12, '64QAM', 0.6504, 3.9023, 16.3),
+        ('4G', 13, '64QAM', 0.7539, 4.5234, 18.7),
+        ('4G', 14, '64QAM', 0.8525, 5.1152, 21),
+        ('4G', 15, '64QAM', 0.9258, 5.5547, 22.7),
+        ('5G', 1, 'QPSK', 78, 0.1523, -6.7),
+        ('5G', 2, 'QPSK', 193, 0.377, -4.7),
+        ('5G', 3, 'QPSK', 449, 0.877, -2.3),
+        ('5G', 4, '16QAM', 378, 1.4766, 0.2),
+        ('5G', 5, '16QAM', 490, 1.9141, 2.4),
+        ('5G', 6, '16QAM', 616, 2.4063, 4.3),
+        ('5G', 7, '64QAM', 466, 2.7305, 5.9),
+        ('5G', 8, '64QAM', 567, 3.3223, 8.1),
+        ('5G', 9, '64QAM', 666, 3.9023, 10.3),
+        ('5G', 10, '64QAM', 772, 4.5234, 11.7),
+        ('5G', 11, '64QAM', 873, 5.1152, 14.1),
+        ('5G', 12, '256QAM', 711, 5.5547, 16.3),
+        ('5G', 13, '256QAM', 797, 6.2266, 18.7),
+        ('5G', 14, '256QAM', 885, 6.9141, 21),
+        ('5G', 15, '256QAM', 948, 7.4063, 22.7),
         ]
 
     actual_result = base_system.modulation_scheme_and_coding_rate(
-        10, MODULATION_AND_CODING_LUT
+        10, '4G', MODULATION_AND_CODING_LUT
         )
 
     expected_result = 1.9141
+
+    assert actual_result == expected_result
+
+    actual_result = base_system.modulation_scheme_and_coding_rate(
+        10, '5G', MODULATION_AND_CODING_LUT
+        )
+
+    expected_result = 3.3223
 
     assert actual_result == expected_result
 

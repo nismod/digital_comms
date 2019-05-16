@@ -621,9 +621,11 @@ def _suggest_interventions(budget, available_interventions,
                 current_number = len(assets_by_site['small_cell_sites'])
             else:
                 current_number = 0
+
             current_density = current_number / area_sq_km
-            build_option['small_cell']['assets_to_build']
-            cost['small_cell']['cost']
+
+            build_option = INTERVENTIONS['small_cell']['assets_to_build']
+            cost = INTERVENTIONS['small_cell']['cost']
 
             while True:
                 to_build = copy.deepcopy(build_option)

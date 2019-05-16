@@ -77,7 +77,7 @@ def path_loss_calculator(frequency, distance, ant_height, ant_type, building_hei
         raise ValueError (
             "frequency of {} is NOT within correct range".format(frequency)
         )
-    print('path loss is {}'.format(path_loss))
+    # print('path loss is {}'.format(path_loss))
     # print('outdoor to indoor is {}'.format(outdoor_to_indoor_path_loss(indoor)))
     path_loss = path_loss + outdoor_to_indoor_path_loss(indoor)
 
@@ -280,7 +280,7 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
         )
 
     else:
-        print(distance)
+        # print(distance)
         raise ValueError('Distance over 100km not compliant')
 
     ###PART 2####
@@ -423,7 +423,7 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
                 22 * np.log10(distance) + 28 + 20*np.log10(frequency) +
                 generate_log_normal_dist_value(1, 3, 1)
             )
-            print('path loss is {}'.format(path_loss))
+            # print('path loss is {}'.format(path_loss))
         elif breakpoint_urban < distance < 5000:
 
             path_loss = (
@@ -470,7 +470,7 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
                 'ant_type {}, settlement_type {}, type_of_sight {}, distance {}'
                 .format(ant_type, settlement_type, type_of_sight, distance)
                 )
-            print("distance is out of cell range at {}m".format(distance))
+            # print("distance is out of cell range at {}m".format(distance))
             #fallback value needs refining
             path_loss = 250
 
@@ -558,14 +558,13 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
                 (3.2*(np.log10(11.75*ue_height))**2-4.97)) +
                 generate_log_normal_dist_value(1, 8, 1)
             )
-            print('1')
 
         elif distance <= 10:
             path_loss = 250
-            print('2')
+
         elif distance > 5000:
             path_loss = 250
-            print('3')
+
         else:
             print(
                 'ant_type {}, settlement_type {}, type_of_sight {}, distance {}'
@@ -658,7 +657,7 @@ def generate_log_normal_dist_value(mu, sigma, draws):
     normal_mean = np.log10(mu) - normal_std**2 / 2
 
     hs = np.random.lognormal(normal_mean, normal_std, draws)
-    print('random amount {}'.format(round(hs[0],2)))
+    # print('random amount {}'.format(round(hs[0],2)))
     return round(hs[0],2)
 
 def outdoor_to_indoor_path_loss(indoor):
@@ -676,5 +675,5 @@ def outdoor_to_indoor_path_loss(indoor):
     else:
 
         outdoor_to_indoor_path_loss = 0
-    print('building penetration loss is {}'.format(outdoor_to_indoor_path_loss))
+    # print('building penetration loss is {}'.format(outdoor_to_indoor_path_loss))
     return outdoor_to_indoor_path_loss
