@@ -23,7 +23,21 @@ from digital_comms.mobile_network.path_loss_module import path_loss_calculator
 #set seed for stochastic predictablity
 np.random.seed(42)
 
-# from built_env_module import find_line_of_sight
+#Define global simulation parameters
+ITERATIONS = 500
+TX_HEIGHT_BASE = 30
+TX_HEIGHT_HIGH = 40
+TX_POWER = 40
+TX_GAIN = 20
+TX_LOSSES = 2
+RX_GAIN = 4
+RX_LOSSES = 4
+RX_MISC_LOSSES = 4
+RX_HEIGHT = 1.5
+PERCENTILE = 95
+DESIRED_TRANSMITTER_DENSITY = 10 #per km^2
+SECTORISATION = 3
+SYSTEM_INPUT = os.path.join('data', 'raw')
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read(
@@ -1269,22 +1283,6 @@ MODULATION_AND_CODING_LUT =[
 ]
 
 if __name__ == "__main__":
-
-    #Define global simulation parameters
-    ITERATIONS = 500
-    TX_HEIGHT_BASE = 30
-    TX_HEIGHT_HIGH = 40
-    TX_POWER = 40
-    TX_GAIN = 20
-    TX_LOSSES = 2
-    RX_GAIN = 4
-    RX_LOSSES = 4
-    RX_MISC_LOSSES = 4
-    RX_HEIGHT = 1.5
-    PERCENTILE = 95
-    DESIRED_TRANSMITTER_DENSITY = 10 #per km^2
-    SECTORISATION = 3
-    SYSTEM_INPUT = os.path.join('data', 'raw')
 
     if len(sys.argv) != 2:
         print("Error: no postcode sector provided")

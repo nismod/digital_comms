@@ -5,7 +5,7 @@ Written by Edward J. Oughton
 
 """
 from digital_comms.mobile_network.model import (
-    NetworkManager, LAD, PostcodeSector
+    NetworkManager, LAD, PostcodeSector, lookup_clutter_geotype
     )
 
 class TestNetworkManager():
@@ -94,14 +94,29 @@ class TestLAD():
         testCoverage = testLAD.coverage()
         assert testCoverage == 0
 
+def test_lookup_clutter_geotype():
 
+    clutter_lookup = [
+        (0.0, 'Rural'),
+        (782.0, 'Suburban'),
+        (7959.0, 'Urban'),
+    ]
 
-# MANAGER = NetworkManager(LADS, PCD_SECTORS, ASSETS, CAPACITY_LOOKUP,
-#     CLUTTER_LOOKUP, SERVICE_OBLIGATION_CAPACITY, TRAFFIC, MARKET_SHARE)
+    population_density = 200
 
-# for lad in MANAGER.lads.values():
-#     pprint(lad)
-#     for pcd in lad._pcd_sectors.values():
-#         print(" ", pcd, "capacity:{:.2f} demand:{:.2f}".format(
-#             pcd.capacity, pcd.demand
-#             ))
+    actual_result = lookup_clutter_geotype(clutter_lookup, population_density)
+
+    assert actual_result == 'Rural'
+
+    population_density = 1000
+
+    actual_result = lookup_clutter_geotype(clutter_lookup, population_density)
+
+    assert actual_result == 'Suburban'
+
+    population_density = 10000
+
+    actual_result = lookup_clutter_geotype(clutter_lookup, population_density)
+
+    assert actual_result == 'Urban'
+

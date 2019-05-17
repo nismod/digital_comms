@@ -346,7 +346,9 @@ class PostcodeSector(object):
 
     @property
     def population_density(self):
-        """obj: The population density in persons per square kilometer (km^2)
+        """
+        obj: The population density in persons per square kilometer (km^2)
+        
         """
         return self.population / self.area
 
@@ -359,10 +361,8 @@ class PostcodeSector(object):
                 if asset['frequency'] == frequency:
                     num_sites += 1
 
-            # sites/km^2 : divide num_sites/area
             site_density = float(num_sites) / self.area
 
-            # for a given site density and spectrum band, look up capacity
             tech_capacity = lookup_capacity(
                 self._capacity_lookup_table,
                 self.clutter_environment,
@@ -375,19 +375,18 @@ class PostcodeSector(object):
         return capacity
 
     def _small_cell_capacity(self):
-        # count small_cells
+        
         num_small_cells = len([
             asset
             for asset in self.assets
             if asset['type'] == "small_cell"
         ])
-        # sites/km^2 : divide num_small_cells/area
+        
         site_density = float(num_small_cells) / self.area
 
-        # for a given site density and spectrum band, look up capacity
         capacity = lookup_capacity(
             self._capacity_lookup_table,
-            "Small cells",  # Override clutter environment for small cells
+            "Small cells",  
             "3700",
             "2x25MHz",
             site_density)
@@ -427,15 +426,17 @@ def lookup_clutter_geotype(clutter_lookup, population_density):
     Parameters
     ----------
     clutter_lookup: list of tuple
-        Lookup table that represents geographical types and their population density
+        Lookup table that represents geographical types 
+        and their population density
         sorted by population_density_upper_bound ascending.
         * 0: :obj:`int`
-            Population density in persons per square kilometer (p/km^2)
+            Population density in persons per square 
+            kilometer (p/km^2)
         * 1: :obj:`str`
             Geotype ('Urban', ..)
     population_density: int
-        The population density in persons per square kilometer, that needs to be
-        looked up in the clutter lookup table
+        The population density in persons per square kilometer, 
+        that needs to be looked up in the clutter lookup table
     Returns
     -------
     str
@@ -449,31 +450,34 @@ def lookup_clutter_geotype(clutter_lookup, population_density):
             "Urban"
     Notes
     -----
-    Returns lowest boundary if population density is lower than the lowest boundary.
-    Returns upper boundary of a region if population density is within a region range.
-    Returns upper boundary if population density is higher than the highest boundary.
+    Returns lowest boundary if population density is lower 
+    than the lowest boundary.
+    Returns upper boundary of a region if population density 
+    is within a region range.
+    Returns upper boundary if population density is higher 
+    than the highest boundary.
+    
     """
+    print(clutter_lookup)
     middle_popd, middle_geotype = clutter_lookup[1]
     lowest_popd, lowest_geotype = clutter_lookup[0]
     if population_density < middle_popd:
-        print(lowest_geotype)
         return lowest_geotype
 
     for (middle_popd, middle_geotype), (upper_popd, upper_geotype) in pairwise(clutter_lookup):
         if middle_popd < population_density and population_density <= upper_popd:
-            # Be pessimistic about clutter, return upper bound
-            print(middle_popd)
-            return middle_popd
+            return middle_geotype
 
-    # If not caught between bounds, return highest geotype
     highest_popd, highest_geotype = clutter_lookup[-1]
-    print(highest_geotype)
     return highest_geotype
 
 
-def lookup_capacity(lookup_table, clutter_environment, frequency, bandwidth, site_density):
-    """Use lookup table to find capacity by clutter environment geotype,
-    frequency, bandwidth and site density
+def lookup_capacity(lookup_table, clutter_environment, frequency, 
+    bandwidth, site_density):
+    """
+    Use lookup table to find capacity by clutter environment 
+    geotype, frequency, bandwidth and site density
+    
     Parameters
     ----------
     lookup_table: dict
@@ -506,35 +510,40 @@ def lookup_capacity(lookup_table, clutter_environment, frequency, bandwidth, sit
         5
     Notes
     -----
-    Returns a capacity of 0 when the site density is below the specified range.
+    Returns a capacity of 0 when the site density is below the 
+    specified range.
     Interpolates between values between the lower and upper bounds.
-    Returns the maximum capacity when the site density is higher than the uppper bound.
+    Returns the maximum capacity when the site density is higher 
+    than the uppper bound.
+    
     Raises
     ------
     KeyError
         If combination is not found in the lookup table.
+
     """
     if (clutter_environment, frequency, bandwidth) not in lookup_table:
         raise KeyError("Combination %s not found in lookup table",
                        (clutter_environment, frequency, bandwidth))
 
-    density_capacities = lookup_table[(clutter_environment, frequency, bandwidth)]
+    density_capacities = lookup_table[
+        (clutter_environment, frequency, bandwidth)
+        ]
 
     lowest_density, lowest_capacity = density_capacities[0]
     if site_density < lowest_density:
-        # Never fail, return zero capacity if site density is below range
         return 0
 
     for a, b in pairwise(density_capacities):
         lower_density, lower_capacity = a
         upper_density, upper_capacity = b
         if lower_density <= site_density and site_density < upper_density:
-            # Interpolate between values
             return interpolate(
-                lower_density, lower_capacity, upper_density, upper_capacity, site_density
+                lower_density, lower_capacity, 
+                upper_density, upper_capacity, 
+                site_density
                 )
 
-    # If not caught between bounds return highest capacity
     highest_density, highest_capacity = density_capacities[-1]
     return highest_capacity
 

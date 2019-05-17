@@ -86,13 +86,31 @@ def setup_capacity_lookup():
         ('Small cells', '3700', '2x25MHz'): [
             (0, 0),
             (3, 10),
-        ]
+        ],
+        ("Rural", "700", "2x10MHz"): [
+            (0, 0),
+            (1, 2),
+        ],
+        ("Rural", "800", "2x10MHz"): [
+            (0, 0),
+            (1, 2),
+        ],
+        ("Rural", "2600", "2x10MHz"): [
+            (0, 0),
+            (3, 5),
+        ],
+        ("Rural", "3500", "2x10MHz"): [
+            (0, 0),
+            (3, 5),
+        ],
     }
 
 @fixture(scope='function')
 def setup_clutter_lookup():
-    return [
-        (5, "Urban")
+    return  [
+        (0.0, 'Rural'),
+        (782.0, 'Suburban'),
+        (7959.0, 'Urban'),
     ]
 
 @fixture(scope='function')
