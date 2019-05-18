@@ -83,25 +83,39 @@ lad_shapes = os.path.join(
 
 with fiona.open(lad_shapes, 'r') as lad_shape:
     for lad in lad_shape:
-        lads.append({
-            "id": lad['properties']['name'],
-            "name": lad['properties']['desc'],
-        })
+        if not lad['properties']['name'].startswith((
+            'E06000053',
+            'S12000027',
+            'N09000001',
+            'N09000002',
+            'N09000003',
+            'N09000004',
+            'N09000005',
+            'N09000006',
+            'N09000007',
+            'N09000008',
+            'N09000009',
+            'N09000010',
+            'N09000011',
+            )):
+            lads.append({
+                "id": lad['properties']['name'],
+                "name": lad['properties']['desc'],
+            })
 
 postcode_sectors = []
 PCD_SECTOR_FILENAME = os.path.join(
-    SYSTEM_INPUT_PATH, 'initial_system', 'pcd_sectors.csv'
+    BASE_PATH, 'processed', '_processed_postcode_sectors.csv'
     )
 
-with open(PCD_SECTOR_FILENAME, 'r') as pcd_sector_file:
-   reader = csv.reader(pcd_sector_file)
-   next(reader)
-   for lad_id, pcd_sector, _, area in reader:
-       postcode_sectors.append({
-           "id": pcd_sector.replace(" ", ""),
-           "lad_id": lad_id,
-           "area": float(area)
-       })
+with open(PCD_SECTOR_FILENAME, 'r') as source:
+    reader = csv.DictReader(source)
+    for pcd_sector in reader:
+        postcode_sectors.append({
+            "id": pcd_sector['postcode'].replace(" ", ""),
+            "lad_id": pcd_sector['lad'],
+            "area": float(pcd_sector['area']) / 1e6
+        })
 
 ################################################################
 # LOAD SCENARIO DATA
@@ -163,26 +177,30 @@ with open(THROUGHPUT_FILENAME, 'r') as throughput_file:
 print('Loading initial system')
 
 SYSTEM_FILENAME = os.path.join(
-    SYSTEM_INPUT_PATH, 'initial_system', 'initial_system_with_4G.csv'
+    BASE_PATH, 'processed', 'final_processed_sites.csv'
     )
 
 initial_system = []
-pcd_sector_ids = {pcd_sector["id"]: True for pcd_sector in postcode_sectors}
+#pcd_sector_ids = {pcd_sector["id"]: True for pcd_sector in postcode_sectors}
 with open(SYSTEM_FILENAME, 'r') as system_file:
-    reader = csv.reader(system_file)
-    next(reader)
-    for pcd_sector, site_ngr, build_date, site_type, tech, \
-        freq, bandwidth, network in reader:
-        if pcd_sector in pcd_sector_ids and network in NETWORKS_TO_INCLUDE:
-            initial_system.append({
-                'pcd_sector': pcd_sector,
-                'site_ngr': site_ngr,
-                'type': site_type,
-                'build_date': int(build_date),
-                'technology': tech,
-                'frequency': freq,
-                'bandwidth': bandwidth,
-            })
+    reader = csv.DictReader(system_file)
+    for pcd_sector in reader:
+
+        if  pcd_sector['lte_4G']:
+            frequency = ['800', '2600']
+        else:
+            frequency = []
+
+        initial_system.append({
+            'pcd_sector': pcd_sector['pcd_sector'].replace(' ', ''),
+            'site_ngr': pcd_sector['id'],
+            'type': pcd_sector['Anttype'],
+            'build_date': 2016,
+            'technology': pcd_sector['lte_4G'],
+            'frequency': frequency,
+            'sectors': 3,
+            # 'bandwidth': pcd_sector['id'],
+        })
 
 ################################################################
 # IMPORT LOOKUP TABLES
@@ -400,7 +418,7 @@ for pop_scenario, throughput_scenario, intervention_strategy in [
         # # ('high', 'high', 'minimal'),
 
         # # ('low', 'low', 'macrocell_700_3500'),
-        ('baseline', 'baseline', 'macrocell_700_3500'),
+        # ('baseline', 'baseline', 'macrocell_700_3500'),
         # # ('high', 'high', 'macrocell_700_3500'),
 
         # # ('low', 'low', 'macrocell_700'),
@@ -408,7 +426,7 @@ for pop_scenario, throughput_scenario, intervention_strategy in [
         # # ('high', 'high', 'macrocell_700'),
 
         # ('low', 'low', 'sectorisation'),
-        # ('baseline', 'baseline', 'sectorisation'),
+        ('baseline', 'baseline', 'sectorisation'),
         # ('high', 'high', 'sectorisation'),
 
         # ('low', 'low', 'macro_densification'),
@@ -450,7 +468,7 @@ for pop_scenario, throughput_scenario, intervention_strategy in [
                     user_throughput_by_scenario_year \
                         [throughput_scenario][year]
             except:
-                pass
+                 pass
 
         # Decide on new interventions
         budget = ANNUAL_BUDGET
@@ -458,10 +476,16 @@ for pop_scenario, throughput_scenario, intervention_strategy in [
         traffic = PERCENTAGE_OF_TRAFFIC_IN_BUSY_HOUR
         market_share = MARKET_SHARE
 
+        if intervention_strategy == 'sectorisation':
+            site_sectors = 6
+        else:
+            site_sectors = 3
+
         # simulate first
         if year == BASE_YEAR:
+
             system = NetworkManager(
-                lads, postcode_sectors, assets,
+                lads, postcode_sectors, assets, site_sectors,
                 capacity_lookup_table, clutter_lookup,
                 service_obligation_capacity, traffic,
                 market_share
@@ -470,14 +494,14 @@ for pop_scenario, throughput_scenario, intervention_strategy in [
         # decide
         interventions_built, budget, spend = decide_interventions(
             intervention_strategy, budget, service_obligation_capacity,
-            system, year, traffic, market_share
+            system, year, site_sectors, traffic, market_share
             )
         # accumulate decisions
         assets += interventions_built
 
         # simulate with decisions
         system = NetworkManager(
-            lads, postcode_sectors, assets,
+            lads, postcode_sectors, assets, site_sectors,
             capacity_lookup_table, clutter_lookup,
             service_obligation_capacity, traffic,
             market_share

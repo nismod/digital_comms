@@ -304,6 +304,7 @@ def add_coverage_to_sites(sitefinder_data, postcode_sectors):
                     'type': 'Feature',
                     'geometry': n.object['geometry'],
                     'properties':{
+                        'pcd_sector': postcode_sector['properties']['postcode'],
                         'id': n.object['properties']['id'],
                         'Antennaht': n.object['properties']['Antennaht'],
                         'Transtype': n.object['properties']['Transtype'],
@@ -540,6 +541,7 @@ def generate_link_straight_line(origin_points, dest_points):
                 'type': 'Feature',
                 'geometry': origin_point['geometry'],
                 'properties':{
+                    'pcd_sector': origin_point['properties']['pcd_sector'],
                     'id': origin_point['properties']['id'],
                     'Antennaht': origin_point['properties']['Antennaht'],
                     'Transtype': origin_point['properties']['Transtype'],
@@ -598,6 +600,75 @@ def write_shapefile(data, folder_name, filename):
         [sink.write(feature) for feature in data]
 
 
+def csv_writer_sites(data, filename):
+    """
+    Write data to a CSV file path
+
+    """
+    data_for_writing = []
+    for asset in data:
+        data_for_writing.append({
+            'pcd_sector': asset['properties']['pcd_sector'],
+            'id': asset['properties']['id'],
+            'longitude': asset['geometry']['coordinates'][0],
+            'latitude': asset['geometry']['coordinates'][1],
+            'Antennaht': asset['properties']['Antennaht'],
+            'Transtype': asset['properties']['Transtype'],
+            'Freqband': asset['properties']['Freqband'],
+            'Anttype': asset['properties']['Anttype'],
+            'Powerdbw':  asset['properties']['Powerdbw'],
+            'Maxpwrdbw':  asset['properties']['Maxpwrdbw'],
+            'Maxpwrdbm':  asset['properties']['Maxpwrdbm'],
+            'lte_4G':  asset['properties']['lte_4G'],
+            'exchange':  asset['properties']['exchange'],
+            'backhaul_length_m':  asset['properties']['backhaul_length_m'],
+        })
+
+    #get fieldnames
+    fieldnames = []
+    for name, value in data_for_writing[0].items():
+        fieldnames.append(name)
+
+    #create path
+    directory = os.path.join(BASE_PATH, 'processed')
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    with open(os.path.join(directory, filename), 'w') as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
+        writer.writeheader()
+        writer.writerows(data_for_writing)
+
+
+def csv_writer_postcode_sectors(data, filename):
+    """
+    Write data to a CSV file path
+
+    """
+    data_for_writing = []
+    for asset in data:
+        data_for_writing.append({
+            'postcode': asset['properties']['postcode'],
+            'lad': asset['properties']['lad'],
+            'area': asset['properties']['area'],
+        })
+
+    #get fieldnames
+    fieldnames = []
+    for name, value in data_for_writing[0].items():
+        fieldnames.append(name)
+
+    #create path
+    directory = os.path.join(BASE_PATH, 'processed')
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    with open(os.path.join(directory, filename), 'w') as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
+        writer.writeheader()
+        writer.writerows(data_for_writing)
+
+
 if __name__ == "__main__":
 
     print('Loading local authority district shapes')
@@ -650,13 +721,16 @@ if __name__ == "__main__":
     processed_sites, backhaul_links = generate_link_straight_line(processed_sites, exchanges)
 
     ### WRITE ALL OUTPUTS ###
+    csv_writer_sites(processed_sites, 'final_processed_sites.csv')
 
-    write_shapefile(
-        postcode_sectors, 'postcode_sectors', '_processed_postcode_sectors.shp'
-        )
-    write_shapefile(
-        processed_sites, 'sitefinder', 'final_processed_sites.shp'
-        )
-    write_shapefile(
-        backhaul_links, 'sitefinder', 'backhaul_routes.shp'
-        )
+    csv_writer_postcode_sectors(postcode_sectors, '_processed_postcode_sectors.csv')
+
+    # write_shapefile(
+    #     postcode_sectors, 'postcode_sectors', '_processed_postcode_sectors.shp'
+    #     )
+    # write_shapefile(
+    #     processed_sites, 'sitefinder', 'final_processed_sites.shp'
+    #     )
+    # write_shapefile(
+    #     backhaul_links, 'sitefinder', 'backhaul_routes.shp'
+    #     )

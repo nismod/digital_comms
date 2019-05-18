@@ -65,7 +65,7 @@ class NetworkManager(object):
         * 1: :obj:`int`
             TODO
     """
-    def __init__(self, lads, pcd_sectors, assets,
+    def __init__(self, lads, pcd_sectors, assets, site_sectors,
         capacity_lookup_table, clutter_lookup,
         service_obligation_capacity, traffic, market_share):
         """
@@ -91,18 +91,21 @@ class NetworkManager(object):
             assets_by_pcd[asset['pcd_sector']].append(asset)
 
         for pcd_sector_data in pcd_sectors:
-            lad_id = pcd_sector_data["lad_id"]
-            pcd_sector_id = pcd_sector_data["id"]
-            assets = assets_by_pcd[pcd_sector_id]
-            pcd_sector = PostcodeSector(
-                pcd_sector_data, assets,
-                capacity_lookup_table, clutter_lookup,
-                service_obligation_capacity, traffic, market_share)
+            try:
+                lad_id = pcd_sector_data["lad_id"]
+                pcd_sector_id = pcd_sector_data["id"]
+                assets = assets_by_pcd[pcd_sector_id]
+                pcd_sector = PostcodeSector(
+                    pcd_sector_data, assets, site_sectors,
+                    capacity_lookup_table, clutter_lookup,
+                    service_obligation_capacity, traffic, market_share)
 
-            self.postcode_sectors[pcd_sector_id] = pcd_sector
+                self.postcode_sectors[pcd_sector_id] = pcd_sector
 
-            lad_containing_pcd_sector = self.lads[lad_id]
-            lad_containing_pcd_sector.add_pcd_sector(pcd_sector)
+                lad_containing_pcd_sector = self.lads[lad_id]
+                lad_containing_pcd_sector.add_pcd_sector(pcd_sector)
+            except:
+                pass
 
 
 class LAD(object):
@@ -242,7 +245,7 @@ class PostcodeSector(object):
     Represents a Postcode sector to be modelled
 
     """
-    def __init__(self, data, assets, capacity_lookup_table,
+    def __init__(self, data, assets, site_sectors, capacity_lookup_table,
         clutter_lookup, service_obligation_capacity,
         traffic, market_share):
 
@@ -260,6 +263,8 @@ class PostcodeSector(object):
 
         self._capacity_lookup_table = capacity_lookup_table
         self._clutter_lookup = clutter_lookup
+
+        self.site_sectors = site_sectors
 
         self.clutter_environment = lookup_clutter_geotype(
             self._clutter_lookup,
@@ -348,7 +353,7 @@ class PostcodeSector(object):
     def population_density(self):
         """
         obj: The population density in persons per square kilometer (km^2)
-        
+
         """
         return self.population / self.area
 
@@ -358,11 +363,17 @@ class PostcodeSector(object):
         for frequency in ['800', '2600', '700', '3500']:
             num_sites = 0
             for asset in self.assets:
-                if asset['frequency'] == frequency:
-                    num_sites += 1
+                for asset_frequency in asset['frequency']:
+                    # print('asset_frequency {}'.format(asset_frequency))
+                    # print('frequency {}'.format(frequency))
+                    if asset_frequency == frequency:
+                        num_sites += 1
+                        if asset.sectors == 6:
+                            num_sites += 1
+                        # print('num_sites {}'.format(num_sites))
 
             site_density = float(num_sites) / self.area
-
+            # print(site_density)
             tech_capacity = lookup_capacity(
                 self._capacity_lookup_table,
                 self.clutter_environment,
@@ -375,18 +386,18 @@ class PostcodeSector(object):
         return capacity
 
     def _small_cell_capacity(self):
-        
+
         num_small_cells = len([
             asset
             for asset in self.assets
             if asset['type'] == "small_cell"
         ])
-        
+
         site_density = float(num_small_cells) / self.area
 
         capacity = lookup_capacity(
             self._capacity_lookup_table,
-            "Small cells",  
+            "Small cells",
             "3700",
             "2x25MHz",
             site_density)
@@ -426,16 +437,16 @@ def lookup_clutter_geotype(clutter_lookup, population_density):
     Parameters
     ----------
     clutter_lookup: list of tuple
-        Lookup table that represents geographical types 
+        Lookup table that represents geographical types
         and their population density
         sorted by population_density_upper_bound ascending.
         * 0: :obj:`int`
-            Population density in persons per square 
+            Population density in persons per square
             kilometer (p/km^2)
         * 1: :obj:`str`
             Geotype ('Urban', ..)
     population_density: int
-        The population density in persons per square kilometer, 
+        The population density in persons per square kilometer,
         that needs to be looked up in the clutter lookup table
     Returns
     -------
@@ -450,15 +461,14 @@ def lookup_clutter_geotype(clutter_lookup, population_density):
             "Urban"
     Notes
     -----
-    Returns lowest boundary if population density is lower 
+    Returns lowest boundary if population density is lower
     than the lowest boundary.
-    Returns upper boundary of a region if population density 
+    Returns upper boundary of a region if population density
     is within a region range.
-    Returns upper boundary if population density is higher 
+    Returns upper boundary if population density is higher
     than the highest boundary.
-    
+
     """
-    print(clutter_lookup)
     middle_popd, middle_geotype = clutter_lookup[1]
     lowest_popd, lowest_geotype = clutter_lookup[0]
     if population_density < middle_popd:
@@ -472,12 +482,12 @@ def lookup_clutter_geotype(clutter_lookup, population_density):
     return highest_geotype
 
 
-def lookup_capacity(lookup_table, clutter_environment, frequency, 
+def lookup_capacity(lookup_table, clutter_environment, frequency,
     bandwidth, site_density):
     """
-    Use lookup table to find capacity by clutter environment 
+    Use lookup table to find capacity by clutter environment
     geotype, frequency, bandwidth and site density
-    
+
     Parameters
     ----------
     lookup_table: dict
@@ -510,12 +520,12 @@ def lookup_capacity(lookup_table, clutter_environment, frequency,
         5
     Notes
     -----
-    Returns a capacity of 0 when the site density is below the 
+    Returns a capacity of 0 when the site density is below the
     specified range.
     Interpolates between values between the lower and upper bounds.
-    Returns the maximum capacity when the site density is higher 
+    Returns the maximum capacity when the site density is higher
     than the uppper bound.
-    
+
     Raises
     ------
     KeyError
@@ -539,8 +549,8 @@ def lookup_capacity(lookup_table, clutter_environment, frequency,
         upper_density, upper_capacity = b
         if lower_density <= site_density and site_density < upper_density:
             return interpolate(
-                lower_density, lower_capacity, 
-                upper_density, upper_capacity, 
+                lower_density, lower_capacity,
+                upper_density, upper_capacity,
                 site_density
                 )
 

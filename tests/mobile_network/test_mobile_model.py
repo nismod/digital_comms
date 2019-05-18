@@ -11,12 +11,13 @@ from digital_comms.mobile_network.model import (
 class TestNetworkManager():
 
     def test_create(self, setup_lad, setup_pcd_sector, setup_assets,
-                    setup_capacity_lookup, setup_clutter_lookup,
+                    setup_site_sectors, setup_capacity_lookup,
+                    setup_clutter_lookup,
                     setup_service_obligation_capacity,
                     setup_traffic, setup_market_share):
 
         Manager = NetworkManager(setup_lad, setup_pcd_sector, setup_assets,
-            setup_capacity_lookup, setup_clutter_lookup,
+            setup_site_sectors, setup_capacity_lookup, setup_clutter_lookup,
             setup_service_obligation_capacity,
             setup_traffic, setup_market_share)
 
@@ -30,9 +31,9 @@ class TestLAD():
         assert testLAD.name == setup_lad[0]['name']
 
     def test_property_population(self, setup_lad, setup_pcd_sector,
-        setup_assets, setup_capacity_lookup, setup_clutter_lookup,
-        setup_service_obligation_capacity, setup_traffic,
-        setup_market_share):
+        setup_assets, setup_site_sectors, setup_capacity_lookup,
+        setup_clutter_lookup, setup_service_obligation_capacity,
+        setup_traffic, setup_market_share):
 
         testLAD = LAD(setup_lad[0], setup_service_obligation_capacity)
 
@@ -42,12 +43,12 @@ class TestLAD():
 
         # Create a PostcodeSector with a population of 500
         testPostcode = PostcodeSector(setup_pcd_sector[0], setup_assets,
-            setup_capacity_lookup, setup_clutter_lookup,
+            setup_site_sectors, setup_capacity_lookup, setup_clutter_lookup,
             setup_service_obligation_capacity,
             setup_traffic, setup_market_share)
 
         #test pcd_sector capacity
-        assert round(testPostcode.capacity,2) == 1.83
+        assert round(testPostcode.capacity,2) == 3.67
 
         #test pcd_sector demand
         testDemand = round(testPostcode.demand,2)
@@ -60,11 +61,11 @@ class TestLAD():
 
         # Create a PostcodeSector with a population of 700
         testPostcode = PostcodeSector(setup_pcd_sector[1], setup_assets,
-            setup_capacity_lookup, setup_clutter_lookup,
+            setup_site_sectors, setup_capacity_lookup, setup_clutter_lookup,
             setup_service_obligation_capacity,
             setup_traffic, setup_market_share)
 
-        assert round(testPostcode.capacity,2) == 1.83
+        assert round(testPostcode.capacity,2) == 3.67
 
         #test pcd_sector demand
         testDemand = round(testPostcode.demand,2)
@@ -82,7 +83,7 @@ class TestLAD():
         #CB11, 800+2600MHz, density of 0.5 sites per km^2
         # Capacity is 1km^2 + 0.83km^2 = 1.83Mbps/km2
         #CB12 is the same, so (1.83+1.83)/2 = 1.83Mbps/km2 average capacity
-        assert round(testCapacity,2) == 1.83
+        assert round(testCapacity,2) == 3.67
 
         #test lad demand
         #2.28 = 1.14*2
@@ -92,7 +93,7 @@ class TestLAD():
         assert testDemand == 0.8
 
         testCoverage = testLAD.coverage()
-        assert testCoverage == 0
+        assert testCoverage == 1
 
 def test_lookup_clutter_geotype():
 
@@ -119,4 +120,3 @@ def test_lookup_clutter_geotype():
     actual_result = lookup_clutter_geotype(clutter_lookup, population_density)
 
     assert actual_result == 'Urban'
-

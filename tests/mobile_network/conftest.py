@@ -30,14 +30,16 @@ def setup_pcd_sector():
             "lad_id": 1,
             "population": 500,
             "area": 2,
-            "user_throughput": 2
+            "user_throughput": 2,
+            "sectors": 3,
         },
         {
             "id": "CB12",
             "lad_id": 1,
             "population": 200,
             "area": 2,
-            "user_throughput": 2
+            "user_throughput": 2,
+            "sectors": 3,
         }
     ]
 
@@ -49,7 +51,7 @@ def setup_assets():
             "site_ngr": 100,
             "technology": "LTE",
             "type": "macrocell_site",
-            "frequency": "800",
+            "frequency": ["800", "2600"],
             "bandwidth": "2x10MHz",
             "build_date": 2017
         },
@@ -58,11 +60,15 @@ def setup_assets():
             "site_ngr": 200,
             "technology": "LTE",
             "type": "macrocell_site",
-            "frequency": "2600",
+            "frequency": ["800", "2600"],
             "bandwidth": "2x10MHz",
             "build_date": 2017
         }
     ]
+
+@fixture(scope='function')
+def setup_site_sectors():
+    return 3
 
 @fixture(scope='function')
 def setup_capacity_lookup():
@@ -124,6 +130,29 @@ def setup_traffic():
 @fixture(scope='function')
 def setup_market_share():
     return 0.25
+
+@fixture(scope='function')
+def setup_built_interventions():
+    return [
+        {
+            "pcd_sector": "CB11",
+            "site_ngr": 100,
+            "technology": "LTE",
+            "type": "macrocell_site",
+            "frequency": ["800"],
+            "bandwidth": "2x10MHz",
+            "build_date": 2017
+        },
+        {
+            "pcd_sector": "CB12",
+            "site_ngr": 200,
+            "technology": "LTE",
+            "type": "macrocell_site",
+            "frequency": ["2600"],
+            "bandwidth": "2x10MHz",
+            "build_date": 2017
+        }
+    ]
 
 @fixture(scope='function')
 def setup_interventions():
