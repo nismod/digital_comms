@@ -2,11 +2,11 @@
 # GENERATE NETWORK LENGTH STATISTICS
 ######################################
 
-def calc_total_link_length(exchanges, sp_cab_links, sp_dist_point_links, sp_premises_links, sl_cab_links, 
+def calc_total_link_length(exchanges, sp_cab_links, sp_dist_point_links, sp_premises_links, sl_cab_links,
                             sl_dist_point_links, sl_premises_links, prems_over_lut, prems_under_lut):
-    
+
         length_data = []
-        
+
         for exchange in exchanges:
             for cab_link in sp_cab_links:
                 if exchange['properties']['id'] == cab_link['properties']['dest']:
@@ -23,18 +23,18 @@ def calc_total_link_length(exchanges, sp_cab_links, sp_dist_point_links, sp_prem
                                         premises_distance = 'unknown'
 
                                     cab_link_length = round(cab_link['properties']['length'],2)
-                                    dist_point_link_length = round(dist_point_link['properties']['length'],2)          
+                                    dist_point_link_length = round(dist_point_link['properties']['length'],2)
                                     premises_link_length = round(premises_link['properties']['length'],2)
                                     d_side_length = round(dist_point_link_length + premises_link_length,2)
                                     total_link_length = round(cab_link_length + d_side_length,2)
-                                    
+
                                     length_data.append({
                                         'premises_id': premises_link['properties']['origin'],
                                         'exchange_id': exchange['properties']['id'],
                                         'geotype': exchange['properties']['geotype'],
                                         'cab_link_length': cab_link_length,
                                         'dist_point_link_length': dist_point_link_length,
-                                        'premises_link_length': premises_link_length, 
+                                        'premises_link_length': premises_link_length,
                                         'd_side': d_side_length,
                                         'total_link_length': total_link_length,
                                         'length_type': 'shortest_path',
@@ -57,18 +57,18 @@ def calc_total_link_length(exchanges, sp_cab_links, sp_dist_point_links, sp_prem
                                         premises_distance = 'unknown'
 
                                     cab_link_length = round(cab_link['properties']['length'],2)
-                                    dist_point_link_length = round(dist_point_link['properties']['length'],2)          
+                                    dist_point_link_length = round(dist_point_link['properties']['length'],2)
                                     premises_link_length = round(premises_link['properties']['length'],2)
                                     d_side_length = round(dist_point_link_length + premises_link_length,2)
                                     total_link_length = round(cab_link_length + d_side_length,2)
-                                    
+
                                     length_data.append({
                                         'premises_id': premises_link['properties']['origin'],
                                         'exchange_id': exchange['properties']['id'],
                                         'geotype': exchange['properties']['geotype'],
                                         'cab_link_length': cab_link_length,
                                         'dist_point_link_length': dist_point_link_length,
-                                        'premises_link_length': premises_link_length, 
+                                        'premises_link_length': premises_link_length,
                                         'd_side': d_side_length,
                                         'total_link_length': total_link_length,
                                         'length_type': 'straight_line',
@@ -80,7 +80,7 @@ def calc_total_link_length(exchanges, sp_cab_links, sp_dist_point_links, sp_prem
 def calc_geotype_statistics(exchanges, cabinets, dist_points, premises):
 
     for exchange in exchanges:
-        
+
         cabs_over = 0
         cabs_under = 0
 
@@ -140,12 +140,12 @@ def calculate_network_statistics(length_data, exchanges, exchange_name):
         elif (length['geotype'] == '>20k lines' or length['geotype'] == '>10k lines' or length['geotype'] == '>3k lines' or
             length['geotype'] == '>1k lines' or length['geotype'] == '<1k lines'):
 
-            if length['exchange_id'] == exchange_name and length['length_type'] == 'straight_line' and length['premises_distance'] == 'under': 
+            if length['exchange_id'] == exchange_name and length['length_type'] == 'straight_line' and length['premises_distance'] == 'under':
                 under_exchange_length_data.append(float(length['total_link_length']))
 
-            elif length['exchange_id'] == exchange_name and length['length_type'] == 'straight_line' and length['premises_distance'] == 'over': 
+            elif length['exchange_id'] == exchange_name and length['length_type'] == 'straight_line' and length['premises_distance'] == 'over':
                 over_exchange_length_data.append(float(length['total_link_length']))
-                        
+
             if len(under_exchange_length_data) > 0:
                 under_ave_length = (float(sum(under_exchange_length_data)) / float(len(under_exchange_length_data)))
 
@@ -154,17 +154,17 @@ def calculate_network_statistics(length_data, exchanges, exchange_name):
 
         else:
             print('no geotype found for link in length_data')
-    
+
     return_network_stats = []
 
     for exchange in exchanges:
         """
         - 'am_' stands for Analysys Mason and refers to the network stats quoted
-        in the 2008 report ‘The Costs of Deploying Fibre-Based next-Generation 
-        Broadband Infrastructure’ produced for the Broadband Stakeholder Group 
+        in the 2008 report ‘The Costs of Deploying Fibre-Based next-Generation
+        Broadband Infrastructure’ produced for the Broadband Stakeholder Group
         - 'ovr' = over
         - 'udr' = under
-        
+
         """
         if exchange['properties']['geotype'] == 'inner london':
             am_average_lines_per_exchange = 16,812
@@ -206,7 +206,7 @@ def calculate_network_statistics(length_data, exchanges, exchange_name):
             am_ovr_average_line_length = 4830
 
         elif geotype == '>10k lines':
-            
+
             am_udr_average_lines_per_exchange = 10728
             am_udr_cabinets = 9679
             am_udr_average_lines_per_cabinet = 450
@@ -261,7 +261,7 @@ def calculate_network_statistics(length_data, exchanges, exchange_name):
             am_udr_distribution_points = 130706
             am_udr_average_lines_per_dist_point = 3.4
             am_udr_average_line_length = 520
-            
+
             am_ovr_average_lines_per_exchange = 305
             am_ovr_cabinets = 0
             am_ovr_average_lines_per_cabinet = 0
@@ -272,19 +272,19 @@ def calculate_network_statistics(length_data, exchanges, exchange_name):
         else:
             print('no geotype found for AM reference statistics')
 
-        if (exchange['properties']['geotype'] == 'inner london' or 
-                exchange['properties']['geotype'] == 'large city' or 
+        if (exchange['properties']['geotype'] == 'inner london' or
+                exchange['properties']['geotype'] == 'large city' or
                 exchange['properties']['geotype'] == 'small city'):
-        
+
             return_network_stats.append({
                 'exchange_id': exchange['properties']['id'],
                 'geotype': exchange['properties']['geotype'],
                 'distance_type':'urban',
                 'am_ave_lines_per_ex': am_average_lines_per_exchange,
-                'total_lines': exchange['properties']['prems_under'] + exchange['properties']['prems_over'], 
+                'total_lines': exchange['properties']['prems_under'] + exchange['properties']['prems_over'],
                 'am_cabinets': am_cabinets,
                 'total_cabinets': exchange['properties']['cabs_under'] + exchange['properties']['cabs_over'],
-                'am_ave_lines_per_cab': am_average_lines_per_cabinet, 
+                'am_ave_lines_per_cab': am_average_lines_per_cabinet,
                 'ave_lines_per_cab': 'TODO',
                 'am_distribution_points': am_distribution_points,
                 'total_dps': exchange['properties']['dps_under'] + exchange['properties']['dps_over'],
@@ -293,9 +293,9 @@ def calculate_network_statistics(length_data, exchanges, exchange_name):
                 'am_ave_line_length': am_ave_line_length,
                 'ave_line_length': round(urban_ave_length, 2),
             })
-            
-        elif (length['geotype'] == '>20k lines' or length['geotype'] == '>10k lines' or 
-                length['geotype'] == '>3k lines' or length['geotype'] == '>1k lines' or 
+
+        elif (length['geotype'] == '>20k lines' or length['geotype'] == '>10k lines' or
+                length['geotype'] == '>3k lines' or length['geotype'] == '>1k lines' or
                 length['geotype'] == '<1k lines'):
 
             return_network_stats.append({
@@ -303,10 +303,10 @@ def calculate_network_statistics(length_data, exchanges, exchange_name):
                 'geotype': exchange['properties']['geotype'],
                 'distance_type':'under_threshold',
                 'am_ave_lines_per_ex': am_udr_average_lines_per_exchange,
-                'total_lines': exchange['properties']['prems_under'] + exchange['properties']['prems_over'], 
+                'total_lines': exchange['properties']['prems_under'] + exchange['properties']['prems_over'],
                 'am_cabinets': am_udr_cabinets,
                 'total_cabinets': exchange['properties']['cabs_under'] + exchange['properties']['cabs_over'],
-                'am_ave_lines_per_cab': am_udr_average_lines_per_cabinet, 
+                'am_ave_lines_per_cab': am_udr_average_lines_per_cabinet,
                 'ave_lines_per_cab': 'TODO',
                 'am_distribution_points': am_udr_distribution_points,
                 'total_dps': exchange['properties']['dps_under'] + exchange['properties']['dps_over'],
@@ -315,16 +315,16 @@ def calculate_network_statistics(length_data, exchanges, exchange_name):
                 'am_ave_line_length': am_udr_average_line_length,
                 'ave_line_length': round(under_ave_length,2),
             })
-            
+
             return_network_stats.append({
                 'exchange_id': exchange['properties']['id'],
                 'geotype': exchange['properties']['geotype'],
                 'distance_type':'over_threshold',
                 'am_ave_lines_per_ex': am_ovr_average_lines_per_exchange,
-                'total_lines': exchange['properties']['prems_under'] + exchange['properties']['prems_over'], 
+                'total_lines': exchange['properties']['prems_under'] + exchange['properties']['prems_over'],
                 'am_cabinets': am_ovr_cabinets,
                 'total_cabinets': exchange['properties']['cabs_under'] + exchange['properties']['cabs_over'],
-                'am_ave_lines_per_cab': am_ovr_average_lines_per_cabinet, 
+                'am_ave_lines_per_cab': am_ovr_average_lines_per_cabinet,
                 'ave_lines_per_cab': 'TODO',
                 'am_distribution_points': am_ovr_distribution_points,
                 'total_dps': exchange['properties']['dps_under'] + exchange['properties']['dps_over'],
@@ -346,7 +346,7 @@ def plot_length_data(data, exchange_name):
     d_side_sp_length = []
     dist_point_sp_length = []
     total_link_sp_length = []
-    
+
     e_side_sl_length = []
     d_side_sl_length = []
     dist_point_sl_length = []
@@ -398,7 +398,7 @@ def plot_length_data(data, exchange_name):
 
  # # # # Generate loop lengths
     # # # print('calculating loop length stats')
-    # # # length_data = calc_total_link_length(geojson_layer2_exchanges, 
+    # # # length_data = calc_total_link_length(geojson_layer2_exchanges,
     # # #                                         geojson_layer3_cabinets_sp_links, geojson_layer4_distributions_sp_links, geojson_layer5_premises_sp_links,
     # # #                                         geojson_layer3_cabinets_sl_links, geojson_layer4_distributions_sl_links, geojson_layer5_premises_sl_links,
     # # #                                         prems_over_lut, prems_under_lut)
@@ -419,12 +419,12 @@ def plot_length_data(data, exchange_name):
     ###########################################################################################################
     # # # # Write network statistics
     # # # print('write link lengths to .csv')
-    # # # loop_length_fieldnames = ['premises_id','exchange_id','geotype','cab_link_length','dist_point_link_length','premises_link_length', 
+    # # # loop_length_fieldnames = ['premises_id','exchange_id','geotype','cab_link_length','dist_point_link_length','premises_link_length',
     # # #                             'd_side', 'total_link_length', 'length_type', 'premises_distance']
     # # # csv_writer(length_data, '{}_link_lengths.csv'.format(exchange_abbr), loop_length_fieldnames)
 
     # # # print('write link lengths to .csv')
     # # # network_stats_fieldnames = ['exchange_id','geotype','distance_type','am_ave_lines_per_ex','total_lines','am_cabinets','total_cabinets',
-    # # #                             'am_ave_lines_per_cab', 'ave_lines_per_cab', 'am_distribution_points','total_dps', 
+    # # #                             'am_ave_lines_per_cab', 'ave_lines_per_cab', 'am_distribution_points','total_dps',
     # # #                             'am_ave_lines_per_dist_point', 'ave_lines_per_dist_point', 'am_ave_line_length','ave_line_length']
     # # # csv_writer(network_stats, '{}_network_statistics.csv'.format(exchange_abbr), network_stats_fieldnames)

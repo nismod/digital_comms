@@ -4,7 +4,7 @@ from pytest import fixture
 import fiona
 import os
 
-from digital_comms.fixed_network.model import ICTManager
+from digital_comms.fixed_network.model import NetworkManager
 
 def read_shapefile(file):
     with fiona.open(file, 'r') as source:
@@ -24,7 +24,7 @@ def links(rootdir):
     links = []
     links.extend(read_shapefile(os.path.join(rootdir, 'fixed_network', 'fixtures', 'links_layer5_premises.shp')))
     links.extend(read_shapefile(os.path.join(rootdir, 'fixed_network', 'fixtures', 'links_layer4_distributions.shp')))
-    links.extend(read_shapefile(os.path.join(rootdir, 'fixed_network', 'fixtures', 'links_layer3_cabinets.shp')))    
+    links.extend(read_shapefile(os.path.join(rootdir, 'fixed_network', 'fixtures', 'links_layer3_cabinets.shp')))
     return links
 
 @pytest.fixture
@@ -62,4 +62,4 @@ def parameters():
 
 @pytest.fixture
 def setup_fixed_network(assets, links, parameters):
-    return ICTManager(assets, links, parameters)
+    return NetworkManager(assets, links, parameters)

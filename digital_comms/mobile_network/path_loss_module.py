@@ -280,7 +280,7 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
         )
 
     else:
-        print(distance)
+        # print(distance)
         raise ValueError('Distance over 100km not compliant')
 
     ###PART 2####
@@ -423,7 +423,7 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
                 22 * np.log10(distance) + 28 + 20*np.log10(frequency) +
                 generate_log_normal_dist_value(1, 3, 1)
             )
-
+            # print('path loss is {}'.format(path_loss))
         elif breakpoint_urban < distance < 5000:
 
             path_loss = (
@@ -470,7 +470,7 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
                 'ant_type {}, settlement_type {}, type_of_sight {}, distance {}'
                 .format(ant_type, settlement_type, type_of_sight, distance)
                 )
-            print("distance is out of cell range at {}m".format(distance))
+            # print("distance is out of cell range at {}m".format(distance))
             #fallback value needs refining
             path_loss = 250
 
@@ -560,6 +560,9 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
             )
 
         elif distance <= 10:
+            path_loss = 250
+
+        elif distance > 5000:
             path_loss = 250
 
         else:

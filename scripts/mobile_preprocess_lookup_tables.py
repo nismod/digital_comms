@@ -82,23 +82,24 @@ def get_postcode_sectors(processed_postcode_sectors, lad_id):
 
     all_postcode_sectors = []
 
-    directory = os.path.join(DATA_RAW, 'd_shapes', 'postcode_sectors')
-    pathlist = glob.iglob(directory + '/*.shp', recursive=True)
-    for path in pathlist:
-        with fiona.open(path, 'r') as source:
-            for postcode_sector in source:
-                if postcode_sector['properties']['postcode'] not in processed_postcode_sectors:
-                    all_postcode_sectors.append(postcode_sector)
-                else:
-                    pass
+    # directory = os.path.join(DATA_RAW, 'd_shapes', 'postcode_sectors')
+    # pathlist = glob.iglob(directory + '/*.shp', recursive=True)
+    # for path in pathlist:
+    path = os.path.join(DATA_RAW, 'd_shapes', 'datashare_pcd_sectors', 'PostalSector.shp')
+    with fiona.open(path, 'r') as source:
+        for postcode_sector in source:
+            if postcode_sector['properties']['RMSect'] not in processed_postcode_sectors:
+                all_postcode_sectors.append(postcode_sector)
+            else:
+                pass
 
     intersecting_postcode_sectors = []
     postcode_sector_ids = []
 
     for postcode_sector in all_postcode_sectors:
-        if postcode_sector['properties']['postcode'] in pcd_sector_to_lad_lut:
+        if postcode_sector['properties']['RMSect'] in pcd_sector_to_lad_lut:
             intersecting_postcode_sectors.append(postcode_sector)
-            postcode_sector_ids.append(postcode_sector['properties']['postcode'])
+            postcode_sector_ids.append(postcode_sector['properties']['RMSect'])
 
     touching_lad_ids =  set()
 
@@ -251,7 +252,7 @@ def get_geotype_information(postcode_sector, buildings):
     print('residential_count is {}'.format(residential_count))
     #get area in km^2
     geom = shape(postcode_sector['geometry'])
-    area = geom.area/10e6
+    area = geom.area/1e6
     print('non_residential_count is {}'.format(non_residential_count))
     return residential_count, non_residential_count, area
 
@@ -341,8 +342,8 @@ if __name__ == "__main__":
 
         for postcode_sector in postcode_sectors:
 
-            print('processing {}'.format(postcode_sector['properties']['postcode']))
-            postcode_sector_name = postcode_sector['properties']['postcode']
+            print('processing {}'.format(postcode_sector['properties']['RMSect']))
+            postcode_sector_name = postcode_sector['properties']['RMSect']
 
             #intersect buildings and pcd_sector
             postcode_sector_buildings = get_intersecting_buildings(postcode_sector, buildings)

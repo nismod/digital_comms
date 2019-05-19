@@ -43,8 +43,8 @@ if __name__ == "__main__":
 
     elif sys.argv[1] == 'testbeds':
         selection = [
-            'CB1 1', # Primrose Hill (Inner London)
-            'BS1 5', # Chapeltown (Major City)
+            'CB1 1',
+            'BS1 5',
         ]
 
     print(*selection, sep='\n')

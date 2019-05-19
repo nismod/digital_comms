@@ -7,10 +7,10 @@ from digital_comms.mobile_network.transmitter_module import (
     read_postcode_sector,
     get_local_authority_ids,
     determine_environment,
-    get_transmitters,
+    get_sites,
     generate_receivers,
     NetworkManager,
-    find_and_deploy_new_transmitter,
+    find_and_deploy_new_site,
     randomly_select_los,
     transform_coordinates
     )
@@ -111,6 +111,7 @@ def base_system(get_postcode_sector):
                 "misc_losses": 4,
                 "gain": 4,
                 "losses": 4,
+                "ue_height": 1.5,
                 "indoor": True,
             }
         },
@@ -126,6 +127,7 @@ def base_system(get_postcode_sector):
                 "misc_losses": 4,
                 "gain": 4,
                 "losses": 4,
+                "ue_height": 1.5,
                 "indoor": True,
             }
         },
@@ -141,6 +143,7 @@ def base_system(get_postcode_sector):
                 "misc_losses": 4,
                 "gain": 4,
                 "losses": 4,
+                "ue_height": 1.5,
                 "indoor": True,
             }
         }
@@ -200,9 +203,9 @@ def test_determine_environment(postcode_sector_lut):
 
     assert actual_results == expected_result
 
-def test_get_transmitters(get_postcode_sector):
+def test_get_sites(get_postcode_sector):
 
-    actual_receivers = get_transmitters(get_postcode_sector)
+    actual_receivers = get_sites(get_postcode_sector)
 
     geom = shape(get_postcode_sector['geometry'])
 
@@ -229,12 +232,12 @@ def test_generate_receivers(get_postcode_sector, postcode_sector_lut):
     assert receiver_1['properties']['losses'] == 4
     assert receiver_1['properties']['indoor'] == True
 
-def test_find_and_deploy_new_transmitter(base_system, get_postcode_sector):
+def test_find_and_deploy_new_site(base_system, get_postcode_sector):
 
-    new_transmitter = find_and_deploy_new_transmitter(
-        base_system.transmitters, 1, get_postcode_sector, 1
+    new_transmitter = find_and_deploy_new_site(
+        base_system.sites, 1, get_postcode_sector, 1
         )
-
+    print(new_transmitter)
     expected_transmitter = [
         {
             'type': "Feature",
@@ -245,12 +248,12 @@ def test_find_and_deploy_new_transmitter(base_system, get_postcode_sector):
             'properties': {
                     "operator": 'unknown',
                     "sitengr": '{new}{GEN1.1}',
-                    "ant_height": 20,
+                    "ant_height": 30,
                     "tech": 'LTE',
                     "freq": 700,
                     "type": 17,
-                    "power": 30,
-                    "gain": 18,
+                    "power": 40,
+                    "gain": 20,
                     "losses": 2,
                 }
         }
@@ -259,8 +262,8 @@ def test_find_and_deploy_new_transmitter(base_system, get_postcode_sector):
     assert len(new_transmitter) == 1
     assert new_transmitter == expected_transmitter
 
-    new_transmitter = find_and_deploy_new_transmitter(
-        base_system.transmitters, 1, get_postcode_sector, 1
+    new_transmitter = find_and_deploy_new_site(
+        base_system.sites, 1, get_postcode_sector, 1
         )
 
     expected_transmitter = [
@@ -273,12 +276,12 @@ def test_find_and_deploy_new_transmitter(base_system, get_postcode_sector):
             'properties': {
                     "operator": 'unknown',
                     "sitengr": '{new}{GEN1.1}',
-                    "ant_height": 20,
+                    "ant_height": 30,
                     "tech": 'LTE',
                     "freq": 700,
                     "type": 17,
-                    "power": 30,
-                    "gain": 18,
+                    "power": 40,
+                    "gain": 20,
                     "losses": 2,
                 }
         }
@@ -290,7 +293,7 @@ def test_find_and_deploy_new_transmitter(base_system, get_postcode_sector):
 def test_network_manager(base_system):
 
     assert len(base_system.area) == 1
-    assert len(base_system.transmitters) == 4
+    assert len(base_system.sites) == 4
     assert len(base_system.receivers) == 3
 
 def test_build_new_assets(base_system):
@@ -318,65 +321,65 @@ def test_build_new_assets(base_system):
 
     base_system.build_new_assets(build_this_transmitter, 'CB11')
 
-    assert len(base_system.transmitters) == 5
+    assert len(base_system.sites) == 5
 
-def test_estimate_link_budget(base_system, modulation_coding_lut):
+# def test_estimate_link_budget(base_system, modulation_coding_lut):
 
-    actual_result = base_system.estimate_link_budget(
-        0.7, 10, 'urban', modulation_coding_lut
-        )
-    print(actual_result)
-    # find closest_transmitters
-    # <Receiver id:AB1>
-    # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>,
-    # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
-    # <Receiver id:AB3>
-    # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>,
-    # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
-    # <Receiver id:AB2>
-    # [<Transmitter id:TL4454059600>, <Transmitter id:TL4529059480>,
-    # <Transmitter id:TL4515059700>, <Transmitter id:TL4577059640>]
+#     actual_result = base_system.estimate_link_budget(
+#         0.7, 10, 'urban', modulation_coding_lut
+#         )
+#     print(actual_result)
+#     # find closest_transmitters
+#     # <Receiver id:AB1>
+#     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>,
+#     # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
+#     # <Receiver id:AB3>
+#     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>,
+#     # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
+#     # <Receiver id:AB2>
+#     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4529059480>,
+#     # <Transmitter id:TL4515059700>, <Transmitter id:TL4577059640>]
 
-    # find path_loss
+#     # find path_loss
 
-    # type_of_sight is nlos
-    # 0.7 383.56170453174326 20 macro 20 20 urban nlos 1.5 0
-    # 0.7 869 20 macro 20 20 urban nlos 1.5 0
-    # 0.7 961 20 macro 20 20 urban nlos 1.5 0
-    # 0.7 1856 20 macro 20 20 urban nlos 1.5 0
-    # type_of_sight is nlos
-    # 0.7 158.43465782386215 20 macro 20 20 urban nlos 1.5 0
-    # 0.7 753 20 macro 20 20 urban nlos 1.5 0
-    # 0.7 770 20 macro 20 20 urban nlos 1.5 0
-    # 0.7 1744 20 macro 20 20 urban nlos 1.5 0
-    # type_of_sight is nlos
-    # 0.7 186.39733937494557 20 macro 20 20 urban nlos 1.5 0
-    # 0.7 935 20 macro 20 20 urban nlos 1.5 0
-    # 0.7 943 20 macro 20 20 urban nlos 1.5 0
-    # 0.7 1915 20 macro 20 20 urban nlos 1.5 0
+#     # type_of_sight is nlos
+#     # 0.7 383.56170453174326 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 869 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 961 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 1856 20 macro 20 20 urban nlos 1.5 0
+#     # type_of_sight is nlos
+#     # 0.7 158.43465782386215 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 753 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 770 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 1744 20 macro 20 20 urban nlos 1.5 0
+#     # type_of_sight is nlos
+#     # 0.7 186.39733937494557 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 935 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 943 20 macro 20 20 urban nlos 1.5 0
+#     # 0.7 1915 20 macro 20 20 urban nlos 1.5 0
 
-    # find received_power (self.calc_received_power)
+#     # find received_power (self.calc_received_power)
 
-    # find interference (self.calculate_interference)
+#     # find interference (self.calculate_interference)
 
-    # find noise (self.calculate_noise)
+#     # find noise (self.calculate_noise)
 
-    # find sinr (self.calculate_sinr)
+#     # find sinr (self.calculate_sinr)
 
-    #find spectral efficiency (self.modulation_scheme_and_coding_rate)
+#     #find spectral efficiency (self.modulation_scheme_and_coding_rate)
 
-    # find (self.estimate_capacity)
+#     # find (self.estimate_capacity)
 
-    expected_result = 0
+#     expected_result = 0
 
-    assert expected_result == actual_result
+#     assert expected_result == actual_result
 
-def test_find_closest_available_transmitters(base_system):
+def test_find_closest_available_sites(base_system):
 
     receiver = base_system.receivers['AB3']
 
     transmitter, interfering_transmitters = (
-        base_system.find_closest_available_transmitters(receiver)
+        base_system.find_closest_available_sites(receiver)
         )
 
     assert transmitter.id == 'TL4454059600'
@@ -407,11 +410,11 @@ def test_calculate_path_loss(base_system):
     receiver = base_system.receivers['AB3']
 
     transmitter, interfering_transmitters = (
-        base_system.find_closest_available_transmitters(receiver)
+        base_system.find_closest_available_sites(receiver)
         )
 
     actual_result = base_system.calculate_path_loss(
-        transmitter, receiver, frequency, 'urban'
+        transmitter, receiver, frequency, ant_height, 'urban'
         )
 
     #model requires frequency in MHz rather than GHz.
@@ -449,7 +452,7 @@ def test_calc_received_power(base_system):
     receiver = base_system.receivers['AB3']
 
     transmitter, interfering_transmitters = (
-        base_system.find_closest_available_transmitters(receiver)
+        base_system.find_closest_available_sites(receiver)
         )
 
     actual_received_power = base_system.calc_received_power(
@@ -473,7 +476,7 @@ def test_calculate_interference(base_system):
     receiver = base_system.receivers['AB3']
 
     transmitter, interfering_transmitters = (
-        base_system.find_closest_available_transmitters(receiver)
+        base_system.find_closest_available_sites(receiver)
         )
 
     actual_interference = base_system.calculate_interference(
@@ -515,7 +518,7 @@ def test_calculate_sinr(base_system):
 
     # receiver = base_system.receivers['AB3']
 
-    # closest_transmitter = base_system.find_closest_available_transmitters(
+    # closest_transmitter = base_system.find_closest_available_sites(
     #     receiver
     #     )[0]
 
@@ -525,7 +528,7 @@ def test_calculate_sinr(base_system):
     #     173.94
     #     )
 
-    # closest_transmitters = base_system.find_closest_available_transmitters(
+    # closest_transmitters = base_system.find_closest_available_sites(
     #     receiver
     #     )
 
@@ -580,28 +583,51 @@ def test_modulation_scheme_and_coding_rate(base_system):
 
     MODULATION_AND_CODING_LUT =[
         #CQI Index	Modulation	Coding rate	Spectral efficiency (bps/Hz) SINR estimate (dB)
-        (1,	'QPSK',	0.0762,	0.1523, -6.7),
-        (2,	'QPSK',	0.1172,	0.2344, -4.7),
-        (3,	'QPSK',	0.1885,	0.377, -2.3),
-        (4,	'QPSK',	0.3008,	0.6016, 0.2),
-        (5,	'QPSK',	0.4385,	0.877, 2.4),
-        (6,	'QPSK',	0.5879,	1.1758,	4.3),
-        (7,	'16QAM', 0.3691, 1.4766, 5.9),
-        (8,	'16QAM', 0.4785, 1.9141, 8.1),
-        (9,	'16QAM', 0.6016, 2.4063, 10.3),
-        (10, '64QAM', 0.4551, 2.7305, 11.7),
-        (11, '64QAM', 0.5537, 3.3223, 14.1),
-        (12, '64QAM', 0.6504, 3.9023, 16.3),
-        (13, '64QAM', 0.7539, 4.5234, 18.7),
-        (14, '64QAM', 0.8525, 5.1152, 21),
-        (15, '64QAM', 0.9258, 5.5547, 22.7),
+        ('4G', 1, 'QPSK',	0.0762,	0.1523, -6.7),
+        ('4G', 2, 'QPSK',	0.1172,	0.2344, -4.7),
+        ('4G', 3, 'QPSK',	0.1885,	0.377, -2.3),
+        ('4G', 4, 'QPSK',	0.3008,	0.6016, 0.2),
+        ('4G', 5, 'QPSK',	0.4385,	0.877, 2.4),
+        ('4G', 6, 'QPSK',	0.5879,	1.1758,	4.3),
+        ('4G', 7, '16QAM', 0.3691, 1.4766, 5.9),
+        ('4G', 8, '16QAM', 0.4785, 1.9141, 8.1),
+        ('4G', 9, '16QAM', 0.6016, 2.4063, 10.3),
+        ('4G', 10, '64QAM', 0.4551, 2.7305, 11.7),
+        ('4G', 11, '64QAM', 0.5537, 3.3223, 14.1),
+        ('4G', 12, '64QAM', 0.6504, 3.9023, 16.3),
+        ('4G', 13, '64QAM', 0.7539, 4.5234, 18.7),
+        ('4G', 14, '64QAM', 0.8525, 5.1152, 21),
+        ('4G', 15, '64QAM', 0.9258, 5.5547, 22.7),
+        ('5G', 1, 'QPSK', 78, 0.1523, -6.7),
+        ('5G', 2, 'QPSK', 193, 0.377, -4.7),
+        ('5G', 3, 'QPSK', 449, 0.877, -2.3),
+        ('5G', 4, '16QAM', 378, 1.4766, 0.2),
+        ('5G', 5, '16QAM', 490, 1.9141, 2.4),
+        ('5G', 6, '16QAM', 616, 2.4063, 4.3),
+        ('5G', 7, '64QAM', 466, 2.7305, 5.9),
+        ('5G', 8, '64QAM', 567, 3.3223, 8.1),
+        ('5G', 9, '64QAM', 666, 3.9023, 10.3),
+        ('5G', 10, '64QAM', 772, 4.5234, 11.7),
+        ('5G', 11, '64QAM', 873, 5.1152, 14.1),
+        ('5G', 12, '256QAM', 711, 5.5547, 16.3),
+        ('5G', 13, '256QAM', 797, 6.2266, 18.7),
+        ('5G', 14, '256QAM', 885, 6.9141, 21),
+        ('5G', 15, '256QAM', 948, 7.4063, 22.7),
         ]
 
     actual_result = base_system.modulation_scheme_and_coding_rate(
-        10, MODULATION_AND_CODING_LUT
+        10, '4G', MODULATION_AND_CODING_LUT
         )
 
     expected_result = 1.9141
+
+    assert actual_result == expected_result
+
+    actual_result = base_system.modulation_scheme_and_coding_rate(
+        10, '5G', MODULATION_AND_CODING_LUT
+        )
+
+    expected_result = 3.3223
 
     assert actual_result == expected_result
 

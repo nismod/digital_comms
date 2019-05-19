@@ -82,7 +82,7 @@ def test_get_geotype_information(postcode_sector, buildings):
         actual_area = get_geotype_information(
         postcode_sector, buildings
         )
-
+    print(actual_residential_count, actual_non_residential_count, actual_area)
     # sum of res_count
     # 20 = 10 + 10
     expected_residential_count = 20
@@ -95,4 +95,3 @@ def test_get_geotype_information(postcode_sector, buildings):
     assert actual_residential_count == expected_residential_count
     assert actual_non_residential_count == expected_non_residential_count
     assert actual_area == expected_area
-
