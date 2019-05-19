@@ -40,11 +40,19 @@ END_YEAR = 2030
 TIMESTEP_INCREMENT = 1
 TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
 
+#arc
 POPULATION_SCENARIOS = [
-    "high",
     "baseline",
-    "low",
+    "0-unplanned",
+    "1-new-cities",
+    "2-expansion",
 ]
+#normal
+# POPULATION_SCENARIOS = [
+#     "high",
+#     "baseline",
+#     "low",
+# ]
 THROUGHPUT_SCENARIOS = [
     "high",
     "baseline",
@@ -123,12 +131,21 @@ with open(PCD_SECTOR_FILENAME, 'r') as source:
 ################################################################
 print('Loading scenario data')
 
+#for arc
 scenario_files = {
     scenario: os.path.join(
         SYSTEM_INPUT_PATH, 'scenario_data',
-        'population_{}_pcd.csv'.format(scenario))
+        'pcd_arc_population__{}.csv'.format(scenario))
     for scenario in POPULATION_SCENARIOS
     }
+
+#for normal model
+# scenario_files = {
+#     scenario: os.path.join(
+#         SYSTEM_INPUT_PATH, 'scenario_data',
+#         'population_{}_pcd.csv'.format(scenario))
+#     for scenario in POPULATION_SCENARIOS
+#     }
 
 population_by_scenario_year_pcd = {
     scenario: {
@@ -140,11 +157,13 @@ population_by_scenario_year_pcd = {
 for scenario, filename in scenario_files.items():
 
     with open(filename, 'r') as scenario_file:
-        scenario_reader = csv.reader(scenario_file)
+        scenario_reader = csv.DictReader(scenario_file)
 
-        for year, pcd_sector, population in scenario_reader:
-            year = int(year)
+        for row in scenario_reader:
+            year = int(row['year'])
             if year in TIMESTEPS:
+                population = row['population']
+                pcd_sector = row['postcode_sector']
                 population_by_scenario_year_pcd[scenario][year][pcd_sector] \
                     = int(population)
 
@@ -415,11 +434,11 @@ def _get_suffix(pop_scenario, throughput_scenario,
 
 for pop_scenario, throughput_scenario, intervention_strategy in [
         # # ('low', 'low', 'minimal'),
-        # ('baseline', 'baseline', 'minimal'),
+        ('baseline', 'baseline', 'minimal'),
         # # ('high', 'high', 'minimal'),
 
         # # ('low', 'low', 'macrocell_700_3500'),
-        # ('baseline', 'baseline', 'macrocell_700_3500'),
+        ('baseline', 'baseline', 'macrocell_700_3500'),
         # # ('high', 'high', 'macrocell_700_3500'),
 
         # # ('low', 'low', 'macrocell_700'),
@@ -427,7 +446,7 @@ for pop_scenario, throughput_scenario, intervention_strategy in [
         # # ('high', 'high', 'macrocell_700'),
 
         # ('low', 'low', 'sectorisation'),
-        # ('baseline', 'baseline', 'sectorisation'),
+        ('baseline', 'baseline', 'sectorisation'),
         # ('high', 'high', 'sectorisation'),
 
         # ('low', 'low', 'macro_densification'),
