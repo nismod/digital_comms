@@ -219,21 +219,19 @@ class TestUpgradeExchange:
         assert isinstance(actual._clients, list)
 
 
-
 def test_coverage(small_system):
 
-    expected_coverage = {
-        'ABABA':{
-            'num_premises': 20,
-            'num_fttp': 0,
-            'num_fttdp': 0,
-            'num_fttc': 5,
-            'num_docsis3': 5,
-            'num_adsl': 20
-        }
-    }
+    expected_coverage = [{
+        'id': 'ABABA',
+        'percentage_of_premises_with_fttp': 0.0,
+        'percentage_of_premises_with_fttdp': 0.0,
+        'percentage_of_premises_with_fttc': 25.0,
+        'percentage_of_premises_with_docsis3': 25.0,
+        'percentage_of_premises_with_adsl': 100.0,
+        'sum_of_premises': 20
+    }]
 
-    actual_coverage = small_system.coverage()
+    actual_coverage = small_system.coverage('lad')
 
     assert expected_coverage == actual_coverage
 
@@ -328,18 +326,17 @@ def test_fttp_upgrade_exchanges(small_system):
 
     small_system.upgrade(built_interventions)
 
-    actual_coverage = small_system.coverage()
+    actual_coverage = small_system.coverage('exchange')
 
-    expected_coverage = {
-        'ABABA':{
-            'num_premises': 20,
-            'num_fttp': 20,
-            'num_fttdp': 0,
-            'num_fttc': 0,
-            'num_docsis3': 0,
-            'num_adsl': 0
-        }
-    }
+    expected_coverage = [{
+        'id': 'exchange_EACAM',
+        'percentage_of_premises_with_fttp': 100,
+        'percentage_of_premises_with_fttdp': 0,
+        'percentage_of_premises_with_fttc': 0,
+        'percentage_of_premises_with_docsis3': 0,
+        'percentage_of_premises_with_adsl': 0,
+        'sum_of_premises': 20,
+    }]
 
     assert expected_coverage == actual_coverage
 
@@ -361,18 +358,17 @@ def test_fttp_upgrade_cabinets(small_system):
 
     small_system.upgrade(built_interventions)
 
-    actual_coverage = small_system.coverage()
+    actual_coverage = small_system.coverage('exchange')
 
-    expected_coverage = {
-        'ABABA':{
-            'num_premises': 20,
-            'num_fttp': 20,
-            'num_fttdp': 0,
-            'num_fttc': 0,
-            'num_docsis3': 0,
-            'num_adsl': 0
-        }
-    }
+    expected_coverage = [{
+        'id': 'exchange_EACAM',
+        'percentage_of_premises_with_fttp': 100,
+        'percentage_of_premises_with_fttdp': 0,
+        'percentage_of_premises_with_fttc': 0,
+        'percentage_of_premises_with_docsis3': 0,
+        'percentage_of_premises_with_adsl': 0,
+        'sum_of_premises': 20,
+    }]
 
     assert expected_coverage == actual_coverage
 
@@ -394,18 +390,17 @@ def test_fttp_upgrade_distributions(small_system):
 
     small_system.upgrade(built_interventions)
 
-    actual_coverage = small_system.coverage()
+    actual_coverage = small_system.coverage('exchange')
 
-    expected_coverage = {
-        'ABABA':{
-            'num_premises': 20,
-            'num_fttp': 20,
-            'num_fttdp': 0,
-            'num_fttc': 0,
-            'num_docsis3': 0,
-            'num_adsl': 0
-        }
-    }
+    expected_coverage = [{
+        'id': 'exchange_EACAM',
+        'percentage_of_premises_with_fttp': 100,
+        'percentage_of_premises_with_fttdp': 0,
+        'percentage_of_premises_with_fttc': 0,
+        'percentage_of_premises_with_docsis3': 0,
+        'percentage_of_premises_with_adsl': 0,
+        'sum_of_premises': 20,
+    }]
 
     assert expected_coverage == actual_coverage
 
@@ -427,18 +422,17 @@ def test_fttdp_upgrade_distributions(small_system):
 
     small_system.upgrade(built_interventions)
 
-    actual_coverage = small_system.coverage()
+    actual_coverage = small_system.coverage('exchange')
 
-    expected_coverage = {
-        'ABABA':{
-            'num_premises': 20,
-            'num_fttp': 0,
-            'num_fttdp': 20,
-            'num_fttc': 0,
-            'num_docsis3': 0,
-            'num_adsl': 0
-        }
-    }
+    expected_coverage = [{
+        'id': 'exchange_EACAM',
+        'percentage_of_premises_with_fttp': 0,
+        'percentage_of_premises_with_fttdp': 100,
+        'percentage_of_premises_with_fttc': 0,
+        'percentage_of_premises_with_docsis3': 0,
+        'percentage_of_premises_with_adsl': 0,
+        'sum_of_premises': 20,
+    }]
 
     assert expected_coverage == actual_coverage
 
