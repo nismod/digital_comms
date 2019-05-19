@@ -92,9 +92,9 @@ INTERVENTIONS = {
                 # site_ngr to match upgraded
                 'site_ngr': None,
                 'frequency': 'x6_sectors',
-                'technology': 'same',
+                'technology': '5G',
                 'type': 'macrocell_site',
-                'bandwidth': 'same',
+                'bandwidth': '2x10MHz',
                 'sectors': 6,
                 # set build date when deciding
                 'build_date': None,
@@ -111,10 +111,10 @@ INTERVENTIONS = {
             {
                 # site_ngr not used
                 'site_ngr': 'new_macro_site',
-                'frequency': 'same',
-                'technology': 'same',
+                'frequency': ['700', '800', '2600', '3500'],
+                'technology': '5G',
                 'type': 'macro_site',
-                'bandwidth': 'same',
+                'bandwidth': '2x10MHz',
                 'sectors': 3,
                 # set build date when deciding
                 'build_date': None,
@@ -258,7 +258,7 @@ STRATEGIES = {
 
 def decide_interventions(
     strategy, budget, service_obligation_capacity,
-    system, timestep, site_sectors, traffic, market_share):
+    system, timestep, traffic, market_share):
     """
     Given strategy parameters and a system return some
     next best intervention.
@@ -298,12 +298,11 @@ def decide_interventions(
             Total costs of intervention build step
     """
     available_interventions = STRATEGIES[strategy]
-    print(available_interventions)
     if service_obligation_capacity > 0:
-        service_built, site_sectors, budget, service_spend = \
+        service_built, budget, service_spend = \
             meet_service_obligation(
             budget, available_interventions, timestep,
-            site_sectors, service_obligation_capacity,
+            service_obligation_capacity,
             system, traffic, market_share
             )
     else:
@@ -311,44 +310,57 @@ def decide_interventions(
         service_spend = []
 
     # Build to meet demand
-    built, site_sectors, budget, spend = meet_demand(
+    built, budget, spend = meet_demand(
         budget, available_interventions, timestep,
-        system, site_sectors, service_obligation_capacity,
+        system, service_obligation_capacity,
         traffic, market_share)
 
     return built + service_built, budget, spend + service_spend
 
 
 def meet_service_obligation(budget, available_interventions,
-    timestep, site_sectors, service_obligation_capacity,
+    timestep, service_obligation_capacity,
     system, traffic, market_share):
 
     areas = _suggest_target_postcodes(
-        system, site_sectors, service_obligation_capacity
+        system, service_obligation_capacity
         )
 
     return _suggest_interventions(
         budget, available_interventions, areas,
-        site_sectors, service_obligation_capacity,
+        service_obligation_capacity,
         timestep, traffic, market_share
         )
 
 
 def meet_demand(budget, available_interventions, timestep,
-    system, site_sectors, service_obligation_capacity,
+    system, service_obligation_capacity,
     traffic, market_share):
 
-    areas = _suggest_target_postcodes(system, site_sectors)
+    areas = _suggest_target_postcodes(system)
 
     return _suggest_interventions(budget,
-        available_interventions, areas, site_sectors,
+        available_interventions, areas,
         service_obligation_capacity, timestep,
         traffic, market_share
         )
 
 
+def current_tech_and_freqs(site_assets):
+
+    current_tech = []
+    current_freqs = []
+
+    for asset in site_assets:
+        current_tech.append(asset['technology'])
+        for frequency in asset['frequency']:
+            current_freqs.append(frequency)
+
+    return current_tech, current_freqs
+
+
 def _suggest_interventions(budget, available_interventions,
-    areas, site_sectors, service_obligation_capacity, timestep,
+    areas, service_obligation_capacity, timestep,
     traffic, market_share):
 
     built_interventions = []
@@ -360,13 +372,14 @@ def _suggest_interventions(budget, available_interventions,
             break
 
         if _area_satisfied(area, area_interventions,
-            site_sectors, service_obligation_capacity,
+            service_obligation_capacity,
             traffic, market_share):
             continue
 
         # group assets by site
         assets_by_site = {}
         for asset in area.assets:
+
             if asset['site_ngr'] not in assets_by_site:
                 assets_by_site[asset['site_ngr']] = [asset]
             else:
@@ -374,12 +387,18 @@ def _suggest_interventions(budget, available_interventions,
 
         # integrate_800 and integrate_2.6
         if 'upgrade_to_lte' in available_interventions:
+
             build_option = INTERVENTIONS['upgrade_to_lte']['assets_to_build']
             cost = INTERVENTIONS['upgrade_to_lte']['cost']
+
             for site_ngr, site_assets in assets_by_site.items():
+
                 if site_ngr == 'small_cell_sites':
                     continue
-                if 'LTE' not in [asset['technology'] for asset in site_assets]:
+
+                current_tech, current_freqs = current_tech_and_freqs(site_assets)
+
+                if 'LTE' not in current_tech:
                     for option in build_option:
                         to_build = copy.copy(option)
                         to_build['site_ngr'] = site_ngr
@@ -396,69 +415,81 @@ def _suggest_interventions(budget, available_interventions,
                         ))
                     if budget < 0:
                         break
-        print(assets_by_site)
+
         if budget < 0:
             break
 
         # integrate_700
-        if 'carrier_700' in available_interventions \
-            and timestep >= 2020:
-            if _area_satisfied(area, area_interventions, site_sectors,
+        if 'carrier_700' in available_interventions and \
+            timestep >= 2020:
+
+            if _area_satisfied(area, area_interventions,
                 service_obligation_capacity, traffic, market_share):
                 continue
 
             build_option = INTERVENTIONS['carrier_700']['assets_to_build']
             cost = INTERVENTIONS['carrier_700']['cost']
+
             for site_ngr, site_assets in assets_by_site.items():
+
                 if site_ngr == 'small_cell_sites':
                     continue
-                if 'LTE' in [asset['technology'] \
-                    for asset in site_assets] and \
-                    '700' not in [asset['frequency'] \
-                    for asset in site_assets]:
-                    # set both assets to this site_ngr
-                    for option in build_option:
-                        to_build = copy.copy(option)
-                        to_build['site_ngr'] = site_ngr
-                        to_build['technology'] = '5G'
-                        to_build['pcd_sector'] = area.id
-                        to_build['build_date'] = timestep
-                        area_interventions.append(to_build)
-                        built_interventions.append(to_build)
 
-                    spend.append((
-                        area.id, area.lad_id,
-                        'carrier_700', cost
-                        ))
-                    budget -= cost
-                    if budget < 0:
-                        break
+                current_tech, current_freqs = current_tech_and_freqs(site_assets)
+
+                if 'LTE' in current_tech and \
+                    '700' not in current_freqs:
+                        # set both assets to this site_ngr
+                        for option in build_option:
+                            to_build = copy.copy(option)
+                            to_build['site_ngr'] = site_ngr
+                            to_build['technology'] = '5G'
+                            to_build['frequency'] = ['700', '800', '2600']
+                            to_build['pcd_sector'] = area.id
+                            to_build['build_date'] = timestep
+                            area_interventions.append(to_build)
+                            built_interventions.append(to_build)
+                            assets_by_site[site_ngr] = [to_build]
+
+                        spend.append((
+                            area.id, area.lad_id,
+                            'carrier_700', cost
+                            ))
+                        budget -= cost
+                        if budget < 0:
+                            break
 
         if budget < 0:
             break
 
         # integrate_3.5
-        if 'carrier_3500' in available_interventions and timestep >= 2020:
-            if _area_satisfied(area, area_interventions, site_sectors,
+        if 'carrier_3500' in available_interventions and \
+            timestep >= 2020:
+
+            if _area_satisfied(area, area_interventions,
                 service_obligation_capacity, traffic, market_share):
                 continue
 
             build_option = INTERVENTIONS['carrier_3500']['assets_to_build']
             cost = INTERVENTIONS['carrier_3500']['cost']
+
             for site_ngr, site_assets in assets_by_site.items():
                 if site_ngr == 'small_cell_sites':
                     continue
-                if 'LTE' in [asset['technology'] for asset in site_assets] and \
-                        '3500' not in [asset['frequency'] for asset in site_assets]:
-                    # set both assets to this site_ngr
+
+                current_tech, current_freqs = current_tech_and_freqs(site_assets)
+                if '5G' in current_tech and \
+                    '3500' not in current_freqs:
                     for option in build_option:
                         to_build = copy.copy(option)
                         to_build['site_ngr'] = site_ngr
                         to_build['technology'] = '5G'
+                        to_build['frequency'] = ['700', '800', '2600', '3500']
                         to_build['pcd_sector'] = area.id
                         to_build['build_date'] = timestep
                         area_interventions.append(to_build)
                         built_interventions.append(to_build)
+                        assets_by_site[site_ngr] = [to_build]
 
                     spend.append((
                         area.id, area.lad_id,
@@ -473,7 +504,7 @@ def _suggest_interventions(budget, available_interventions,
 
         # x6_sectors
         if 'add_3_sectors' in available_interventions:
-            if _area_satisfied(area, area_interventions, site_sectors,
+            if _area_satisfied(area, area_interventions,
                 service_obligation_capacity, traffic, market_share):
                 continue
 
@@ -483,69 +514,84 @@ def _suggest_interventions(budget, available_interventions,
             for site_ngr, site_assets in assets_by_site.items():
                 if site_ngr == 'small_cell_sites':
                     continue
-                if 'LTE' in [asset['technology'] for asset in site_assets]:
-                    continue
-                if 6 in [asset['sectors'] for asset in site_assets]:
-                    continue
 
-                for option in build_option:
-                    to_build = copy.copy(option)
-                    to_build['site_ngr'] = site_ngr
-                    to_build['pcd_sector'] = area.id
-                    to_build['sectors'] = 6
-                    to_build['build_date'] = timestep
-                    area_interventions.append(to_build)
-                    built_interventions.append(to_build)
-                    print(to_build)
+                sectors = [site['sectors'] for site in site_assets]
 
-                spend.append((
-                    area.id, area.lad_id,
-                    'add_3_sectors', cost
-                    ))
-                print(spend)
-                budget -= cost
-                if budget < 0:
-                    break
+                current_tech, current_freqs = current_tech_and_freqs(site_assets)
+
+                if '5G' in current_tech and \
+                    '700' in current_freqs and \
+                    '3500' in current_freqs and \
+                    6 not in sectors:
+
+                    for option in build_option:
+                        to_build = copy.copy(option)
+                        to_build['site_ngr'] = site_ngr
+                        to_build['pcd_sector'] = area.id
+                        to_build['sectors'] = 6
+                        to_build['build_date'] = timestep
+                        area_interventions.append(to_build)
+                        built_interventions.append(to_build)
+                        assets_by_site[site_ngr] = [to_build]
+
+                    spend.append((
+                        area.id, area.lad_id,
+                        'add_3_sectors', cost
+                        ))
+
+                    budget -= cost
+                    if budget < 0:
+                        break
 
         if budget < 0:
             break
 
-        # # build_macro_site
-        # if 'build_macro_site' in available_interventions:
-        #     if _area_satisfied(area, area_interventions, site_sectors,
-        #         service_obligation_capacity, traffic, market_share):
-        #         continue
+        # build_macro_site
+        if 'build_macro_site' in available_interventions:
 
-        #     build_option = INTERVENTIONS['build_macro_site']['assets_to_build']
-        #     cost = INTERVENTIONS['build_macro_site']['cost']
-        #     for site_ngr, site_assets in assets_by_site.items():
-        #         if site_ngr == 'small_cell_sites':
-        #             continue
+            if _area_satisfied(area, area_interventions,
+                service_obligation_capacity, traffic, market_share):
+                continue
 
-        #             # set both assets to this site_ngr
-        #             for option in build_option:
-        #                 to_build = copy.copy(option)
-        #                 to_build['site_ngr'] = site_ngr
-        #                 to_build['technology'] = '5G'
-        #                 to_build['pcd_sector'] = area.id
-        #                 to_build['build_date'] = timestep
-        #                 area_interventions.append(to_build)
-        #                 built_interventions.append(to_build)
+            for site_ngr, site_assets in assets_by_site.items():
+                if site_ngr == 'small_cell_sites':
+                    continue
 
-        #             spend.append((
-        #                 area.id, area.lad_id,
-        #                 'build_macro_site', cost
-        #                 ))
-        #             budget -= cost
-        #             if budget < 0:
-        #                 break
+                area_sq_km = area.area
 
-        # if budget < 0:
-        #     break
+                current_number = 0
+                for asset in assets_by_site:
+                    if asset.startswith('site_'):
+                        current_number += 1
+
+                build_option = INTERVENTIONS['build_macro_site']['assets_to_build']
+                cost = INTERVENTIONS['build_macro_site']['cost']
+
+                while True:
+                    to_build = copy.deepcopy(build_option)
+                    to_build[0]['build_date'] = timestep
+                    to_build[0]['pcd_sector'] = area.id
+
+                    area_interventions += to_build
+                    built_interventions += to_build
+                    spend.append((
+                        area.id, area.lad_id,
+                        'build_macro_site', cost
+                        ))
+                    budget -= cost
+
+                    if budget < 0 or _area_satisfied(area,
+                        area_interventions,
+                        service_obligation_capacity,
+                        traffic, market_share):
+                        break
+
+        if budget < 0:
+            break
 
         # # raise_mast_height
         # if 'raise_mast_height' in available_interventions:
-        #     if _area_satisfied(area, area_interventions, site_sectors,
+        #     if _area_satisfied(area, area_interventions,
         #         service_obligation_capacity, traffic, market_share):
         #         continue
 
@@ -577,7 +623,7 @@ def _suggest_interventions(budget, available_interventions,
 
         # #deploy Cloud-RAN
         # if 'deploy_c_ran' in available_interventions:
-        #     if _area_satisfied(area, area_interventions, site_sectors,
+        #     if _area_satisfied(area, area_interventions,
         #         service_obligation_capacity, traffic, market_share):
         #         continue
 
@@ -608,45 +654,45 @@ def _suggest_interventions(budget, available_interventions,
         # if budget < 0:
         #     break
 
-        # # build small cells to next density
-        # if 'small_cell' in available_interventions and timestep >= 2020:
-        #     if _area_satisfied(area, area_interventions, site_sectors,
-        #         service_obligation_capacity, traffic, market_share):
-        #         continue
+        # build small cells to next density
+        if 'small_cell' in available_interventions and timestep >= 2020:
+            if _area_satisfied(area, area_interventions,
+                service_obligation_capacity, traffic, market_share):
+                continue
 
-        #     area_sq_km = area.area
-        #     if 'small_cell_sites' in assets_by_site:
-        #         current_number = len(assets_by_site['small_cell_sites'])
-        #     else:
-        #         current_number = 0
+            area_sq_km = area.area
+            if 'small_cell_sites' in assets_by_site:
+                current_number = len(assets_by_site['small_cell_sites'])
+            else:
+                current_number = 0
 
-        #     current_density = current_number / area_sq_km
+            current_density = current_number / area_sq_km
 
-        #     build_option = INTERVENTIONS['small_cell']['assets_to_build']
-        #     cost = INTERVENTIONS['small_cell']['cost']
+            build_option = INTERVENTIONS['small_cell']['assets_to_build']
+            cost = INTERVENTIONS['small_cell']['cost']
 
-        #     while True:
-        #         to_build = copy.deepcopy(build_option)
-        #         to_build[0]['build_date'] = timestep
-        #         to_build[0]['pcd_sector'] = area.id
+            while True:
+                to_build = copy.deepcopy(build_option)
+                to_build[0]['build_date'] = timestep
+                to_build[0]['pcd_sector'] = area.id
 
-        #         area_interventions += to_build
-        #         built_interventions += to_build
-        #         spend.append((
-        #             area.id, area.lad_id,
-        #             'small_cells', cost
-        #             ))
-        #         budget -= cost
+                area_interventions += to_build
+                built_interventions += to_build
+                spend.append((
+                    area.id, area.lad_id,
+                    'small_cells', cost
+                    ))
+                budget -= cost
 
-        #         if budget < 0 or _area_satisfied(area,
-        #             area_interventions, site_sectors,
-        #             service_obligation_capacity,
-        #             traffic, market_share):
-        #             break
+                if budget < 0 or _area_satisfied(area,
+                    area_interventions,
+                    service_obligation_capacity,
+                    traffic, market_share):
+                    break
 
-    return built_interventions, site_sectors, budget, spend
+    return built_interventions, budget, spend
 
-def _suggest_target_postcodes(system, site_sectors, threshold=None):
+def _suggest_target_postcodes(system, threshold=None):
     """
     Sort postcodes by population density (descending)
     - if considering threshold, filter out any with capacity above threshold
@@ -666,7 +712,6 @@ def _suggest_target_postcodes(system, site_sectors, threshold=None):
         )
 
 def _area_satisfied(area, built_interventions,
-    site_sectors,
     service_obligation_capacity,
     traffic, market_share):
 
@@ -688,7 +733,6 @@ def _area_satisfied(area, built_interventions,
     test_area = PostcodeSector(
         data,
         assets,
-        site_sectors,
         area._capacity_lookup_table,
         area._clutter_lookup,
         service_obligation_capacity,
@@ -697,5 +741,5 @@ def _area_satisfied(area, built_interventions,
     )
 
     reached_capacity = test_area.capacity
-
+    # print(reached_capacity)
     return reached_capacity >= target_capacity

@@ -65,7 +65,7 @@ class NetworkManager(object):
         * 1: :obj:`int`
             TODO
     """
-    def __init__(self, lads, pcd_sectors, assets, site_sectors,
+    def __init__(self, lads, pcd_sectors, assets,
         capacity_lookup_table, clutter_lookup,
         service_obligation_capacity, traffic, market_share):
         """
@@ -95,8 +95,9 @@ class NetworkManager(object):
                 lad_id = pcd_sector_data["lad_id"]
                 pcd_sector_id = pcd_sector_data["id"]
                 assets = assets_by_pcd[pcd_sector_id]
+
                 pcd_sector = PostcodeSector(
-                    pcd_sector_data, assets, site_sectors,
+                    pcd_sector_data, assets,
                     capacity_lookup_table, clutter_lookup,
                     service_obligation_capacity, traffic, market_share)
 
@@ -245,7 +246,7 @@ class PostcodeSector(object):
     Represents a Postcode sector to be modelled
 
     """
-    def __init__(self, data, assets, site_sectors, capacity_lookup_table,
+    def __init__(self, data, assets, capacity_lookup_table,
         clutter_lookup, service_obligation_capacity,
         traffic, market_share):
 
@@ -263,8 +264,6 @@ class PostcodeSector(object):
 
         self._capacity_lookup_table = capacity_lookup_table
         self._clutter_lookup = clutter_lookup
-
-        self.site_sectors = site_sectors
 
         self.clutter_environment = lookup_clutter_geotype(
             self._clutter_lookup,
@@ -364,16 +363,13 @@ class PostcodeSector(object):
             num_sites = 0
             for asset in self.assets:
                 for asset_frequency in asset['frequency']:
-                    # print('asset_frequency {}'.format(asset_frequency))
-                    # print('frequency {}'.format(frequency))
                     if asset_frequency == frequency:
                         num_sites += 1
-                        if asset.sectors == 6:
+                        if asset['sectors'] == 6:
                             num_sites += 1
-                        # print('num_sites {}'.format(num_sites))
 
             site_density = float(num_sites) / self.area
-            # print(site_density)
+
             tech_capacity = lookup_capacity(
                 self._capacity_lookup_table,
                 self.clutter_environment,

@@ -11,13 +11,13 @@ from digital_comms.mobile_network.model import (
 class TestNetworkManager():
 
     def test_create(self, setup_lad, setup_pcd_sector, setup_assets,
-                    setup_site_sectors, setup_capacity_lookup,
+                    setup_capacity_lookup,
                     setup_clutter_lookup,
                     setup_service_obligation_capacity,
                     setup_traffic, setup_market_share):
 
         Manager = NetworkManager(setup_lad, setup_pcd_sector, setup_assets,
-            setup_site_sectors, setup_capacity_lookup, setup_clutter_lookup,
+            setup_capacity_lookup, setup_clutter_lookup,
             setup_service_obligation_capacity,
             setup_traffic, setup_market_share)
 
@@ -31,7 +31,7 @@ class TestLAD():
         assert testLAD.name == setup_lad[0]['name']
 
     def test_property_population(self, setup_lad, setup_pcd_sector,
-        setup_assets, setup_site_sectors, setup_capacity_lookup,
+        setup_assets, setup_capacity_lookup,
         setup_clutter_lookup, setup_service_obligation_capacity,
         setup_traffic, setup_market_share):
 
@@ -43,7 +43,7 @@ class TestLAD():
 
         # Create a PostcodeSector with a population of 500
         testPostcode = PostcodeSector(setup_pcd_sector[0], setup_assets,
-            setup_site_sectors, setup_capacity_lookup, setup_clutter_lookup,
+            setup_capacity_lookup, setup_clutter_lookup,
             setup_service_obligation_capacity,
             setup_traffic, setup_market_share)
 
@@ -61,7 +61,7 @@ class TestLAD():
 
         # Create a PostcodeSector with a population of 700
         testPostcode = PostcodeSector(setup_pcd_sector[1], setup_assets,
-            setup_site_sectors, setup_capacity_lookup, setup_clutter_lookup,
+            setup_capacity_lookup, setup_clutter_lookup,
             setup_service_obligation_capacity,
             setup_traffic, setup_market_share)
 

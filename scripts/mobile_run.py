@@ -35,7 +35,7 @@ SYSTEM_INPUT_PATH = os.path.join(
 SHAPES_INPUT_PATH = os.path.join(BASE_PATH, 'raw', 'd_shapes')
 SYSTEM_OUTPUT_PATH = os.path.join(BASE_PATH, '..','results')
 
-BASE_YEAR = 2016
+BASE_YEAR = 2019
 END_YEAR = 2030
 TIMESTEP_INCREMENT = 1
 TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
@@ -64,9 +64,8 @@ INTERVENTION_STRATEGIES = [
 
 MARKET_SHARE = 0.25
 ANNUAL_BUDGET = (2 * 10 ** 9) * MARKET_SHARE
-SERVICE_OBLIGATION_CAPACITY = 2
+SERVICE_OBLIGATION_CAPACITY = 0
 PERCENTAGE_OF_TRAFFIC_IN_BUSY_HOUR = 0.15
-NETWORKS_TO_INCLUDE = ('A',)
 
 ################################################################
 # LOAD REGIONS
@@ -186,17 +185,19 @@ with open(SYSTEM_FILENAME, 'r') as system_file:
     reader = csv.DictReader(system_file)
     for pcd_sector in reader:
 
-        if  pcd_sector['lte_4G']:
+        if int(pcd_sector['lte_4G']):
             frequency = ['800', '2600']
+            technology = 'LTE'
         else:
             frequency = []
+            technology = ''
 
         initial_system.append({
             'pcd_sector': pcd_sector['pcd_sector'].replace(' ', ''),
             'site_ngr': pcd_sector['id'],
             'type': pcd_sector['Anttype'],
             'build_date': 2016,
-            'technology': pcd_sector['lte_4G'],
+            'technology': technology,
             'frequency': frequency,
             'sectors': 3,
             # 'bandwidth': pcd_sector['id'],
@@ -426,11 +427,11 @@ for pop_scenario, throughput_scenario, intervention_strategy in [
         # # ('high', 'high', 'macrocell_700'),
 
         # ('low', 'low', 'sectorisation'),
-        ('baseline', 'baseline', 'sectorisation'),
+        # ('baseline', 'baseline', 'sectorisation'),
         # ('high', 'high', 'sectorisation'),
 
         # ('low', 'low', 'macro_densification'),
-        # ('baseline', 'baseline', 'macro_densification'),
+        ('baseline', 'baseline', 'macro_densification'),
         # ('high', 'high', 'macro_densification'),
 
         # ('low', 'low', 'deregulation'),
@@ -453,7 +454,7 @@ for pop_scenario, throughput_scenario, intervention_strategy in [
     print("Running:", pop_scenario, throughput_scenario, \
         intervention_strategy)
 
-    assets = initial_system[:]
+    assets = initial_system#[:]
     for year in TIMESTEPS:
         print("-", year)
 
@@ -476,32 +477,27 @@ for pop_scenario, throughput_scenario, intervention_strategy in [
         traffic = PERCENTAGE_OF_TRAFFIC_IN_BUSY_HOUR
         market_share = MARKET_SHARE
 
-        if intervention_strategy == 'sectorisation':
-            site_sectors = 6
-        else:
-            site_sectors = 3
-
         # simulate first
         if year == BASE_YEAR:
-
+            # print(assets)
             system = NetworkManager(
-                lads, postcode_sectors, assets, site_sectors,
+                lads, postcode_sectors, assets,
                 capacity_lookup_table, clutter_lookup,
                 service_obligation_capacity, traffic,
                 market_share
                 )
-
+        # print([p.user_throughput for p in system.postcode_sectors.values()])
         # decide
         interventions_built, budget, spend = decide_interventions(
             intervention_strategy, budget, service_obligation_capacity,
-            system, year, site_sectors, traffic, market_share
+            system, year, traffic, market_share
             )
         # accumulate decisions
         assets += interventions_built
-
+        print(interventions_built)
         # simulate with decisions
         system = NetworkManager(
-            lads, postcode_sectors, assets, site_sectors,
+            lads, postcode_sectors, assets,
             capacity_lookup_table, clutter_lookup,
             service_obligation_capacity, traffic,
             market_share

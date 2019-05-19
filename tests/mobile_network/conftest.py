@@ -31,7 +31,6 @@ def setup_pcd_sector():
             "population": 500,
             "area": 2,
             "user_throughput": 2,
-            "sectors": 3,
         },
         {
             "id": "CB12",
@@ -39,7 +38,6 @@ def setup_pcd_sector():
             "population": 200,
             "area": 2,
             "user_throughput": 2,
-            "sectors": 3,
         }
     ]
 
@@ -48,21 +46,23 @@ def setup_assets():
     return [
         {
             "pcd_sector": "CB11",
-            "site_ngr": 100,
+            "site_ngr": "site_100",
             "technology": "LTE",
             "type": "macrocell_site",
             "frequency": ["800", "2600"],
             "bandwidth": "2x10MHz",
-            "build_date": 2017
+            "build_date": 2017,
+            "sectors": 3,
         },
         {
             "pcd_sector": "CB12",
-            "site_ngr": 200,
+            "site_ngr": "site_200",
             "technology": "LTE",
             "type": "macrocell_site",
             "frequency": ["800", "2600"],
             "bandwidth": "2x10MHz",
-            "build_date": 2017
+            "build_date": 2017,
+            "sectors": 3,
         }
     ]
 
