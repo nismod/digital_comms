@@ -16,9 +16,7 @@ CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
 INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
-SYSTEM_INPUT_PATH  = os.path.join(
-    BASE_PATH, 'raw', 'b_mobile_model','mobile_model_1.0'
-    )
+SYSTEM_INPUT_PATH  = os.path.join(BASE_PATH, 'raw', 'b_mobile_model')
 
 def lookup_pcd_to_lad():
     """
@@ -53,7 +51,8 @@ def lookup_pcd_to_lad():
 def load_in_weights():
 
     path = os.path.join(
-        SYSTEM_INPUT_PATH, 'scenario_data', 'population_baseline_pcd.csv'
+        SYSTEM_INPUT_PATH, 'mobile_model_1.0',
+        'scenario_data', 'population_baseline_pcd.csv'
         )
 
     population_data = []
@@ -87,8 +86,6 @@ def merge_weights_and_lut(lut, weights):
     return output
 
 def calculate_lad_population(lut):
-
-    output = {}
 
     lad_ids = set()
 
@@ -128,14 +125,14 @@ def create_final_lut(lut, lad_population_lut):
 
 def get_forecast(filename):
 
-    path = os.path.join(SYSTEM_INPUT_PATH, 'scenario_data', filename)
+    path = os.path.join(SYSTEM_INPUT_PATH, 'arc_scenarios', filename)
 
     with open(path, 'r') as source:
         reader = csv.DictReader(source)
         for line in reader:
             yield {
                 'year': line['timestep'],
-                'lad': line['lad_gb_2016'],
+                'lad': line['lad_uk_2016'],
                 'population': line['population'],
             }
 
@@ -166,7 +163,7 @@ def csv_writer(data, filename):
     Write data to a CSV file path
     """
     # Create path
-    directory = os.path.join(SYSTEM_INPUT_PATH, 'scenario_data', 'results')
+    directory = os.path.join(SYSTEM_INPUT_PATH, 'arc_scenario')
     if not os.path.exists(directory):
         os.makedirs(directory)
 
@@ -194,12 +191,15 @@ if __name__ == "__main__":
 
     files = [
         'arc_population__baseline.csv',
-        'arc_population__scenario1.csv',
-        'arc_population__scenario2.csv',
+        'arc_population__0-unplanned.csv',
+        'arc_population__1-new-cities.csv',
+        'arc_population__2-expansion.csv',
     ]
 
+    print('loaded luts')
     for scenario_file in files:
 
+        print('running {}'.format(scenario_file))
         forecast = get_forecast(scenario_file)
 
         disaggregated_forecast = disaggregate(forecast, final_lut)
