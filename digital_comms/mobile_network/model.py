@@ -67,7 +67,8 @@ class NetworkManager(object):
     """
     def __init__(self, lads, pcd_sectors, assets,
         capacity_lookup_table, clutter_lookup,
-        service_obligation_capacity, traffic, market_share):
+        service_obligation_capacity, traffic,
+        market_share, mast_height):
         """
         Load the `lads` in local :obj:`dict` attribute `lad`
 
@@ -99,7 +100,8 @@ class NetworkManager(object):
                 pcd_sector = PostcodeSector(
                     pcd_sector_data, assets,
                     capacity_lookup_table, clutter_lookup,
-                    service_obligation_capacity, traffic, market_share)
+                    service_obligation_capacity, traffic,
+                    market_share, mast_height)
 
                 self.postcode_sectors[pcd_sector_id] = pcd_sector
 
@@ -153,6 +155,16 @@ class LAD(object):
             return 0
         else:
             return self.population / total_area
+
+    @property
+    def area(self):
+        """
+        obj: Sum of all sectors populations in the LAD.
+
+        """
+        return sum([
+            pcd_sector.area
+            for pcd_sector in self._pcd_sectors.values()])
 
     def add_pcd_sector(self, pcd_sector):
         """Add a postcode sector to the local area district.
@@ -248,7 +260,7 @@ class PostcodeSector(object):
     """
     def __init__(self, data, assets, capacity_lookup_table,
         clutter_lookup, service_obligation_capacity,
-        traffic, market_share):
+        traffic, market_share, mast_height):
 
         self.id = data["id"]
         self.lad_id = data["lad_id"]
@@ -260,6 +272,7 @@ class PostcodeSector(object):
             self.user_throughput, traffic
             )
         self.market_share = market_share
+        self.mast_height = mast_height
         self.service_obligation_capacity = service_obligation_capacity
 
         self._capacity_lookup_table = capacity_lookup_table
@@ -359,7 +372,7 @@ class PostcodeSector(object):
     def _macrocell_site_capacity(self):
         capacity = 0
 
-        for frequency in ['800', '2600', '700', '3500']:
+        for frequency in ['800', '1800', '2600', '700', '3500']:
             num_sites = 0
             for asset in self.assets:
                 for asset_frequency in asset['frequency']:
@@ -375,7 +388,8 @@ class PostcodeSector(object):
                 self.clutter_environment,
                 frequency,
                 "2x10MHz",
-                site_density)
+                site_density,
+                self.mast_height)
 
             capacity += tech_capacity
 
@@ -396,7 +410,8 @@ class PostcodeSector(object):
             "Small cells",
             "3700",
             "2x25MHz",
-            site_density)
+            site_density,
+            self.mast_height)
 
         return capacity
 
@@ -429,10 +444,12 @@ def pairwise(iterable):
 
 
 def lookup_clutter_geotype(clutter_lookup, population_density):
-    """Return geotype based on population density
+    """
+    Return geotype based on population density.
+
     Parameters
     ----------
-    clutter_lookup: list of tuple
+    clutter_lookup: list of tuples
         Lookup table that represents geographical types
         and their population density
         sorted by population_density_upper_bound ascending.
@@ -444,6 +461,7 @@ def lookup_clutter_geotype(clutter_lookup, population_density):
     population_density: int
         The population density in persons per square kilometer,
         that needs to be looked up in the clutter lookup table
+
     Returns
     -------
     str
@@ -478,8 +496,8 @@ def lookup_clutter_geotype(clutter_lookup, population_density):
     return highest_geotype
 
 
-def lookup_capacity(lookup_table, clutter_environment, frequency,
-    bandwidth, site_density):
+def lookup_capacity(lookup_table, clutter_environment,
+    frequency, bandwidth, site_density, mast_height):
     """
     Use lookup table to find capacity by clutter environment
     geotype, frequency, bandwidth and site density
@@ -528,15 +546,16 @@ def lookup_capacity(lookup_table, clutter_environment, frequency,
         If combination is not found in the lookup table.
 
     """
-    if (clutter_environment, frequency, bandwidth) not in lookup_table:
+    if (clutter_environment, frequency, bandwidth, mast_height) not in lookup_table:
         raise KeyError("Combination %s not found in lookup table",
-                       (clutter_environment, frequency, bandwidth))
+                       (clutter_environment, frequency, bandwidth, mast_height))
 
     density_capacities = lookup_table[
-        (clutter_environment, frequency, bandwidth)
+        (clutter_environment, frequency, bandwidth, mast_height)
         ]
 
     lowest_density, lowest_capacity = density_capacities[0]
+
     if site_density < lowest_density:
         return 0
 

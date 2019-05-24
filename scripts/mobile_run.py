@@ -9,6 +9,7 @@ import csv
 import itertools
 import os
 import pprint
+import glob
 
 import fiona
 
@@ -32,27 +33,20 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 SYSTEM_INPUT_PATH = os.path.join(
     BASE_PATH, 'raw', 'b_mobile_model','mobile_model_1.0'
     )
+INTERMEDIATE_PATH = os.path.join(BASE_PATH, 'intermediate')
 SHAPES_INPUT_PATH = os.path.join(BASE_PATH, 'raw', 'd_shapes')
 SYSTEM_OUTPUT_PATH = os.path.join(BASE_PATH, '..','results')
 
-BASE_YEAR = 2019
-END_YEAR = 2030
-TIMESTEP_INCREMENT = 1
-TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
+TIMESTEPS = [2015, 2020, 2030, 2050]
+BASE_YEAR = TIMESTEPS[0]
 
-#arc
 POPULATION_SCENARIOS = [
     "baseline",
     "0-unplanned",
     "1-new-cities",
     "2-expansion",
 ]
-#normal
-# POPULATION_SCENARIOS = [
-#     "high",
-#     "baseline",
-#     "low",
-# ]
+
 THROUGHPUT_SCENARIOS = [
     "high",
     "baseline",
@@ -60,19 +54,19 @@ THROUGHPUT_SCENARIOS = [
 ]
 INTERVENTION_STRATEGIES = [
     "minimal",
-    "macrocell",
-    "macrocell_700",
-    "small_cell",
-    "small_cell_and_spectrum",
+    "macrocell-700-3500",
     "sectorisation",
-    "neutral_hosting",
-    "deregulation",
-    "cloud_ran",
+    "macro_densification",
+    "small-cell",
+    "small-cell-and-spectrum",
+    # "neutral-hosting",
+    # "deregulation",
+    # "cloud-ran",
 ]
 
 MARKET_SHARE = 0.25
 ANNUAL_BUDGET = (2 * 10 ** 9) * MARKET_SHARE
-SERVICE_OBLIGATION_CAPACITY = 0
+SERVICE_OBLIGATION_CAPACITY = 1000
 PERCENTAGE_OF_TRAFFIC_IN_BUSY_HOUR = 0.15
 
 ################################################################
@@ -139,14 +133,6 @@ scenario_files = {
     for scenario in POPULATION_SCENARIOS
     }
 
-#for normal model
-# scenario_files = {
-#     scenario: os.path.join(
-#         SYSTEM_INPUT_PATH, 'scenario_data',
-#         'population_{}_pcd.csv'.format(scenario))
-#     for scenario in POPULATION_SCENARIOS
-#     }
-
 population_by_scenario_year_pcd = {
     scenario: {
         year: {} for year in TIMESTEPS
@@ -186,8 +172,6 @@ with open(THROUGHPUT_FILENAME, 'r') as throughput_file:
             user_throughput_by_scenario_year["baseline"][year] = float(base)
         if "low" in THROUGHPUT_SCENARIOS:
             user_throughput_by_scenario_year["low"][year] = float(low)
-        if "static2017" in THROUGHPUT_SCENARIOS:
-            user_throughput_by_scenario_year["baseline"][year] = float(base)
 
 ################################################################
 # LOAD INITIAL SYSTEM ASSETS/SITES
@@ -205,7 +189,7 @@ with open(SYSTEM_FILENAME, 'r') as system_file:
     for pcd_sector in reader:
 
         if int(pcd_sector['lte_4G']):
-            frequency = ['800', '2600']
+            frequency = ['800', '1800', '2600']
             technology = 'LTE'
         else:
             frequency = []
@@ -230,28 +214,42 @@ with open(SYSTEM_FILENAME, 'r') as system_file:
 print('Loading lookup tables')
 
 CAPACITY_LOOKUP_FILENAME = os.path.join(
-    SYSTEM_INPUT_PATH, 'lookup_tables', 'lookup_table_long.csv'
+    INTERMEDIATE_PATH, 'system_simulator'
     )
+PATH_LIST = glob.iglob(os.path.join(
+    INTERMEDIATE_PATH, 'system_simulator', '**/*.csv'), recursive=True)
 
 capacity_lookup_table = {}
 
-with open(CAPACITY_LOOKUP_FILENAME, 'r') as capacity_lookup_file:
-    reader = csv.DictReader(capacity_lookup_file)
-    for row in reader:
-        environment = row["type"]
-        frequency = row["frequency"].replace(' MHz', '')
-        bandwidth = row["bandwidth"].replace(' ', '')
-        density = float(row["site_density"])
-        capacity = float(row["capacity"])
+for path in PATH_LIST:
+    with open(path, 'r') as capacity_lookup_file:
+        reader = csv.DictReader(capacity_lookup_file)
+        for row in reader:
+            environment = row["environment"]
+            frequency = row["frequency"].replace(' MHz', '')
+            bandwidth = row["bandwidth"].replace(' ', '')
+            mast_height = int(row['mast_height'])
+            density = float(row["area_site_density"])
+            capacity = float(row["area_capacity_mbps"])
+            cell_edge_spectral_efficency = float(
+                row['cell_edge_spectral_efficency']
+                )
+            network_efficiency = float(row['network_efficiency'])
 
-        if (environment, frequency, bandwidth) not in capacity_lookup_table:
-            capacity_lookup_table[(environment, frequency, bandwidth)] = []
+            if (environment, frequency, bandwidth, mast_height) \
+                not in capacity_lookup_table:
+                capacity_lookup_table[(
+                    environment, frequency, bandwidth, mast_height)
+                    ] = []
 
-        capacity_lookup_table[(
-            environment, frequency, bandwidth)].append((density, capacity))
+            capacity_lookup_table[(
+                environment, frequency, bandwidth, mast_height
+                )].append((
+                    density, capacity
+                ))
 
-    for key, value_list in capacity_lookup_table.items():
-        value_list.sort(key=lambda tup: tup[0])
+        for key, value_list in capacity_lookup_table.items():
+            value_list.sort(key=lambda tup: tup[0])
 
 
 CLUTTER_GEOTYPE_FILENAME = os.path.join(
@@ -286,7 +284,8 @@ def write_lad_results(network_manager, year, pop_scenario, throughput_scenario,
         metrics_writer = csv.writer(metrics_file)
         metrics_writer.writerow(
             ('year', 'area_id', 'area_name', 'cost', 'demand',
-            'capacity', 'capacity_deficit', 'population', 'pop_density')
+            'capacity', 'capacity_deficit', 'population', 'area',
+            'pop_density')
             )
     else:
         metrics_file = open(metrics_filename, 'a', newline='')
@@ -300,11 +299,12 @@ def write_lad_results(network_manager, year, pop_scenario, throughput_scenario,
         capacity = lad.capacity()
         capacity_deficit = capacity - demand
         pop = lad.population
+        area = lad.area
         pop_d = lad.population_density
 
         metrics_writer.writerow(
             (year, area_id, area_name, cost, demand, capacity,
-            capacity_deficit, pop, pop_d)
+            capacity_deficit, pop, area, pop_d)
             )
 
     metrics_file.close()
@@ -362,9 +362,10 @@ def write_decisions(decisions, year, pop_scenario,
             os.makedirs(directory)
         decisions_file = open(decisions_filename, 'w', newline='')
         decisions_writer = csv.writer(decisions_file)
-        decisions_writer.writerow(
-            ('year', 'pcd_sector', 'site_ngr', 'build_date',
-            'type', 'technology', 'frequency', 'bandwidth'))
+        decisions_writer.writerow((
+            'year', 'pcd_sector', 'site_ngr', 'build_date',
+            'type', 'technology', 'frequency', 'bandwidth',
+            'sectors'))
     else:
         decisions_file = open(decisions_filename, 'a', newline='')
         decisions_writer = csv.writer(decisions_file)
@@ -377,15 +378,17 @@ def write_decisions(decisions, year, pop_scenario,
         technology = intervention['technology']
         frequency = intervention['frequency']
         bandwidth = intervention['bandwidth']
+        sectors = intervention['sectors']
 
-        decisions_writer.writerow(
-            (year, pcd_sector, site_ngr, build_date,
-            intervention_type, technology, frequency, bandwidth)
-            )
+        decisions_writer.writerow((
+            year, pcd_sector, site_ngr, build_date,
+            intervention_type, technology, frequency,
+            bandwidth, sectors
+            ))
 
     decisions_file.close()
 
-def write_spend(spend, year, pop_scenario,
+def write_spend(interventions_built, year, pop_scenario,
     throughput_scenario, intervention_strategy):
 
     suffix = _get_suffix(
@@ -407,21 +410,20 @@ def write_spend(spend, year, pop_scenario,
         spend_file = open(spend_filename, 'a', newline='')
         spend_writer = csv.writer(spend_file)
 
-    for pcd_sector, lad, item, cost in spend:
+    for row in interventions_built:
         spend_writer.writerow(
-            (year, pcd_sector, lad, item, cost))
+            (row['year'], row['pcd_sector'], row['lad'], row['item'], row['cost']))
 
     spend_file.close()
 
 def _get_suffix(pop_scenario, throughput_scenario,
     intervention_strategy):
 
-    suffix = 'pop_{}_throughput_{}_strategy_{}'.format(
+    suffix = 'pop-{}_throughput-{}_strategy-{}'.format(
         pop_scenario, throughput_scenario, intervention_strategy)
     # for length, use 'base' for baseline scenarios
     suffix = suffix.replace('baseline', 'base')
     return suffix
-
 
 ################################################################
 # START RUNNING MODEL
@@ -432,48 +434,42 @@ def _get_suffix(pop_scenario, throughput_scenario,
 # build costs per year
 ################################################################
 
-for pop_scenario, throughput_scenario, intervention_strategy in [
-        # # ('low', 'low', 'minimal'),
-        ('baseline', 'baseline', 'minimal'),
-        # # ('high', 'high', 'minimal'),
+for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
+        # ('baseline', 'baseline', 'minimal'),
+        # ('0-unplanned', 'baseline', 'minimal'),
+        # ('1-new-cities', 'baseline', 'minimal'),
+        # ('2-expansion', 'baseline', 'minimal'),
 
-        # # ('low', 'low', 'macrocell_700_3500'),
-        ('baseline', 'baseline', 'macrocell_700_3500'),
-        # # ('high', 'high', 'macrocell_700_3500'),
+        ('baseline', 'baseline', 'macrocell-700-3500', 30),
+        # ('0-unplanned', 'baseline', 'macrocell-700-3500'),
+        # ('1-new-cities', 'baseline', 'macrocell-700-3500'),
+        # ('2-expansion', 'baseline', 'macrocell-700-3500'),
 
-        # # ('low', 'low', 'macrocell_700'),
-        # ('baseline', 'baseline', 'macrocell_700'),
-        # # ('high', 'high', 'macrocell_700'),
+        # ('baseline', 'baseline', 'sectorisation'),
+        # ('0-unplanned', 'baseline', 'sectorisation'),
+        # ('1-new-cities', 'baseline', 'sectorisation'),
+        # ('2-expansion', 'baseline', 'sectorisation'),
 
-        # ('low', 'low', 'sectorisation'),
-        ('baseline', 'baseline', 'sectorisation'),
-        # ('high', 'high', 'sectorisation'),
+        # ('baseline', 'baseline', 'macro-densification', 30),
+        # ('0-unplanned', 'baseline', 'macro-densification'),
+        # ('1-new-cities', 'baseline', 'macro-densification'),
+        # ('2-expansion', 'baseline', 'macro-densification'),
 
-        # ('low', 'low', 'macro_densification'),
-        ('baseline', 'baseline', 'macro_densification'),
-        # ('high', 'high', 'macro_densification'),
+        # ('baseline', 'baseline', 'small-cell'),
+        # ('0-unplanned', 'baseline', 'small-cell'),
+        # ('1-new-cities', 'baseline', 'small-cell'),
+        # ('2-expansion', 'baseline', 'small-cell'),
 
-        # ('low', 'low', 'deregulation'),
-        # ('baseline', 'baseline', 'deregulation'),
-        # ('high', 'high', 'deregulation'),
-
-        # ('low', 'low', 'cloud_ran'),
-        # ('baseline', 'baseline', 'cloud_ran'),
-        # ('high', 'high', 'cloud_ran'),
-
-        # ('low', 'low', 'small_cell'),
-        # ('baseline', 'baseline', 'small_cell'),
-        # ('high', 'high', 'small_cell'),
-
-        # ('low', 'low', 'small_cell_and_spectrum'),
-        # ('baseline', 'baseline', 'small_cell_and_spectrum'),
-        # ('high', 'high', 'small_cell_and_spectrum'),
-
+        # ('baseline', 'baseline', 'small-cell-and-spectrum'),
+        # ('0-unplanned', 'baseline', 'small-cell-and-spectrum'),
+        # ('1-new-cities', 'baseline', 'small-cell-and-spectrum'),
+        # ('2-expansion', 'baseline', 'small-cell-and-spectrum'),
     ]:
     print("Running:", pop_scenario, throughput_scenario, \
         intervention_strategy)
 
-    assets = initial_system#[:]
+    #copy initial system list using '[:]'
+    assets = initial_system[:]
     for year in TIMESTEPS:
         print("-", year)
 
@@ -498,41 +494,43 @@ for pop_scenario, throughput_scenario, intervention_strategy in [
 
         # simulate first
         if year == BASE_YEAR:
-            # print(assets)
             system = NetworkManager(
                 lads, postcode_sectors, assets,
                 capacity_lookup_table, clutter_lookup,
                 service_obligation_capacity, traffic,
-                market_share
+                market_share, mast_height
                 )
-        # print([p.user_throughput for p in system.postcode_sectors.values()])
+
         # decide
-        interventions_built, budget, spend = decide_interventions(
+        interventions_built, budget = decide_interventions(
             intervention_strategy, budget, service_obligation_capacity,
-            system, year, traffic, market_share
+            system, year, traffic, market_share, mast_height
             )
+        print('interventions built {}'.format(len(interventions_built)))
         # accumulate decisions
         assets += interventions_built
-        print(interventions_built)
+
         # simulate with decisions
         system = NetworkManager(
             lads, postcode_sectors, assets,
             capacity_lookup_table, clutter_lookup,
             service_obligation_capacity, traffic,
-            market_share
+            market_share, mast_height
             )
 
         cost_by_lad = defaultdict(int)
         cost_by_pcd = defaultdict(int)
-        for pcd, lad, item, cost in spend:
-            cost_by_lad[lad] += cost
-            cost_by_pcd[pcd] += cost
+        for item in interventions_built:
+            cost_by_lad[item['lad']] += item['cost']
+            cost_by_pcd[item['pcd_sector']] += item['cost']
 
         write_decisions(interventions_built, year, pop_scenario,
                         throughput_scenario, intervention_strategy)
-        write_spend(spend, year, pop_scenario, throughput_scenario,
+        write_spend(interventions_built, year, pop_scenario, throughput_scenario,
                     intervention_strategy)
         write_lad_results(system, year, pop_scenario, throughput_scenario,
                           intervention_strategy, cost_by_lad)
         write_pcd_results(system, year, pop_scenario, throughput_scenario,
                           intervention_strategy, cost_by_pcd)
+
+    system = None
