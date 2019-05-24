@@ -40,7 +40,7 @@ def test_decide_interventions(basic_system, setup_traffic,
 
     #test strategy 'upgrade_to_lte'
     actual_result = decide_interventions(
-        'upgrade_to_lte', 250000, 2,
+        'upgrade-to-lte', 250000, 2,
         basic_system, 2020, 0.15, 0.25
     )[2]
 
@@ -48,7 +48,7 @@ def test_decide_interventions(basic_system, setup_traffic,
 
     #test strategy 'upgrade_to_lte'
     actual_result = decide_interventions(
-        'macrocell_700_3500', 101834, 2,
+        'macrocell-700-3500', 101834, 2,
         basic_system, 2020, 0.15, 0.25
     )[2]
 
@@ -59,7 +59,7 @@ def test_decide_interventions(basic_system, setup_traffic,
 
     #test strategy 'macrocell_700'
     actual_result = decide_interventions(
-        'macrocell_700', 50917, 2,
+        'macrocell-700', 50917, 2,
         basic_system, 2020, 0.15, 0.25
     )[2]
 
@@ -73,7 +73,10 @@ def test_decide_interventions(basic_system, setup_traffic,
         basic_system, 2020, 0.15, 0.25
     )[2]
 
-    expected_result = []
+    expected_result = [
+        ('CB11', 1, 'carrier_700', 50917),
+        ('CB12', 1, 'carrier_700', 50917)
+        ]
 
     assert len(actual_result) == len(expected_result)
 
@@ -99,18 +102,31 @@ def test_decide_interventions(basic_system, setup_traffic,
 
     #test strategy 'macro_densification'
     actual_result = decide_interventions(
-        'macro_densification', 150000, 1000,
+        'macro-densification', 150000, 1000,
         basic_system, 2020, 0.15, 0.25
     )[2]
 
     expected_result = [
-        ('CB11', 1, 'build_macro_site', 150000),
-        ('CB11', 1, 'build_macro_site', 150000),
+        ('CB12', 1, 'carrier_700', 50917),
+        ('CB12', 1, 'carrier_3500', 50917),
+        ('CB12', 1, 'build_5G_macro_site', 150000),
     ]
 
     assert actual_result == expected_result
 
+    #test strategy 'macro_densification'
+    actual_result = decide_interventions(
+        'macro-densification', 1e6, 1000,
+        basic_system, 2020, 0.15, 0.25
+    )[2]
 
+    expected_result = [
+        ('CB12', 1, 'carrier_700', 50917),
+        ('CB12', 1, 'carrier_3500', 50917),
+        ('CB12', 1, 'build_5G_macro_site', 150000),
+    ]
+    print(actual_result)
+    assert actual_result == 0
 
     # expected_result = [
     #     ('CB11', 1, 'carrier_700', 50917),
@@ -134,3 +150,4 @@ def test_decide_interventions(basic_system, setup_traffic,
 
 #     print(actual_result)
 #     assert actual_result == True
+-

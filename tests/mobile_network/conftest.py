@@ -109,6 +109,11 @@ def setup_capacity_lookup():
             (0, 0),
             (3, 5),
         ],
+        ("Rural", "1800", "2x10MHz"): [
+            (0, 0),
+            (0, 0),
+        ],
+
     }
 
 @fixture(scope='function')
