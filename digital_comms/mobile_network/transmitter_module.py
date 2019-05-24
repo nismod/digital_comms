@@ -40,6 +40,7 @@ RX_GAIN = 4
 RX_LOSSES = 4
 RX_MISC_LOSSES = 4
 RX_HEIGHT = 1.5
+NETWORK_LOAD = 50
 PERCENTILE = 95
 DESIRED_TRANSMITTER_DENSITY = 10 #per km^2
 SECTORISATION = 3
@@ -420,7 +421,7 @@ class NetworkManager(object):
 
     def estimate_link_budget(
         self, frequency, bandwidth, generation, mast_height,
-        environment, modulation_and_coding_lut):
+        environment, modulation_and_coding_lut, network_load):
         """
         Takes propagation parameters and calculates link budget capacity.
 
@@ -469,7 +470,7 @@ class NetworkManager(object):
             )
 
             sinr = self.calculate_sinr(
-                received_power, interference, noise
+                received_power, interference, noise, network_load
             )
 
             spectral_efficiency = self.modulation_scheme_and_coding_rate(
@@ -488,14 +489,14 @@ class NetworkManager(object):
 
             results.append(data)
 
-            # print('received_power is {}'.format(received_power))
-            # print('interference is {}'.format(interference))
-            # print('noise is {}'.format(noise))
-            # print('sinr is {}'.format(sinr))
-            # print('spectral_efficiency is {}'.format(spectral_efficiency))
-            # print('estimated_capacity is {}'.format(estimated_capacity))
-            # print('path_loss is {}'.format(path_loss))
-            # print('-----------------------------')
+            print('received_power is {}'.format(received_power))
+            print('interference is {}'.format(interference))
+            print('noise is {}'.format(noise))
+            print('sinr is {}'.format(sinr))
+            print('spectral_efficiency is {}'.format(spectral_efficiency))
+            print('estimated_capacity is {}'.format(estimated_capacity))
+            print('path_loss is {}'.format(path_loss))
+            print('-----------------------------')
 
         return results
 
@@ -725,7 +726,7 @@ class NetworkManager(object):
         return noise
 
 
-    def calculate_sinr(self, received_power, interference, noise):
+    def calculate_sinr(self, received_power, interference, noise, network_load):
         """
         Calculate the Signal-to-Interference-plus-Noise-Ration (SINR).
 
@@ -737,7 +738,7 @@ class NetworkManager(object):
             output_value = 10**value
             interference_values.append(output_value)
 
-        raw_sum_of_interference = sum(interference_values)
+        raw_sum_of_interference = sum(interference_values) * (1+(network_load/100))
         raw_noise = 10**noise
 
         sinr = np.log10(
@@ -1341,7 +1342,7 @@ def run_transmitter_module(postcode_sector_name):
 
                     results = MANAGER.estimate_link_budget(
                         frequency, bandwidth, generation, mast_height,
-                        environment, MODULATION_AND_CODING_LUT
+                        environment, MODULATION_AND_CODING_LUT, NETWORK_LOAD
                         )
 
                     site_density = MANAGER.site_density()
