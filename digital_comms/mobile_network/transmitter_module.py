@@ -63,8 +63,7 @@ np.random.seed(42)
 
 
 def read_postcode_sector(postcode_sector):
-    # postcode_sector = postcode_sector.replace(" ", "")
-    print(postcode_sector)
+
     with fiona.open(
         os.path.join(
             DATA_INTERMEDIATE, 'postcode_sectors', '_processed_postcode_sectors.shp')
@@ -72,7 +71,7 @@ def read_postcode_sector(postcode_sector):
 
         return [
             sector for sector in source \
-            if sector['properties']['postcode'] == postcode_sector][0]
+            if sector['properties']['postcode'].replace(' ', '') == postcode_sector][0]
 
 
 def get_local_authority_ids(postcode_sector):
@@ -98,7 +97,7 @@ def import_area_lut(postcode_sector_name, lad_ids):
         with open(path, 'r') as system_file:
             reader = csv.DictReader(system_file)
             for line in reader:
-                if line['postcode_sector'] == postcode_sector_name:
+                if line['postcode_sector'].replace(' ', '') == postcode_sector_name:
                     lut = {
                         'postcode_sector': line['postcode_sector'],
                         'indoor_probability': line['indoor_probability'],
@@ -738,7 +737,8 @@ class NetworkManager(object):
             output_value = 10**value
             interference_values.append(output_value)
 
-        raw_sum_of_interference = sum(interference_values) * (1+(network_load/100))
+        raw_sum_of_interference = sum(interference_values) * 50 #(1+(network_load/100))
+
         raw_noise = 10**noise
 
         sinr = np.log10(
