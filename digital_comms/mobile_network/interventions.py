@@ -73,7 +73,8 @@ STRATEGIES = {
     # Deregulate the height of macrocell sites
     # The cost includes raising the height of the
     # existing site mast.
-    'cloud-ran': ('deploy_c_ran'),
+    'cloud-ran': ('carrier_800_1800_2600', 'carrier_700',
+        'carrier_3500', 'macro_5G_c_ran'),
 
     # Intervention Strategy X
     # Deploy a small cell layer at 3700 MHz
@@ -95,7 +96,6 @@ INTERVENTIONS = {
         'cost': 142446,
         'assets_to_build': [
             {
-                # site_ngr to match upgraded
                 'site_ngr': None,
                 'frequency': '800',
                 'technology': 'LTE',
@@ -103,11 +103,9 @@ INTERVENTIONS = {
                 'bandwidth': '2x10MHz',
                 'sectors': 3,
                 'mast_height': 30,
-                # set build date when deciding
                 'build_date': None,
             },
             {
-                # site_ngr to match upgraded
                 'site_ngr': None,
                 'frequency': '1800',
                 'technology': 'LTE',
@@ -115,11 +113,9 @@ INTERVENTIONS = {
                 'bandwidth': '2x10MHz',
                 'sectors': 3,
                 'mast_height': 30,
-                # set build date when deciding
                 'build_date': None,
             },
             {
-                # site_ngr to match upgraded
                 'site_ngr': None,
                 'frequency': '2600',
                 'technology': 'LTE',
@@ -127,7 +123,6 @@ INTERVENTIONS = {
                 'bandwidth': '2x10MHz',
                 'sectors': 3,
                 'mast_height': 30,
-                # set build date when deciding
                 'build_date': None,
             },
         ]
@@ -139,7 +134,6 @@ INTERVENTIONS = {
         'cost': 50917,
         'assets_to_build': [
             {
-                # site_ngr to match upgraded
                 'site_ngr': None,
                 'frequency': '700',
                 'technology': 'LTE',
@@ -147,7 +141,6 @@ INTERVENTIONS = {
                 'bandwidth': '2x10MHz',
                 'sectors': 3,
                 'mast_height': 30,
-                # set build date when deciding
                 'build_date': None,
             },
         ]
@@ -159,7 +152,6 @@ INTERVENTIONS = {
         'cost': 50917,
         'assets_to_build': [
             {
-                # site_ngr to match upgraded
                 'site_ngr': None,
                 'frequency': '3500',
                 'technology': '5G',
@@ -167,7 +159,6 @@ INTERVENTIONS = {
                 'bandwidth': '2x10MHz',
                 'sectors': 3,
                 'mast_height': 30,
-                # set build date when deciding
                 'build_date': None,
             },
         ]
@@ -179,7 +170,6 @@ INTERVENTIONS = {
         'cost': 50000, #£10k each, plus £20 installation
         'assets_to_build': [
             {
-                # site_ngr to match upgraded
                 'site_ngr': None,
                 'frequency': 'x6_sectors',
                 'technology': '5G',
@@ -187,7 +177,6 @@ INTERVENTIONS = {
                 'bandwidth': '2x10MHz',
                 'sectors': 6,
                 'mast_height': 30,
-                # set build date when deciding
                 'build_date': None,
             },
         ]
@@ -200,7 +189,6 @@ INTERVENTIONS = {
         'cost': 150000,
         'assets_to_build': [
             {
-                # site_ngr not used
                 'site_ngr': '',
                 'frequency': ['800', '1800', '2600'],
                 'technology': '4G',
@@ -208,7 +196,6 @@ INTERVENTIONS = {
                 'bandwidth': '2x10MHz',
                 'sectors': 3,
                 'mast_height': 30,
-                # set build date when deciding
                 'build_date': None,
             },
         ]
@@ -221,7 +208,6 @@ INTERVENTIONS = {
         'cost': 150000,
         'assets_to_build': [
             {
-                # site_ngr not used
                 'site_ngr': '',
                 'frequency': ['700', '800', '1800', '2600', '3500'],
                 'technology': '5G',
@@ -229,7 +215,6 @@ INTERVENTIONS = {
                 'bandwidth': '2x10MHz',
                 'sectors': 3,
                 'mast_height': 30,
-                # set build date when deciding
                 'build_date': None,
             },
         ]
@@ -242,14 +227,12 @@ INTERVENTIONS = {
         'cost': 40220,
         'assets_to_build': [
             {
-                # site_ngr not used
                 'site_ngr': 'small_cell_sites',
                 'frequency': '3700',
                 'technology': 'same',
                 'type': 'small_cell',
                 'bandwidth': '2x25MHz',
                 'sectors': 1,
-                # set build date when deciding
                 'build_date': None,
             },
         ]
@@ -262,7 +245,6 @@ INTERVENTIONS = {
         'cost': 30000,
         'assets_to_build': [
             {
-                # site_ngr not used
                 'site_ngr': 'extended_height',
                 'frequency': None,
                 'technology': None,
@@ -270,12 +252,11 @@ INTERVENTIONS = {
                 'bandwidth': None,
                 'sectors': None,
                 'mast_height': 40,
-                # set build date when deciding
                 'build_date': None,
             },
         ]
     },
-    'deploy_c_ran': {
+    'macro_5G_c_ran': {
         'name': 'Replace D-Ran with C-RAN',
         'description': 'Must be deployed within viable distance \
             from exchange',
@@ -283,14 +264,12 @@ INTERVENTIONS = {
         'cost': 30000,
         'assets_to_build': [
             {
-                # site_ngr not used
-                'site_ngr': 'c_ran',
-                'frequency': 'same',
-                'technology': '5G c_ran',
-                'type': 'macro_c_ran',
-                'bandwidth': 'same',
-                'sectors': 'same',
-                # set build date when deciding
+                'site_ngr': None,
+                'frequency': None,
+                'technology': '5G_c_ran',
+                'type': 'macro_5G_c_ran',
+                'bandwidth': None,
+                'sectors': None,
                 'build_date': None,
             },
         ]
@@ -638,7 +617,7 @@ def _suggest_interventions(budget, available_interventions,
             for site_ngr, site_assets in assets_by_site.items():
                 if site_ngr == 'small_cell_sites':
                     continue
-                # print(site_assets)
+
                 unique_id = (site_ngr + '_' + 'raise_mast_height')
 
                 if unique_id not in unique_intervention_ids:
@@ -657,7 +636,7 @@ def _suggest_interventions(budget, available_interventions,
                         to_build['build_date'] = timestep
                         to_build['item'] = 'raise_mast_height'
                         to_build['cost'] = cost
-                        # print(to_build)
+
                         area_interventions.append(to_build)
                         built_interventions.append(to_build)
 
@@ -778,39 +757,49 @@ def _suggest_interventions(budget, available_interventions,
         if budget <= 0:
             break
 
+        #deploy Cloud-RAN
+        if 'macro_5G_c_ran' in available_interventions:
+            if _area_satisfied(area, area_interventions,
+                service_obligation_capacity, traffic,
+                market_share, mast_height):
+                continue
 
-        # #deploy Cloud-RAN
-        # if 'deploy_c_ran' in available_interventions:
-        #     if _area_satisfied(area, area_interventions,
-        #         service_obligation_capacity, traffic, market_share):
-        #         continue
+            build_option = INTERVENTIONS['macro_5G_c_ran']['assets_to_build']
+            cost = INTERVENTIONS['macro_5G_c_ran']['cost']
 
-        #     build_option = INTERVENTIONS['deploy_c_ran']['assets_to_build']
-        #     cost = INTERVENTIONS['deploy_c_ran']['cost']
-        #     for site_ngr, site_assets in assets_by_site.items():
-        #         if site_ngr == 'small_cell_sites':
-        #             continue
+            for site_ngr, site_assets in assets_by_site.items():
+                if site_ngr == 'small_cell_sites':
+                    continue
 
-        #             # set both assets to this site_ngr
-        #             for option in build_option:
-        #                 to_build = copy.copy(option)
-        #                 to_build['site_ngr'] = site_ngr
-        #                 to_build['technology'] = '5G_c_ran'
-        #                 to_build['pcd_sector'] = area.id
-        #                 to_build['build_date'] = timestep
-        #                 area_interventions.append(to_build)
-        #                 built_interventions.append(to_build)
+                unique_id = (site_ngr + '_' + 'raise_mast_height')
 
-        #             spend.append((
-        #                 area.id, area.lad_id,
-        #                 'deploy_c_ran', cost
-        #                 ))
-        #             budget -= cost
-        #             if budget <= 0:
-        #                 break
+                if unique_id not in unique_intervention_ids:
+                    unique_intervention_ids.append(unique_id)
 
-        # if budget <= 0:
-        #     break
+                    for option in build_option:
+                        to_build = copy.copy(option)
+                        to_build['site_ngr'] = site_ngr
+                        to_build['pcd_sector'] = area.id
+                        to_build['build_date'] = timestep
+                        to_build['technology'] = '5G'
+                        to_build['frequency'] = ['700', '800', '1800', '2600', '3500']
+                        to_build['bandwidth'] = 'frequency_dependent'
+                        to_build['sectors'] = 3
+                        to_build['pcd_sector'] = area.id
+                        to_build['lad'] = area.lad_id
+                        to_build['build_date'] = timestep
+                        to_build['item'] = 'macro_5G_c_ran'
+                        to_build['cost'] = cost
+
+                        area_interventions.append(to_build)
+                        built_interventions.append(to_build)
+
+                        budget -= cost
+                        if budget <= 0:
+                            break
+
+        if budget <= 0:
+            break
 
         if 'small_cell' in available_interventions and timestep >= 2020:
             if _area_satisfied(area, area_interventions,

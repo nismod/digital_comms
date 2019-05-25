@@ -108,132 +108,20 @@ def test_decide_interventions(basic_system, setup_traffic,
 
 
     actual_result = decide_interventions(
-        'cloud_ran', (101834+30000)*2 , 10,
+        'cloud-ran', (101834+30000)*2 , 10,
         basic_system, 2020, 0.5, 0.25, 30
     )
 
     #build
     # site_100 CB11 carrier_700 50917
     # site_100 CB11 carrier_3500 50917
-    # site_100 CB11 raise_mast_height 30000
+    # site_100 CB11 deploy_c_ran 30000
     # site_100 CB12 carrier_700 50917
     # site_100 CB12 carrier_3500 50917
-    # site_100 CB12 raise_mast_height 30000
-
-    assert len(actual_result[0]) == 6
-    assert actual_result[1] == 0
-
-
+    # site_100 CB12 deploy_c_ran 30000
 
     for row in actual_result[0]:
         print(row['site_ngr'],row['pcd_sector'],row['item'],row['cost'])
 
-
-
-
-
-    # assets += interventions_built
-
-    # # simulate with decisions
-    # system = NetworkManager(
-    #     lads, postcode_sectors, assets,
-    #     capacity_lookup_table, clutter_lookup,
-    #     service_obligation_capacity, traffic,
-    #     market_share, mast_height
-    #     )
-
-
-    # #test strategy 'sectorisation'
-    # actual_result = decide_interventions(
-    #     'sectorisation', 2e9, 0,
-    #     basic_system, 2020, 0.5, 0.25, 30
-    # )
-    # print(actual_result)
-    # assert len(actual_result[0]) == 2
-    # assert actual_result[1] == 0
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # #test strategy 'sectorisation'
-    # initial_result = decide_interventions(
-    #     'sectorisation', 1e6, 1000,
-    #     basic_system, 2020, 0.15, 0.25
-    # )[2]
-
-    # actual_interventions = []
-    # for result in initial_result:
-    #     actual_interventions.append(result[2])
-
-    # actual_result = list(set(actual_interventions)).sort()
-
-    # expected_result = [
-    #     'carrier_700',
-    #     'add_3_sectors',
-    #     'carrier_3500',
-    #     ]
-
-    # assert actual_result == expected_result.sort()
-
-    # #test strategy 'macro_densification'
-    # actual_result = decide_interventions(
-    #     'macro-densification', 150000, 1000,
-    #     basic_system, 2020, 0.15, 0.25
-    # )[2]
-
-    # expected_result = [
-    #     ('CB12', 1, 'carrier_700', 50917),
-    #     ('CB12', 1, 'carrier_3500', 50917),
-    #     ('CB12', 1, 'build_5G_macro_site', 150000),
-    # ]
-
-    # assert actual_result == expected_result
-
-    # #test strategy 'macro_densification'
-    # actual_result = decide_interventions(
-    #     'macro-densification', 1e6, 1000,
-    #     basic_system, 2020, 0.15, 0.25, 30
-    # )[2]
-
-    # expected_result = [
-    #     ('CB12', 1, 'carrier_700', 50917),
-    #     ('CB12', 1, 'carrier_3500', 50917),
-    #     ('CB12', 1, 'build_5G_macro_site', 150000),
-    # ]
-    # print(actual_result)
-    # assert actual_result == 0
-
-    # expected_result = [
-    #     ('CB11', 1, 'carrier_700', 50917),
-    #     ('CB11', 1, 'carrier_3500', 50917),
-    #     ('CB12', 1, 'carrier_700', 50917),
-    #     ('CB12', 1, 'carrier_3500', 50917),
-    #     ('CB11', 1, 'carrier_700', 50917),
-    #     ('CB11', 1, 'carrier_3500', 50917),
-    #     ('CB12', 1, 'carrier_700', 50917),
-    #     ('CB12', 1, 'carrier_3500', 50917),
-    # ]
-
-# def test_area_satisfied(setup_pcd_sector, setup_built_interventions,
-#     setup_site_sectors, setup_service_obligation_capacity,
-#     setup_traffic, setup_market_share
-#     ):
-
-#     actual_result = _area_satisfied(setup_pcd_sector, setup_built_interventions,
-#     setup_site_sectors, setup_service_obligation_capacity,
-#     setup_traffic, setup_market_share)
-
-#     print(actual_result)
-#     assert actual_result == True
+    assert len(actual_result[0]) == 6
+    assert actual_result[1] == 0
