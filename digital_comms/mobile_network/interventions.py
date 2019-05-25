@@ -5,6 +5,7 @@ from digital_comms.mobile_network.model import PostcodeSector
 
 import copy
 import math
+from itertools import groupby
 
 ################################################################
 # EXAMPLE COST LOOKUP TABLE
@@ -12,207 +13,6 @@ import math
 # of ownership for costs
 ################################################################
 
-# Postcode-sector level individual interventions
-INTERVENTIONS = {
-    'carrier_800_1800_2600': {
-        'name': 'Upgrade site to LTE',
-        'description': 'If a site has only 2G/3G',
-        'result': '800, 1800 and 2600 bands available',
-        'cost': 142446,
-        'assets_to_build': [
-            {
-                # site_ngr to match upgraded
-                'site_ngr': None,
-                'frequency': '800',
-                'technology': 'LTE',
-                'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
-                'sectors': 3,
-                # set build date when deciding
-                'build_date': None,
-            },
-            {
-                # site_ngr to match upgraded
-                'site_ngr': None,
-                'frequency': '1800',
-                'technology': 'LTE',
-                'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
-                'sectors': 3,
-                # set build date when deciding
-                'build_date': None,
-            },
-            {
-                # site_ngr to match upgraded
-                'site_ngr': None,
-                'frequency': '2600',
-                'technology': 'LTE',
-                'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
-                'sectors': 3,
-                # set build date when deciding
-                'build_date': None,
-            },
-        ]
-    },
-    'carrier_700': {
-        'name': 'Build 700 MHz carrier',
-        'description': 'Available if a site has LTE',
-        'result': '700 band available',
-        'cost': 50917,
-        'assets_to_build': [
-            {
-                # site_ngr to match upgraded
-                'site_ngr': None,
-                'frequency': '700',
-                'technology': 'LTE',
-                'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
-                'sectors': 3,
-                # set build date when deciding
-                'build_date': None,
-            },
-        ]
-    },
-    'carrier_3500': {
-        'name': 'Build 3500 MHz carrier',
-        'description': 'Available if a site has LTE',
-        'result': '3500 band available',
-        'cost': 50917,
-        'assets_to_build': [
-            {
-                # site_ngr to match upgraded
-                'site_ngr': None,
-                'frequency': '3500',
-                'technology': 'LTE',
-                'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
-                'sectors': 3,
-                # set build date when deciding
-                'build_date': None,
-            },
-        ]
-    },
-    'add_3_sectors': {
-        'name': 'sectorisation carrier',
-        'description': 'Available if a site has LTE',
-        'result': '6 sectors are available',
-        'cost': 50000, #£10k each, plus £20 installation
-        'assets_to_build': [
-            {
-                # site_ngr to match upgraded
-                'site_ngr': None,
-                'frequency': 'x6_sectors',
-                'technology': '5G',
-                'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
-                'sectors': 6,
-                # set build date when deciding
-                'build_date': None,
-            },
-        ]
-    },
-    'build_4G_macro_site': {
-        'name': 'Build a new 4G macro site',
-        'description': 'Must be deployed at preset densities \
-            to be modelled',
-        'result': 'Macrocell sites available at given density',
-        'cost': 150000,
-        'assets_to_build': [
-            {
-                # site_ngr not used
-                'site_ngr': 'new_macro_site',
-                'frequency': ['800', '1800', '2600'],
-                'technology': '4G',
-                'type': 'macro_site',
-                'bandwidth': '2x10MHz',
-                'sectors': 3,
-                # set build date when deciding
-                'build_date': None,
-            },
-        ]
-    },
-    'build_5G_macro_site': {
-        'name': 'Build a new 5G macro site',
-        'description': 'Must be deployed at preset densities \
-            to be modelled',
-        'result': 'Macrocell sites available at given density',
-        'cost': 150000,
-        'assets_to_build': [
-            {
-                # site_ngr not used
-                'site_ngr': 'new_macro_site',
-                'frequency': ['700', '800', '1800', '2600', '3500'],
-                'technology': '5G',
-                'type': 'macro_site',
-                'bandwidth': '2x10MHz',
-                'sectors': 3,
-                # set build date when deciding
-                'build_date': None,
-            },
-        ]
-    },
-    'small_cell': {
-        'name': 'Build a small cell',
-        'description': 'Must be deployed at preset densities \
-            to be modelled',
-        'result': '2x25 MHz small cells available at given density',
-        'cost': 40220,
-        'assets_to_build': [
-            {
-                # site_ngr not used
-                'site_ngr': 'small_cell_sites',
-                'frequency': '3700',
-                'technology': 'same',
-                'type': 'small_cell',
-                'bandwidth': '2x25MHz',
-                'sectors': 1,
-                # set build date when deciding
-                'build_date': None,
-            },
-        ]
-    },
-    'raise_mast_height': {
-        'name': 'Raises existing mast height',
-        'description': 'Must be deployed at preset densities to \
-            be modelled',
-        'result': 'Same technology but with new enhanced capacity',
-        'cost': 30000,
-        'assets_to_build': [
-            {
-                # site_ngr not used
-                'site_ngr': 'extended_height',
-                'frequency': 'same',
-                'technology': 'same',
-                'type': 'extended_height_macro',
-                'bandwidth': 'same',
-                'sectors': 'same',
-                # set build date when deciding
-                'build_date': None,
-            },
-        ]
-    },
-    'deploy_c_ran': {
-        'name': 'Replace D-Ran with C-RAN',
-        'description': 'Must be deployed within viable distance \
-            from exchange',
-        'result': 'Network architecture change to SDN/NFV',
-        'cost': 30000,
-        'assets_to_build': [
-            {
-                # site_ngr not used
-                'site_ngr': 'c_ran',
-                'frequency': 'same',
-                'technology': '5G c_ran',
-                'type': 'macro_c_ran',
-                'bandwidth': 'same',
-                'sectors': 'same',
-                # set build date when deciding
-                'build_date': None,
-            },
-        ]
-    },
-}
 
 STRATEGIES = {
     # Intervention Strategy X
@@ -266,19 +66,14 @@ STRATEGIES = {
     # Deregulate the height of macrocell sites
     # The cost includes raising the height of the
     # existing site mast.
-    'deregulation': ('raise_mast_height'),
+    'deregulation': ('carrier_800_1800_2600', 'carrier_700',
+        'carrier_3500', 'raise_mast_height'),
 
     # Intervention Strategy X
     # Deregulate the height of macrocell sites
     # The cost includes raising the height of the
     # existing site mast.
     'cloud-ran': ('deploy_c_ran'),
-
-    # Intervention Strategy X
-    # Deploy a small cell layer at 3700 MHz
-    # The cost will include the small cell unit and
-    # the civil works per cell
-    'small-cell': ('carrier_800_1800_2600', 'small_cell'),
 
     # Intervention Strategy X
     # Deploy a small cell layer at 3700 MHz
@@ -289,6 +84,219 @@ STRATEGIES = {
         'carrier_3500', 'small_cell'
         ),
 }
+
+
+# Postcode-sector level individual interventions
+INTERVENTIONS = {
+    'carrier_800_1800_2600': {
+        'name': 'Upgrade site to LTE',
+        'description': 'If a site has only 2G/3G',
+        'result': '800, 1800 and 2600 bands available',
+        'cost': 142446,
+        'assets_to_build': [
+            {
+                # site_ngr to match upgraded
+                'site_ngr': None,
+                'frequency': '800',
+                'technology': 'LTE',
+                'type': 'macrocell_site',
+                'bandwidth': '2x10MHz',
+                'sectors': 3,
+                'mast_height': 30,
+                # set build date when deciding
+                'build_date': None,
+            },
+            {
+                # site_ngr to match upgraded
+                'site_ngr': None,
+                'frequency': '1800',
+                'technology': 'LTE',
+                'type': 'macrocell_site',
+                'bandwidth': '2x10MHz',
+                'sectors': 3,
+                'mast_height': 30,
+                # set build date when deciding
+                'build_date': None,
+            },
+            {
+                # site_ngr to match upgraded
+                'site_ngr': None,
+                'frequency': '2600',
+                'technology': 'LTE',
+                'type': 'macrocell_site',
+                'bandwidth': '2x10MHz',
+                'sectors': 3,
+                'mast_height': 30,
+                # set build date when deciding
+                'build_date': None,
+            },
+        ]
+    },
+    'carrier_700': {
+        'name': 'Build 700 MHz carrier',
+        'description': 'Available if a site has LTE',
+        'result': '700 band available',
+        'cost': 50917,
+        'assets_to_build': [
+            {
+                # site_ngr to match upgraded
+                'site_ngr': None,
+                'frequency': '700',
+                'technology': 'LTE',
+                'type': 'macrocell_site',
+                'bandwidth': '2x10MHz',
+                'sectors': 3,
+                'mast_height': 30,
+                # set build date when deciding
+                'build_date': None,
+            },
+        ]
+    },
+    'carrier_3500': {
+        'name': 'Build 3500 MHz carrier',
+        'description': 'Available if a site has LTE',
+        'result': '3500 band available',
+        'cost': 50917,
+        'assets_to_build': [
+            {
+                # site_ngr to match upgraded
+                'site_ngr': None,
+                'frequency': '3500',
+                'technology': '5G',
+                'type': 'macrocell_site',
+                'bandwidth': '2x10MHz',
+                'sectors': 3,
+                'mast_height': 30,
+                # set build date when deciding
+                'build_date': None,
+            },
+        ]
+    },
+    'add_3_sectors': {
+        'name': 'sectorisation carrier',
+        'description': 'Available if a site has LTE',
+        'result': '6 sectors are available',
+        'cost': 50000, #£10k each, plus £20 installation
+        'assets_to_build': [
+            {
+                # site_ngr to match upgraded
+                'site_ngr': None,
+                'frequency': 'x6_sectors',
+                'technology': '5G',
+                'type': 'macrocell_site',
+                'bandwidth': '2x10MHz',
+                'sectors': 6,
+                'mast_height': 30,
+                # set build date when deciding
+                'build_date': None,
+            },
+        ]
+    },
+    'build_4G_macro_site': {
+        'name': 'Build a new 4G macro site',
+        'description': 'Must be deployed at preset densities \
+            to be modelled',
+        'result': 'Macrocell sites available at given density',
+        'cost': 150000,
+        'assets_to_build': [
+            {
+                # site_ngr not used
+                'site_ngr': '',
+                'frequency': ['800', '1800', '2600'],
+                'technology': '4G',
+                'type': 'macro_site',
+                'bandwidth': '2x10MHz',
+                'sectors': 3,
+                'mast_height': 30,
+                # set build date when deciding
+                'build_date': None,
+            },
+        ]
+    },
+    'build_5G_macro_site': {
+        'name': 'Build a new 5G macro site',
+        'description': 'Must be deployed at preset densities \
+            to be modelled',
+        'result': 'Macrocell sites available at given density',
+        'cost': 150000,
+        'assets_to_build': [
+            {
+                # site_ngr not used
+                'site_ngr': '',
+                'frequency': ['700', '800', '1800', '2600', '3500'],
+                'technology': '5G',
+                'type': 'macro_site',
+                'bandwidth': '2x10MHz',
+                'sectors': 3,
+                'mast_height': 30,
+                # set build date when deciding
+                'build_date': None,
+            },
+        ]
+    },
+    'small_cell': {
+        'name': 'Build a small cell',
+        'description': 'Must be deployed at preset densities \
+            to be modelled',
+        'result': '2x25 MHz small cells available at given density',
+        'cost': 40220,
+        'assets_to_build': [
+            {
+                # site_ngr not used
+                'site_ngr': 'small_cell_sites',
+                'frequency': '3700',
+                'technology': 'same',
+                'type': 'small_cell',
+                'bandwidth': '2x25MHz',
+                'sectors': 1,
+                # set build date when deciding
+                'build_date': None,
+            },
+        ]
+    },
+    'raise_mast_height': {
+        'name': 'Raises existing mast height',
+        'description': 'Must be deployed at preset densities to \
+            be modelled',
+        'result': 'Same technology but with new enhanced capacity',
+        'cost': 30000,
+        'assets_to_build': [
+            {
+                # site_ngr not used
+                'site_ngr': 'extended_height',
+                'frequency': None,
+                'technology': None,
+                'type': 'extended_height_macro',
+                'bandwidth': None,
+                'sectors': None,
+                'mast_height': 40,
+                # set build date when deciding
+                'build_date': None,
+            },
+        ]
+    },
+    'deploy_c_ran': {
+        'name': 'Replace D-Ran with C-RAN',
+        'description': 'Must be deployed within viable distance \
+            from exchange',
+        'result': 'Network architecture change to SDN/NFV',
+        'cost': 30000,
+        'assets_to_build': [
+            {
+                # site_ngr not used
+                'site_ngr': 'c_ran',
+                'frequency': 'same',
+                'technology': '5G c_ran',
+                'type': 'macro_c_ran',
+                'bandwidth': 'same',
+                'sectors': 'same',
+                # set build date when deciding
+                'build_date': None,
+            },
+        ]
+    },
+}
+
 
 def decide_interventions(strategy, budget,
     service_obligation_capacity, system, timestep,
@@ -333,29 +341,32 @@ def decide_interventions(strategy, budget,
 
     """
     available_interventions = STRATEGIES[strategy]
-
     if service_obligation_capacity > 0:
-        service_built, budget = \
+        unique_intervention_ids = []
+        service_built, budget, unique_intervention_ids = \
             meet_service_obligation(
             budget, available_interventions, timestep,
             service_obligation_capacity,
-            system, traffic, market_share, mast_height
+            system, traffic, market_share, mast_height,
+            unique_intervention_ids
             )
+
     else:
         service_built = []
 
-    # Build to meet demand
-    built, budget = meet_demand(
+    built, budget, unique_intervention_ids = meet_demand(
         budget, available_interventions, timestep,
         system, service_obligation_capacity,
-        traffic, market_share, mast_height)
+        traffic, market_share, mast_height,
+        unique_intervention_ids)
 
-    return built + service_built, budget
+    return service_built + built, budget
 
 
 def meet_service_obligation(budget, available_interventions,
     timestep, service_obligation_capacity,
-    system, traffic, market_share, mast_height):
+    system, traffic, market_share, mast_height,
+    unique_intervention_ids):
 
     areas = _suggest_target_postcodes(
         system, service_obligation_capacity
@@ -364,20 +375,23 @@ def meet_service_obligation(budget, available_interventions,
     return _suggest_interventions(
         budget, available_interventions, areas,
         service_obligation_capacity, timestep,
-        traffic, market_share, mast_height
+        traffic, market_share, mast_height,
+        unique_intervention_ids
         )
 
 
 def meet_demand(budget, available_interventions, timestep,
     system, service_obligation_capacity,
-    traffic, market_share, mast_height):
+    traffic, market_share, mast_height,
+    unique_intervention_ids):
 
     areas = _suggest_target_postcodes(system)
-    # print([p.capacity_margin for p in areas])
+
     return _suggest_interventions(budget,
         available_interventions, areas,
         service_obligation_capacity, timestep,
-        traffic, market_share, mast_height
+        traffic, market_share, mast_height,
+        unique_intervention_ids
         )
 
 
@@ -396,10 +410,11 @@ def current_tech_and_freqs(site_assets):
 
 def _suggest_interventions(budget, available_interventions,
     areas, service_obligation_capacity, timestep,
-    traffic, market_share, mast_height):
+    traffic, market_share, mast_height,
+    unique_intervention_ids):
 
     built_interventions = []
-    spend = []
+
     for area in areas:
 
         area_interventions = []
@@ -412,7 +427,6 @@ def _suggest_interventions(budget, available_interventions,
             traffic, market_share, mast_height):
             continue
 
-        # group assets by site
         assets_by_site = {}
         for asset in area.assets:
 
@@ -421,7 +435,6 @@ def _suggest_interventions(budget, available_interventions,
             else:
                 assets_by_site[asset['site_ngr']].append(asset)
 
-        # integrate_800 and integrate_2.6
         if 'carrier_800_1800_2600' in available_interventions:
 
             build_option = INTERVENTIONS['carrier_800_1800_2600']['assets_to_build']
@@ -436,30 +449,36 @@ def _suggest_interventions(budget, available_interventions,
 
                 if 'LTE' not in current_tech:
                     for option in build_option:
-                        to_build = copy.copy(option)
-                        to_build['site_ngr'] = site_ngr
-                        to_build['technology'] = '4G'
-                        to_build['frequency'] = ['800', '1800', '2600']
-                        to_build['sectors'] = 3
-                        to_build['pcd_sector'] = area.id
-                        to_build['lad'] = area.lad_id
-                        to_build['build_date'] = timestep
-                        to_build['item'] = 'carrier_800_1800_2600'
-                        to_build['cost'] = cost
 
-                        area_interventions.append(to_build)
-                        built_interventions.append(to_build)
-                        assets_by_site[site_ngr] = [to_build]
+                        unique_id = (site_ngr + '_' + '4G' + '_' + 'carrier_800_1800_2600')
 
-                    budget -= cost
+                        if unique_id not in unique_intervention_ids:
 
-                    if budget < 0:
-                        break
+                            unique_intervention_ids.append(unique_id)
 
-        if budget < 0:
+                            to_build = copy.copy(option)
+                            to_build['site_ngr'] = site_ngr
+                            to_build['technology'] = '4G'
+                            to_build['frequency'] = ['800', '1800', '2600']
+                            to_build['sectors'] = 3
+                            to_build['pcd_sector'] = area.id
+                            to_build['lad'] = area.lad_id
+                            to_build['build_date'] = timestep
+                            to_build['item'] = 'carrier_800_1800_2600'
+                            to_build['cost'] = cost
+
+                            area_interventions.append(to_build)
+                            built_interventions.append(to_build)
+                            assets_by_site[site_ngr] = [to_build]
+
+                            budget -= cost
+
+                            if budget <= 0:
+                                break
+
+        if budget <= 0:
             break
 
-        # integrate_700
         if 'carrier_700' in available_interventions and \
             timestep >= 2020:
 
@@ -480,12 +499,17 @@ def _suggest_interventions(budget, available_interventions,
 
                 if 'LTE' in current_tech and \
                     '700' not in current_freqs:
-                        # set both assets to this site_ngr
+
+                    unique_id = (site_ngr + '_' + '5G' + '_' + 'carrier_700')
+
+                    if unique_id not in unique_intervention_ids:
+                        unique_intervention_ids.append(unique_id)
                         for option in build_option:
                             to_build = copy.copy(option)
                             to_build['site_ngr'] = site_ngr
                             to_build['technology'] = '5G'
                             to_build['frequency'] = ['700', '800', '1800', '2600']
+                            to_build['bandwidth'] = 'frequency_dependent'
                             to_build['sectors'] = 3
                             to_build['pcd_sector'] = area.id
                             to_build['lad'] = area.lad_id
@@ -497,14 +521,13 @@ def _suggest_interventions(budget, available_interventions,
                             built_interventions.append(to_build)
                             assets_by_site[site_ngr] = [to_build]
 
-                        budget -= cost
-                        if budget < 0:
-                            break
+                            budget -= cost
+                            if budget <= 0:
+                                break
 
-        if budget < 0:
+        if budget <= 0:
             break
 
-        # integrate_3.5
         if 'carrier_3500' in available_interventions and \
             timestep >= 2020:
 
@@ -523,30 +546,36 @@ def _suggest_interventions(budget, available_interventions,
                 current_tech, current_freqs = current_tech_and_freqs(site_assets)
                 if '5G' in current_tech and \
                     '3500' not in current_freqs:
-                    for option in build_option:
-                        to_build = copy.copy(option)
-                        to_build['site_ngr'] = site_ngr
-                        to_build['technology'] = '5G'
-                        to_build['frequency'] = ['700', '800', '1800', '2600', '3500']
-                        to_build['sectors'] = 3
-                        to_build['pcd_sector'] = area.id
-                        to_build['lad'] = area.lad_id
-                        to_build['build_date'] = timestep
-                        to_build['item'] = 'carrier_3500'
-                        to_build['cost'] = cost
 
-                        area_interventions.append(to_build)
-                        built_interventions.append(to_build)
-                        assets_by_site[site_ngr] = [to_build]
+                    unique_id = (site_ngr + '_' + '5G' + '_' + 'carrier_3500')
 
-                    budget -= cost
-                    if budget < 0:
-                        break
+                    if unique_id not in unique_intervention_ids:
+                        unique_intervention_ids.append(unique_id)
+                        for option in build_option:
+                            to_build = copy.copy(option)
+                            to_build['site_ngr'] = site_ngr
+                            to_build['technology'] = '5G'
+                            to_build['frequency'] = ['700', '800', '1800', '2600', '3500']
+                            to_build['bandwidth'] = 'frequency_dependent'
+                            to_build['sectors'] = 3
+                            to_build['pcd_sector'] = area.id
+                            to_build['lad'] = area.lad_id
+                            to_build['build_date'] = timestep
+                            to_build['item'] = 'carrier_3500'
+                            to_build['cost'] = cost
 
-        if budget < 0:
+                            area_interventions.append(to_build)
+                            built_interventions.append(to_build)
+                            assets_by_site[site_ngr] = [to_build]
+
+                            budget -= cost
+
+                            if budget <= 0:
+                                break
+
+        if budget <= 0:
             break
 
-        # x6_sectors
         if 'add_3_sectors' in available_interventions:
             if _area_satisfied(area, area_interventions,
                 service_obligation_capacity, traffic,
@@ -569,31 +598,34 @@ def _suggest_interventions(budget, available_interventions,
                     '3500' in current_freqs and \
                     6 not in sectors:
 
-                    for option in build_option:
-                        to_build = copy.copy(option)
-                        to_build['site_ngr'] = site_ngr
-                        to_build['technology'] = '5G'
-                        to_build['frequency'] = ['700', '800', '1800', '2600', '3500']
-                        to_build['sectors'] = 6
-                        to_build['pcd_sector'] = area.id
-                        to_build['lad'] = area.lad_id
-                        to_build['build_date'] = timestep
-                        to_build['item'] = 'add_3_sectors'
-                        to_build['cost'] = cost
+                    unique_id = (site_ngr + '_' + '5G' + '_' + 'add_3_sectors')
 
-                        area_interventions.append(to_build)
-                        built_interventions.append(to_build)
-                        assets_by_site[site_ngr] = [to_build]
+                    if unique_id not in unique_intervention_ids:
+                        unique_intervention_ids.append(unique_id)
+                        for option in build_option:
+                            to_build = copy.copy(option)
+                            to_build['site_ngr'] = site_ngr
+                            to_build['technology'] = '5G'
+                            to_build['frequency'] = ['700', '800', '1800', '2600', '3500']
+                            to_build['bandwidth'] = 'frequency_dependent'
+                            to_build['sectors'] = 6
+                            to_build['pcd_sector'] = area.id
+                            to_build['lad'] = area.lad_id
+                            to_build['build_date'] = timestep
+                            to_build['item'] = 'add_3_sectors'
+                            to_build['cost'] = cost
 
+                            area_interventions.append(to_build)
+                            built_interventions.append(to_build)
+                            assets_by_site[site_ngr] = [to_build]
 
-                    budget -= cost
-                    if budget < 0:
-                        break
+                            budget -= cost
+                            if budget <= 0:
+                                break
 
-        if budget < 0:
+        if budget <= 0:
             break
 
-        # raise_mast_height
         if 'raise_mast_height' in available_interventions:
             if _area_satisfied(area, area_interventions,
                 service_obligation_capacity, traffic,
@@ -606,33 +638,36 @@ def _suggest_interventions(budget, available_interventions,
             for site_ngr, site_assets in assets_by_site.items():
                 if site_ngr == 'small_cell_sites':
                     continue
+                # print(site_assets)
+                unique_id = (site_ngr + '_' + 'raise_mast_height')
 
-                # set both assets to this site_ngr
-                for option in build_option:
-                    to_build['site_ngr'] = site_ngr
-                    to_build['pcd_sector'] = area.id
-                    to_build['build_date'] = timestep
-                    to_build['site_ngr'] = option['site_ngr']
-                    to_build['technology'] = option['technology']
-                    to_build['frequency'] = option['frequency']
-                    to_build['sectors'] = option['sectors']
-                    to_build['pcd_sector'] = area.id
-                    to_build['lad'] = area.lad_id
-                    to_build['build_date'] = timestep
-                    to_build['item'] = 'raise_mast_height'
-                    to_build['cost'] = cost
+                if unique_id not in unique_intervention_ids:
+                    unique_intervention_ids.append(unique_id)
+                    for option in build_option:
+                        to_build = copy.copy(option)
+                        to_build['site_ngr'] = site_ngr
+                        to_build['pcd_sector'] = area.id
+                        to_build['build_date'] = timestep
+                        to_build['technology'] = site_assets[0]['technology']
+                        to_build['frequency'] = site_assets[0]['frequency']
+                        to_build['bandwidth'] = 'frequency_dependent'
+                        to_build['sectors'] = site_assets[0]['sectors']
+                        to_build['pcd_sector'] = area.id
+                        to_build['lad'] = area.lad_id
+                        to_build['build_date'] = timestep
+                        to_build['item'] = 'raise_mast_height'
+                        to_build['cost'] = cost
+                        # print(to_build)
+                        area_interventions.append(to_build)
+                        built_interventions.append(to_build)
 
-                    area_interventions.append(to_build)
-                    built_interventions.append(to_build)
+                        budget -= cost
+                        if budget <= 0:
+                            break
 
-                    budget -= cost
-                    if budget < 0:
-                        break
-
-        if budget < 0:
+        if budget <= 0:
             break
 
-        # build_macro_site
         if 'build_4G_macro_site' in available_interventions and \
             timestep < 2020:
             if _area_satisfied(area, area_interventions,
@@ -645,47 +680,49 @@ def _suggest_interventions(budget, available_interventions,
                     continue
 
                 current_number = 0
-                for asset in assets_by_site:
-                    if asset.startswith('site_'):
-                        current_number += 1
+                if site_ngr.startswith('site_'):
+                    current_number += 1
 
                 build_option = INTERVENTIONS['build_4G_macro_site']['assets_to_build']
                 cost = INTERVENTIONS['build_4G_macro_site']['cost']
 
                 while True:
-                    to_build = copy.deepcopy(build_option)
-                    to_build[0]['site_ngr'] = site_ngr
-                    to_build[0]['technology'] = '4G'
-                    to_build[0]['frequency'] = ['800', '1800', '2600']
-                    to_build[0]['sectors'] = 3
-                    to_build[0]['pcd_sector'] = area.id
-                    to_build[0]['lad'] = area.lad_id
-                    to_build[0]['build_date'] = timestep
-                    to_build[0]['item'] = 'build_4G_macro_site'
-                    to_build[0]['cost'] = cost
 
-                    area_interventions += to_build
-                    built_interventions += to_build
-                    assets_by_site[site_ngr] = [to_build]
+                    unique_id = (
+                        site_ngr + '_' + str(current_number + 1) + 'build_4G_macro_site'
+                        )
 
-                    budget -= cost
+                    if unique_id not in unique_intervention_ids:
 
-                    assets = area.assets + built_interventions
+                        unique_intervention_ids.append(unique_id)
+                        to_build = copy.deepcopy(build_option)
+                        to_build[0]['site_ngr'] = 'site_' + str(current_number + 1)
+                        to_build[0]['technology'] = '4G'
+                        to_build[0]['frequency'] = ['800', '1800', '2600']
+                        to_build[0]['bandwidth'] = 'frequency_dependent'
+                        to_build[0]['sectors'] = 3
+                        to_build[0]['pcd_sector'] = area.id
+                        to_build[0]['lad'] = area.lad_id
+                        to_build[0]['build_date'] = timestep
+                        to_build[0]['item'] = 'build_4G_macro_site'
+                        to_build[0]['cost'] = cost
 
-                    #if it had all evailable spectrum break, otherwise
-                    #it gets stuck here. 810 is max RAN capacity
-                    if calc_capacity(area, assets, service_obligation_capacity,
-                        traffic, market_share, mast_height) > 810:
-                        break
+                        area_interventions += to_build
+                        built_interventions += to_build
+                        assets_by_site[site_ngr] = [to_build]
 
-                    if budget < 0 or \
-                        _area_satisfied(area, area_interventions,
-                        service_obligation_capacity,traffic,
-                        market_share, mast_height):
-                        break
+                        budget -= cost
+                        current_number += 1
 
+                        if budget <= 0 or \
+                            _area_satisfied(area, area_interventions,
+                            service_obligation_capacity,traffic,
+                            market_share, mast_height):
+                            break
 
-        # build_macro_site
+        if budget <= 0:
+            break
+
         if 'build_5G_macro_site' in available_interventions and \
             timestep >= 2020:
             if _area_satisfied(area, area_interventions,
@@ -698,44 +735,47 @@ def _suggest_interventions(budget, available_interventions,
                     continue
 
                 current_number = 0
-                for asset in assets_by_site:
-                    if asset.startswith('site_'):
-                        current_number += 1
+                if site_ngr.startswith('site_'):
+                    current_number += 1
 
                 build_option = INTERVENTIONS['build_5G_macro_site']['assets_to_build']
                 cost = INTERVENTIONS['build_5G_macro_site']['cost']
 
                 while True:
-                    to_build = copy.deepcopy(build_option)
-                    to_build[0]['site_ngr'] = site_ngr
-                    to_build[0]['technology'] = '5G'
-                    to_build[0]['frequency'] = ['700', '800', '1800', '2600', '3500']
-                    to_build[0]['sectors'] = 3
-                    to_build[0]['pcd_sector'] = area.id
-                    to_build[0]['lad'] = area.lad_id
-                    to_build[0]['build_date'] = timestep
-                    to_build[0]['item'] = 'build_5G_macro_site'
-                    to_build[0]['cost'] = cost
 
-                    area_interventions += to_build
-                    built_interventions += to_build
-                    assets_by_site[site_ngr] = [to_build]
+                    unique_id = (
+                        site_ngr + '_' + str(current_number + 1) + '_build_5G_macro_site'
+                        )
 
-                    budget -= cost
+                    if unique_id not in unique_intervention_ids:
 
-                    assets = area.assets + built_interventions
+                        unique_intervention_ids.append(unique_id)
+                        to_build = copy.deepcopy(build_option)
+                        to_build[0]['site_ngr'] = 'site_' + str(current_number + 1)
+                        to_build[0]['technology'] = '5G'
+                        to_build[0]['frequency'] = ['700', '800', '1800', '2600', '3500']
+                        to_build[0]['bandwidth'] = 'frequency_dependent'
+                        to_build[0]['sectors'] = 3
+                        to_build[0]['pcd_sector'] = area.id
+                        to_build[0]['lad'] = area.lad_id
+                        to_build[0]['build_date'] = timestep
+                        to_build[0]['item'] = 'build_5G_macro_site'
+                        to_build[0]['cost'] = cost
 
-                    if calc_capacity(area, assets, service_obligation_capacity,
-                        traffic, market_share, mast_height) > 810:
-                        break
+                        area_interventions += to_build
+                        built_interventions += to_build
+                        assets_by_site[site_ngr] = [to_build]
 
-                    if budget < 0 or \
-                        _area_satisfied(area, area_interventions,
-                        service_obligation_capacity,traffic,
-                        market_share, mast_height) :
-                        break
+                        budget -= cost
+                        current_number += 1
 
-        if budget < 0:
+                        if budget <= 0 or \
+                            _area_satisfied(area, area_interventions,
+                            service_obligation_capacity,traffic,
+                            market_share, mast_height) :
+                            break
+
+        if budget <= 0:
             break
 
 
@@ -766,13 +806,12 @@ def _suggest_interventions(budget, available_interventions,
         #                 'deploy_c_ran', cost
         #                 ))
         #             budget -= cost
-        #             if budget < 0:
+        #             if budget <= 0:
         #                 break
 
-        # if budget < 0:
+        # if budget <= 0:
         #     break
 
-        # build small cells to next density
         if 'small_cell' in available_interventions and timestep >= 2020:
             if _area_satisfied(area, area_interventions,
                 service_obligation_capacity, traffic,
@@ -788,27 +827,30 @@ def _suggest_interventions(budget, available_interventions,
             cost = INTERVENTIONS['small_cell']['cost']
 
             while True:
-                to_build = copy.deepcopy(build_option)
-                to_build[0]['build_date'] = timestep
-                to_build[0]['pcd_sector'] = area.id
+                unique_id = (
+                    str(site_ngr) + '_' + '5G' + '_' +'build_5G_macro_site'
+                    )
 
-                area_interventions += to_build
-                built_interventions += to_build
-                spend.append((
-                    area.id, area.lad_id,
-                    'small_cells', cost
-                    ))
-                budget -= cost
+                if unique_id not in unique_intervention_ids:
 
-                if budget < 0 or _area_satisfied(area,
-                    area_interventions,
-                    service_obligation_capacity,
-                    traffic, market_share, mast_height):
-                    break
+                    unique_intervention_ids.append(unique_id)
 
-    # assert len(built_interventions) == len(set(built_interventions))
-    # return set(built_interventions), budget, set(spend)
-    return built_interventions, budget
+                    to_build = copy.deepcopy(build_option)
+                    to_build[0]['build_date'] = timestep
+                    to_build[0]['pcd_sector'] = area.id
+
+                    area_interventions += to_build
+                    built_interventions += to_build
+
+                    budget -= cost
+
+                    if budget <= 0 or _area_satisfied(area,
+                        area_interventions,
+                        service_obligation_capacity,
+                        traffic, market_share, mast_height):
+                        break
+
+    return built_interventions, budget, unique_intervention_ids
 
 def _suggest_target_postcodes(system, threshold=None):
     """
@@ -817,6 +859,9 @@ def _suggest_target_postcodes(system, threshold=None):
 
     """
     postcodes = system.postcode_sectors.values()
+
+    if len(postcodes) == 0:
+        print('No postcodes found to suggest!')
 
     if threshold is not None:
         considered_postcodes = [

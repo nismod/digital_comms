@@ -60,13 +60,13 @@ INTERVENTION_STRATEGIES = [
     "small-cell",
     "small-cell-and-spectrum",
     # "neutral-hosting",
-    # "deregulation",
+    "deregulation",
     # "cloud-ran",
 ]
 
 MARKET_SHARE = 0.25
 ANNUAL_BUDGET = (2 * 10 ** 9) * MARKET_SHARE
-SERVICE_OBLIGATION_CAPACITY = 1000
+SERVICE_OBLIGATION_CAPACITY = 10
 PERCENTAGE_OF_TRAFFIC_IN_BUSY_HOUR = 0.15
 
 ################################################################
@@ -183,7 +183,7 @@ SYSTEM_FILENAME = os.path.join(
     )
 
 initial_system = []
-#pcd_sector_ids = {pcd_sector["id"]: True for pcd_sector in postcode_sectors}
+
 with open(SYSTEM_FILENAME, 'r') as system_file:
     reader = csv.DictReader(system_file)
     for pcd_sector in reader:
@@ -203,6 +203,7 @@ with open(SYSTEM_FILENAME, 'r') as system_file:
             'technology': technology,
             'frequency': frequency,
             'sectors': 3,
+            'mast_height': 30,
             # 'bandwidth': pcd_sector['id'],
         })
 
@@ -251,7 +252,6 @@ for path in PATH_LIST:
         for key, value_list in capacity_lookup_table.items():
             value_list.sort(key=lambda tup: tup[0])
 
-
 CLUTTER_GEOTYPE_FILENAME = os.path.join(
     SYSTEM_INPUT_PATH, 'lookup_tables', 'lookup_table_geotype.csv'
     )
@@ -266,6 +266,41 @@ with open(CLUTTER_GEOTYPE_FILENAME, 'r') as clutter_geotype_file:
         clutter_lookup.append((population_density, geotype))
 
     clutter_lookup.sort(key=lambda tup: tup[0])
+
+def upgrade_existing_assets(assets, interventions_built, mast_height):
+    """
+    When strategies such as deregulation require upgrading of existing
+    assets, filter through and upgrade, returning the total number of
+    assets.
+
+    """
+    raised_masts = []
+    assets_to_add = []
+
+    for intervention in interventions_built:
+        if intervention['item'] == 'raise_mast_height':
+            raised_masts.append(intervention['site_ngr'])
+        else:
+            assets_to_add.append(intervention)
+
+    upgraded_assets = []
+
+    for asset in assets:
+        if asset['site_ngr'] in raised_masts:
+            upgraded_assets.append({
+                'pcd_sector': asset['pcd_sector'],
+                'site_ngr': asset['site_ngr'],
+                'type': asset['type'],
+                'build_date': asset['build_date'],
+                'technology': asset['technology'],
+                'frequency': asset['frequency'],
+                'sectors': asset['sectors'],
+                'mast_height': mast_height,
+            })
+
+    all_assets = assets + assets_to_add
+
+    return all_assets
 
 def write_lad_results(network_manager, year, pop_scenario, throughput_scenario,
                       intervention_strategy, cost_by_lad):
@@ -412,7 +447,7 @@ def write_spend(interventions_built, year, pop_scenario,
 
     for row in interventions_built:
         spend_writer.writerow(
-            (row['year'], row['pcd_sector'], row['lad'], row['item'], row['cost']))
+            (year, row['pcd_sector'], row['lad'], row['item'], row['cost']))
 
     spend_file.close()
 
@@ -440,12 +475,12 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
         # ('1-new-cities', 'baseline', 'minimal'),
         # ('2-expansion', 'baseline', 'minimal'),
 
-        ('baseline', 'baseline', 'macrocell-700-3500', 30),
+        # ('baseline', 'baseline', 'macrocell-700-3500', 30),
         # ('0-unplanned', 'baseline', 'macrocell-700-3500'),
         # ('1-new-cities', 'baseline', 'macrocell-700-3500'),
         # ('2-expansion', 'baseline', 'macrocell-700-3500'),
 
-        # ('baseline', 'baseline', 'sectorisation'),
+        # ('baseline', 'baseline', 'sectorisation', 30),
         # ('0-unplanned', 'baseline', 'sectorisation'),
         # ('1-new-cities', 'baseline', 'sectorisation'),
         # ('2-expansion', 'baseline', 'sectorisation'),
@@ -454,6 +489,11 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
         # ('0-unplanned', 'baseline', 'macro-densification'),
         # ('1-new-cities', 'baseline', 'macro-densification'),
         # ('2-expansion', 'baseline', 'macro-densification'),
+
+        ('baseline', 'baseline', 'deregulation', 40),
+        # ('0-unplanned', 'baseline', 'deregulation'),
+        # ('1-new-cities', 'baseline', 'deregulation'),
+        # ('2-expansion', 'baseline', 'deregulation'),
 
         # ('baseline', 'baseline', 'small-cell'),
         # ('0-unplanned', 'baseline', 'small-cell'),
@@ -501,16 +541,13 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
                 market_share, mast_height
                 )
 
-        # decide
         interventions_built, budget = decide_interventions(
             intervention_strategy, budget, service_obligation_capacity,
             system, year, traffic, market_share, mast_height
             )
-        print('interventions built {}'.format(len(interventions_built)))
-        # accumulate decisions
-        assets += interventions_built
 
-        # simulate with decisions
+        assets = upgrade_existing_assets(assets, interventions_built, mast_height)
+        # print(assets)
         system = NetworkManager(
             lads, postcode_sectors, assets,
             capacity_lookup_table, clutter_lookup,

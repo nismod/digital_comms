@@ -92,6 +92,7 @@ class NetworkManager(object):
             assets_by_pcd[asset['pcd_sector']].append(asset)
 
         for pcd_sector_data in pcd_sectors:
+
             try:
                 lad_id = pcd_sector_data["lad_id"]
                 pcd_sector_id = pcd_sector_data["id"]
