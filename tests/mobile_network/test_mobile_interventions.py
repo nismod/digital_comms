@@ -18,119 +18,110 @@ def basic_system(setup_lad, setup_pcd_sector, setup_assets,
             setup_capacity_lookup,
             setup_clutter_lookup,
             setup_service_obligation_capacity,
-            setup_traffic, setup_market_share):
+            setup_traffic, setup_market_share, setup_mast_height):
 
     system = NetworkManager(setup_lad, setup_pcd_sector, setup_assets,
         setup_capacity_lookup, setup_clutter_lookup,
         setup_service_obligation_capacity,
-        setup_traffic, setup_market_share)
+        setup_traffic, setup_market_share, setup_mast_height)
 
     return system
 
 def test_decide_interventions(basic_system, setup_traffic,
     setup_market_share):
 
-    #test strategy minimal
     actual_result = decide_interventions(
         'minimal', 250000, 2,
-        basic_system, 2020, 0.15, 0.25
-    )[2]
+        basic_system, 2020, 0.15, 0.25, 30
+    )
 
-    assert actual_result == []
+    assert actual_result == ([], 250000)
 
-    #test strategy 'upgrade_to_lte'
     actual_result = decide_interventions(
-        'upgrade_to_lte', 250000, 2,
-        basic_system, 2020, 0.15, 0.25
-    )[2]
+        'upgrade-to-lte', 250000, 2,
+        basic_system, 2020, 0.15, 0.25, 30
+    )
 
-    assert actual_result == []
+    assert actual_result == ([], 250000)
 
-    #test strategy 'upgrade_to_lte'
     actual_result = decide_interventions(
-        'macrocell_700_3500', 101834, 2,
-        basic_system, 2020, 0.15, 0.25
-    )[2]
+        'macrocell-700-3500', 101834, 2,
+        basic_system, 2020, 0.15, 0.25, 30
+    )
 
-    expected_result = [
-        ('CB11', 1, 'carrier_700', 50917),
-        ('CB11', 1, 'carrier_3500', 50917)
-    ]
+    assert len(actual_result[0]) == 2
+    assert actual_result[1] == 0
 
-    #test strategy 'macrocell_700'
     actual_result = decide_interventions(
-        'macrocell_700', 50917, 2,
-        basic_system, 2020, 0.15, 0.25
-    )[2]
+        'macrocell-700', 50917, 2,
+        basic_system, 2020, 0.15, 0.25, 30
+    )
 
-    expected_result = [
-        ('CB11', 1, 'carrier_700', 50917)
-    ]
+    assert len(actual_result[0]) == 1
+    assert actual_result[1] == 0
 
-    #test strategy 'sectorisation'
     actual_result = decide_interventions(
-        'sectorisation', 1e6, 0,
-        basic_system, 2020, 0.15, 0.25
-    )[2]
+        'sectorisation', 303668, 100,
+        basic_system, 2020, 0.5, 0.25, 30
+    )
 
-    expected_result = []
+    assert len(actual_result[0]) == 6
+    assert actual_result[1] == 0
 
-    assert len(actual_result) == len(expected_result)
+    # actual_result = decide_interventions(
+    #     'macro-densification', 450000, 100,
+    #     basic_system, 2018, 0.5, 0.25, 30
+    # )
 
-    #test strategy 'sectorisation'
-    initial_result = decide_interventions(
-        'sectorisation', 1e6, 1000,
-        basic_system, 2020, 0.15, 0.25
-    )[2]
+    # assert len(actual_result[0]) == 3
+    # assert actual_result[1] == 0
 
-    actual_interventions = []
-    for result in initial_result:
-        actual_interventions.append(result[2])
+    # actual_result = decide_interventions(
+    #     'macro-densification', 401834 , 10,
+    #     basic_system, 2020, 0.5, 0.25, 30
+    # )
 
-    actual_result = list(set(actual_interventions)).sort()
+    #build
+    # site_100 CB11 carrier_700 50917
+    # site_100 CB11 carrier_3500 50917
+    # site_2 CB11 build_5G_macro_site 150000
+    # site_3 CB11 build_5G_macro_site 150000
 
-    expected_result = [
-        'carrier_700',
-        'add_3_sectors',
-        'carrier_3500',
-        ]
+    # assert len(actual_result[0]) == 4
+    # assert actual_result[1] == 0
 
-    assert actual_result == expected_result.sort()
-
-    #test strategy 'macro_densification'
     actual_result = decide_interventions(
-        'macro_densification', 150000, 1000,
-        basic_system, 2020, 0.15, 0.25
-    )[2]
+        'deregulation', (101834+30000)*2 , 10,
+        basic_system, 2020, 0.5, 0.25, 30
+    )
 
-    expected_result = [
-        ('CB11', 1, 'build_macro_site', 150000),
-        ('CB11', 1, 'build_macro_site', 150000),
-    ]
+    #build
+    # site_100 CB11 carrier_700 50917
+    # site_100 CB11 carrier_3500 50917
+    # site_100 CB11 raise_mast_height 30000
+    # site_100 CB12 carrier_700 50917
+    # site_100 CB12 carrier_3500 50917
+    # site_100 CB12 raise_mast_height 30000
 
-    assert actual_result == expected_result
+    assert len(actual_result[0]) == 6
+    assert actual_result[1] == 0
 
 
+    actual_result = decide_interventions(
+        'cloud-ran', (101834+30000)*2 , 10,
+        basic_system, 2020, 0.5, 0.25, 30
+    )
 
-    # expected_result = [
-    #     ('CB11', 1, 'carrier_700', 50917),
-    #     ('CB11', 1, 'carrier_3500', 50917),
-    #     ('CB12', 1, 'carrier_700', 50917),
-    #     ('CB12', 1, 'carrier_3500', 50917),
-    #     ('CB11', 1, 'carrier_700', 50917),
-    #     ('CB11', 1, 'carrier_3500', 50917),
-    #     ('CB12', 1, 'carrier_700', 50917),
-    #     ('CB12', 1, 'carrier_3500', 50917),
-    # ]
+    #build
+    # site_100 CB11 carrier_700 50917
+    # site_100 CB11 carrier_3500 50917
+    # site_100 CB11 deploy_c_ran 30000
+    # site_100 CB12 carrier_700 50917
+    # site_100 CB12 carrier_3500 50917
+    # site_100 CB12 deploy_c_ran 30000
 
-# def test_area_satisfied(setup_pcd_sector, setup_built_interventions,
-#     setup_site_sectors, setup_service_obligation_capacity,
-#     setup_traffic, setup_market_share
-#     ):
+    # for row in actual_result[0]:
+    #     print(row['site_ngr'],row['pcd_sector'],row['item'],row['cost'])
 
-#     actual_result = _area_satisfied(setup_pcd_sector, setup_built_interventions,
-#     setup_site_sectors, setup_service_obligation_capacity,
-#     setup_traffic, setup_market_share)
-
-#     print(actual_result)
-#     assert actual_result == True
+    assert len(actual_result[0]) == 6
+    assert actual_result[1] == 0

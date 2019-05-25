@@ -118,7 +118,7 @@ def create_final_lut(lut, lad_population_lut):
                     'lad': entry['lad'],
                     'lad_population': lad_lut['population'],
                     'population': entry['population'],
-                    'weight': entry['population'] / lad_lut['population']
+                    'weight': float(entry['population'] / lad_lut['population']),
                 })
 
     return output
@@ -140,11 +140,15 @@ def disaggregate(forecast, lut):
 
     output = []
 
+    seen_lads = set()
+
     for line in forecast:
         forecast_lad_id = line['lad']
         for postcode_sector in lut:
             pcd_sector_lad_id = postcode_sector['lad']
             if forecast_lad_id == pcd_sector_lad_id:
+                seen_lads.add(line['lad'])
+                seen_lads.add(postcode_sector['lad'])
                 output.append({
                     'year': line['year'],
                     'lad': line['lad'],
@@ -163,7 +167,7 @@ def csv_writer(data, filename):
     Write data to a CSV file path
     """
     # Create path
-    directory = os.path.join(SYSTEM_INPUT_PATH, 'arc_scenario')
+    directory = os.path.join(SYSTEM_INPUT_PATH, 'arc_scenarios')
     if not os.path.exists(directory):
         os.makedirs(directory)
 
@@ -206,4 +210,5 @@ if __name__ == "__main__":
 
         filename = os.path.join('pcd_' + scenario_file)
 
+        print('writing {}'.format(filename))
         csv_writer(disaggregated_forecast, filename)

@@ -73,41 +73,45 @@ def setup_site_sectors():
 @fixture(scope='function')
 def setup_capacity_lookup():
     return {
-        ("Urban", "700", "2x10MHz"): [
+        ("Urban", "700", "2x10MHz", 30): [
             (0, 0),
             (1, 2),
         ],
-        ("Urban", "800", "2x10MHz"): [
+        ("Urban", "800", "2x10MHz", 30): [
             (0, 0),
             (1, 2),
         ],
-        ("Urban", "2600", "2x10MHz"): [
+        ("Urban", "2600", "2x10MHz", 30): [
             (0, 0),
             (3, 5),
         ],
-        ("Urban", "3500", "2x10MHz"): [
+        ("Urban", "3500", "2x10MHz", 30): [
             (0, 0),
             (3, 5),
         ],
-        ('Small cells', '3700', '2x25MHz'): [
+        ('Small cells', '3700', '2x25MHz', 30): [
             (0, 0),
             (3, 10),
         ],
-        ("Rural", "700", "2x10MHz"): [
+        ("Rural", "700", "2x10MHz", 30): [
             (0, 0),
             (1, 2),
         ],
-        ("Rural", "800", "2x10MHz"): [
+        ("Rural", "800", "2x10MHz", 30): [
             (0, 0),
             (1, 2),
         ],
-        ("Rural", "2600", "2x10MHz"): [
+        ("Rural", "2600", "2x10MHz", 30): [
             (0, 0),
             (3, 5),
         ],
-        ("Rural", "3500", "2x10MHz"): [
+        ("Rural", "3500", "2x10MHz", 30): [
             (0, 0),
             (3, 5),
+        ],
+        ("Rural", "1800", "2x10MHz", 30): [
+            (0, 0),
+            (0, 0),
         ],
     }
 
@@ -130,6 +134,10 @@ def setup_traffic():
 @fixture(scope='function')
 def setup_market_share():
     return 0.25
+
+@fixture(scope='function')
+def setup_mast_height():
+    return 30
 
 @fixture(scope='function')
 def setup_built_interventions():
