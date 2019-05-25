@@ -37,16 +37,16 @@ INTERMEDIATE_PATH = os.path.join(BASE_PATH, 'intermediate')
 SHAPES_INPUT_PATH = os.path.join(BASE_PATH, 'raw', 'd_shapes')
 SYSTEM_OUTPUT_PATH = os.path.join(BASE_PATH, '..','results')
 
-TIMESTEPS = [2015, 2020, 2030, 2050]
-BASE_YEAR = TIMESTEPS[0]
+BASE_YEAR = 2019
+END_YEAR = 2030
+TIMESTEP_INCREMENT = 1
+TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
 
 POPULATION_SCENARIOS = [
+    "high",
     "baseline",
-    "0-unplanned",
-    "1-new-cities",
-    "2-expansion",
+    "low",
 ]
-
 THROUGHPUT_SCENARIOS = [
     "high",
     "baseline",
@@ -57,16 +57,15 @@ INTERVENTION_STRATEGIES = [
     "macrocell-700-3500",
     "sectorisation",
     "macro_densification",
-    "small-cell",
     "small-cell-and-spectrum",
-    # "neutral-hosting",
     "deregulation",
-    # "cloud-ran",
+    "cloud-ran",
+    # "neutral-hosting",
 ]
 
 MARKET_SHARE = 0.25
 ANNUAL_BUDGET = (2 * 10 ** 9) * MARKET_SHARE
-SERVICE_OBLIGATION_CAPACITY = 10
+SERVICE_OBLIGATION_CAPACITY = 2
 PERCENTAGE_OF_TRAFFIC_IN_BUSY_HOUR = 0.15
 
 ################################################################
@@ -125,11 +124,10 @@ with open(PCD_SECTOR_FILENAME, 'r') as source:
 ################################################################
 print('Loading scenario data')
 
-#for arc
 scenario_files = {
     scenario: os.path.join(
         SYSTEM_INPUT_PATH, 'scenario_data',
-        'pcd_arc_population__{}.csv'.format(scenario))
+        'population_{}_pcd.csv'.format(scenario))
     for scenario in POPULATION_SCENARIOS
     }
 
@@ -143,13 +141,11 @@ population_by_scenario_year_pcd = {
 for scenario, filename in scenario_files.items():
 
     with open(filename, 'r') as scenario_file:
-        scenario_reader = csv.DictReader(scenario_file)
+        scenario_reader = csv.reader(scenario_file)
 
-        for row in scenario_reader:
-            year = int(row['year'])
+        for year, pcd_sector, population in scenario_reader:
+            year = int(year)
             if year in TIMESTEPS:
-                population = row['population']
-                pcd_sector = row['postcode_sector']
                 population_by_scenario_year_pcd[scenario][year][pcd_sector] \
                     = int(population)
 
@@ -275,11 +271,14 @@ def upgrade_existing_assets(assets, interventions_built, mast_height):
 
     """
     raised_masts = []
+    macro_5G_c_ran = []
     assets_to_add = []
 
     for intervention in interventions_built:
         if intervention['item'] == 'raise_mast_height':
             raised_masts.append(intervention['site_ngr'])
+        elif intervention['item'] == 'macro_5G_c_ran':
+            macro_5G_c_ran.append(intervention['site_ngr'])
         else:
             assets_to_add.append(intervention)
 
@@ -295,7 +294,20 @@ def upgrade_existing_assets(assets, interventions_built, mast_height):
                 'technology': asset['technology'],
                 'frequency': asset['frequency'],
                 'sectors': asset['sectors'],
+                'ran_type': 'distributed',
                 'mast_height': mast_height,
+            })
+        if asset['site_ngr'] in macro_5G_c_ran:
+            upgraded_assets.append({
+                'pcd_sector': asset['pcd_sector'],
+                'site_ngr': asset['site_ngr'],
+                'type': asset['type'],
+                'build_date': asset['build_date'],
+                'technology': asset['technology'],
+                'frequency': asset['frequency'],
+                'sectors': asset['sectors'],
+                'ran_type': 'cloud',
+                'mast_height': asset['mast_height'],
             })
 
     all_assets = assets + assets_to_add
@@ -470,40 +482,29 @@ def _get_suffix(pop_scenario, throughput_scenario,
 ################################################################
 
 for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
-        # ('baseline', 'baseline', 'minimal'),
-        # ('0-unplanned', 'baseline', 'minimal'),
-        # ('1-new-cities', 'baseline', 'minimal'),
-        # ('2-expansion', 'baseline', 'minimal'),
+        ('low', 'low', 'minimal', 30),
+        ('baseline', 'baseline', 'minimal', 30),
+        ('high', 'high', 'minimal', 30),
 
-        # ('baseline', 'baseline', 'macrocell-700-3500', 30),
-        # ('0-unplanned', 'baseline', 'macrocell-700-3500'),
-        # ('1-new-cities', 'baseline', 'macrocell-700-3500'),
-        # ('2-expansion', 'baseline', 'macrocell-700-3500'),
+        ('low', 'low', 'macrocell-700-3500', 30),
+        ('baseline', 'baseline', 'macrocell-700-3500', 30),
+        ('high', 'high', 'macrocell-700-3500', 30),
 
-        # ('baseline', 'baseline', 'sectorisation', 30),
-        # ('0-unplanned', 'baseline', 'sectorisation'),
-        # ('1-new-cities', 'baseline', 'sectorisation'),
-        # ('2-expansion', 'baseline', 'sectorisation'),
+        ('low', 'low', 'sectorisation', 30),
+        ('baseline', 'baseline', 'sectorisation', 30),
+        ('high', 'high', 'sectorisation', 30),
 
+        # ('low', 'low', 'macro-densification', 30),
         # ('baseline', 'baseline', 'macro-densification', 30),
-        # ('0-unplanned', 'baseline', 'macro-densification'),
-        # ('1-new-cities', 'baseline', 'macro-densification'),
-        # ('2-expansion', 'baseline', 'macro-densification'),
+        # ('high', 'high', 'macro-densification', 30),
 
+        ('low', 'low', 'deregulation', 40),
         ('baseline', 'baseline', 'deregulation', 40),
-        # ('0-unplanned', 'baseline', 'deregulation'),
-        # ('1-new-cities', 'baseline', 'deregulation'),
-        # ('2-expansion', 'baseline', 'deregulation'),
+        ('high', 'high', 'deregulation', 40),
 
-        # ('baseline', 'baseline', 'small-cell'),
-        # ('0-unplanned', 'baseline', 'small-cell'),
-        # ('1-new-cities', 'baseline', 'small-cell'),
-        # ('2-expansion', 'baseline', 'small-cell'),
-
-        # ('baseline', 'baseline', 'small-cell-and-spectrum'),
-        # ('0-unplanned', 'baseline', 'small-cell-and-spectrum'),
-        # ('1-new-cities', 'baseline', 'small-cell-and-spectrum'),
-        # ('2-expansion', 'baseline', 'small-cell-and-spectrum'),
+        # ('low', 'low', 'small-cell-and-spectrum', 30),
+        # ('baseline', 'baseline', 'small-cell-and-spectrum', 30),
+        # ('high', 'high', 'small-cell-and-spectrum', 30),
     ]:
     print("Running:", pop_scenario, throughput_scenario, \
         intervention_strategy)
@@ -547,7 +548,7 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
             )
 
         assets = upgrade_existing_assets(assets, interventions_built, mast_height)
-        # print(assets)
+
         system = NetworkManager(
             lads, postcode_sectors, assets,
             capacity_lookup_table, clutter_lookup,

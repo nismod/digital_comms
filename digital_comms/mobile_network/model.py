@@ -383,7 +383,7 @@ class PostcodeSector(object):
                             num_sites += 1
 
             site_density = float(num_sites) / self.area
-
+            # print(site_density)
             tech_capacity = lookup_capacity(
                 self._capacity_lookup_table,
                 self.clutter_environment,
@@ -547,6 +547,7 @@ def lookup_capacity(lookup_table, clutter_environment,
         If combination is not found in the lookup table.
 
     """
+
     if (clutter_environment, frequency, bandwidth, mast_height) not in lookup_table:
         raise KeyError("Combination %s not found in lookup table",
                        (clutter_environment, frequency, bandwidth, mast_height))
