@@ -383,7 +383,7 @@ class PostcodeSector(object):
                             num_sites += 1
 
             site_density = float(num_sites) / self.area
-            # print(site_density)
+
             tech_capacity = lookup_capacity(
                 self._capacity_lookup_table,
                 self.clutter_environment,
