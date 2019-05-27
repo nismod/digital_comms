@@ -2,7 +2,6 @@
 """
 from collections import defaultdict
 from itertools import tee
-from pprint import pprint
 
 class NetworkManager(object):
     """Model controller class.
@@ -384,10 +383,9 @@ class PostcodeSector(object):
                         num_sites += 1
                         if asset['sectors'] == 6:
                             num_sites += 1
-            print('num_sites {} for {}'.format(num_sites, frequency))
-            print('self.area {} for {}'.format(self.area, frequency))
+
             site_density = float(num_sites) / self.area
-            print('site_density {} for {}'.format(site_density, frequency))
+
             tech_capacity = lookup_capacity(
                 self._capacity_lookup_table,
                 self.clutter_environment,
@@ -395,9 +393,9 @@ class PostcodeSector(object):
                 "2x10MHz",
                 site_density,
                 self.mast_height)
-            print('tech_capacity {} for {}'.format(tech_capacity, frequency))
+
             capacity += tech_capacity
-            print('capacity {}'.format(capacity))
+
         return capacity
 
     def _small_cell_capacity(self):
@@ -551,7 +549,6 @@ def lookup_capacity(capacity_lookup, clutter_environment,
         If combination is not found in the lookup table.
 
     """
-    print(clutter_environment, frequency, bandwidth, mast_height)
     if (clutter_environment, frequency, bandwidth, mast_height) not in capacity_lookup:
         raise KeyError("Combination %s not found in lookup table",
                        (clutter_environment, frequency, bandwidth, mast_height))
