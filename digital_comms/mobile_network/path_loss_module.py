@@ -83,7 +83,7 @@ def path_loss_calculator(frequency, distance, ant_height, ant_type, building_hei
 
     return round(path_loss, 2)
 
-def determine_path_loss(extended_hata_path_loss, free_space_path_loss):
+def determine_path_loss(free_space_path_loss, extended_hata_path_loss):
     """Model guidance states that 'when L [median path loss] is below
     the free space attenuation for the same distance, the free space
     attenuation is used instead.'
@@ -97,14 +97,15 @@ def determine_path_loss(extended_hata_path_loss, free_space_path_loss):
         The path loss resulting from the use of the Extended Hata model (dB).
 
     """
+    print('extended_hata_path_loss {}'.format(extended_hata_path_loss))
     if extended_hata_path_loss < free_space_path_loss:
 
         path_loss = free_space_path_loss
-
+        print('free_space_path_loss {}'.format(path_loss))
     else:
 
         path_loss = extended_hata_path_loss
-
+        print('extended_hata_path_loss {}'.format(path_loss))
     return path_loss
 
 def free_space(frequency, distance, ant_height, ue_height):
@@ -130,7 +131,7 @@ def free_space(frequency, distance, ant_height, ue_height):
     distance = distance/1000
 
     random_variation = generate_log_normal_dist_value(1, 2.5, 1)
-
+    # print(random_variation)
     path_loss = (
         32.4 + 10*np.log10((((ant_height - ue_height)/1000)**2 + \
         distance**2)) + (20*np.log10(frequency) + random_variation)
@@ -164,7 +165,7 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
     frequency = frequency*1000
     #model requires distance in kilometers rather than meters.
     distance = distance/1000
-
+    print('distance {}'.format(distance))
     #find smallest value
     hm = min(ant_height, ue_height)
     #find largest value
@@ -225,7 +226,7 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
                 (44.9 - 6.55*np.log10(max(30, hb))) *
                 (np.log10(distance))**alpha_exponent - alpha_hm - beta_hb
             )
-            #print('path loss is {}'.format(path_loss))
+            print('path loss p1 is {}'.format(path_loss))
         elif 2000 < frequency <= 3000:
 
             path_loss = (
@@ -341,13 +342,15 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
             )
 
         elif above_roof == 0:
-
-            sigma = (17 + ((9-17)/0.6-0.2) * (distance - 0.02))
+            print('path_loss is {}'.format(path_loss))
+            sigma = (17 + (9-17) / (0.6-0.2) * (distance - 0.02))
+            print('sigma is {}'.format(sigma))
             random_quantity = generate_log_normal_dist_value(1, sigma, 1)
+            print('random_quantity is {}'.format(random_quantity))
             path_loss = (
                 path_loss + random_quantity
             )
-
+            print('final path_loss is {} with rand {}'.format(path_loss, random_quantity))
         else:
 
             raise ValueError('Could not determine if cell is above or below roof line')
@@ -558,7 +561,7 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
                 (3.2*(np.log10(11.75*ue_height))**2-4.97)) +
                 generate_log_normal_dist_value(1, 8, 1)
             )
-
+            print(generate_log_normal_dist_value(1, 8, 1))
         elif distance <= 10:
             path_loss = 250
 
@@ -675,5 +678,5 @@ def outdoor_to_indoor_path_loss(indoor):
     else:
 
         outdoor_to_indoor_path_loss = 0
-    # print('building penetration loss is {}'.format(outdoor_to_indoor_path_loss))
+    print('building penetration loss is {}'.format(outdoor_to_indoor_path_loss))
     return outdoor_to_indoor_path_loss
