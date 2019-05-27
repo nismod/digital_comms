@@ -141,7 +141,7 @@ def get_selection_list(selection_dict):
 
 def segments_for_transmitter_module():
 
-    segment_number = 10
+    segment_number = 3
 
     lads = read_lads()
 

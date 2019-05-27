@@ -7,4 +7,4 @@ for sector in sectors:
 
     print('--running {}'.format(sector))
 
-    run_transmitter_module(sector)
+    run_transmitter_module(sector, 'synthetic')

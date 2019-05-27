@@ -66,7 +66,7 @@ def test_free_space(frequency, distance, ant_height, ue_height, expected):
     # test distance 0.5 km, above roof
     (0.8,500,20,'',20,20,'suburban','los',1.5,1, (round(108.51+0.75,2))),
     # test distance 0.5 km, above roof
-    (0.8,500,20,'',20,20,'suburban','los',1.5,0, (round(108.51+0.73,2))),
+    (0.8,500,20,'',20,20,'suburban','los',1.5,0, (round(108.51+0.81,2))),
     ####rural####
     # test distance >0.04 km, above roof
     (1.8,200,20,'',20,20,'rural','los',1.5,1, (83.17+0.7)),
@@ -74,7 +74,7 @@ def test_free_space(frequency, distance, ant_height, ue_height, expected):
     # test distance 0.05 km, above roof
     (1.8,500,20,'',20,20,'urban','los',1.5,1, (round(129.12+0.75,2))),
     # test distance 0.05 km, below roof
-    (1.8,500,20,'',20,20,'urban','nlos',1.5,0, (129.12+0.73)),
+    (1.8,500,20,'',20,20,'urban','nlos',1.5,0, (129.12+0.81)),
     #change distances
     #test 90m (0.04< d <0.1)
     # test distance 0.09 km, above roof
@@ -191,70 +191,62 @@ def test_eval_path_loss_calc(frequency, distance, ant_height, ant_type,
         ue_height)
         ) == expected
 
-# #Prepare for testing 3GPP compatability function
-# @pytest.mark.parametrize("building_height, street_width, ant_height, \
-#     ue_height, expected", [
-#     (20, 20, 20, 1.5, True),
-#     (5, 20, 8, 1.5, False), ])
+#Prepare for testing 3GPP compatability function
+@pytest.mark.parametrize("building_height, street_width, ant_height, \
+    ue_height, expected", [
+    (20, 20, 20, 1.5, True),
+    (5, 20, 8, 1.5, False), ])
 
-# def test_check_applicability(building_height, street_width, ant_height,
-#     ue_height, expected):
-#     assert (
-#         check_applicability(building_height, street_width, ant_height,
-#         ue_height)
-#         ) == expected
+def test_check_applicability(building_height, street_width, ant_height,
+    ue_height, expected):
+    assert (
+        check_applicability(building_height, street_width, ant_height,
+        ue_height)
+        ) == expected
 
-# def test_path_loss_calculator_errors():
+def test_path_loss_calculator_errors():
 
-#     with pytest.raises(ValueError) as ex:
-#         path_loss_calculator(
-#             0.01,500,10,'micro',20,20,'urban','los',1.5,1, True
-#             )
+    with pytest.raises(ValueError) as ex:
+        path_loss_calculator(
+            0.01,500,10,'micro',20,20,'urban','los',1.5,1, True
+            )
 
-#     msg = 'frequency of 0.01 is NOT within correct range'
+    msg = 'frequency of 0.01 is NOT within correct range'
 
-#     assert msg in str(ex)
+    assert msg in str(ex)
 
-# #Prepare for testing path_loss_calculator
-# @pytest.mark.parametrize("frequency, distance, ant_height, ant_type, \
-#     building_height, street_width, settlement_type, type_of_sight, \
-#     ue_height, above_roof, indoor, expected", [
-#     (1.8,500,20,'',20,20,'urban','nlos',1.5,0, False, (245.4+0.28)),
-#     (3.5,500,35,'macro',10,20,'suburban','nlos',1.5, 0, False, (121.39+0.34)),
-#     (1.8,500,20,'',20,20,'urban','nlos',1.5,0, True, (245.4+0.28+13.49)),
-#     (3.5,500,35,'macro',10,20,'suburban','nlos',1.5, 0,True,(121.39+0.34+13.49)),
-# ])
+#Prepare for testing path_loss_calculator
+@pytest.mark.parametrize("frequency, distance, ant_height, ant_type, \
+    building_height, street_width, settlement_type, type_of_sight, \
+    ue_height, above_roof, indoor, expected", [
+    (1.8,500,20,'',20,20,'urban','nlos',1.5,0,False, round(129.12+0.81,2)),
+    (3.5,500,35,'macro',10,20,'suburban','nlos',1.5, 0, False, (121.39+0.79)),
+    (1.8,500,40,'',20,20,'urban','nlos',1.5,0, True, round(124.11+0.81+3.31,2)),
+    (3.5,500,40,'macro',10,20,'suburban','nlos',1.5, 0,True,(119.94+0.79+3.31)),
+])
 
-# def test_path_loss_calculator(frequency, distance, ant_height, ant_type,
-#     building_height,street_width, settlement_type, type_of_sight, ue_height,
-#     above_roof, indoor, expected):
-#     assert (
-#         path_loss_calculator(frequency, distance, ant_height, ant_type,
-#         building_height, street_width, settlement_type, type_of_sight,
-#         ue_height, above_roof, indoor)
-#         ) == expected
+def test_path_loss_calculator(frequency, distance, ant_height, ant_type,
+    building_height,street_width, settlement_type, type_of_sight, ue_height,
+    above_roof, indoor, expected):
+    print(path_loss_calculator(frequency, distance, ant_height, ant_type,
+        building_height, street_width, settlement_type, type_of_sight,
+        ue_height, above_roof, indoor)
+        )
+    assert (
+        path_loss_calculator(frequency, distance, ant_height, ant_type,
+        building_height, street_width, settlement_type, type_of_sight,
+        ue_height, above_roof, indoor)
+        ) == expected
 
-# #Prepare for testing determine_path_loss
-# @pytest.mark.parametrize("extended_hata_path_loss, free_space_path_loss, \
-#     expected", [
-#     (100, 200, 200),
-#     (200, 100, 200),
-#     ])
+#Prepare for testing determine_path_loss
+@pytest.mark.parametrize("extended_hata_path_loss, free_space_path_loss, \
+    expected", [
+    (100, 200, 200),
+    (200, 100, 200),
+    ])
 
-# def test_determine_path_loss(extended_hata_path_loss, free_space_path_loss,
-#     expected):
-#     assert (
-#         determine_path_loss(extended_hata_path_loss, free_space_path_loss)
-#         ) == expected
-
-# #test distribution statistical properties
-# my_list = []
-
-# for n in range(1000):
-#     output = path_loss_calculator(args)
-#     my_list.append(output)
-
-# mean = mean(my_list)
-# std = std(my_list)
-
-# assert 2.2 == pytest.approx(2.3)
+def test_determine_path_loss(extended_hata_path_loss, free_space_path_loss,
+    expected):
+    assert (
+        determine_path_loss(extended_hata_path_loss, free_space_path_loss)
+        ) == expected
