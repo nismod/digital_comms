@@ -15,13 +15,9 @@ from digital_comms.mobile_network.transmitter_module import (
     transform_coordinates
     )
 
-@pytest.fixture
-def get_postcode_sector():
-
-   yield read_postcode_sector('CB11')
 
 @pytest.fixture
-def base_system(get_postcode_sector):
+def base_system(setup_postcode_sector):
 
     TRANSMITTERS = [
             {
@@ -149,7 +145,7 @@ def base_system(get_postcode_sector):
         }
     ]
 
-    geojson_postcode_sector = get_postcode_sector
+    geojson_postcode_sector = setup_postcode_sector
 
     geojson_postcode_sector['properties']['local_authority_ids'] = [
         'E07000008'
@@ -203,11 +199,11 @@ def test_determine_environment(postcode_sector_lut):
 
     assert actual_results == expected_result
 
-def test_get_sites(get_postcode_sector):
+def test_get_sites(setup_postcode_sector):
 
-    actual_sites = get_sites(get_postcode_sector, 'real')
+    actual_sites = get_sites(setup_postcode_sector, 'real')
     print(actual_sites)
-    geom = shape(get_postcode_sector['geometry'])
+    geom = shape(setup_postcode_sector['geometry'])
 
     actual_sites_in_shape = []
 
@@ -217,10 +213,10 @@ def test_get_sites(get_postcode_sector):
 
     assert len(actual_sites_in_shape) == 2
 
-def test_generate_receivers(get_postcode_sector, postcode_sector_lut):
+def test_generate_receivers(setup_postcode_sector, postcode_sector_lut):
 
     actual_receivers = generate_receivers(
-        get_postcode_sector, postcode_sector_lut, 100
+        setup_postcode_sector, postcode_sector_lut, 100
         )
 
     receiver_1 = actual_receivers[0]
@@ -232,10 +228,10 @@ def test_generate_receivers(get_postcode_sector, postcode_sector_lut):
     assert receiver_1['properties']['losses'] == 4
     assert receiver_1['properties']['indoor'] == True
 
-# def test_find_and_deploy_new_site(base_system, get_postcode_sector):
+# def test_find_and_deploy_new_site(base_system, setup_postcode_sector):
 
 #     new_transmitter = find_and_deploy_new_site(
-#         base_system.sites, 1, get_postcode_sector, 1
+#         base_system.sites, 1, setup_postcode_sector, 1
 #         )
 #     print(new_transmitter)
 #     expected_transmitter = [
@@ -263,7 +259,7 @@ def test_generate_receivers(get_postcode_sector, postcode_sector_lut):
 #     assert new_transmitter == expected_transmitter
 
 #     new_transmitter = find_and_deploy_new_site(
-#         base_system.sites, 1, get_postcode_sector, 1
+#         base_system.sites, 1, setup_postcode_sector, 1
 #         )
 
 #     expected_transmitter = [

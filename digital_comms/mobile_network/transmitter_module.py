@@ -62,12 +62,9 @@ DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 np.random.seed(42)
 
 
-def read_postcode_sector(postcode_sector):
+def read_postcode_sector(postcode_sector, path):
 
-    with fiona.open(
-        os.path.join(
-            DATA_RAW, 'd_shapes', 'datashare_pcd_sectors', 'PostalSector.shp')
-            , 'r') as source:
+    with fiona.open(path, 'r') as source:
 
         return [
             sector for sector in source \
@@ -1370,7 +1367,8 @@ def joint_plot(data, postcode_sector_name):
 def run_transmitter_module(postcode_sector_name, transmitter_type):
 
         #get postcode sector
-        geojson_postcode_sector = read_postcode_sector(postcode_sector_name)
+        path = os.path.join(DATA_RAW, 'd_shapes', 'datashare_pcd_sectors', 'PostalSector.shp')
+        geojson_postcode_sector = read_postcode_sector(postcode_sector_name, path)
 
         #get local authority district
         local_authority_ids = get_local_authority_ids(geojson_postcode_sector)
