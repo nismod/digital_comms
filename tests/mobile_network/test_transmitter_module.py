@@ -193,6 +193,48 @@ def modulation_coding_lut():
 
 def test_determine_environment(postcode_sector_lut):
 
+    test_urban_1 = {
+        'estimated_population': 10000,
+        'area': 1,
+    }
+
+    assert determine_environment(test_urban_1) == 'urban'
+
+    test_suburban_1 = {
+        'estimated_population': 7000,
+        'area': 1,
+    }
+
+    assert determine_environment(test_suburban_1) == 'suburban'
+
+    test_suburban_2 = {
+        'estimated_population': 1000,
+        'area': 1,
+    }
+
+    assert determine_environment(test_suburban_2) == 'suburban'
+
+    test_rural_1 = {
+        'estimated_population': 500,
+        'area': 1,
+    }
+
+    assert determine_environment(test_rural_1) == 'rural'
+
+    test_rural_2 = {
+        'estimated_population': 100,
+        'area': 1,
+    }
+
+    assert determine_environment(test_rural_2) == 'rural'
+
+    test_rural_3 = {
+        'estimated_population': 50,
+        'area': 1,
+    }
+
+    assert determine_environment(test_rural_3) == 'rural'
+
     actual_results = determine_environment(postcode_sector_lut)
 
     expected_result = 'rural'
@@ -230,63 +272,63 @@ def test_generate_receivers(setup_postcode_sector, postcode_sector_lut):
     assert receiver_1['properties']['losses'] == 4
     assert receiver_1['properties']['indoor'] == True
 
-# def test_find_and_deploy_new_site(base_system, setup_postcode_sector):
+def test_find_and_deploy_new_site(base_system, setup_postcode_sector):
 
-#     new_transmitter = find_and_deploy_new_site(
-#         base_system.sites, 1, setup_postcode_sector, 1
-#         )
-#     print(new_transmitter)
-#     expected_transmitter = [
-#         {
-#             'type': "Feature",
-#             'geometry': {
-#                 "type": "Point",
-#                 "coordinates": [545685.9002289057, 258142.1213415587]
-#             },
-#             'properties': {
-#                     "operator": 'unknown',
-#                     "sitengr": '{new}{GEN1.1}',
-#                     "ant_height": 30,
-#                     "tech": 'LTE',
-#                     "freq": 700,
-#                     "type": 17,
-#                     "power": 40,
-#                     "gain": 20,
-#                     "losses": 2,
-#                 }
-#         }
-#     ]
+    new_transmitter = find_and_deploy_new_site(
+        base_system.sites, 1, setup_postcode_sector, 1
+        )
 
-#     assert len(new_transmitter) == 1
-#     assert new_transmitter == expected_transmitter
+    expected_transmitter = [
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [545393.3136180863, 258614.45929655718]
+            },
+            'properties': {
+                    "operator": 'unknown',
+                    "sitengr": '{new}{GEN1.1}',
+                    "ant_height": 30,
+                    "tech": 'LTE',
+                    "freq": 700,
+                    "type": 17,
+                    "power": 40,
+                    "gain": 20,
+                    "losses": 2,
+                }
+        }
+    ]
 
-#     new_transmitter = find_and_deploy_new_site(
-#         base_system.sites, 1, setup_postcode_sector, 1
-#         )
+    assert len(new_transmitter) == 1
+    assert new_transmitter == expected_transmitter
 
-#     expected_transmitter = [
-#         {
-#             'type': "Feature",
-#             'geometry': {
-#                 "type": "Point",
-#                 "coordinates": [545631.0363226292, 258198.41171843308]
-#             },
-#             'properties': {
-#                     "operator": 'unknown',
-#                     "sitengr": '{new}{GEN1.1}',
-#                     "ant_height": 30,
-#                     "tech": 'LTE',
-#                     "freq": 700,
-#                     "type": 17,
-#                     "power": 40,
-#                     "gain": 20,
-#                     "losses": 2,
-#                 }
-#         }
-#     ]
+    new_transmitter = find_and_deploy_new_site(
+        base_system.sites, 1, setup_postcode_sector, 1
+        )
 
-#     assert len(new_transmitter) == 1
-#     assert new_transmitter == expected_transmitter'
+    expected_transmitter = [
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [545311.9353406072, 258483.37922303876]
+            },
+            'properties': {
+                    "operator": 'unknown',
+                    "sitengr": '{new}{GEN1.1}',
+                    "ant_height": 30,
+                    "tech": 'LTE',
+                    "freq": 700,
+                    "type": 17,
+                    "power": 40,
+                    "gain": 20,
+                    "losses": 2,
+                }
+        }
+    ]
+
+    assert len(new_transmitter) == 1
+    assert new_transmitter == expected_transmitter
 
 def test_network_manager(base_system):
 
@@ -512,70 +554,70 @@ def test_calculate_noise(base_system):
 
     assert actual_result == expected_result
 
-# def test_calculate_sinr(base_system):
+def test_calculate_sinr(base_system):
 
-#     # receiver = base_system.receivers['AB3']
+    # receiver = base_system.receivers['AB3']
 
-#     # closest_transmitter = base_system.find_closest_available_sites(
-#     #     receiver
-#     #     )[0]
+    # closest_transmitter = base_system.find_closest_available_sites(
+    #     receiver
+    #     )[0]
 
-#     # actual_received_power = base_system.calc_received_power(
-#     #     closest_transmitter,
-#     #     receiver,
-#     #     173.94
-#     #     )
+    # actual_received_power = base_system.calc_received_power(
+    #     closest_transmitter,
+    #     receiver,
+    #     173.94
+    #     )
 
-#     # closest_transmitters = base_system.find_closest_available_sites(
-#     #     receiver
-#     #     )
+    # closest_transmitters = base_system.find_closest_available_sites(
+    #     receiver
+    #     )
 
-#     # actual_interference = base_system.calculate_interference(
-#     #     closest_transmitters,
-#     #     receiver,
-#     #     0.7,
-#     #     'urban'
-#     #     )
+    # actual_interference = base_system.calculate_interference(
+    #     closest_transmitters,
+    #     receiver,
+    #     0.7,
+    #     'urban'
+    #     )
 
-#     # def convert_to_raw(my_list):
-#     #     interference = []
-#     #     for value in my_list:
-#     #         final_value = 10**value
-#     #         interference.append(final_value)
-#     #     final_interference = np.log10(sum(interference))
+    # def convert_to_raw(my_list):
+    #     interference = []
+    #     for value in my_list:
+    #         final_value = 10**value
+    #         interference.append(final_value)
+    #     final_interference = np.log10(sum(interference))
 
-#     #     return round(final_interference, 2)
+    #     return round(final_interference, 2)
 
-#     # actual_raw_interference = convert_to_raw(actual_interference)
+    # actual_raw_interference = convert_to_raw(actual_interference)
 
-#     # actual_raw_noise = base_system.calculate_noise(10)
+    # actual_raw_noise = base_system.calculate_noise(10)
 
-#     # actual_sinr = round(
-#     #     actual_received_power / (actual_interference + actual_noise), 1
-#     #     )
+    # actual_sinr = round(
+    #     actual_received_power / (actual_interference + actual_noise), 1
+    #     )
 
-#     # expected_received_power = ((40 + 20 - 2) - 173.94 - 4 + 4 - 4)
+    # expected_received_power = ((40 + 20 - 2) - 173.94 - 4 + 4 - 4)
 
-#     # expected_interference = [
-#     #     -144.92, -145.02, -163.44
-#     #     ]
+    # expected_interference = [
+    #     -144.92, -145.02, -163.44
+    #     ]
 
-#     # expected_interference = convert_to_dbm(expected_interference)
+    # expected_interference = convert_to_dbm(expected_interference)
 
-#     # expected_noise = -104.5
+    # expected_noise = -104.5
 
-#     # #expected_sinr = 8.9
-#     # #expected_sinr = ((40 + 20 - 2) - 4808 - 4 + 4 - 4) / sum(-349, -346, -538) + 5
-#     # # 8.9 = -4764 / -1233 +5
-#     # expected_sinr = round(
-#     #     expected_received_power / (expected_interference + expected_noise), 1
-#         # )
+    # #expected_sinr = 8.9
+    # #expected_sinr = ((40 + 20 - 2) - 4808 - 4 + 4 - 4) / sum(-349, -346, -538) + 5
+    # # 8.9 = -4764 / -1233 +5
+    # expected_sinr = round(
+    #     expected_received_power / (expected_interference + expected_noise), 1
+        # )
 
-#     actual_sinr = round(
-#         base_system.calculate_sinr(-20, [-60.48,-60.48,-60.48], -80), 2,
-#         )
+    actual_sinr = round(
+        base_system.calculate_sinr(-20, [-65.96, -66.02, -78.4], -80, 50), 2,
+        )
 
-#     assert actual_sinr == 40
+    assert actual_sinr == 45.51
 
 def test_modulation_scheme_and_coding_rate(base_system):
 
@@ -629,12 +671,12 @@ def test_modulation_scheme_and_coding_rate(base_system):
 
     assert actual_result == expected_result
 
-def link_budget_capacity(base_system):
+def test_link_budget_capacity(base_system):
 
     bandwidth = 10
     spectral_effciency = 2
 
-    actual_estimate_capacity = base_system.estimate_capacity(
+    actual_estimate_capacity = base_system.link_budget_capacity(
         bandwidth, spectral_effciency
         )
 
@@ -643,3 +685,10 @@ def link_budget_capacity(base_system):
         )
 
     assert actual_estimate_capacity == expected_estimate_capacity
+
+
+def test_find_sites_in_area(base_system):
+
+    actual_sites = base_system.find_sites_in_area()
+
+    assert len(actual_sites) == 0
