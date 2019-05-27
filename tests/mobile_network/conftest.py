@@ -105,6 +105,31 @@ def setup_pcd_sector():
     ]
 
 @fixture(scope='function')
+def setup_non_4g_assets():
+    return [
+        {
+            "pcd_sector": "CB11",
+            "site_ngr": "site_100",
+            "technology": "",
+            "type": "macrocell_site",
+            "frequency": [],
+            "bandwidth": "",
+            "build_date": 2012,
+            "sectors": 3,
+        },
+        {
+            "pcd_sector": "CB12",
+            "site_ngr": "site_200",
+            "technology": "",
+            "type": "macrocell_site",
+            "frequency": [],
+            "bandwidth": "",
+            "build_date": 2012,
+            "sectors": 3,
+        }
+    ]
+
+@fixture(scope='function')
 def setup_assets():
     return [
         {
@@ -126,8 +151,74 @@ def setup_assets():
             "bandwidth": "2x10MHz",
             "build_date": 2017,
             "sectors": 3,
-        }
+        },
     ]
+
+@fixture(scope='function')
+def setup_mixed_assets():
+    return [
+        {
+            "pcd_sector": "CB11",
+            "site_ngr": "site_100",
+            "technology": "LTE",
+            "type": "macrocell_site",
+            "frequency": ["800", "2600"],
+            "bandwidth": "2x10MHz",
+            "build_date": 2017,
+            "sectors": 3,
+        },
+        {
+            "pcd_sector": "CB12",
+            "site_ngr": "site_200",
+            "technology": "LTE",
+            "type": "macrocell_site",
+            "frequency": ["800", "2600"],
+            "bandwidth": "2x10MHz",
+            "build_date": 2017,
+            "sectors": 3,
+        },
+        {
+            'pcd_sector': "CB11",
+            'site_ngr': 'small_cell_sites',
+            'frequency': '3700',
+            'technology': 'same',
+            'type': 'small_cell',
+            'bandwidth': '2x25MHz',
+            'sectors': 1,
+            'build_date': None,
+        },
+        {
+            'pcd_sector': "CB11",
+            'site_ngr': 'small_cell_sites',
+            'frequency': '3700',
+            'technology': 'same',
+            'type': 'small_cell',
+            'bandwidth': '2x25MHz',
+            'sectors': 1,
+            'build_date': None,
+        },
+        {
+            'pcd_sector': "CB12",
+            'site_ngr': 'small_cell_sites',
+            'frequency': '3700',
+            'technology': 'same',
+            'type': 'small_cell',
+            'bandwidth': '2x25MHz',
+            'sectors': 1,
+            'build_date': None,
+        },
+        {
+            'pcd_sector': "CB12",
+            'site_ngr': 'small_cell_sites',
+            'frequency': '3700',
+            'technology': 'same',
+            'type': 'small_cell',
+            'bandwidth': '2x25MHz',
+            'sectors': 1,
+            'build_date': None,
+        },
+    ]
+
 
 @fixture(scope='function')
 def setup_six_sectored_assets():

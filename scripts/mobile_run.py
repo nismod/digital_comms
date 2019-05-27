@@ -494,17 +494,17 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
         ('baseline', 'baseline', 'sectorisation', 30),
         ('high', 'high', 'sectorisation', 30),
 
-        # ('low', 'low', 'macro-densification', 30),
-        # ('baseline', 'baseline', 'macro-densification', 30),
-        # ('high', 'high', 'macro-densification', 30),
+        ('low', 'low', 'macro-densification', 30),
+        ('baseline', 'baseline', 'macro-densification', 30),
+        ('high', 'high', 'macro-densification', 30),
 
         ('low', 'low', 'deregulation', 40),
         ('baseline', 'baseline', 'deregulation', 40),
         ('high', 'high', 'deregulation', 40),
 
-        # ('low', 'low', 'small-cell-and-spectrum', 30),
-        # ('baseline', 'baseline', 'small-cell-and-spectrum', 30),
-        # ('high', 'high', 'small-cell-and-spectrum', 30),
+        ('low', 'low', 'small-cell-and-spectrum', 30),
+        ('baseline', 'baseline', 'small-cell-and-spectrum', 30),
+        ('high', 'high', 'small-cell-and-spectrum', 30),
     ]:
     print("Running:", pop_scenario, throughput_scenario, \
         intervention_strategy)
