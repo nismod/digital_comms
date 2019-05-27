@@ -103,6 +103,7 @@ def test_free_space(frequency, distance, ant_height, ue_height, expected):
     (0.7,50000,20,'',20,20,'rural','los',1.5,1, (164.21+0.7)),
     ])
 
+
 def test_extended_hata(frequency, distance, ant_height, ant_type,
     building_height, street_width, settlement_type, type_of_sight,
     ue_height, above_roof, expected):
@@ -111,6 +112,10 @@ def test_extended_hata(frequency, distance, ant_height, ant_type,
         building_height, street_width, settlement_type, type_of_sight, \
         ue_height, above_roof)
         ) == expected
+
+    with pytest.raises(ValueError):
+        extended_hata(0.7,100000,20,'',20,20,'rural','los',1.5,1)
+
 
 #Test errors for Extended HATA
 def test_extended_hata_model_value_errors():
@@ -147,6 +152,7 @@ def test_extended_hata_model_value_errors():
 
     assert msg in str(ex3)
 
+
 #Prepare for testing 3GPP E-UTRA
 @pytest.mark.parametrize("frequency, distance, ant_height, ant_type, \
     building_height, street_width, settlement_type, type_of_sight, \
@@ -179,17 +185,23 @@ def test_extended_hata_model_value_errors():
     (3.5,6000,10,'macro',80,20,'rural','nlos',1.5, 250),
     ])
 
+
 def test_eval_path_loss_calc(frequency, distance, ant_height, ant_type,
     building_height, street_width, settlement_type, type_of_sight,
     ue_height, expected):
-    print(e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, \
-        building_height, street_width, settlement_type, type_of_sight, \
-        ue_height))
+
     assert (
         e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, \
         building_height, street_width, settlement_type, type_of_sight, \
         ue_height)
         ) == expected
+
+    with pytest.raises(ValueError):
+        e_utra_3gpp_tr36_814(3.5,1000,35,'macro',10,80,'rural','los',1.5)
+
+    with pytest.raises(ValueError):
+        e_utra_3gpp_tr36_814(3.5,1000,35,'macro',10,80,'rural','los',11.5)
+
 
 #Prepare for testing 3GPP compatability function
 @pytest.mark.parametrize("building_height, street_width, ant_height, \
@@ -204,6 +216,7 @@ def test_check_applicability(building_height, street_width, ant_height,
         ue_height)
         ) == expected
 
+
 def test_path_loss_calculator_errors():
 
     with pytest.raises(ValueError) as ex:
@@ -215,6 +228,7 @@ def test_path_loss_calculator_errors():
 
     assert msg in str(ex)
 
+
 #Prepare for testing path_loss_calculator
 @pytest.mark.parametrize("frequency, distance, ant_height, ant_type, \
     building_height, street_width, settlement_type, type_of_sight, \
@@ -225,18 +239,17 @@ def test_path_loss_calculator_errors():
     (3.5,500,40,'macro',10,20,'suburban','nlos',1.5, 0,True,(119.94+0.79+3.31)),
 ])
 
+
 def test_path_loss_calculator(frequency, distance, ant_height, ant_type,
     building_height,street_width, settlement_type, type_of_sight, ue_height,
     above_roof, indoor, expected):
-    print(path_loss_calculator(frequency, distance, ant_height, ant_type,
-        building_height, street_width, settlement_type, type_of_sight,
-        ue_height, above_roof, indoor)
-        )
+
     assert (
         path_loss_calculator(frequency, distance, ant_height, ant_type,
         building_height, street_width, settlement_type, type_of_sight,
         ue_height, above_roof, indoor)
         ) == expected
+
 
 #Prepare for testing determine_path_loss
 @pytest.mark.parametrize("extended_hata_path_loss, free_space_path_loss, \
@@ -244,6 +257,7 @@ def test_path_loss_calculator(frequency, distance, ant_height, ant_type,
     (100, 200, 200),
     (200, 100, 200),
     ])
+
 
 def test_determine_path_loss(extended_hata_path_loss, free_space_path_loss,
     expected):

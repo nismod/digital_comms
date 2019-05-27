@@ -363,10 +363,6 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
                 path_loss + random_quantity
             )
 
-    else:
-
-        raise ValueError('Did not recognise distance')
-    # print('final path loss is {}'.format(path_loss))
     return round(path_loss, 2)
 
 def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_height,
@@ -601,7 +597,7 @@ def check_applicability(building_height, street_width, ant_height, ue_height):
     else:
 
         street_width_compliant = False
-        print('street_width not compliant')
+        raise ValueError('Street_width not compliant')
 
     if 10 <= ant_height < 150:
 
@@ -619,7 +615,7 @@ def check_applicability(building_height, street_width, ant_height, ue_height):
     else:
 
         ue_height_compliant = False
-        print('ue_height not compliant')
+        raise ValueError('ue_height not compliant')
 
     if (building_height_compliant + street_width_compliant +
         ant_height_compliant + ue_height_compliant) == 4:
