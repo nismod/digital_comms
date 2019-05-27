@@ -201,9 +201,11 @@ def test_determine_environment(postcode_sector_lut):
 
 def test_get_sites(setup_postcode_sector):
 
-    actual_sites = get_sites(setup_postcode_sector, 'real')
-    print(actual_sites)
-    geom = shape(setup_postcode_sector['geometry'])
+    postcode_sector = setup_postcode_sector
+
+    actual_sites = get_sites(postcode_sector, 'synthetic')
+
+    geom = shape(postcode_sector['geometry'])
 
     actual_sites_in_shape = []
 
@@ -211,7 +213,7 @@ def test_get_sites(setup_postcode_sector):
         if geom.contains(Point(site['geometry']['coordinates'])):
             actual_sites_in_shape.append(site)
 
-    assert len(actual_sites_in_shape) == 2
+    assert len(actual_sites_in_shape) == 1
 
 def test_generate_receivers(setup_postcode_sector, postcode_sector_lut):
 
