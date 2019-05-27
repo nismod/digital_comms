@@ -179,7 +179,7 @@ def setup_mixed_assets():
         },
         {
             'pcd_sector': "CB11",
-            'site_ngr': 'small_cell_sites',
+            'site_ngr': 'small_cell_site',
             'frequency': '3700',
             'technology': 'same',
             'type': 'small_cell',
@@ -189,7 +189,7 @@ def setup_mixed_assets():
         },
         {
             'pcd_sector': "CB11",
-            'site_ngr': 'small_cell_sites',
+            'site_ngr': 'small_cell_site',
             'frequency': '3700',
             'technology': 'same',
             'type': 'small_cell',
@@ -199,7 +199,7 @@ def setup_mixed_assets():
         },
         {
             'pcd_sector': "CB12",
-            'site_ngr': 'small_cell_sites',
+            'site_ngr': 'small_cell_site',
             'frequency': '3700',
             'technology': 'same',
             'type': 'small_cell',
@@ -209,7 +209,7 @@ def setup_mixed_assets():
         },
         {
             'pcd_sector': "CB12",
-            'site_ngr': 'small_cell_sites',
+            'site_ngr': 'small_cell_site',
             'frequency': '3700',
             'technology': 'same',
             'type': 'small_cell',
@@ -245,9 +245,11 @@ def setup_six_sectored_assets():
         }
     ]
 
+
 @fixture(scope='function')
 def setup_site_sectors():
     return 3
+
 
 @fixture(scope='function')
 def setup_capacity_lookup():
@@ -336,6 +338,7 @@ def setup_capacity_lookup():
         ],
     }
 
+
 @fixture(scope='function')
 def setup_clutter_lookup():
     return  [
@@ -344,21 +347,26 @@ def setup_clutter_lookup():
         (7959.0, 'Urban'),
     ]
 
+
 @fixture(scope='function')
 def setup_service_obligation_capacity():
     return 2
+
 
 @fixture(scope='function')
 def setup_traffic():
     return 0.15
 
+
 @fixture(scope='function')
 def setup_market_share():
     return 0.25
 
+
 @fixture(scope='function')
 def setup_mast_height():
     return 30
+
 
 @fixture(scope='function')
 def setup_built_interventions():
@@ -382,6 +390,7 @@ def setup_built_interventions():
             "build_date": 2017
         }
     ]
+
 
 @fixture(scope='function')
 def setup_interventions():
@@ -544,6 +553,7 @@ def setup_interventions():
     },
 }
 
+
 @fixture(scope='function')
 def setup_strategies():
     return {
@@ -566,11 +576,6 @@ def setup_strategies():
         ),
     }
 
-
-
-
-
-
 @fixture(scope='function')
 def setup_fixed_model_pcp():
     return [
@@ -583,6 +588,7 @@ def setup_fixed_model_pcp():
         (( 0.802002, 51.154586), {'Name': 'cab_7', 'Type': 'pcp'})
     ]
 
+
 @fixture(scope='function')
 def setup_fixed_model_exchanges():
     return [
@@ -590,11 +596,13 @@ def setup_fixed_model_exchanges():
         (( 0.537344, 51.745323), {'Name': 'EABTM', 'Type': 'exchange'})
     ]
 
+
 @fixture(scope='function')
 def setup_fixed_model_corenodes():
     return [
         ((0.3, 51.825323), {'Name': 'CoreNode', 'Type': 'core'})
     ]
+
 
 @fixture(scope='function')
 def setup_fixed_model_links():
@@ -609,11 +617,3 @@ def setup_fixed_model_links():
         ([( 0.3,      51.825323), (0, 51), (-0.572275, 51.704581)], {'Origin': 'CoreNode', 'Dest': 'EAARR', 'Type': 'link', 'Physical': 'copper'    }),
         ([( 0.3,      51.825323), (0, 51), ( 0.537344, 51.745323)], {'Origin': 'CoreNode', 'Dest': 'EABTM', 'Type': 'link', 'Physical': 'copper'    })
     ]
-
-@fixture(scope='function')
-def setup_fixed_network(setup_fixed_model_pcp, setup_fixed_model_exchanges, setup_fixed_model_links):
-    empty_data = {}
-
-    return NetworkManager(empty_data, empty_data, setup_fixed_model_pcp,
-                      setup_fixed_model_exchanges, empty_data,
-                      setup_fixed_model_links)

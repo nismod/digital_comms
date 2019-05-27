@@ -106,27 +106,29 @@ def test_decide_interventions(non_4g_system, basic_system,
     assert len(actual_result[0]) == 6
     assert actual_result[1] == 0
 
-    # actual_result = decide_interventions(
-    #     'macro-densification', 450000, 100,
-    #     basic_system, 2018, 0.5, 0.25, 30
-    # )
-    # print(actual_result)
-    # assert len(actual_result[0]) == 3
-    # assert actual_result[1] == 0
+    actual_result = decide_interventions(
+        'macro-densification', 300000, 100,
+        basic_system, 2018, 0.5, 0.25, 30
+    )
 
-    # actual_result = decide_interventions(
-    #     'macro-densification', 401834 , 10,
-    #     basic_system, 2020, 0.5, 0.25, 30
-    # )
+    assert len(actual_result[0]) == 2
+    assert actual_result[1] == 0
 
-    # # build
-    # # site_100 CB11 carrier_700 50917
-    # # site_100 CB11 carrier_3500 50917
-    # # site_2 CB11 build_5G_macro_site 150000
-    # # site_3 CB11 build_5G_macro_site 150000
+    actual_result = decide_interventions(
+        'macro-densification', (101834+150000)*2 , 10,
+        basic_system, 2020, 0.5, 0.25, 30
+    )
 
-    # assert len(actual_result[0]) == 4
-    # assert actual_result[1] == 0
+    # build
+    # site_100 CB11 carrier_700 50917
+    # site_100 CB11 carrier_3500 50917
+    # site_101 CB11 build_5G_macro_site 150000
+    # site_200 CB12 carrier_700 50917
+    # site_200 CB12 carrier_3500 50917
+    # site_201 CB12 build_5G_macro_site 150000
+
+    assert len(actual_result[0]) == 6
+    assert actual_result[1] == 0
 
     actual_result = decide_interventions(
         'deregulation', (101834+30000)*2 , 10,
@@ -158,8 +160,20 @@ def test_decide_interventions(non_4g_system, basic_system,
     # site_100 CB12 carrier_3500 50917
     # site_100 CB12 deploy_c_ran 30000
 
-    # for row in actual_result[0]:
-    #     print(row['site_ngr'],row['pcd_sector'],row['item'],row['cost'])
-
     assert len(actual_result[0]) == 6
+    assert actual_result[1] == 0
+
+    actual_result = decide_interventions(
+        'small-cell-and-spectrum', 215668 , 1000,
+        mixed_system, 2020, 0.5, 0.25, 30
+    )
+
+    #build
+    # site_100 CB11 50917
+    # site_100 CB11 50917
+    # small_cell_site2 CB11 12000
+    # site_200 CB12 50917
+    # site_200 CB12 50917
+
+    assert len(actual_result[0]) == 5
     assert actual_result[1] == 0
