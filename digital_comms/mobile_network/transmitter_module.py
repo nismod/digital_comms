@@ -829,7 +829,7 @@ class NetworkManager(object):
             output_value = 10**value
             interference_values.append(output_value)
 
-        raw_sum_of_interference = sum(interference_values) * 1.5 #(1+(network_load/100))
+        raw_sum_of_interference = sum(interference_values) * (1+(network_load/100))
 
         raw_noise = 10**noise
 
