@@ -177,6 +177,7 @@ class LAD(object):
         """
         self._pcd_sectors[pcd_sector.id] = pcd_sector
 
+
     def capacity(self):
         """
         Calculate mean capacity from all nested sectors
@@ -197,6 +198,7 @@ class LAD(object):
             for pcd_sector in self._pcd_sectors.values()])
 
         return summed_capacity / len(self._pcd_sectors)
+
 
     def demand(self):
         """
@@ -224,6 +226,7 @@ class LAD(object):
             for pcd_sector in self._pcd_sectors.values()
         )
         return summed_demand / summed_area
+
 
     def coverage(self):
         """
@@ -381,9 +384,10 @@ class PostcodeSector(object):
                         num_sites += 1
                         if asset['sectors'] == 6:
                             num_sites += 1
-
+            print('num_sites {} for {}'.format(num_sites, frequency))
+            print('self.area {} for {}'.format(self.area, frequency))
             site_density = float(num_sites) / self.area
-
+            print('site_density {} for {}'.format(site_density, frequency))
             tech_capacity = lookup_capacity(
                 self._capacity_lookup_table,
                 self.clutter_environment,
@@ -391,9 +395,9 @@ class PostcodeSector(object):
                 "2x10MHz",
                 site_density,
                 self.mast_height)
-
+            print('tech_capacity {} for {}'.format(tech_capacity, frequency))
             capacity += tech_capacity
-
+            print('capacity {}'.format(capacity))
         return capacity
 
     def _small_cell_capacity(self):
@@ -497,7 +501,7 @@ def lookup_clutter_geotype(clutter_lookup, population_density):
     return highest_geotype
 
 
-def lookup_capacity(lookup_table, clutter_environment,
+def lookup_capacity(capacity_lookup, clutter_environment,
     frequency, bandwidth, site_density, mast_height):
     """
     Use lookup table to find capacity by clutter environment
@@ -505,7 +509,7 @@ def lookup_capacity(lookup_table, clutter_environment,
 
     Parameters
     ----------
-    lookup_table: dict
+    capacity_lookup: dict
         Capacity lookup table
     clutter_environment: str
         Area type ('urban', ..)
@@ -521,7 +525,7 @@ def lookup_capacity(lookup_table, clutter_environment,
         The capacity for the asset in TODO
     Example
     -------
-    >>> lookup_table = {
+    >>> capacity_lookup = {
             ("Urban", "800", "2x10MHz"): [
                 (0, 1),
                 (1, 2),
@@ -547,12 +551,12 @@ def lookup_capacity(lookup_table, clutter_environment,
         If combination is not found in the lookup table.
 
     """
-
-    if (clutter_environment, frequency, bandwidth, mast_height) not in lookup_table:
+    print(clutter_environment, frequency, bandwidth, mast_height)
+    if (clutter_environment, frequency, bandwidth, mast_height) not in capacity_lookup:
         raise KeyError("Combination %s not found in lookup table",
                        (clutter_environment, frequency, bandwidth, mast_height))
 
-    density_capacities = lookup_table[
+    density_capacities = capacity_lookup[
         (clutter_environment, frequency, bandwidth, mast_height)
         ]
 

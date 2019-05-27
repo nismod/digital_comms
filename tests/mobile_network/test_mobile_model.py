@@ -4,8 +4,10 @@ Test Mobile Network model.py
 Written by Edward J. Oughton
 
 """
+import pytest
 from digital_comms.mobile_network.model import (
-    NetworkManager, LAD, PostcodeSector, lookup_clutter_geotype
+    NetworkManager, LAD, PostcodeSector,
+    lookup_clutter_geotype, lookup_capacity
     )
 
 class TestNetworkManager():
@@ -47,7 +49,7 @@ class TestLAD():
             setup_traffic, setup_market_share, setup_mast_height)
 
         #test pcd_sector capacity
-        assert round(testPostcode.capacity,2) == 3.67
+        assert round(testPostcode.capacity,2) == 4
 
         #test pcd_sector demand
         testDemand = round(testPostcode.demand,2)
@@ -64,7 +66,7 @@ class TestLAD():
             setup_service_obligation_capacity,
             setup_traffic, setup_market_share, setup_mast_height)
 
-        assert round(testPostcode.capacity,2) == 3.67
+        assert round(testPostcode.capacity,2) == 4
 
         #test pcd_sector demand
         testDemand = round(testPostcode.demand,2)
@@ -82,7 +84,7 @@ class TestLAD():
         #CB11, 800+2600MHz, density of 0.5 sites per km^2
         # Capacity is 1km^2 + 0.83km^2 = 1.83Mbps/km2
         #CB12 is the same, so (1.83+1.83)/2 = 1.83Mbps/km2 average capacity
-        assert round(testCapacity,2) == 3.67
+        assert round(testCapacity,2) == 4
 
         #test lad demand
         #2.28 = 1.14*2
@@ -93,6 +95,46 @@ class TestLAD():
 
         testCoverage = testLAD.coverage()
         assert testCoverage == 1
+
+class TestPostcode():
+
+    def test_capacity(self, setup_lad, setup_pcd_sector,
+        setup_six_sectored_assets,
+        setup_capacity_lookup, setup_clutter_lookup,
+        setup_service_obligation_capacity,
+        setup_traffic, setup_market_share, setup_mast_height):
+
+        testLAD = LAD(setup_lad[0], setup_service_obligation_capacity)
+
+        testPostcode = PostcodeSector(setup_pcd_sector[0],
+            setup_six_sectored_assets,
+            setup_capacity_lookup, setup_clutter_lookup,
+            setup_service_obligation_capacity,
+            setup_traffic, setup_market_share, setup_mast_height)
+
+        #test pcd_sector capacity
+        assert round(testPostcode.capacity, 2) == 8
+
+        testLAD.add_pcd_sector(testPostcode)
+
+        testPostcode = PostcodeSector(setup_pcd_sector[1],
+            setup_six_sectored_assets,
+            setup_capacity_lookup, setup_clutter_lookup,
+            setup_service_obligation_capacity,
+            setup_traffic, setup_market_share, setup_mast_height)
+
+        #test pcd_sector capacity
+        assert round(testPostcode.capacity, 2) == 8
+
+        testLAD.add_pcd_sector(testPostcode)
+
+        testCapacity = testLAD.capacity()
+        print(testCapacity)
+        #LAD area = 2km^2
+        #cells = 1 x site w/6 cells
+        #(effectively classed as 2 sites as 3 sectors are assumed in LUT)
+        #density 2 sites per km^2 = 3 cells per km^2
+        assert round(testCapacity,2) == 8#8
 
 def test_lookup_clutter_geotype():
 
@@ -119,3 +161,9 @@ def test_lookup_clutter_geotype():
     actual_result = lookup_clutter_geotype(clutter_lookup, population_density)
 
     assert actual_result == 'Urban'
+
+def test_lookup_capacity(setup_capacity_lookup):
+
+    with pytest.raises(KeyError):
+        lookup_capacity(setup_capacity_lookup,
+            'rural', '800', '10', '2', '30')

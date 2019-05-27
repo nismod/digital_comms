@@ -130,6 +130,31 @@ def setup_assets():
     ]
 
 @fixture(scope='function')
+def setup_six_sectored_assets():
+    return [
+        {
+            "pcd_sector": "CB11",
+            "site_ngr": "site_100",
+            "technology": "LTE",
+            "type": "macrocell_site",
+            "frequency": ["800", "2600"],
+            "bandwidth": "2x10MHz",
+            "build_date": 2017,
+            "sectors": 6,
+        },
+        {
+            "pcd_sector": "CB12",
+            "site_ngr": "site_200",
+            "technology": "LTE",
+            "type": "macrocell_site",
+            "frequency": ["800", "2600"],
+            "bandwidth": "2x10MHz",
+            "build_date": 2017,
+            "sectors": 6,
+        }
+    ]
+
+@fixture(scope='function')
 def setup_site_sectors():
     return 3
 
@@ -163,9 +188,11 @@ def setup_capacity_lookup():
         ("Rural", "800", "2x10MHz", 30): [
             (0, 0),
             (1, 2),
+            (2, 4),
         ],
         ("Rural", "2600", "2x10MHz", 30): [
             (0, 0),
+            (2, 4),
             (3, 5),
         ],
         ("Rural", "3500", "2x10MHz", 30): [
