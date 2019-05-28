@@ -102,12 +102,11 @@ class NetworkManager(object):
         results = []
 
         for receiver in self.receivers.values():
-            # print(receiver.id)
+
             closest_site, interfering_sites = (
                 self.find_closest_available_sites(receiver)
             )
-            # print('closest_site is {}'.format(closest_site))
-            # print('interfering_sites is {}'.format(interfering_sites))
+
             path_loss = self.calculate_path_loss(
                 closest_site, receiver, frequency, mast_height, environment
             )
@@ -143,14 +142,14 @@ class NetworkManager(object):
 
             results.append(data)
 
-            print('received_power is {}'.format(received_power))
-            print('interference is {}'.format(interference))
-            print('noise is {}'.format(noise))
-            print('sinr is {}'.format(sinr))
-            print('spectral_efficiency is {}'.format(spectral_efficiency))
-            print('estimated_capacity is {}'.format(estimated_capacity))
+            # print('received_power is {}'.format(received_power))
+            # print('interference is {}'.format(interference))
+            # print('noise is {}'.format(noise))
+            # print('sinr is {}'.format(sinr))
+            # print('spectral_efficiency is {}'.format(spectral_efficiency))
+            # print('estimated_capacity is {}'.format(estimated_capacity))
             # print('path_loss is {}'.format(path_loss))
-            print('-----------------------------')
+            # print('-----------------------------')
 
         return results
 
@@ -240,9 +239,9 @@ class NetworkManager(object):
             location
             )
 
-        print('path loss for {} to nearest cell {} is {}'.format(
-            receiver.id, closest_site.id, path_loss)
-            )
+        # print('path loss for {} to nearest cell {} is {}'.format(
+        #     receiver.id, closest_site.id, path_loss)
+        #     )
 
         return path_loss
 
@@ -265,7 +264,7 @@ class NetworkManager(object):
             receiver.misc_losses + \
             receiver.gain - \
             receiver.losses
-        # print('received power is {}'.format(received_power))
+
         return received_power
 
 
@@ -343,9 +342,9 @@ class NetworkManager(object):
                 indoor,
                 )
 
-            print('interference path loss for {} to {} is {}'.format(
-                receiver.id, interference_site.id, path_loss)
-                )
+            # print('interference path loss for {} to {} is {}'.format(
+            #     receiver.id, interference_site.id, path_loss)
+            #     )
 
             #calc interference from other cells
             received_interference = self.calc_received_power(
@@ -554,18 +553,16 @@ class NetworkManager(object):
         cells_per_site = simulation_parameters['sectorisation']
 
         sites_in_area = self.find_sites_in_area()
-        print('number of sites_in_area {}'.format(len(sites_in_area)))
+
         total_power_dbm = [round(a.power) for a in sites_in_area]
-        print('total_power_dbm {}'.format(total_power_dbm))
+
         watts_per_area = []
         for value in total_power_dbm:
-            watts_for_1_cell_per_site = 1 * 10**(value / 10) / 1000
+            watts_for_1_cell_per_site = 10**(value / 10) / 1000
             wattsd_per_site = watts_for_1_cell_per_site * cells_per_site
-            print('wattsd_per_site {}'.format(wattsd_per_site))
             watts_per_area.append(wattsd_per_site)
-        print('watts_per_area {}'.format(watts_per_area))
+
         total_power_watts = sum(watts_per_area)
-        print('total_power_watts {}'.format(total_power_watts/1000000))
 
         return total_power_watts
 

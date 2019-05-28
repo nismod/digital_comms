@@ -31,18 +31,18 @@ DATA_RAW = os.path.join(BASE_PATH, 'raw')
 DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 
 SIMULATION_PARAMETERS = {
-    'iterations': 2,
+    'iterations': 5,
     'tx_baseline_height': 30,
     'tx_upper_height': 40,
     'tx_power': 40,
-    'tx_gain': 20,
-    'tx_losses': 2,
+    'tx_gain': 16,
+    'tx_losses': 1,
     'rx_gain': 4,
     'rx_losses': 4,
     'rx_misc_losses': 4,
     'rx_height': 1.5,
     'network_load': 50,
-    'percentile': 95,
+    'percentile': 90,
     'desired_transmitter_density': 10,
     'sectorisation': 3,
 }

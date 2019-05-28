@@ -21,8 +21,8 @@ def setup_simulation_parameters():
     'tx_baseline_height': 30,
     'tx_upper_height': 40,
     'tx_power': 40,
-    'tx_gain': 20,
-    'tx_losses': 2,
+    'tx_gain': 16,
+    'tx_losses': 1,
     'rx_gain': 4,
     'rx_losses': 4,
     'rx_misc_losses': 4,
@@ -189,8 +189,8 @@ def test_find_and_deploy_new_site(base_system,
                     "freq": 700,
                     "type": 17,
                     "power": 40,
-                    "gain": 20,
-                    "losses": 2,
+                    "gain": 16,
+                    "losses": 1,
                 }
         }
     ]
@@ -218,8 +218,8 @@ def test_find_and_deploy_new_site(base_system,
                     "freq": 700,
                     "type": 17,
                     "power": 40,
-                    "gain": 20,
-                    "losses": 2,
+                    "gain": 16,
+                    "losses": 1,
                 }
         }
     ]
@@ -252,8 +252,8 @@ def test_build_new_assets(base_system, setup_simulation_parameters):
                     "freq": 700,
                     "type": 17,
                     "power": 30,
-                    "gain": 18,
-                    "losses": 2,
+                    "gain": 16,
+                    "losses": 1,
                 }
         }
     ]
@@ -395,7 +395,7 @@ def test_calc_received_power(base_system):
     #58 = 40 + 20 - 2
     #received_power = eirp - path_loss - misc_losses + gain - losses
     #-119.94 = 58 - 173.94 - 4 + 4 - 4
-    expected_received_power = ((40 + 20 - 2) - 173.94 - 4 + 4 - 4)
+    expected_received_power = ((40 + 16 - 1) - 173.94 - 4 + 4 - 4)
 
     assert actual_received_power == expected_received_power
 
@@ -423,16 +423,16 @@ def test_calculate_interference(base_system):
     #received_power = eirp - path_loss - misc_losses + gain - losses
     #interference 1
     #path loss(0.7 475 20 macro 20 20 urban nlos 1.5 0)
-    #-65.89 = (40 + 20 - 2) - 119.96 - 4 + 4 - 4
+    #-65.89 = (40 + 16 - 1) - 119.96 - 4 + 4 - 4
     #interference 2
     #path_loss(0.7 477 20 macro 20 20 urban nlos 1.5 0)
-    #-66.02 = (40 + 20 - 2) - 120.02 - 4 + 4 - 4
+    #-66.02 = (40 + 16 - 1) - 120.02 - 4 + 4 - 4
     #interference 3
     #path_loss(0.7 1078 20 macro 20 20 urban nlos 1.5 0)
-    #-78.4 = (40 + 20 - 2) - 132.4 - 4 + 4 - 4
+    #-78.4 = (40 + 16 - 1) - 132.4 - 4 + 4 - 4
 
     expected_interference = [
-        -65.96, -66.02, -78.4
+        -68.96, -69.02, -81.4
         ]
 
     assert actual_interference == expected_interference
@@ -521,14 +521,12 @@ def test_receiver_density(base_system):
     assert actual_receiver_density == 1.38
 
 
-# def test_energy_consumption(base_system, setup_simulation_parameters):
+def test_energy_consumption(base_system, setup_simulation_parameters):
 
-#     # sites = 2
-#     # power = 40 dBm
-#     actual_energy_consumption = base_system.energy_consumption(
-#         setup_simulation_parameters
-#         )
+    # sites = 2
+    # power = 40 dBm
+    actual_energy_consumption = base_system.energy_consumption(
+        setup_simulation_parameters
+        )
 
-#     print(actual_energy_consumption)
-
-#     assert actual_energy_consumption == 800
+    assert actual_energy_consumption == 60

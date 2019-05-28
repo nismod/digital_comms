@@ -165,7 +165,7 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
     frequency = frequency*1000
     #model requires distance in kilometers rather than meters.
     distance = distance/1000
-    print('distance {}'.format(distance))
+
     #find smallest value
     hm = min(ant_height, ue_height)
     #find largest value
