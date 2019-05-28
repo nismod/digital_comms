@@ -3,21 +3,46 @@ import os
 import numpy as np
 from shapely.geometry import shape, Point
 
-from digital_comms.mobile_network.transmitter_module import (
+from digital_comms.mobile_network.system_simulator import (
+    #read_postcode_sector,
+    #get_local_authority_ids,
+    #determine_environment,
+    #get_sites,
+    #generate_receivers,
+    NetworkManager,
+    #find_and_deploy_new_site,
+    #randomly_select_los,
+    )
+from scripts.mobile_simulator_run import (
     read_postcode_sector,
     get_local_authority_ids,
     determine_environment,
     get_sites,
     generate_receivers,
-    NetworkManager,
     find_and_deploy_new_site,
-    randomly_select_los,
-    transform_coordinates
     )
 
+@pytest.fixture
+def setup_simulation_parameters():
+    return {
+    'iterations': 100,
+    'tx_baseline_height': 30,
+    'tx_upper_height': 40,
+    'tx_power': 40,
+    'tx_gain': 20,
+    'tx_losses': 2,
+    'rx_gain': 4,
+    'rx_losses': 4,
+    'rx_misc_losses': 4,
+    'rx_height': 1.5,
+    'network_load': 50,
+    'percentile': 95,
+    'desired_transmitter_density': 10,
+    'sectorisation': 3,
+    }
 
 @pytest.fixture
-def base_system(setup_postcode_sector):
+def base_system(setup_postcode_sector, setup_simulation_parameters):
 
     TRANSMITTERS = [
             {
@@ -151,7 +176,8 @@ def base_system(setup_postcode_sector):
         'E07000008'
         ]
 
-    system = NetworkManager(geojson_postcode_sector, TRANSMITTERS, RECEIVERS)
+    system = NetworkManager(geojson_postcode_sector, TRANSMITTERS,
+        RECEIVERS, setup_simulation_parameters)
 
     return system
 
@@ -241,11 +267,12 @@ def test_determine_environment(postcode_sector_lut):
 
     assert actual_results == expected_result
 
-def test_get_sites(setup_postcode_sector):
+def test_get_sites(setup_postcode_sector, setup_simulation_parameters):
 
     postcode_sector = setup_postcode_sector
 
-    actual_sites = get_sites(postcode_sector, 'synthetic')
+    actual_sites = get_sites(postcode_sector, 'synthetic',
+        setup_simulation_parameters)
 
     geom = shape(postcode_sector['geometry'])
 
@@ -257,10 +284,12 @@ def test_get_sites(setup_postcode_sector):
 
     assert len(actual_sites_in_shape) == 1
 
-def test_generate_receivers(setup_postcode_sector, postcode_sector_lut):
+def test_generate_receivers(setup_postcode_sector,
+    postcode_sector_lut, setup_simulation_parameters):
 
     actual_receivers = generate_receivers(
-        setup_postcode_sector, postcode_sector_lut, 100
+        setup_postcode_sector, postcode_sector_lut,
+        setup_simulation_parameters
         )
 
     receiver_1 = actual_receivers[0]
@@ -272,10 +301,12 @@ def test_generate_receivers(setup_postcode_sector, postcode_sector_lut):
     assert receiver_1['properties']['losses'] == 4
     assert receiver_1['properties']['indoor'] == True
 
-def test_find_and_deploy_new_site(base_system, setup_postcode_sector):
+def test_find_and_deploy_new_site(base_system,
+    setup_postcode_sector, setup_simulation_parameters):
 
     new_transmitter = find_and_deploy_new_site(
-        base_system.sites, 1, setup_postcode_sector, 1
+        base_system.sites, 1, setup_postcode_sector, 1,
+        setup_simulation_parameters
         )
 
     expected_transmitter = [
@@ -303,7 +334,8 @@ def test_find_and_deploy_new_site(base_system, setup_postcode_sector):
     assert new_transmitter == expected_transmitter
 
     new_transmitter = find_and_deploy_new_site(
-        base_system.sites, 1, setup_postcode_sector, 1
+        base_system.sites, 1, setup_postcode_sector, 1,
+        setup_simulation_parameters
         )
 
     expected_transmitter = [
@@ -336,7 +368,7 @@ def test_network_manager(base_system):
     assert len(base_system.sites) == 4
     assert len(base_system.receivers) == 3
 
-def test_build_new_assets(base_system):
+def test_build_new_assets(base_system, setup_simulation_parameters):
 
     build_this_transmitter = [
         {
@@ -359,7 +391,9 @@ def test_build_new_assets(base_system):
         }
     ]
 
-    base_system.build_new_assets(build_this_transmitter, 'CB11')
+    base_system.build_new_assets(
+        build_this_transmitter, 'CB11', setup_simulation_parameters
+        )
 
     assert len(base_system.sites) == 5
 
@@ -554,7 +588,7 @@ def test_calculate_noise(base_system):
 
     assert actual_result == expected_result
 
-def test_calculate_sinr(base_system):
+def test_calculate_sinr(base_system, setup_simulation_parameters):
 
     # receiver = base_system.receivers['AB3']
 
@@ -614,7 +648,9 @@ def test_calculate_sinr(base_system):
         # )
 
     actual_sinr = round(
-        base_system.calculate_sinr(-20, [-65.96, -66.02, -78.4], -80, 50), 2,
+        base_system.calculate_sinr(-20, [-65.96, -66.02, -78.4], -80,
+        setup_simulation_parameters), 2,
+
         )
 
     assert actual_sinr == 45.51
