@@ -102,11 +102,11 @@ class NetworkManager(object):
         results = []
 
         for receiver in self.receivers.values():
-            print(receiver.id)
+            # print(receiver.id)
             closest_site, interfering_sites = (
                 self.find_closest_available_sites(receiver)
             )
-            print('closest_site is {}'.format(closest_site))
+            # print('closest_site is {}'.format(closest_site))
             # print('interfering_sites is {}'.format(interfering_sites))
             path_loss = self.calculate_path_loss(
                 closest_site, receiver, frequency, mast_height, environment
@@ -149,7 +149,7 @@ class NetworkManager(object):
             print('sinr is {}'.format(sinr))
             print('spectral_efficiency is {}'.format(spectral_efficiency))
             print('estimated_capacity is {}'.format(estimated_capacity))
-            print('path_loss is {}'.format(path_loss))
+            # print('path_loss is {}'.format(path_loss))
             print('-----------------------------')
 
         return results
@@ -238,6 +238,10 @@ class NetworkManager(object):
             receiver.ue_height,
             above_roof,
             location
+            )
+
+        print('path loss for {} to nearest cell {} is {}'.format(
+            receiver.id, closest_site.id, path_loss)
             )
 
         return path_loss
@@ -339,7 +343,7 @@ class NetworkManager(object):
                 indoor,
                 )
 
-            print('path loss for {} to {} is {}'.format(
+            print('interference path loss for {} to {} is {}'.format(
                 receiver.id, interference_site.id, path_loss)
                 )
 
@@ -611,7 +615,6 @@ class Transmitter(object):
         self.power = simulation_parameters['tx_power']
         self.gain = simulation_parameters['tx_gain']
         self.losses = simulation_parameters['tx_losses']
-
 
     def __repr__(self):
         return "<Transmitter id:{}>".format(self.id)

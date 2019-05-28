@@ -403,6 +403,7 @@ def setup_modulation_coding_lut():
         ('5G', 15, '256QAM', 948, 7.4063, 22.7),
         ]
 
+
 @fixture(scope='function')
 def setup_built_interventions():
     return [
@@ -974,3 +975,156 @@ def setup_cb41_postcode_sector():
             (543571.5540207151, 260642.7910323859), (543569.8885183727, 260641.1814931117),
             (543478.978474672, 260738.0537637127), (543476.9831698855, 260743.62216977304)]]
             }}
+
+@fixture(scope='function')
+def setup_transmitters():
+    return [
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [544655.1049227581, 259555.22477912105],
+            },
+            'properties': {
+                "operator":'voda',
+                "opref": 31742,
+                "sitengr": 'TL4454059600',
+                "ant_height": 14.9,
+                "type": 'macro',
+                "power": 40,
+                "gain": 20,
+                "losses": 2,
+                "pcd_sector": "CB1 2",
+            }
+        },
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [545265.1768673284, 259655.21841664566]
+            },
+            'properties': {
+                "operator":'voda',
+                "opref": 46497,
+                "sitengr": 'TL4515059700',
+                "ant_height": 13.7,
+                "type": 'macro',
+                "power": 40,
+                "gain": 20,
+                "losses": 2,
+                "pcd_sector": "CB1 1",
+            }
+        },
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [545285.5165949427, 259483.84577720467],
+            },
+            'properties': {
+                "operator":'voda',
+                "opref": 31746,
+                "sitengr": 'TL4529059480',
+                "ant_height": 14.9,
+                "type": 'macro',
+                "power": 40,
+                "gain": 20,
+                "losses": 2,
+                "pcd_sector": "CB1 2",
+            }
+        },
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [545885.2027838879, 259595.2986071491]
+            },
+            'properties': {
+                "operator":'voda',
+                "opref": 31745,
+                "sitengr": 'TL4577059640',
+                "ant_height": 14.9,
+                "type": 'macro',
+                "power": 40,
+                "gain": 20,
+                "losses": 2,
+                "pcd_sector": "CB1 2",
+            }
+        }
+        ]
+
+
+@fixture(scope='function')
+def setup_receivers():
+    return [
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [544750.2222151064, 259926.76048813056]
+            },
+            'properties': {
+                "ue_id": "AB1",
+                "sitengr": 'TL4454059600',
+                "misc_losses": 4,
+                "gain": 4,
+                "losses": 4,
+                "ue_height": 1.5,
+                "indoor": True,
+            }
+        },
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [544809.5557435964, 259520.0001617251]
+            },
+            'properties': {
+                "ue_id": "AB3",
+                "sitengr": 'TL4454059600',
+                "misc_losses": 4,
+                "gain": 4,
+                "losses": 4,
+                "ue_height": 1.5,
+                "indoor": True,
+            }
+        },
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [544712.9242233046, 259378.04413438193]
+            },
+            'properties': {
+                "ue_id": "AB2",
+                "sitengr": 'TL4454059600',
+                "misc_losses": 4,
+                "gain": 4,
+                "losses": 4,
+                "ue_height": 1.5,
+                "indoor": True,
+            }
+        }
+        ]
+
+
+@fixture(scope='function')
+def setup_single_receiver():
+    return [
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [544809.5557435964, 259520.0001617251]
+            },
+            'properties': {
+                "ue_id": "AB3",
+                "sitengr": 'TL4454059600',
+                "misc_losses": 4,
+                "gain": 4,
+                "losses": 4,
+                "ue_height": 1.5,
+                "indoor": True,
+            }
+        },
+        ]

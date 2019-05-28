@@ -674,5 +674,5 @@ def outdoor_to_indoor_path_loss(indoor):
     else:
 
         outdoor_to_indoor_path_loss = 0
-    print('building penetration loss is {}'.format(outdoor_to_indoor_path_loss))
+    # print('building penetration loss is {}'.format(outdoor_to_indoor_path_loss))
     return outdoor_to_indoor_path_loss
