@@ -13,6 +13,7 @@ from scripts.mobile_simulator_run import (
     find_and_deploy_new_site,
     )
 
+
 @pytest.fixture
 def setup_simulation_parameters():
     return {
@@ -32,134 +33,10 @@ def setup_simulation_parameters():
     'sectorisation': 3,
     }
 
+
 @pytest.fixture
-def base_system(setup_cb41_postcode_sector, setup_simulation_parameters):
-
-    TRANSMITTERS = [
-            {
-            'type': "Feature",
-            'geometry': {
-                "type": "Point",
-                "coordinates": [544655.1049227581, 259555.22477912105],
-            },
-            'properties': {
-                "operator":'voda',
-                "opref": 31742,
-                "sitengr": 'TL4454059600',
-                "ant_height": 14.9,
-                "type": 'macro',
-                "power": 40,
-                "gain": 20,
-                "losses": 2,
-                "pcd_sector": "CB1 2",
-            }
-        },
-        {
-            'type': "Feature",
-            'geometry': {
-                "type": "Point",
-                "coordinates": [545265.1768673284, 259655.21841664566]
-            },
-            'properties': {
-                "operator":'voda',
-                "opref": 46497,
-                "sitengr": 'TL4515059700',
-                "ant_height": 13.7,
-                "type": 'macro',
-                "power": 40,
-                "gain": 20,
-                "losses": 2,
-                "pcd_sector": "CB1 1",
-            }
-        },
-        {
-            'type': "Feature",
-            'geometry': {
-                "type": "Point",
-                "coordinates": [545285.5165949427, 259483.84577720467],
-            },
-            'properties': {
-                "operator":'voda',
-                "opref": 31746,
-                "sitengr": 'TL4529059480',
-                "ant_height": 14.9,
-                "type": 'macro',
-                "power": 40,
-                "gain": 20,
-                "losses": 2,
-                "pcd_sector": "CB1 2",
-            }
-        },
-        {
-            'type': "Feature",
-            'geometry': {
-                "type": "Point",
-                "coordinates": [545885.2027838879, 259595.2986071491]
-            },
-            'properties': {
-                "operator":'voda',
-                "opref": 31745,
-                "sitengr": 'TL4577059640',
-                "ant_height": 14.9,
-                "type": 'macro',
-                "power": 40,
-                "gain": 20,
-                "losses": 2,
-                "pcd_sector": "CB1 2",
-            }
-        }
-    ]
-
-    RECEIVERS = [
-        {
-            'type': "Feature",
-            'geometry': {
-                "type": "Point",
-                "coordinates": [544750.2222151064, 259926.76048813056]
-            },
-            'properties': {
-                "ue_id": "AB1",
-                "sitengr": 'TL4454059600',
-                "misc_losses": 4,
-                "gain": 4,
-                "losses": 4,
-                "ue_height": 1.5,
-                "indoor": True,
-            }
-        },
-        {
-            'type': "Feature",
-            'geometry': {
-                "type": "Point",
-                "coordinates": [544809.5557435964, 259520.0001617251]
-            },
-            'properties': {
-                "ue_id": "AB3",
-                "sitengr": 'TL4454059600',
-                "misc_losses": 4,
-                "gain": 4,
-                "losses": 4,
-                "ue_height": 1.5,
-                "indoor": True,
-            }
-        },
-        {
-            'type': "Feature",
-            'geometry': {
-                "type": "Point",
-                "coordinates": [544712.9242233046, 259378.04413438193]
-            },
-            'properties': {
-                "ue_id": "AB2",
-                "sitengr": 'TL4454059600',
-                "misc_losses": 4,
-                "gain": 4,
-                "losses": 4,
-                "ue_height": 1.5,
-                "indoor": True,
-            }
-        }
-    ]
+def base_system(setup_cb41_postcode_sector, setup_simulation_parameters,
+    setup_transmitters, setup_receivers):
 
     geojson_postcode_sector = setup_cb41_postcode_sector
 
@@ -167,8 +44,23 @@ def base_system(setup_cb41_postcode_sector, setup_simulation_parameters):
         'E07000008'
         ]
 
-    system = NetworkManager(geojson_postcode_sector, TRANSMITTERS,
-        RECEIVERS, setup_simulation_parameters)
+    system = NetworkManager(geojson_postcode_sector, setup_transmitters,
+        setup_receivers, setup_simulation_parameters)
+
+    return system
+
+@pytest.fixture
+def system_single_receiver(setup_cb41_postcode_sector, setup_simulation_parameters,
+    setup_transmitters, setup_single_receiver):
+
+    geojson_postcode_sector = setup_cb41_postcode_sector
+
+    geojson_postcode_sector['properties']['local_authority_ids'] = [
+        'E07000008'
+        ]
+
+    system = NetworkManager(geojson_postcode_sector, setup_transmitters,
+        setup_single_receiver, setup_simulation_parameters)
 
     return system
 
@@ -372,58 +264,43 @@ def test_build_new_assets(base_system, setup_simulation_parameters):
 
     assert len(base_system.sites) == 5
 
-# def test_estimate_link_budget(base_system, setup_modulation_coding_lut,
-#     setup_simulation_parameters):
+def test_estimate_link_budget(system_single_receiver, setup_modulation_coding_lut,
+    setup_simulation_parameters):
 
-#     actual_result = base_system.estimate_link_budget(
-#         0.7, 10, '5G', 30, 'urban', setup_modulation_coding_lut,
-#         setup_simulation_parameters
-#         )
-#     print(actual_result)
-#     # find closest_transmitters
-#     # <Receiver id:AB1>
-#     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>,
-#     # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
-#     # <Receiver id:AB3>
-#     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>,
-#     # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
-#     # <Receiver id:AB2>
-#     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4529059480>,
-#     # <Transmitter id:TL4515059700>, <Transmitter id:TL4577059640>]
+    actual_result = system_single_receiver.estimate_link_budget(
+        0.7, 10, '5G', 30, 'urban', setup_modulation_coding_lut,
+        setup_simulation_parameters
+        )
+    # print(actual_result)
+    # find closest_transmitters
+    # <Receiver id:AB1>
+    # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>,
+    # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
+    # <Receiver id:AB3>
+    # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>,
+    # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
+    # <Receiver id:AB2>
+    # [<Transmitter id:TL4454059600>, <Transmitter id:TL4529059480>,
+    # <Transmitter id:TL4515059700>, <Transmitter id:TL4577059640>]
 
-#     # find path_loss
+    # find path_loss for AB3
+    # path loss for AB3 to nearest cell TL4454059600 is 99.44
+    # distance 0.475
+    # interference path loss for AB3 to TL4515059700 is 119.96
+    # distance 0.477
+    # interference path loss for AB3 to TL4529059480 is 120.02
+    # distance 1.078
+    # interference path loss for AB3 to TL4577059640 is 132.4
+    # received_power is -45.44
+    # interference is [-65.96, -66.02, -78.4]
+    # noise is -102.47722915699805
+    # sinr is 20.07
 
-#     # type_of_sight is nlos
-#     # 0.7 383.56170453174326 20 macro 20 20 urban nlos 1.5 0
-#     # 0.7 869 20 macro 20 20 urban nlos 1.5 0
-#     # 0.7 961 20 macro 20 20 urban nlos 1.5 0
-#     # 0.7 1856 20 macro 20 20 urban nlos 1.5 0
-#     # type_of_sight is nlos
-#     # 0.7 158.43465782386215 20 macro 20 20 urban nlos 1.5 0
-#     # 0.7 753 20 macro 20 20 urban nlos 1.5 0
-#     # 0.7 770 20 macro 20 20 urban nlos 1.5 0
-#     # 0.7 1744 20 macro 20 20 urban nlos 1.5 0
-#     # type_of_sight is nlos
-#     # 0.7 186.39733937494557 20 macro 20 20 urban nlos 1.5 0
-#     # 0.7 935 20 macro 20 20 urban nlos 1.5 0
-#     # 0.7 943 20 macro 20 20 urban nlos 1.5 0
-#     # 0.7 1915 20 macro 20 20 urban nlos 1.5 0
+    # find spectral efficiency (self.modulation_scheme_and_coding_rate)
 
-#     # find received_power (self.calc_received_power)
+    # find (self.estimate_capacity)
 
-#     # find interference (self.calculate_interference)
-
-#     # find noise (self.calculate_noise)
-
-#     # find sinr (self.calculate_sinr)
-
-#     #find spectral efficiency (self.modulation_scheme_and_coding_rate)
-
-#     # find (self.estimate_capacity)
-
-#     expected_result = 0
-
-#     assert expected_result == actual_result
+    assert actual_result[0]['capacity_mbps'] == 62.266
 
 
 def test_find_closest_available_sites(base_system):
@@ -533,6 +410,7 @@ def test_calculate_interference(base_system):
         base_system.find_closest_available_sites(receiver)
         )
 
+
     actual_interference = base_system.calculate_interference(
         interfering_transmitters,
         receiver,
@@ -540,6 +418,7 @@ def test_calculate_interference(base_system):
         'urban'
         )
 
+    #AB3
     #eirp = power + gain - losses
     #received_power = eirp - path_loss - misc_losses + gain - losses
     #interference 1
@@ -574,10 +453,10 @@ def test_calculate_sinr(base_system, setup_simulation_parameters):
 
     #calculation in link_budget_validation.xlsx
 
-    actual_sinr = base_system.calculate_sinr(-20, [-65.96, -66.02, -78.4], -80,
+    actual_sinr = base_system.calculate_sinr(-45.44, [-65.96, -66.02, -78.4], -102.48,
         setup_simulation_parameters)
 
-    assert actual_sinr == 45.51
+    assert actual_sinr == 20.07
 
 
 def test_modulation_scheme_and_coding_rate(base_system, setup_modulation_coding_lut):
