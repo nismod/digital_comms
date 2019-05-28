@@ -538,6 +538,7 @@ def write_results(results, frequency, bandwidth, site_density, environment,
 
     results_file.close()
 
+
 def write_lookup_table(
     cell_edge_spectral_efficency, cell_edge_sinr, area_capacity_mbps,
     network_efficiency, environment, operator, technology, frequency,
@@ -584,6 +585,7 @@ def write_lookup_table(
 
     lut_file.close()
 
+
 def write_shapefile(data, postcode_sector_name, filename):
 
     # Translate props to Fiona sink schema
@@ -617,6 +619,7 @@ def write_shapefile(data, postcode_sector_name, filename):
         driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
         for feature in data:
             sink.write(feature)
+
 
 def format_data(existing_data, new_data, frequency, bandwidth,
     postcode_sector_name):
