@@ -3,16 +3,7 @@ import os
 import numpy as np
 from shapely.geometry import shape, Point
 
-from digital_comms.mobile_network.system_simulator import (
-    #read_postcode_sector,
-    #get_local_authority_ids,
-    #determine_environment,
-    #get_sites,
-    #generate_receivers,
-    NetworkManager,
-    #find_and_deploy_new_site,
-    #randomly_select_los,
-    )
+from digital_comms.mobile_network.system_simulator import NetworkManager
 from scripts.mobile_simulator_run import (
     read_postcode_sector,
     get_local_authority_ids,
@@ -42,7 +33,7 @@ def setup_simulation_parameters():
     }
 
 @pytest.fixture
-def base_system(setup_postcode_sector, setup_simulation_parameters):
+def base_system(setup_cb41_postcode_sector, setup_simulation_parameters):
 
     TRANSMITTERS = [
             {
@@ -170,7 +161,7 @@ def base_system(setup_postcode_sector, setup_simulation_parameters):
         }
     ]
 
-    geojson_postcode_sector = setup_postcode_sector
+    geojson_postcode_sector = setup_cb41_postcode_sector
 
     geojson_postcode_sector['properties']['local_authority_ids'] = [
         'E07000008'
@@ -180,6 +171,7 @@ def base_system(setup_postcode_sector, setup_simulation_parameters):
         RECEIVERS, setup_simulation_parameters)
 
     return system
+
 
 @pytest.fixture
 def postcode_sector_lut():
@@ -193,6 +185,7 @@ def postcode_sector_lut():
         'estimated_population': 50,
         'area': 200,
     }
+
 
 @pytest.fixture
 def modulation_coding_lut():
@@ -267,6 +260,7 @@ def test_determine_environment(postcode_sector_lut):
 
     assert actual_results == expected_result
 
+
 def test_get_sites(setup_postcode_sector, setup_simulation_parameters):
 
     postcode_sector = setup_postcode_sector
@@ -284,6 +278,7 @@ def test_get_sites(setup_postcode_sector, setup_simulation_parameters):
 
     assert len(actual_sites_in_shape) == 1
 
+
 def test_generate_receivers(setup_postcode_sector,
     postcode_sector_lut, setup_simulation_parameters):
 
@@ -300,6 +295,7 @@ def test_generate_receivers(setup_postcode_sector,
     assert receiver_1['properties']['gain'] == 4
     assert receiver_1['properties']['losses'] == 4
     assert receiver_1['properties']['indoor'] == True
+
 
 def test_find_and_deploy_new_site(base_system,
     setup_postcode_sector, setup_simulation_parameters):
@@ -362,11 +358,13 @@ def test_find_and_deploy_new_site(base_system,
     assert len(new_transmitter) == 1
     assert new_transmitter == expected_transmitter
 
+
 def test_network_manager(base_system):
 
     assert len(base_system.area) == 1
     assert len(base_system.sites) == 4
     assert len(base_system.receivers) == 3
+
 
 def test_build_new_assets(base_system, setup_simulation_parameters):
 
@@ -396,6 +394,7 @@ def test_build_new_assets(base_system, setup_simulation_parameters):
         )
 
     assert len(base_system.sites) == 5
+
 
 # def test_estimate_link_budget(base_system, modulation_coding_lut):
 
@@ -447,6 +446,7 @@ def test_build_new_assets(base_system, setup_simulation_parameters):
 #     expected_result = 0
 
 #     assert expected_result == actual_result
+
 
 def test_find_closest_available_sites(base_system):
 
@@ -521,6 +521,7 @@ def test_calculate_path_loss(base_system):
 
     assert actual_result == round(path_loss,2)
 
+
 def test_calc_received_power(base_system):
 
     receiver = base_system.receivers['AB3']
@@ -542,6 +543,7 @@ def test_calc_received_power(base_system):
     expected_received_power = ((40 + 20 - 2) - 173.94 - 4 + 4 - 4)
 
     assert actual_received_power == expected_received_power
+
 
 def test_calculate_interference(base_system):
 
@@ -578,6 +580,7 @@ def test_calculate_interference(base_system):
 
     assert actual_interference == expected_interference
 
+
 def test_calculate_noise(base_system):
 
     bandwidth = 100
@@ -587,6 +590,7 @@ def test_calculate_noise(base_system):
     expected_result = -92.48
 
     assert actual_result == expected_result
+
 
 def test_calculate_sinr(base_system, setup_simulation_parameters):
 
@@ -655,6 +659,7 @@ def test_calculate_sinr(base_system, setup_simulation_parameters):
 
     assert actual_sinr == 45.51
 
+
 def test_modulation_scheme_and_coding_rate(base_system):
 
     MODULATION_AND_CODING_LUT =[
@@ -707,6 +712,7 @@ def test_modulation_scheme_and_coding_rate(base_system):
 
     assert actual_result == expected_result
 
+
 def test_link_budget_capacity(base_system):
 
     bandwidth = 10
@@ -727,4 +733,37 @@ def test_find_sites_in_area(base_system):
 
     actual_sites = base_system.find_sites_in_area()
 
-    assert len(actual_sites) == 0
+    assert len(actual_sites) == 2
+
+
+def test_site_density(base_system):
+
+    # CB43 area is 2,180,238 m^2
+    # sites = 2
+    # 0.91733 sites per km^2 = 2 / (2,180,238 / 1e6)
+    actual_site_density = round(base_system.site_density(),2)
+
+    assert actual_site_density == 0.92
+
+
+def test_receiver_density(base_system):
+
+    # CB43 area is 2,180,238 m^2
+    # receivers = 3
+    # 1.375 receivers per km^2 = 3 / (2,180,238 / 1e6)
+    actual_receiver_density = round(base_system.receiver_density(),2)
+
+    assert actual_receiver_density == 1.38
+
+
+# def test_energy_consumption(base_system, setup_simulation_parameters):
+
+#     # sites = 2
+#     # power = 40 dBm
+#     actual_energy_consumption = base_system.energy_consumption(
+#         setup_simulation_parameters
+#         )
+
+#     print(actual_energy_consumption)
+
+#     assert actual_energy_consumption == 800

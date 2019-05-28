@@ -550,17 +550,18 @@ class NetworkManager(object):
         cells_per_site = simulation_parameters['sectorisation']
 
         sites_in_area = self.find_sites_in_area()
-        # print('number of sites_in_area {}'.format(len(sites_in_area)))
+        print('number of sites_in_area {}'.format(len(sites_in_area)))
         total_power_dbm = [round(a.power) for a in sites_in_area]
-
+        print('total_power_dbm {}'.format(total_power_dbm))
         watts_per_area = []
         for value in total_power_dbm:
             watts_for_1_cell_per_site = 1 * 10**(value / 10) / 1000
             wattsd_per_site = watts_for_1_cell_per_site * cells_per_site
+            print('wattsd_per_site {}'.format(wattsd_per_site))
             watts_per_area.append(wattsd_per_site)
-
+        print('watts_per_area {}'.format(watts_per_area))
         total_power_watts = sum(watts_per_area)
-        # print('total_power_watts {}'.format(total_power_watts/1000000))
+        print('total_power_watts {}'.format(total_power_watts/1000000))
 
         return total_power_watts
 
