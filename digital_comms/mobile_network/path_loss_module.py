@@ -97,15 +97,15 @@ def determine_path_loss(free_space_path_loss, extended_hata_path_loss):
         The path loss resulting from the use of the Extended Hata model (dB).
 
     """
-    print('extended_hata_path_loss {}'.format(extended_hata_path_loss))
+    # print('extended_hata_path_loss {}'.format(extended_hata_path_loss))
     if extended_hata_path_loss < free_space_path_loss:
 
         path_loss = free_space_path_loss
-        print('free_space_path_loss {}'.format(path_loss))
+        # print('free_space_path_loss {}'.format(path_loss))
     else:
 
         path_loss = extended_hata_path_loss
-        print('extended_hata_path_loss {}'.format(path_loss))
+        # print('extended_hata_path_loss {}'.format(path_loss))
     return path_loss
 
 def free_space(frequency, distance, ant_height, ue_height):
@@ -226,7 +226,7 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
                 (44.9 - 6.55*np.log10(max(30, hb))) *
                 (np.log10(distance))**alpha_exponent - alpha_hm - beta_hb
             )
-            print('path loss p1 is {}'.format(path_loss))
+            # print('path loss p1 is {}'.format(path_loss))
         elif 2000 < frequency <= 3000:
 
             path_loss = (
@@ -342,15 +342,15 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
             )
 
         elif above_roof == 0:
-            print('path_loss is {}'.format(path_loss))
+            # print('path_loss is {}'.format(path_loss))
             sigma = (17 + (9-17) / (0.6-0.2) * (distance - 0.02))
-            print('sigma is {}'.format(sigma))
+            # print('sigma is {}'.format(sigma))
             random_quantity = generate_log_normal_dist_value(1, sigma, 1)
-            print('random_quantity is {}'.format(random_quantity))
+            # print('random_quantity is {}'.format(random_quantity))
             path_loss = (
                 path_loss + random_quantity
             )
-            print('final path_loss is {} with rand {}'.format(path_loss, random_quantity))
+            # print('final path_loss is {} with rand {}'.format(path_loss, random_quantity))
         else:
 
             raise ValueError('Could not determine if cell is above or below roof line')

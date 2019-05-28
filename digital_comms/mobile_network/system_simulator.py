@@ -102,11 +102,11 @@ class NetworkManager(object):
         results = []
 
         for receiver in self.receivers.values():
-            # print(receiver.id)
+            print(receiver.id)
             closest_site, interfering_sites = (
                 self.find_closest_available_sites(receiver)
             )
-            # print('closest_site is {}'.format(closest_site))
+            print('closest_site is {}'.format(closest_site))
             # print('interfering_sites is {}'.format(interfering_sites))
             path_loss = self.calculate_path_loss(
                 closest_site, receiver, frequency, mast_height, environment
@@ -143,14 +143,14 @@ class NetworkManager(object):
 
             results.append(data)
 
-            # print('received_power is {}'.format(received_power))
-            # print('interference is {}'.format(interference))
-            # print('noise is {}'.format(noise))
-            # print('sinr is {}'.format(sinr))
-            # print('spectral_efficiency is {}'.format(spectral_efficiency))
-            # print('estimated_capacity is {}'.format(estimated_capacity))
-            # print('path_loss is {}'.format(path_loss))
-            # print('-----------------------------')
+            print('received_power is {}'.format(received_power))
+            print('interference is {}'.format(interference))
+            print('noise is {}'.format(noise))
+            print('sinr is {}'.format(sinr))
+            print('spectral_efficiency is {}'.format(spectral_efficiency))
+            print('estimated_capacity is {}'.format(estimated_capacity))
+            print('path_loss is {}'.format(path_loss))
+            print('-----------------------------')
 
         return results
 
