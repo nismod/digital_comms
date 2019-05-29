@@ -146,7 +146,6 @@ def test_decide_interventions(non_4g_system, basic_system,
     assert len(actual_result[0]) == 6
     assert actual_result[1] == 0
 
-
     actual_result = decide_interventions(
         'cloud-ran', (101834+30000)*2 , 10,
         mixed_system, 2020, 0.5, 0.25, 30

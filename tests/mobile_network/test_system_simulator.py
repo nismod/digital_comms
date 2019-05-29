@@ -18,6 +18,7 @@ from scripts.mobile_simulator_run import (
 def setup_simulation_parameters():
     return {
     'iterations': 100,
+    'seed_value': 42,
     'tx_baseline_height': 30,
     'tx_upper_height': 40,
     'tx_power': 40,
@@ -335,6 +336,7 @@ def test_calculate_path_loss(base_system):
     # type_of_sight = 'nlos'
     ue_height = 1.5
     # above_roof = 0
+    seed_value = 42
 
     receiver = base_system.receivers['AB3']
 
@@ -343,7 +345,8 @@ def test_calculate_path_loss(base_system):
         )
 
     actual_result = base_system.calculate_path_loss(
-        transmitter, receiver, frequency, ant_height, 'urban'
+        transmitter, receiver, frequency, ant_height, 'urban',
+        42
         )
 
     #model requires frequency in MHz rather than GHz.
@@ -415,7 +418,8 @@ def test_calculate_interference(base_system):
         interfering_transmitters,
         receiver,
         frequency,
-        'urban'
+        'urban',
+        42
         )
 
     #AB3

@@ -675,44 +675,49 @@ def _suggest_interventions(budget, available_interventions,
                 if site_ngr.startswith('site_'):
                     current_number += 1
 
-                parts = site_ngr.partition('_')
+                while True:
 
-                unique_id = (
-                    parts[0] + '_' + str(current_number + 1) + '_' + area.id + '_build_4G_macro_site'
-                    )
+                    unique_id = (
+                        site_ngr + '_' + str(current_number + 1) + '_' + area.id + '_build_4G_macro_site'
+                        )
 
-                if unique_id not in unique_intervention_ids:
-                    unique_intervention_ids.append(unique_id)
-                    to_build = copy.deepcopy(build_option)
-                    to_build[0]['site_ngr'] = 'site_' + str(current_number + 1)
-                    to_build[0]['technology'] = '4G'
-                    to_build[0]['frequency'] = ['800', '1800', '2600']
-                    to_build[0]['ran_type'] = 'distributed'
-                    to_build[0]['bandwidth'] = 'frequency_dependent'
-                    to_build[0]['sectors'] = 3
-                    to_build[0]['pcd_sector'] = area.id
-                    to_build[0]['lad'] = area.lad_id
-                    to_build[0]['build_date'] = timestep
-                    to_build[0]['item'] = 'build_4G_macro_site'
-                    to_build[0]['cost'] = cost
+                    if unique_id in unique_intervention_ids:
+                        current_number += 1
+                        continue
+                    else:
 
-                    area_interventions += to_build
-                    built_interventions += to_build
-                    assets_by_site[site_ngr] = [to_build]
+                        unique_intervention_ids.append(unique_id)
+                        to_build = copy.deepcopy(build_option)
+                        to_build[0]['site_ngr'] = 'site_' + str(current_number + 1)
+                        to_build[0]['technology'] = '4G'
+                        to_build[0]['frequency'] = ['800', '1800', '2600']
+                        to_build[0]['ran_type'] = 'distributed'
+                        to_build[0]['bandwidth'] = 'frequency_dependent'
+                        to_build[0]['sectors'] = 3
+                        to_build[0]['pcd_sector'] = area.id
+                        to_build[0]['lad'] = area.lad_id
+                        to_build[0]['build_date'] = timestep
+                        to_build[0]['item'] = 'build_4G_macro_site'
+                        to_build[0]['cost'] = cost
 
-                    budget -= cost
-                    current_number += 1
+                        area_interventions += to_build
+                        built_interventions += to_build
+                        assets_by_site[site_ngr] = [to_build]
 
-                    if calc_capacity(area, area_interventions,
-                        service_obligation_capacity, traffic,
-                        market_share, mast_height) >= check_max_capacity(area):
-                        break
+                        budget -= cost
+                        current_number += 1
 
-                    if budget <= 0 or \
-                        _area_satisfied(area, area_interventions,
-                        service_obligation_capacity, traffic,
-                        market_share, mast_height):
-                        break
+                        if calc_capacity(area, area_interventions,
+                            service_obligation_capacity, traffic,
+                            market_share, mast_height) >= check_max_capacity(area):
+                            break
+
+                        if budget <= 0 or \
+                            _area_satisfied(area, area_interventions,
+                            service_obligation_capacity, traffic,
+                            market_share, mast_height):
+                            break
+
 
         if budget <= 0:
             break
@@ -735,40 +740,42 @@ def _suggest_interventions(budget, available_interventions,
                 if site_ngr.startswith('site_'):
                     current_number += 1
 
-                parts = site_ngr.partition('_')
+                while True:
 
-                unique_id = (
-                    parts[0] + '_' + str(int(parts[2]) + 1) + '_build_5G_macro_site'
-                    )
+                    unique_id = (
+                        site_ngr + '_' + str(current_number + 1) + '_build_5G_macro_site'
+                        )
 
-                current_number += 1
-                if unique_id not in unique_intervention_ids:
+                    current_number += 1
+                    if unique_id in unique_intervention_ids:
+                        current_number += 1
+                        continue
+                    else:
+                        unique_intervention_ids.append(unique_id)
+                        to_build = copy.deepcopy(build_option)
+                        to_build[0]['site_ngr'] = 'site_' + str(current_number + 1)
+                        to_build[0]['technology'] = '5G'
+                        to_build[0]['frequency'] = ['700', '800', '1800', '2600', '3500']
+                        to_build[0]['ran_type'] = 'distributed'
+                        to_build[0]['bandwidth'] = 'frequency_dependent'
+                        to_build[0]['sectors'] = 3
+                        to_build[0]['pcd_sector'] = area.id
+                        to_build[0]['lad'] = area.lad_id
+                        to_build[0]['build_date'] = timestep
+                        to_build[0]['item'] = 'build_5G_macro_site'
+                        to_build[0]['cost'] = cost
 
-                    unique_intervention_ids.append(unique_id)
-                    to_build = copy.deepcopy(build_option)
-                    to_build[0]['site_ngr'] = 'site_' + str(int(parts[2]) + 1)
-                    to_build[0]['technology'] = '5G'
-                    to_build[0]['frequency'] = ['700', '800', '1800', '2600', '3500']
-                    to_build[0]['ran_type'] = 'distributed'
-                    to_build[0]['bandwidth'] = 'frequency_dependent'
-                    to_build[0]['sectors'] = 3
-                    to_build[0]['pcd_sector'] = area.id
-                    to_build[0]['lad'] = area.lad_id
-                    to_build[0]['build_date'] = timestep
-                    to_build[0]['item'] = 'build_5G_macro_site'
-                    to_build[0]['cost'] = cost
+                        area_interventions += to_build
+                        built_interventions += to_build
+                        assets_by_site[site_ngr] = [to_build]
 
-                    area_interventions += to_build
-                    built_interventions += to_build
-                    assets_by_site[site_ngr] = [to_build]
+                        budget -= cost
 
-                    budget -= cost
-
-                    if budget <= 0 or \
-                        _area_satisfied(area, area_interventions,
-                        service_obligation_capacity,traffic,
-                        market_share, mast_height) :
-                        break
+                        if budget <= 0 or \
+                            _area_satisfied(area, area_interventions,
+                            service_obligation_capacity,traffic,
+                            market_share, mast_height) :
+                            break
 
         if budget <= 0:
             break

@@ -101,6 +101,8 @@ class NetworkManager(object):
         """
         results = []
 
+        seed_value = simulation_parameters['seed_value']
+
         for receiver in self.receivers.values():
 
             closest_site, interfering_sites = (
@@ -108,7 +110,8 @@ class NetworkManager(object):
             )
 
             path_loss = self.calculate_path_loss(
-                closest_site, receiver, frequency, mast_height, environment
+                closest_site, receiver, frequency, mast_height,
+                environment, seed_value
             )
 
             received_power = self.calc_received_power(
@@ -116,7 +119,8 @@ class NetworkManager(object):
             )
 
             interference = self.calculate_interference(
-                interfering_sites, receiver, frequency, environment)
+                interfering_sites, receiver, frequency, environment,
+                seed_value)
 
             noise = self.calculate_noise(
                 bandwidth
@@ -142,14 +146,15 @@ class NetworkManager(object):
 
             results.append(data)
 
-            # print('received_power is {}'.format(received_power))
-            # print('interference is {}'.format(interference))
-            # print('noise is {}'.format(noise))
-            # print('sinr is {}'.format(sinr))
-            # print('spectral_efficiency is {}'.format(spectral_efficiency))
-            # print('estimated_capacity is {}'.format(estimated_capacity))
-            # print('path_loss is {}'.format(path_loss))
-            # print('-----------------------------')
+            # if spectral_efficiency == None:
+            #     print('received_power is {}'.format(received_power))
+            #     print('interference is {}'.format(interference))
+            #     print('noise is {}'.format(noise))
+            #     print('sinr is {}'.format(sinr))
+            #     print('spectral_efficiency is {}'.format(spectral_efficiency))
+            #     print('estimated_capacity is {}'.format(estimated_capacity))
+            #     print('path_loss is {}'.format(path_loss))
+            #     print('-----------------------------')
 
         return results
 
@@ -181,7 +186,7 @@ class NetworkManager(object):
 
 
     def calculate_path_loss(self, closest_site, receiver,
-        frequency, mast_height, environment):
+        frequency, mast_height, environment, seed_value):
 
         # for area in self.area.values():
         #     local_authority_ids = area.local_authority_ids
@@ -236,7 +241,8 @@ class NetworkManager(object):
             type_of_sight,
             receiver.ue_height,
             above_roof,
-            location
+            location,
+            seed_value
             )
 
         # print('path loss for {} to nearest cell {} is {}'.format(
@@ -269,7 +275,7 @@ class NetworkManager(object):
 
 
     def calculate_interference(
-        self, closest_sites, receiver, frequency, environment):
+        self, closest_sites, receiver, frequency, environment, seed_value):
         """
         Calculate interference from other cells.
 
@@ -314,7 +320,6 @@ class NetworkManager(object):
                 round(i_strt_distance['s12'], 0)
                 )
 
-
             if interference_strt_distance < 250 :
                 type_of_sight = 'los'
             else:
@@ -340,6 +345,7 @@ class NetworkManager(object):
                 receiver.ue_height,
                 above_roof,
                 indoor,
+                seed_value,
                 )
 
             # print('interference path loss for {} to {} is {}'.format(
@@ -422,8 +428,7 @@ class NetworkManager(object):
         coding rate.
 
         """
-        spectral_efficiency = 0
-
+        spectral_efficiency = 0.1
         for lower, upper in pairwise(modulation_and_coding_lut):
             if lower[0] and upper[0] == generation:
 
@@ -432,9 +437,21 @@ class NetworkManager(object):
 
                 if sinr >= lower_sinr and sinr < upper_sinr:
                     spectral_efficiency = lower[4]
-                    break
+                    return spectral_efficiency
 
-        return spectral_efficiency
+                highest_value = modulation_and_coding_lut[-1]
+                if sinr >= highest_value[5]:
+
+                    spectral_efficiency = highest_value[4]
+                    return spectral_efficiency
+
+
+                lowest_value = modulation_and_coding_lut[0]
+
+                if sinr < lowest_value[5]:
+
+                    spectral_efficiency = lowest_value[4]
+                    return spectral_efficiency
 
 
     def link_budget_capacity(self, bandwidth, spectral_efficiency):
@@ -445,7 +462,9 @@ class NetworkManager(object):
         capacity (Mbps) = bandwidth (MHz) + log2*(1+SINR[dB])
 
         """
-        #estimated_capacity = round(bandwidth*np.log2(1+sinr), 2)
+        # if spectral_efficiency == None:
+        #     spectral_efficiency = 0.01
+
         bandwidth_in_hertz = bandwidth*1000000
 
         link_budget_capacity = bandwidth_in_hertz*spectral_efficiency
