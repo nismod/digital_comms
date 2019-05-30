@@ -126,9 +126,9 @@ class NetworkManager(object):
                 bandwidth
             )
 
-            sinr = self.calculate_sinr(
+            f_received_power, f_interference, f_noise, sinr, = self.calculate_sinr(
                 received_power, interference, noise, simulation_parameters
-            )
+                )
 
             spectral_efficiency = self.modulation_scheme_and_coding_rate(
                 sinr, generation, modulation_and_coding_lut
@@ -139,22 +139,24 @@ class NetworkManager(object):
             )
 
             data = {
-                'spectral_efficiency': spectral_efficiency,
+                'received_power': f_received_power,
+                'interference': f_interference,
+                'noise': f_noise,
                 'sinr': sinr,
+                'spectral_efficiency': spectral_efficiency,
                 'capacity_mbps': estimated_capacity
                 }
 
             results.append(data)
 
-            # if spectral_efficiency == None:
-            #     print('received_power is {}'.format(received_power))
-            #     print('interference is {}'.format(interference))
-            #     print('noise is {}'.format(noise))
-            #     print('sinr is {}'.format(sinr))
-            #     print('spectral_efficiency is {}'.format(spectral_efficiency))
-            #     print('estimated_capacity is {}'.format(estimated_capacity))
-            #     print('path_loss is {}'.format(path_loss))
-            #     print('-----------------------------')
+            # print('received_power is {}'.format(received_power))
+            # print('interference is {}'.format(interference))
+            # print('noise is {}'.format(noise))
+            # print('sinr is {}'.format(sinr))
+            # print('spectral_efficiency is {}'.format(spectral_efficiency))
+            # print('estimated_capacity is {}'.format(estimated_capacity))
+            # print('path_loss is {}'.format(path_loss))
+            # print('-----------------------------')
 
         return results
 
@@ -409,16 +411,16 @@ class NetworkManager(object):
             interference_values.append(output_value)
 
         network_load = simulation_parameters['network_load']
-
-        raw_sum_of_interference = sum(interference_values) * (1+(network_load/100))
+        i_summed = sum(interference_values)
+        raw_sum_of_interference = i_summed * (1+(network_load/100))
 
         raw_noise = 10**noise
 
-        sinr = np.log10(
+        sinr = round(np.log10(
             raw_received_power / (raw_sum_of_interference + raw_noise)
-            )
+            ),2)
 
-        return round(sinr, 2)
+        return received_power, i_summed, noise, sinr
 
 
     def modulation_scheme_and_coding_rate(self, sinr,

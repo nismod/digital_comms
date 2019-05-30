@@ -325,6 +325,60 @@ def generate_receivers(postcode_sector, postcode_sector_lut, simulation_paramete
     return receivers
 
 
+def generate_interfering_sites(postcode_sector, simulation_parameters):
+    """
+
+    """
+    coordinates = []
+
+    geom = shape(postcode_sector['geometry'])
+    geom_box = geom.bounds
+
+    minx = geom_box[0]
+    miny = geom_box[1]
+    maxx = geom_box[2]
+    maxy = geom_box[3]
+
+    interfering_sites = []
+
+    id_number = 0
+
+    while len(interfering_sites) < simulation_parameters['interfering_sites']:
+
+        x_coord = np.random.uniform(low=minx, high=maxx, size=1)
+        y_coord = np.random.uniform(low=miny, high=maxy, size=1)
+
+        coordinates = list(zip(x_coord, y_coord))
+
+        # Join the two
+        postcode_sector_shape = shape(postcode_sector['geometry'])
+        interfering_site = Point((x_coord, y_coord))
+        if not postcode_sector_shape.contains(interfering_site):
+            interfering_sites.append({
+                'type': "Feature",
+                'geometry': {
+                    "type": "Point",
+                    "coordinates": [coordinates[0][0],coordinates[0][1]],
+                },
+                'properties': {
+                    "sitengr": 'site_id_{}'.format(id_number),
+                    "ant_height": 30,
+                    "tech": '4G',
+                    "freq": 'lte bands',#[800, 1800, 2600],
+                    "type": '3 sectored macrocell',
+                    "power": simulation_parameters['tx_power'],
+                    "gain": simulation_parameters['tx_gain'],
+                    "losses": simulation_parameters['tx_losses'],
+                }
+            })
+            id_number += 1
+
+        else:
+            pass
+
+    return interfering_sites
+
+
 def find_and_deploy_new_site(sites, geojson_postcode_sector,
     simulation_parameters):
     """
@@ -342,7 +396,7 @@ def find_and_deploy_new_site(sites, geojson_postcode_sector,
 
     """
     new_transmitters = []
-    print('number of sites {}'.format(sites))
+    # print('number of sites {}'.format(sites))
     geom = shape(geojson_postcode_sector['geometry'])
 
     min_x, min_y, max_x, max_y = geom.bounds
@@ -359,29 +413,17 @@ def find_and_deploy_new_site(sites, geojson_postcode_sector,
             coords.add((x, y))
 
     unique_coords = list(coords)
-    print('len(unique_coords) {}'.format(len(unique_coords)))
+    # print('len(unique_coords) {}'.format(len(unique_coords)))
     points = []
-    outside_points = []
     for point in unique_coords:
-        # print('len(points) {}'.format(len(points)))
-        # print('sites {}'.format(sites))
         if len(points) < sites:
             random_point = Point([point[0], point[1]])
             if (random_point.within(geom)):
                 points.append(list(random_point.coords))
-            else:
-                pass
-        else:
-            pass
-        if len(outside_points) < 3:
-            outside_points.append(point)
 
     idx = 0
-    print('len(points) {}'.format(len(points)))
-    print('len(outside_points) {}'.format(len(outside_points)))
 
-    points.append(outside_points)
-    print('len(points) {}'.format(len(points)))
+    # print('len(points) {}'.format(len(points)))
     for point in points:
         idx += 1
         new_transmitters.append({
@@ -401,7 +443,7 @@ def find_and_deploy_new_site(sites, geojson_postcode_sector,
                     "losses": simulation_parameters['tx_losses'],
                 }
             })
-    print('len(new_transmitters) {}'.format(len(new_transmitters)))
+    # print('len(new_transmitters) {}'.format(len(new_transmitters)))
     return new_transmitters
 
 
@@ -410,6 +452,9 @@ def obtain_threshold_values(results, simulation_parameters):
     Get the threshold capacity based on a given percentile.
 
     """
+    received_power = []
+    interference = []
+    noise = []
     spectral_efficency = []
     sinr = []
     threshold_capacity_value = []
@@ -417,6 +462,24 @@ def obtain_threshold_values(results, simulation_parameters):
     percentile = simulation_parameters['percentile']
 
     for result in results:
+
+        rp = result['received_power']
+        if rp == None:
+            pass
+        else:
+            received_power.append(rp)
+
+        i = result['interference']
+        if i == None:
+            pass
+        else:
+            interference.append(i)
+
+        n = result['noise']
+        if n == None:
+            pass
+        else:
+            noise.append(n)
 
         se = result['spectral_efficiency']
         if se == None:
@@ -436,11 +499,14 @@ def obtain_threshold_values(results, simulation_parameters):
         else:
             threshold_capacity_value.append(capacity_mbps)
 
+    received_power = np.percentile(received_power, percentile)
+    interference = np.percentile(interference, percentile)
+    noise = np.percentile(noise, percentile)
     spectral_efficency = np.percentile(spectral_efficency, percentile)
     sinr = np.percentile(sinr, percentile)
     capacity_mbps = np.percentile(threshold_capacity_value, percentile)
 
-    return spectral_efficency, sinr, capacity_mbps
+    return received_power, interference, noise, spectral_efficency, sinr, capacity_mbps
 
 
 def calculate_network_efficiency(spectral_efficency, energy_consumption):
@@ -475,6 +541,7 @@ def write_results(results, frequency, bandwidth, site_density, environment,
         results_writer.writerow((
             'environment', 'frequency','bandwidth','technology',
             'generation', 'mast_height', 'site_density','r_density',
+            'received_power', 'interference', 'noise',
             'spectral_efficiency', 'sinr','throughput'
             ))
     else:
@@ -493,6 +560,9 @@ def write_results(results, frequency, bandwidth, site_density, environment,
             mast_height,
             site_density,
             r_density,
+            result['received_power'],
+            result['interference'],
+            result['noise'],
             result['spectral_efficiency'],
             result['sinr'],
             result['capacity_mbps'])
@@ -502,6 +572,7 @@ def write_results(results, frequency, bandwidth, site_density, environment,
 
 
 def write_lookup_table(
+    received_power, interference, noise,
     cell_edge_spectral_efficency, cell_edge_sinr, single_sector_capacity_mbps,
     area_capacity_mbps, network_efficiency, environment, operator, technology,
     frequency, bandwidth, mast_height, area_site_density, generation,
@@ -523,6 +594,7 @@ def write_lookup_table(
             ('environment', 'operator', 'technology',
             'frequency', 'bandwidth', 'mast_height',
             'area_site_density', 'generation',
+            'cell_edge_received_power', 'cell_edge_interference', 'cell_edge_noise',
             'cell_edge_spectral_efficency', 'cell_edge_sinr',
             'single_sector_capacity_mbps',
             'area_capacity_mbps', 'network_efficiency')
@@ -541,6 +613,9 @@ def write_lookup_table(
         mast_height,
         area_site_density,
         generation,
+        received_power,
+        interference,
+        noise,
         cell_edge_spectral_efficency,
         cell_edge_sinr,
         single_sector_capacity_mbps,
@@ -634,11 +709,19 @@ def run_simulator(postcode_sector_name, environment, transmitter_type,
         '{}_receivers.shp'.format(postcode_sector_name)
         )
 
+    INTERFERING_SITES = generate_interfering_sites(
+        geojson_postcode_sector, simulation_parameters
+        )
+
+    write_shapefile(
+        INTERFERING_SITES, postcode_sector_name,
+        '{}_interfering_sites.shp'.format(postcode_sector_name)
+        )
     idx = 0
 
     for mast_height in MAST_HEIGHT:
         for operator, technology, frequency, bandwidth, generation in SPECTRUM_PORTFOLIO:
-            for number_of_new_sites in [4, 6, 12, 24, 126, 336]:
+            for number_of_new_sites in [3, 24]:#, 6, 12, 24, 126, 336]:
 
                 idx = 0
 
@@ -647,6 +730,8 @@ def run_simulator(postcode_sector_name, environment, transmitter_type,
                         geojson_postcode_sector,
                         simulation_parameters
                         )
+                for site in INTERFERING_SITES:
+                    TRANSMITTERS.append(site)
 
                 MANAGER = NetworkManager(
                     geojson_postcode_sector, TRANSMITTERS, RECEIVERS, simulation_parameters
@@ -667,9 +752,10 @@ def run_simulator(postcode_sector_name, environment, transmitter_type,
                     simulation_parameters
                     )
 
-                spectral_efficency, sinr, single_sector_capacity_mbps = (
-                    obtain_threshold_values(results, simulation_parameters)
-                    )
+                received_power, interference, noise, spectral_efficency, \
+                    sinr, single_sector_capacity_mbps = (
+                        obtain_threshold_values(results, simulation_parameters)
+                        )
 
                 network_efficiency = calculate_network_efficiency(
                     spectral_efficency,
@@ -695,6 +781,7 @@ def run_simulator(postcode_sector_name, environment, transmitter_type,
                     )
 
                 write_lookup_table(
+                    received_power, interference, noise,
                     spectral_efficency, sinr, single_sector_capacity_mbps,
                     area_capacity_mbps, network_efficiency, environment, operator,
                     technology, frequency, bandwidth, mast_height, current_site_density,
@@ -716,7 +803,7 @@ SPECTRUM_PORTFOLIO = [
 
 MAST_HEIGHT = [
     (30),
-    (40)
+    #(40)
 ]
 
 MODULATION_AND_CODING_LUT =[
