@@ -15,6 +15,7 @@ from shapely.geometry import shape, Point, Polygon
 import numpy as np
 from geographiclib.geodesic import Geodesic
 from scipy.spatial import Delaunay
+from random import shuffle
 
 from itertools import tee
 from collections import OrderedDict
@@ -324,8 +325,8 @@ def generate_receivers(postcode_sector, postcode_sector_lut, simulation_paramete
     return receivers
 
 
-def find_and_deploy_new_site(existing_sites, new_sites,
-    geojson_postcode_sector, idx, simulation_parameters):
+def find_and_deploy_new_site(sites, geojson_postcode_sector,
+    simulation_parameters):
     """
     Given existing site locations, try deploy a new one in the area
     which has the largest existing gap between sites.
@@ -340,25 +341,47 @@ def find_and_deploy_new_site(existing_sites, new_sites,
         The postcode sector boundary in GeoJson format.
 
     """
-    num_points = new_sites #+ len(existing_sites)
-    print('num_points {}'.format(num_points))
     new_transmitters = []
-
+    print('number of sites {}'.format(sites))
     geom = shape(geojson_postcode_sector['geometry'])
+
     min_x, min_y, max_x, max_y = geom.bounds
-    x = (np.linspace(min_x,max_x,num_points))
-    y=  (np.linspace(min_y,max_y,num_points))
+    x = (np.linspace(min_x,max_x,sites))
+    y=  (np.linspace(min_y,max_y,sites))
     xx,yy = np.meshgrid(x,y,sparse=True)
     xx = xx.reshape((np.prod(xx.shape),))
     yy = yy.reshape((np.prod(yy.shape),))
-    points = []
+
+    coords = set()
 
     for x in xx:
         for y in yy:
-            random_point = Point([x, y])
+            coords.add((x, y))
+
+    unique_coords = list(coords)
+    print('len(unique_coords) {}'.format(len(unique_coords)))
+    points = []
+    outside_points = []
+    for point in unique_coords:
+        # print('len(points) {}'.format(len(points)))
+        # print('sites {}'.format(sites))
+        if len(points) < sites:
+            random_point = Point([point[0], point[1]])
             if (random_point.within(geom)):
                 points.append(list(random_point.coords))
-    print(points)
+            else:
+                pass
+        else:
+            pass
+        if len(outside_points) < 3:
+            outside_points.append(point)
+
+    idx = 0
+    print('len(points) {}'.format(len(points)))
+    print('len(outside_points) {}'.format(len(outside_points)))
+
+    points.append(outside_points)
+    print('len(points) {}'.format(len(points)))
     for point in points:
         idx += 1
         new_transmitters.append({
@@ -378,7 +401,6 @@ def find_and_deploy_new_site(existing_sites, new_sites,
                     "losses": simulation_parameters['tx_losses'],
                 }
             })
-        print('idx is {}'.format(idx))
     print('len(new_transmitters) {}'.format(len(new_transmitters)))
     return new_transmitters
 
@@ -464,7 +486,6 @@ def write_results(results, frequency, bandwidth, site_density, environment,
         # Output metrics
         results_writer.writerow(
             (environment,
-
             frequency,
             bandwidth,
             technology,
@@ -601,11 +622,6 @@ def run_simulator(postcode_sector_name, environment, transmitter_type,
     # #get propagation environment (urban, suburban or rural)
     # environment = determine_environment(postcode_sector_lut)
 
-    #get list of sites
-    TRANSMITTERS = get_sites(
-        geojson_postcode_sector, transmitter_type, simulation_parameters
-        )
-
     #generate receivers
     RECEIVERS = generate_receivers(
         geojson_postcode_sector,
@@ -620,51 +636,28 @@ def run_simulator(postcode_sector_name, environment, transmitter_type,
 
     idx = 0
 
-    assets = TRANSMITTERS[:]
-
     for mast_height in MAST_HEIGHT:
         for operator, technology, frequency, bandwidth, generation in SPECTRUM_PORTFOLIO:
+            for number_of_new_sites in [4, 6, 12, 24, 126, 336]:
 
-            MANAGER = NetworkManager(
-                geojson_postcode_sector, TRANSMITTERS, RECEIVERS, simulation_parameters
-                )
+                idx = 0
 
-            # # calculate site density
-            current_site_density = MANAGER.site_density()
-            # print('current_site_density {}'.format(current_site_density))
+                TRANSMITTERS = find_and_deploy_new_site(
+                        number_of_new_sites,
+                        geojson_postcode_sector,
+                        simulation_parameters
+                        )
 
-            postcode_sector_object = [a for a in MANAGER.area.values()][0]
+                MANAGER = NetworkManager(
+                    geojson_postcode_sector, TRANSMITTERS, RECEIVERS, simulation_parameters
+                    )
 
-            postcode_sector_area = postcode_sector_object.area/1e6
-
-            idx = 0
-
-            for number_of_new_sites in [5, 10, 20]:
+                current_site_density = MANAGER.site_density()
 
                 print("{} GHz {}m Height {} Density, {}".format(
                     frequency, mast_height, round(current_site_density, 4),
                     generation
                     ))
-
-                if idx > 0:
-
-                    # print('number_of_new_sites {}'.format(number_of_new_sites))
-
-                    NEW_TRANSMITTERS = find_and_deploy_new_site(
-                        MANAGER.sites, number_of_new_sites,
-                        geojson_postcode_sector, idx,
-                        simulation_parameters
-                        )
-
-                    assets += NEW_TRANSMITTERS
-
-                    MANAGER.build_new_assets(
-                        NEW_TRANSMITTERS, geojson_postcode_sector,
-                        simulation_parameters
-                        )
-
-                else:
-                    pass
 
                 idx += 1
 
@@ -688,11 +681,11 @@ def run_simulator(postcode_sector_name, environment, transmitter_type,
                     )
 
                 current_site_density = MANAGER.site_density()
-                # print('current_site_density {}'.format(current_site_density))
+                print('current_site_density {}'.format(current_site_density))
                 r_density = MANAGER.receiver_density()
-                # print('len(assets) {}'.format(len(assets)))
+
                 write_shapefile(
-                    assets, postcode_sector_name,
+                    TRANSMITTERS, postcode_sector_name,
                     '{}_transmitters_{}.shp'.format(postcode_sector_name, current_site_density)
                     )
 
@@ -797,7 +790,7 @@ site_densities = {
     #     'rx_misc_losses': 4,
     #     'rx_height': 1.5,
     #     'network_load': 50,
-    #     'percentile': 10,
+    #     'percentile': 5,
     #     'desired_transmitter_density': 10,
     #     'sectorisation': 3,
     # }

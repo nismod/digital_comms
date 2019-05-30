@@ -2,7 +2,7 @@ from scripts.mobile_cluster_input_files import segments_for_simulator
 from scripts.mobile_simulator_run import run_simulator
 
 SIMULATION_PARAMETERS = {
-    'iterations': 1,
+    'iterations': 100,
     'seed_value': None,
     'tx_baseline_height': 30,
     'tx_upper_height': 40,
@@ -14,7 +14,7 @@ SIMULATION_PARAMETERS = {
     'rx_misc_losses': 4,
     'rx_height': 1.5,
     'network_load': 50,
-    'percentile': 10,
+    'percentile': 5,
     'desired_transmitter_density': 10,
     'sectorisation': 3,
 }
