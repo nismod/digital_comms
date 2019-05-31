@@ -10,12 +10,14 @@ import sys
 import configparser
 import csv
 
+import math
 import fiona
-from shapely.geometry import shape, Point, Polygon
+from shapely.geometry import shape, Point, Polygon, mapping
 import numpy as np
 from geographiclib.geodesic import Geodesic
-from scipy.spatial import Delaunay
+from scipy.spatial import Delaunay, Voronoi, voronoi_plot_2d
 from random import shuffle
+from rtree import index
 
 from itertools import tee
 from collections import OrderedDict
@@ -32,15 +34,88 @@ DATA_RAW = os.path.join(BASE_PATH, 'raw')
 DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 
 
-def read_postcode_sector(postcode_sector, path):
+# def read_postcode_sector(postcode_sector, path):
 
-    with fiona.open(path, 'r') as source:
+#     with fiona.open(path, 'r') as source:
 
-        return [
-            sector for sector in source \
-            if (sector['properties']['RMSect'].replace(' ', '') ==
-                postcode_sector.replace(' ', ''))][0]
+#         return [
+#             sector for sector in source \
+#             if (sector['properties']['RMSect'].replace(' ', '') ==
+#                 postcode_sector.replace(' ', ''))][0]
 
+
+def calculate_polygons(startx, starty, endx, endy, radius):
+    """
+    Calculate a grid of hexagon coordinates of the given radius
+    given lower-left and upper-right coordinates
+    Returns a list of lists containing 6 tuples of x, y point coordinates
+    These can be used to construct valid regular hexagonal polygons
+
+    You will probably want to use projected coordinates for this
+    """
+    # calculate side length given radius
+    sl = (2 * radius) * math.tan(math.pi / 6)
+    # calculate radius for a given side-length
+    # (a * (math.cos(math.pi / 6) / math.sin(math.pi / 6)) / 2)
+    # see http://www.calculatorsoup.com/calculators/geometry-plane/polygon.php
+
+    # calculate coordinates of the hexagon points
+    # sin(30)
+    p = sl * 0.5
+    b = sl * math.cos(math.radians(30))
+    w = b * 2
+    h = 2 * sl
+
+    # offset start and end coordinates by hex widths and heights to guarantee coverage
+    startx = startx - w
+    starty = starty - h
+    endx = endx + w
+    endy = endy + h
+
+    origx = startx
+    origy = starty
+
+
+    # offsets for moving along and up rows
+    xoffset = b
+    yoffset = 3 * p
+
+    polygons = []
+    row = 1
+    counter = 0
+
+    while starty < endy:
+        if row % 2 == 0:
+            startx = origx + xoffset
+        else:
+            startx = origx
+        while startx < endx:
+            p1x = startx
+            p1y = starty + p
+            p2x = startx
+            p2y = starty + (3 * p)
+            p3x = startx + b
+            p3y = starty + h
+            p4x = startx + w
+            p4y = starty + (3 * p)
+            p5x = startx + w
+            p5y = starty + p
+            p6x = startx + b
+            p6y = starty
+            poly = [
+                (p1x, p1y),
+                (p2x, p2y),
+                (p3x, p3y),
+                (p4x, p4y),
+                (p5x, p5y),
+                (p6x, p6y),
+                (p1x, p1y)]
+            polygons.append(poly)
+            counter += 1
+            startx += w
+        starty += yoffset
+        row += 1
+    return polygons
 
 def get_local_authority_ids(postcode_sector):
 
@@ -79,33 +154,6 @@ def import_area_lut(postcode_sector_name, lad_ids):
                     }
 
     return lut
-
-
-def determine_environment(postcode_sector_lut):
-
-    population_density = (
-        postcode_sector_lut['estimated_population'] / float(postcode_sector_lut['area'])
-        )
-    print('population_density {}'.format(population_density))
-    if population_density >= 7959:
-        environment = 'urban'
-    elif 3119 <= population_density < 7959:
-        environment = 'suburban'
-    elif 782 <= population_density < 3119:
-        environment = 'suburban'
-    elif 112 <= population_density < 782:
-        environment = 'rural'
-    elif 47 <= population_density < 112:
-        environment = 'rural'
-    elif 25 <= population_density < 47:
-        environment = 'rural'
-    elif population_density < 25:
-        environment = 'rural'
-    else:
-        environment = 'Environment not determined'
-        raise ValueError('Could not determine environment')
-
-    return environment
 
 
 def get_sites(postcode_sector, transmitter_type, simulation_parameters):
@@ -325,6 +373,33 @@ def generate_receivers(postcode_sector, postcode_sector_lut, simulation_paramete
     return receivers
 
 
+def determine_environment(postcode_sector_lut):
+
+    population_density = (
+        postcode_sector_lut['estimated_population'] / float(postcode_sector_lut['area'])
+        )
+    print('population_density {}'.format(population_density))
+    if population_density >= 7959:
+        environment = 'urban'
+    elif 3119 <= population_density < 7959:
+        environment = 'suburban'
+    elif 782 <= population_density < 3119:
+        environment = 'suburban'
+    elif 112 <= population_density < 782:
+        environment = 'rural'
+    elif 47 <= population_density < 112:
+        environment = 'rural'
+    elif 25 <= population_density < 47:
+        environment = 'rural'
+    elif population_density < 25:
+        environment = 'rural'
+    else:
+        environment = 'Environment not determined'
+        raise ValueError('Could not determine environment')
+
+    return environment
+
+
 def generate_interfering_sites(postcode_sector, simulation_parameters):
     """
 
@@ -332,7 +407,9 @@ def generate_interfering_sites(postcode_sector, simulation_parameters):
     coordinates = []
 
     geom = shape(postcode_sector['geometry'])
-    geom_box = geom.bounds
+    geom_length = geom.length/8
+    geom_buffer = geom.buffer(geom_length)
+    geom_box = geom_buffer.bounds
 
     minx = geom_box[0]
     miny = geom_box[1]
@@ -361,7 +438,7 @@ def generate_interfering_sites(postcode_sector, simulation_parameters):
                     "coordinates": [coordinates[0][0],coordinates[0][1]],
                 },
                 'properties': {
-                    "sitengr": 'site_id_{}'.format(id_number),
+                    "sitengr": 'site_id_interfering_{}'.format(id_number),
                     "ant_height": 30,
                     "tech": '4G',
                     "freq": 'lte bands',#[800, 1800, 2600],
@@ -379,7 +456,7 @@ def generate_interfering_sites(postcode_sector, simulation_parameters):
     return interfering_sites
 
 
-def find_and_deploy_new_site(sites, geojson_postcode_sector,
+def find_and_deploy_new_site(existing_sites, sites, geojson_postcode_sector,
     simulation_parameters):
     """
     Given existing site locations, try deploy a new one in the area
@@ -397,32 +474,93 @@ def find_and_deploy_new_site(sites, geojson_postcode_sector,
     """
     new_transmitters = []
     # print('number of sites {}'.format(sites))
+    # print('len(existing_sites) {}'.format(len(existing_sites)))
+    # print(geojson_postcode_sector['properties'])
+    # postcode_sector_name = geojson_postcode_sector['properties']['RMSect']
     geom = shape(geojson_postcode_sector['geometry'])
-
-    min_x, min_y, max_x, max_y = geom.bounds
-    x = (np.linspace(min_x,max_x,sites))
-    y=  (np.linspace(min_y,max_y,sites))
-    xx,yy = np.meshgrid(x,y,sparse=True)
-    xx = xx.reshape((np.prod(xx.shape),))
-    yy = yy.reshape((np.prod(yy.shape),))
-
-    coords = set()
-
-    for x in xx:
-        for y in yy:
-            coords.add((x, y))
-
-    unique_coords = list(coords)
-    # print('len(unique_coords) {}'.format(len(unique_coords)))
-    points = []
-    for point in unique_coords:
-        if len(points) < sites:
-            random_point = Point([point[0], point[1]])
-            if (random_point.within(geom)):
-                points.append(list(random_point.coords))
-
     idx = 0
 
+    points = []
+
+    existing_site_coordinates = []
+    for existing_site in existing_sites:
+        existing_site_coordinates.append(
+            existing_site['geometry']['coordinates']
+            )
+
+    #convert to numpy array
+    existing_site_coordinates = np.array(
+        existing_site_coordinates
+        )
+
+    #get delaunay grid
+    tri = Delaunay(existing_site_coordinates)
+
+    #get coordinates from grid
+    coord_groups = [tri.points[x] for x in tri.simplices]
+
+    #convert coordinate groups to polygons
+    polygons = [Polygon(x) for x in coord_groups]
+
+    to_write = []
+    idx = 0
+    for polygon in polygons:
+        get_diff = geom.intersection(polygon)
+        if get_diff.is_empty:
+            pass
+        else:
+            to_write.append({
+                'type': "GeometryCollection ",
+                'geometry': mapping(get_diff),
+                'properties': {
+                    'id': str(idx),
+                }
+            })
+        idx += 1
+
+    # write_shapefile(
+    #     to_write, postcode_sector_name,
+    #     '{}_delaunay_{}.shp'.format(postcode_sector_name, sites)
+    #     )
+
+    #sort based on area
+    polygons = sorted(polygons, key=lambda x: x.area, reverse=True)
+
+    #try to allocate using the delauney polygon with the largest area first
+
+    while len(points) < sites:
+        for area in polygons:
+            centroid = area.centroid
+            if geom.contains(centroid):
+                points.append(centroid)
+                continue
+            else:
+                continue
+
+        geom_box = geom.bounds
+
+        minx = geom_box[0]
+        miny = geom_box[1]
+        maxx = geom_box[2]
+        maxy = geom_box[3]
+
+        while len(points) < sites:
+
+            x_coord = np.random.uniform(low=minx, high=maxx, size=1)
+            y_coord = np.random.uniform(low=miny, high=maxy, size=1)
+
+            site = Point((x_coord, y_coord))
+
+            if geom.contains(site):
+                centroid = site.centroid
+                points.append(centroid)
+            else:
+                continue
+
+    for site in existing_sites:
+        new_transmitters.append(site)
+
+    # idx += 1
     # print('len(points) {}'.format(len(points)))
     for point in points:
         idx += 1
@@ -430,7 +568,7 @@ def find_and_deploy_new_site(sites, geojson_postcode_sector,
             'type': "Feature",
             'geometry': {
                 "type": "Point",
-                "coordinates": [point[0][0], point[0][1]]
+                "coordinates": [point.x, point.y]
             },
             'properties': {
                     "sitengr": "{" + 'new' + "}{GEN" + str(idx) + '}',
@@ -443,8 +581,137 @@ def find_and_deploy_new_site(sites, geojson_postcode_sector,
                     "losses": simulation_parameters['tx_losses'],
                 }
             })
+    if len(new_transmitters) > sites:
+        new_transmitters = new_transmitters[:(sites+len(existing_sites))]
+
+        # print(idx)
     # print('len(new_transmitters) {}'.format(len(new_transmitters)))
     return new_transmitters
+
+
+def voronoi_finite_polygons_2d(vor, radius=None):
+
+    """
+    Reconstruct infinite voronoi regions in a 2D diagram to     -
+    * vor : Voronoi
+        Input diagram
+    * radius : float, optional
+        Distance to 'points at infinity'.
+    Returns
+    -------
+    regions : list of tuples
+        Indices of vertices in each revised Voronoi regions.
+    vertices : list of tuples
+        Coordinates for revised Voronoi vertices. Same as coordinates
+        of input vertices, with 'points at infinity' appended to the
+        end.
+    """
+
+    if vor.points.shape[1] != 2:
+        raise ValueError("Requires 2D input")
+
+    new_regions = []
+    new_vertices = vor.vertices.tolist()
+
+    center = vor.points.mean(axis=0)
+    if radius is None:
+        radius = vor.points.ptp().max()
+
+    # Construct a map containing all ridges for a given point
+    all_ridges = {}
+    for (p1, p2), (v1, v2) in zip(vor.ridge_points, vor.ridge_vertices):
+        all_ridges.setdefault(p1, []).append((p2, v1, v2))
+        all_ridges.setdefault(p2, []).append((p1, v1, v2))
+
+    # Reconstruct infinite regions
+    for p1, region in enumerate(vor.point_region):
+        vertices = vor.regions[region]
+
+        if all(v >= 0 for v in vertices):
+            # finite region
+            new_regions.append(vertices)
+            continue
+
+        # reconstruct a non-finite region
+        ridges = all_ridges[p1]
+        new_region = [v for v in vertices if v >= 0]
+
+        for p2, v1, v2 in ridges:
+            if v2 < 0:
+                v1, v2 = v2, v1
+            if v1 >= 0:
+                # finite ridge: already in the region
+                continue
+
+            # Compute the missing endpoint of an infinite ridge
+
+            t = vor.points[p2] - vor.points[p1] # tangent
+            t /= np.linalg.norm(t)
+            n = np.array([-t[1], t[0]])  # normal
+
+            midpoint = vor.points[[p1, p2]].mean(axis=0)
+            direction = np.sign(np.dot(midpoint - center, n)) * n
+            far_point = vor.vertices[v2] + direction * radius
+
+            new_region.append(len(new_vertices))
+            new_vertices.append(far_point.tolist())
+
+        # sort region counterclockwise
+        vs = np.asarray([new_vertices[v] for v in new_region])
+        c = vs.mean(axis=0)
+        angles = np.arctan2(vs[:,1] - c[1], vs[:,0] - c[0])
+        new_region = np.array(new_region)[np.argsort(angles)]
+
+        # finish
+        new_regions.append(new_region.tolist())
+
+    return new_regions, np.asarray(new_vertices)
+
+
+def generate_voronoi_areas(asset_points, clip_region):
+
+    postcode_sector = shape(clip_region['geometry'])
+    # Get Points
+    idx_asset_areas = index.Index()
+    points = np.empty([len(list(asset_points)), 2])
+    for idx, asset_point in enumerate(asset_points):
+
+        # Prepare voronoi lookup
+        points[idx] = asset_point['geometry']['coordinates']
+
+        # Prepare Rtree lookup
+        idx_asset_areas.insert(idx, shape(asset_point['geometry']).bounds, asset_point)
+
+    # Compute Voronoi tesselation
+    vor = Voronoi(points)
+    regions, vertices = voronoi_finite_polygons_2d(vor)
+
+    # Write voronoi polygons
+    asset_areas = []
+    for region in regions:
+        polygon = vertices[region]
+        geom = Polygon(polygon)
+        #geom = postcode_sector.intersection(geom)
+        if len(geom.bounds) >= 1:
+            asset_points = list(idx_asset_areas.nearest(geom.bounds, 1, objects='raw'))
+
+            for point in asset_points:
+                # if point.is_empty:
+                #     pass
+                # else:
+                if geom.contains(shape(point['geometry'])):
+                    asset_point = point
+
+            asset_areas.append({
+                'geometry': mapping(geom),
+                'properties': {
+                    'id': asset_point['properties']['sitengr']
+                }
+            })
+        else:
+            pass
+
+    return asset_areas
 
 
 def obtain_threshold_values(results, simulation_parameters):
@@ -455,8 +722,9 @@ def obtain_threshold_values(results, simulation_parameters):
     received_power = []
     interference = []
     noise = []
-    spectral_efficency = []
+    i_plus_n = []
     sinr = []
+    spectral_efficency = []
     threshold_capacity_value = []
 
     percentile = simulation_parameters['percentile']
@@ -481,17 +749,23 @@ def obtain_threshold_values(results, simulation_parameters):
         else:
             noise.append(n)
 
-        se = result['spectral_efficiency']
-        if se == None:
+        i_plus_n = result['i_plus_n']
+        if i_plus_n == None:
             pass
         else:
-            spectral_efficency.append(se)
+            noise.append(i_plus_n)
 
         sinr_value = result['sinr']
         if sinr_value == None:
             pass
         else:
             sinr.append(sinr_value)
+
+        se = result['spectral_efficiency']
+        if se == None:
+            pass
+        else:
+            spectral_efficency.append(se)
 
         capacity_mbps = result['capacity_mbps']
         if capacity_mbps == None:
@@ -502,11 +776,13 @@ def obtain_threshold_values(results, simulation_parameters):
     received_power = np.percentile(received_power, percentile)
     interference = np.percentile(interference, percentile)
     noise = np.percentile(noise, percentile)
+    i_plus_n = np.percentile(i_plus_n, percentile)
     spectral_efficency = np.percentile(spectral_efficency, percentile)
     sinr = np.percentile(sinr, percentile)
     capacity_mbps = np.percentile(threshold_capacity_value, percentile)
 
-    return received_power, interference, noise, spectral_efficency, sinr, capacity_mbps
+    return received_power, interference, noise, i_plus_n, \
+        spectral_efficency, sinr, capacity_mbps
 
 
 def calculate_network_efficiency(spectral_efficency, energy_consumption):
@@ -521,8 +797,9 @@ def calculate_network_efficiency(spectral_efficency, energy_consumption):
     return network_efficiency
 
 
-def write_results(results, frequency, bandwidth, site_density, environment,
-    technology, generation, mast_height, r_density, postcode_sector_name):
+def write_results(results, frequency, bandwidth, num_sites, num_receivers,
+    site_density, environment, technology, generation, mast_height, r_density,
+    postcode_sector_name):
 
     suffix = 'freq_{}_bandwidth_{}_density_{}'.format(
         frequency, bandwidth, site_density
@@ -539,10 +816,14 @@ def write_results(results, frequency, bandwidth, site_density, environment,
         results_file = open(directory, 'w', newline='')
         results_writer = csv.writer(results_file)
         results_writer.writerow((
-            'environment', 'frequency','bandwidth','technology',
-            'generation', 'mast_height', 'site_density','r_density',
-            'received_power', 'interference', 'noise',
-            'spectral_efficiency', 'sinr','throughput'
+            'environment', 'frequency_GHz','bandwidth_MHz','technology',
+            'generation', 'mast_height_m', 'num_sites', 'num_receivers',
+            'site_density_km2','r_density_km2',
+            'received_power_dBm', 'receiver_path_loss_dB',
+            'interference_dBm', 'ave_inference_pl_dB', 'inference_ave_distance',
+            'network_load',  'noise_dBm', 'i_plus_n_dBm', 'sinr',
+            'spectral_efficency_bps_hz', 'single_sector_capacity_mbps',
+            'x', 'y'
             ))
     else:
         results_file = open(directory, 'a', newline='')
@@ -558,21 +839,30 @@ def write_results(results, frequency, bandwidth, site_density, environment,
             technology,
             generation,
             mast_height,
+            num_sites,
+            num_receivers,
             site_density,
             r_density,
             result['received_power'],
+            result['path_loss'],
             result['interference'],
+            result['ave_inf_pl'],
+            result['ave_distance'],
+            result['network_load'],
             result['noise'],
-            result['spectral_efficiency'],
+            result['i_plus_n'],
             result['sinr'],
-            result['capacity_mbps'])
-            )
+            result['spectral_efficiency'],
+            result['capacity_mbps'],
+            result['x'],
+            result['y'],
+            ))
 
     results_file.close()
 
 
 def write_lookup_table(
-    received_power, interference, noise,
+    received_power, interference, noise, i_plus_n,
     cell_edge_spectral_efficency, cell_edge_sinr, single_sector_capacity_mbps,
     area_capacity_mbps, network_efficiency, environment, operator, technology,
     frequency, bandwidth, mast_height, area_site_density, generation,
@@ -592,12 +882,12 @@ def write_lookup_table(
         lut_writer = csv.writer(lut_file)
         lut_writer.writerow(
             ('environment', 'operator', 'technology',
-            'frequency', 'bandwidth', 'mast_height',
-            'area_site_density', 'generation',
-            'cell_edge_received_power', 'cell_edge_interference', 'cell_edge_noise',
-            'cell_edge_spectral_efficency', 'cell_edge_sinr',
+            'frequency_GHz', 'bandwidth_MHz', 'mast_height_m',
+            'site_density_km2', 'generation',
+            'received_power_dBm', 'interference_dBm', 'noise_dBm',
+            'i_plus_n_dBm', 'sinr', 'spectral_efficency_bps_hz',
             'single_sector_capacity_mbps',
-            'area_capacity_mbps', 'network_efficiency')
+            'area_capacity_mbps')
             )
     else:
         lut_file = open(directory, 'a', newline='')
@@ -616,18 +906,19 @@ def write_lookup_table(
         received_power,
         interference,
         noise,
-        cell_edge_spectral_efficency,
+        i_plus_n,
         cell_edge_sinr,
+        cell_edge_spectral_efficency,
         single_sector_capacity_mbps,
-        area_capacity_mbps,
-        network_efficiency)
+        area_capacity_mbps)
         )
 
     lut_file.close()
 
 
 def write_shapefile(data, postcode_sector_name, filename):
-
+    import pprint
+    pprint.pprint(data)
     prop_schema = []
     for name, value in data[0]['properties'].items():
         fiona_prop_type = next((
@@ -677,117 +968,155 @@ def format_data(existing_data, new_data, frequency, bandwidth,
 def run_simulator(postcode_sector_name, environment, transmitter_type,
     simulation_parameters):
 
-    #get postcode sector
-    path = os.path.join(DATA_RAW, 'd_shapes', 'datashare_pcd_sectors', 'PostalSector.shp')
-    geojson_postcode_sector = read_postcode_sector(postcode_sector_name, path)
+    # #get postcode sector
+    # path = os.path.join(DATA_RAW, 'd_shapes', 'datashare_pcd_sectors', 'PostalSector.shp')
+    # geojson_postcode_sector = read_postcode_sector(postcode_sector_name, path)
 
-    #get local authority district
-    local_authority_ids = get_local_authority_ids(geojson_postcode_sector)
+    geojson_postcode_sector = calculate_polygons(-165348, 7154206, -174173, 7146042, 200000)
 
-    #datashare_pcd_sectors lad information to postcode sectors
-    geojson_postcode_sector['properties']['local_authority_ids'] = (
-        local_authority_ids
-        )
-
-    #get the probability for inside versus outside calls
-    postcode_sector_lut = import_area_lut(
-        postcode_sector_name, local_authority_ids
-        )
-
-    # #get propagation environment (urban, suburban or rural)
-    # environment = determine_environment(postcode_sector_lut)
-
-    #generate receivers
-    RECEIVERS = generate_receivers(
-        geojson_postcode_sector,
-        postcode_sector_lut,
-        simulation_parameters
-        )
-
-    write_shapefile(
-        RECEIVERS, postcode_sector_name,
-        '{}_receivers.shp'.format(postcode_sector_name)
-        )
-
-    INTERFERING_SITES = generate_interfering_sites(
-        geojson_postcode_sector, simulation_parameters
-        )
-
-    write_shapefile(
-        INTERFERING_SITES, postcode_sector_name,
-        '{}_interfering_sites.shp'.format(postcode_sector_name)
-        )
+    to_write = []
     idx = 0
+    for hexagon in geojson_postcode_sector:
+        print(hexagon)
+        geom = Polygon(hexagon)
+        to_write.append({
+            "type": "Feature",
+            "geometry": mapping(geom),
+            "properties": {
+                'id': 'cell_area_{}'.format(idx),
+            }
+        })
+        idx += 1
 
-    for mast_height in MAST_HEIGHT:
-        for operator, technology, frequency, bandwidth, generation in SPECTRUM_PORTFOLIO:
-            for number_of_new_sites in [3, 24]:#, 6, 12, 24, 126, 336]:
+    # print(geojson_postcode_sector)
+    write_shapefile(
+        to_write, 'hex',
+        '{}_hex.shp'.format('test_hex')
+        )
 
-                idx = 0
+    # #get local authority district
+    # local_authority_ids = get_local_authority_ids(geojson_postcode_sector)
 
-                TRANSMITTERS = find_and_deploy_new_site(
-                        number_of_new_sites,
-                        geojson_postcode_sector,
-                        simulation_parameters
-                        )
-                for site in INTERFERING_SITES:
-                    TRANSMITTERS.append(site)
+    # #datashare_pcd_sectors lad information to postcode sectors
+    # geojson_postcode_sector['properties']['local_authority_ids'] = (
+    #     local_authority_ids
+    #     )
 
-                MANAGER = NetworkManager(
-                    geojson_postcode_sector, TRANSMITTERS, RECEIVERS, simulation_parameters
-                    )
+    # #get the probability for inside versus outside calls
+    # postcode_sector_lut = import_area_lut(
+    #     postcode_sector_name, local_authority_ids
+    #     )
 
-                current_site_density = MANAGER.site_density()
+    # # #get propagation environment (urban, suburban or rural)
+    # # environment = determine_environment(postcode_sector_lut)
 
-                print("{} GHz {}m Height {} Density, {}".format(
-                    frequency, mast_height, round(current_site_density, 4),
-                    generation
-                    ))
+    # #generate receivers
+    # RECEIVERS = generate_receivers(
+    #     geojson_postcode_sector,
+    #     postcode_sector_lut,
+    #     simulation_parameters
+    #     )
 
-                idx += 1
+    # write_shapefile(
+    #     RECEIVERS, postcode_sector_name,
+    #     '{}_receivers.shp'.format(postcode_sector_name)
+    #     )
 
-                results = MANAGER.estimate_link_budget(
-                    frequency, bandwidth, generation, mast_height,
-                    environment, MODULATION_AND_CODING_LUT,
-                    simulation_parameters
-                    )
+    # interfering_sites = generate_interfering_sites(
+    #     geojson_postcode_sector, simulation_parameters
+    #     )
 
-                received_power, interference, noise, spectral_efficency, \
-                    sinr, single_sector_capacity_mbps = (
-                        obtain_threshold_values(results, simulation_parameters)
-                        )
+    # write_shapefile(
+    #     interfering_sites, postcode_sector_name,
+    #     '{}_interfering_sites.shp'.format(postcode_sector_name)
+    #     )
+    # idx = 0
 
-                network_efficiency = calculate_network_efficiency(
-                    spectral_efficency,
-                    MANAGER.energy_consumption(simulation_parameters)
-                    )
+    # for mast_height in MAST_HEIGHT:
+    #     for operator, technology, frequency, bandwidth, generation in SPECTRUM_PORTFOLIO:
+    #         for number_of_new_sites in [1,2,3,4]:#,5,6,7]:#[1, 2, 3, 4, 5, 6, 7]
 
-                area_capacity_mbps = (
-                    single_sector_capacity_mbps * simulation_parameters['sectorisation']
-                    )
+    #             if idx == 0:
+    #                 transmitters = find_and_deploy_new_site(
+    #                         interfering_sites,
+    #                         number_of_new_sites,
+    #                         geojson_postcode_sector,
+    #                         simulation_parameters
+    #                         )
+    #             else:
+    #                 transmitters = find_and_deploy_new_site(
+    #                         transmitters,
+    #                         number_of_new_sites,
+    #                         geojson_postcode_sector,
+    #                         simulation_parameters
+    #                         )
 
-                current_site_density = MANAGER.site_density()
-                print('current_site_density {}'.format(current_site_density))
-                r_density = MANAGER.receiver_density()
+    #             manager = NetworkManager(
+    #                 geojson_postcode_sector, transmitters, RECEIVERS, simulation_parameters
+    #                 )
 
-                write_shapefile(
-                    TRANSMITTERS, postcode_sector_name,
-                    '{}_transmitters_{}.shp'.format(postcode_sector_name, current_site_density)
-                    )
+    #             current_site_density = manager.site_density()
 
-                write_results(results, frequency, bandwidth, current_site_density,
-                    environment, technology, generation, mast_height,
-                    r_density, postcode_sector_name
-                    )
+    #             print("{} GHz {}m Height {} Density, {}".format(
+    #                 frequency, mast_height, round(current_site_density, 4),
+    #                 generation
+    #                 ))
 
-                write_lookup_table(
-                    received_power, interference, noise,
-                    spectral_efficency, sinr, single_sector_capacity_mbps,
-                    area_capacity_mbps, network_efficiency, environment, operator,
-                    technology, frequency, bandwidth, mast_height, current_site_density,
-                    generation, postcode_sector_name
-                    )
+    #             idx += 1
 
+    #             results = manager.estimate_link_budget(
+    #                 frequency, bandwidth, generation, mast_height,
+    #                 environment, MODULATION_AND_CODING_LUT,
+    #                 simulation_parameters
+    #                 )
+
+    #             received_power, interference, noise, i_plus_n, spectral_efficency, \
+    #                 sinr, single_sector_capacity_mbps = (
+    #                     obtain_threshold_values(results, simulation_parameters)
+    #                     )
+
+    #             network_efficiency = calculate_network_efficiency(
+    #                 spectral_efficency,
+    #                 manager.energy_consumption(simulation_parameters)
+    #                 )
+
+    #             area_capacity_mbps = (
+    #                 single_sector_capacity_mbps * simulation_parameters['sectorisation']
+    #                 )
+    #             print('area_capacity_mbps {}'.format(area_capacity_mbps))
+    #             current_site_density = manager.site_density()
+    #             print('current_site_density {}'.format(current_site_density))
+    #             r_density = manager.receiver_density()
+
+    #             write_shapefile(
+    #                 transmitters, postcode_sector_name,
+    #                 '{}_transmitters_{}.shp'.format(postcode_sector_name, current_site_density)
+    #                 )
+
+    #             num_sites = len(manager.sites)
+    #             num_receivers = len(manager.receivers)
+
+    #             write_results(results, frequency, bandwidth, num_sites, num_receivers,
+    #                 current_site_density, environment, technology, generation, mast_height,
+    #                 r_density, postcode_sector_name
+    #                 )
+
+    #             write_lookup_table(
+    #                 received_power, interference, noise, i_plus_n,
+    #                 spectral_efficency, sinr, single_sector_capacity_mbps,
+    #                 area_capacity_mbps, network_efficiency, environment, operator,
+    #                 technology, frequency, bandwidth, mast_height, current_site_density,
+    #                 generation, postcode_sector_name
+    #                 )
+
+                # # cell_areas = generate_voronoi_areas(transmitters, geojson_postcode_sector)
+
+                # # write_shapefile(
+                # #     cell_areas, postcode_sector_name,
+                # #     '{}_cell_areas_{}.shp'.format(postcode_sector_name, current_site_density)
+                # #     )
+
+                # manager = []
 
 #####################################
 # APPLY METHODS
@@ -795,7 +1124,7 @@ def run_simulator(postcode_sector_name, environment, transmitter_type,
 
 SPECTRUM_PORTFOLIO = [
     ('generic', 'FDD DL', 0.7, 10, '5G'),
-    # ('generic', 'FDD DL', 0.8, 10, '4G'),
+    ('generic', 'FDD DL', 0.8, 10, '4G'),
     # ('generic', 'FDD DL', 1.8, 10, '4G'),
     # ('generic', 'FDD DL', 2.6, 10, '4G'),
     # ('generic', 'FDD DL', 3.5, 80, '5G'),

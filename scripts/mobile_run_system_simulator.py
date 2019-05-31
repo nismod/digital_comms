@@ -17,7 +17,7 @@ SIMULATION_PARAMETERS = {
     'percentile': 5,
     'desired_transmitter_density': 10,
     'sectorisation': 3,
-    'interfering_sites': 6,
+    'interfering_sites': 3,
 }
 
 # sectors = segments_for_simulator()

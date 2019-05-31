@@ -109,8 +109,8 @@ class NetworkManager(object):
                 self.find_closest_available_sites(receiver)
             )
 
-            path_loss = self.calculate_path_loss(
-                closest_site, receiver, frequency, mast_height,
+            path_loss, distance = self.calculate_path_loss(
+                closest_site, receiver, frequency,
                 environment, seed_value
             )
 
@@ -118,7 +118,7 @@ class NetworkManager(object):
                 closest_site, receiver, path_loss
             )
 
-            interference = self.calculate_interference(
+            interference, ave_distance, ave_inf_pl = self.calculate_interference(
                 interfering_sites, receiver, frequency, environment,
                 seed_value)
 
@@ -126,8 +126,9 @@ class NetworkManager(object):
                 bandwidth
             )
 
-            f_received_power, f_interference, f_noise, sinr, = self.calculate_sinr(
-                received_power, interference, noise, simulation_parameters
+            f_received_power, f_interference, f_noise, i_plus_n, sinr = \
+                self.calculate_sinr(received_power, interference, noise,
+                simulation_parameters
                 )
 
             spectral_efficiency = self.modulation_scheme_and_coding_rate(
@@ -139,12 +140,20 @@ class NetworkManager(object):
             )
 
             data = {
+                'path_loss': path_loss,
+                'ave_inf_pl': ave_inf_pl,
                 'received_power': f_received_power,
-                'interference': f_interference,
+                'distance': distance,
+                'interference': np.log10(f_interference),
+                'network_load': simulation_parameters['network_load'],
+                'ave_distance': ave_distance,
                 'noise': f_noise,
+                'i_plus_n': np.log10(i_plus_n),
                 'sinr': sinr,
                 'spectral_efficiency': spectral_efficiency,
-                'capacity_mbps': estimated_capacity
+                'capacity_mbps': estimated_capacity,
+                'x': receiver.coordinates[0],
+                'y': receiver.coordinates[1],
                 }
 
             results.append(data)
@@ -188,10 +197,7 @@ class NetworkManager(object):
 
 
     def calculate_path_loss(self, closest_site, receiver,
-        frequency, mast_height, environment, seed_value):
-
-        # for area in self.area.values():
-        #     local_authority_ids = area.local_authority_ids
+        frequency, environment, seed_value):
 
         x2_receiver = receiver.coordinates[0]
         y2_receiver = receiver.coordinates[1]
@@ -216,13 +222,10 @@ class NetworkManager(object):
 
         interference_strt_distance = round(i_strt_distance['s12'],0)
 
-        ant_height = mast_height
+        ant_height = closest_site.ant_height
         ant_type =  'macro'
 
-        # type_of_sight, building_height, street_width = built_environment_module(
-        # site_geom, receiver_geom
-
-        if interference_strt_distance < 250 :
+        if interference_strt_distance < 500 :
             type_of_sight = 'los'
         else:
             type_of_sight = 'nlos'
@@ -247,11 +250,7 @@ class NetworkManager(object):
             seed_value
             )
 
-        # print('path loss for {} to nearest cell {} is {}'.format(
-        #     receiver.id, closest_site.id, path_loss)
-        #     )
-
-        return path_loss
+        return path_loss, interference_strt_distance
 
 
     def calc_received_power(self, site, receiver, path_loss):
@@ -295,6 +294,9 @@ class NetworkManager(object):
             receiver.coordinates[1]
             )
 
+        ave_distance = 0
+        ave_pl = 0
+
         #calculate interference from other power sources
         for interference_site in closest_sites:
 
@@ -322,16 +324,16 @@ class NetworkManager(object):
                 round(i_strt_distance['s12'], 0)
                 )
 
-            if interference_strt_distance < 250 :
+            if interference_strt_distance < 500 :
                 type_of_sight = 'los'
             else:
                 type_of_sight = 'nlos'
 
-            ant_height = 20
+            ant_height = interference_site.ant_height
             ant_type =  'macro'
             building_height = 20
             street_width = 20
-            type_of_sight = 'nlos'
+            type_of_sight = type_of_sight
             above_roof = 0
             indoor = receiver.indoor
 
@@ -350,21 +352,26 @@ class NetworkManager(object):
                 seed_value,
                 )
 
-            # print('interference path loss for {} to {} is {}'.format(
-            #     receiver.id, interference_site.id, path_loss)
-            #     )
-
-            #calc interference from other cells
             received_interference = self.calc_received_power(
                 interference_site,
                 receiver,
                 path_loss
                 )
+            ave_distance += interference_strt_distance
+            ave_pl += path_loss
 
-            #add cell interference to list
             interference.append(received_interference)
+        try:
+            ave_distance = ave_distance/len(closest_sites)
+        except ZeroDivisionError:
+            ave_distance = 0
 
-        return interference
+        try:
+            ave_pl = ave_pl/len(closest_sites)
+        except ZeroDivisionError:
+            ave_pl = 0
+
+        return interference, ave_distance, ave_pl
 
 
     def calculate_noise(self, bandwidth):
@@ -412,15 +419,17 @@ class NetworkManager(object):
 
         network_load = simulation_parameters['network_load']
         i_summed = sum(interference_values)
-        raw_sum_of_interference = i_summed * (1+(network_load/100))
+        raw_sum_of_interference = i_summed * (network_load/100)
 
         raw_noise = 10**noise
 
+        i_plus_n = (raw_sum_of_interference + raw_noise)
+
         sinr = round(np.log10(
-            raw_received_power / (raw_sum_of_interference + raw_noise)
+            raw_received_power / i_plus_n
             ),2)
 
-        return received_power, i_summed, noise, sinr
+        return received_power, raw_sum_of_interference, noise, i_plus_n, sinr
 
 
     def modulation_scheme_and_coding_rate(self, sinr,
@@ -452,7 +461,7 @@ class NetworkManager(object):
 
                 if sinr < lowest_value[5]:
 
-                    spectral_efficiency = lowest_value[4]
+                    spectral_efficiency = 0
                     return spectral_efficiency
 
 

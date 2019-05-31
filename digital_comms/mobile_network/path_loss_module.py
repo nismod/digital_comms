@@ -359,13 +359,13 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
             raise ValueError('Could not determine if cell is above or below roof line')
 
     elif 0.6 < distance:
-            # print('second to last path loss is {}'.format(path_loss))
-            random_quantity = generate_log_normal_dist_value(1, 12, 1, seed_value)
-            # print('random quantity is {}'.format(random_quantity))
-            path_loss = (
-                path_loss + random_quantity
-            )
-
+        # print('second to last path loss is {}'.format(path_loss))
+        random_quantity = generate_log_normal_dist_value(1, 12, 1, seed_value)
+        # print('random quantity is {}'.format(random_quantity))
+        path_loss = (
+            path_loss + random_quantity
+        )
+        # print('second to last path loss is {}'.format(path_loss))
     return round(path_loss, 2)
 
 def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_height,

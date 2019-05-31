@@ -164,7 +164,8 @@ def test_generate_receivers(setup_postcode_sector,
     assert receiver_1['properties']['misc_losses'] == 4
     assert receiver_1['properties']['gain'] == 4
     assert receiver_1['properties']['losses'] == 4
-    assert receiver_1['properties']['indoor'] == True
+    assert receiver_1['properties']['ue_height'] == 1.5
+    assert receiver_1['properties']['indoor'] == 'True'
 
 
 def test_find_and_deploy_new_site(base_system,
@@ -460,7 +461,7 @@ def test_calculate_sinr(base_system, setup_simulation_parameters):
     actual_sinr = base_system.calculate_sinr(-45.44, [-65.96, -66.02, -78.4], -102.48,
         setup_simulation_parameters)
 
-    assert actual_sinr == 20.07
+    assert actual_sinr[3] == 20.07
 
 
 def test_modulation_scheme_and_coding_rate(base_system, setup_modulation_coding_lut):
