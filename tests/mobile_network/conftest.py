@@ -4,10 +4,11 @@ from __future__ import print_function, absolute_import, division
 
 import pytest
 from pytest import fixture
-from shapely.geometry import Point, LineString
+from shapely.geometry import Point, LineString, shape, mapping
 import os
 from collections import OrderedDict
 from digital_comms.mobile_network.model import NetworkManager
+from digital_comms.mobile_network.system_simulator import SimulationManager
 
 @pytest.fixture
 def rootdir():
@@ -992,8 +993,8 @@ def setup_transmitters():
                 "ant_height": 14.9,
                 "type": 'macro',
                 "power": 40,
-                "gain": 20,
-                "losses": 2,
+                "gain": 16,
+                "losses": 1,
                 "pcd_sector": "CB1 2",
             }
         },
@@ -1010,8 +1011,8 @@ def setup_transmitters():
                 "ant_height": 13.7,
                 "type": 'macro',
                 "power": 40,
-                "gain": 20,
-                "losses": 2,
+                "gain": 16,
+                "losses": 1,
                 "pcd_sector": "CB1 1",
             }
         },
@@ -1028,8 +1029,8 @@ def setup_transmitters():
                 "ant_height": 14.9,
                 "type": 'macro',
                 "power": 40,
-                "gain": 20,
-                "losses": 2,
+                "gain": 16,
+                "losses": 1,
                 "pcd_sector": "CB1 2",
             }
         },
@@ -1046,9 +1047,51 @@ def setup_transmitters():
                 "ant_height": 14.9,
                 "type": 'macro',
                 "power": 40,
-                "gain": 20,
-                "losses": 2,
+                "gain": 16,
+                "losses": 1,
                 "pcd_sector": "CB1 2",
+            }
+        },
+        ]
+
+
+@fixture(scope='function')
+def setup_interfering_sites():
+    return [
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [547750.2222151064, 252126.76048813056]
+            },
+            'properties': {
+                "operator":'voda',
+                "opref": 31745,
+                "sitengr": 'site_id_interfering_1',
+                "ant_height": 14.9,
+                "type": 'macro',
+                "power": 40,
+                "gain": 16,
+                "losses": 1,
+                "pcd_sector": "CB22",
+            }
+        },
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [544809.5557435964, 259520.0001617251]
+            },
+            'properties': {
+                "operator":'voda',
+                "opref": 31745,
+                "sitengr": 'site_id_interfering_2',
+                "ant_height": 14.9,
+                "type": 'macro',
+                "power": 40,
+                "gain": 16,
+                "losses": 1,
+                "pcd_sector": "CB45",
             }
         }
         ]
@@ -1127,4 +1170,167 @@ def setup_single_receiver():
                 "indoor": True,
             }
         },
+        ]
+
+
+@pytest.fixture
+def setup_simulation_parameters():
+    return {
+    'iterations': 100,
+    'seed_value': 42,
+    'tx_baseline_height': 30,
+    'tx_upper_height': 40,
+    'tx_power': 40,
+    'tx_gain': 16,
+    'tx_losses': 1,
+    'rx_gain': 4,
+    'rx_losses': 4,
+    'rx_misc_losses': 4,
+    'rx_height': 1.5,
+    'network_load': 50,
+    'percentile': 95,
+    'desired_transmitter_density': 10,
+    'sectorisation': 3,
+    }
+
+
+@pytest.fixture
+def base_system(setup_cb41_postcode_sector, setup_site_areas, setup_simulation_parameters,
+    setup_transmitters, setup_receivers):
+
+    geojson_postcode_sector = setup_cb41_postcode_sector
+
+    geojson_postcode_sector['properties']['local_authority_ids'] = [
+        'E07000008'
+        ]
+
+    system = SimulationManager(geojson_postcode_sector, setup_transmitters, setup_site_areas,
+        setup_receivers, setup_simulation_parameters)
+
+    return system
+
+
+@pytest.fixture
+def postcode_sector_lut():
+
+    yield {
+        'postcode_sector': 'CB11',
+        'indoor_probability': 100,
+        'outdoor_probability': 0,
+        'residential_count': 20,
+        'non_residential_count': 20,
+        'estimated_population': 50,
+        'area': 200,
+        'pop_density_km2': 0.25,
+    }
+
+
+# transmitter_areas = []
+# for site in areas:
+#     point_geom = shape(site['geometry'])
+#     buffer = point_geom.buffer(10)
+#     transmitter_areas.append({
+#         'type': site['type'],
+#         'geometry': mapping(site),
+#         'properties': {
+#             'sitengr': site['sitengr'],
+#             'pcd_sector': site['pcd_sector']
+#         }
+#     })
+# import pprint
+# pprint.pprint(transmitter_areas)
+
+
+@fixture(scope='function')
+def setup_site_areas():
+    return [
+            {'geometry': {'coordinates': (((544575.1049227581, 259475.22477912105),
+                                        (544735.1049227581, 259475.22477912105),
+                                        (544735.1049227581, 259635.22477912105),
+                                        (544575.1049227581, 259635.22477912105),
+                                        (544575.1049227581, 259475.22477912105)),),
+            'type': 'Polygon'},
+            'properties': {'pcd_sector': 'CB1 2', 'sitengr': 'TL4454059600'},
+            'type': 'Feature'},
+            {'geometry': {'coordinates': (((545185.1768673284, 259575.21841664566),
+                                            (545345.1768673284, 259575.21841664566),
+                                            (545345.1768673284, 259735.21841664566),
+                                            (545185.1768673284, 259735.21841664566),
+                                            (545185.1768673284, 259575.21841664566)),),
+                        'type': 'Polygon'},
+            'properties': {'pcd_sector': 'CB1 1', 'sitengr': 'TL4515059700'},
+            'type': 'Feature'},
+            {'geometry': {'coordinates': (((545205.5165949427, 259403.84577720467),
+                                            (545365.5165949427, 259403.84577720467),
+                                            (545365.5165949427, 259563.84577720467),
+                                            (545205.5165949427, 259563.84577720467),
+                                            (545205.5165949427, 259403.84577720467)),),
+                        'type': 'Polygon'},
+            'properties': {'pcd_sector': 'CB1 2', 'sitengr': 'TL4529059480'},
+            'type': 'Feature'},
+            {'geometry': {'coordinates': (((545805.2027838879, 259515.2986071491),
+                                            (545965.2027838879, 259515.2986071491),
+                                            (545965.2027838879, 259675.2986071491),
+                                            (545805.2027838879, 259675.2986071491),
+                                            (545805.2027838879, 259515.2986071491)),),
+                        'type': 'Polygon'},
+            'properties': {'pcd_sector': 'CB1 2', 'sitengr': 'TL4577059640'},
+            'type': 'Feature'}]
+
+@pytest.fixture
+def system_single_receiver(setup_cb41_postcode_sector, setup_simulation_parameters,
+    setup_transmitters, setup_site_areas, setup_single_receiver):
+
+    geojson_postcode_sector = setup_cb41_postcode_sector
+
+    geojson_postcode_sector['properties']['local_authority_ids'] = [
+        'E07000008'
+        ]
+
+    system = SimulationManager(geojson_postcode_sector, setup_transmitters,
+        setup_site_areas, setup_single_receiver, setup_simulation_parameters)
+
+    return system
+
+
+@pytest.fixture
+def setup_build_new_transmitter():
+    return [
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [544766, 259988]
+            },
+            'properties': {
+                    "operator": 'unknown',
+                    "sitengr": '{new}{GEN1}',
+                    "ant_height": 20,
+                    "tech": 'LTE',
+                    "freq": 700,
+                    "type": 17,
+                    "power": 30,
+                    "gain": 16,
+                    "losses": 1,
+                }
+        }
+    ]
+
+@pytest.fixture
+def setup_new_site_area():
+    return [
+        {
+            'type': 'Feature',
+            'geometry': {
+                'type': 'Polygon',
+                'coordinates': (((544686.0, 259908.0),
+                                (544846.0, 259908.0),
+                                (544846.0, 260068.0),
+                                (544686.0, 260068.0),
+                                (544686.0, 259908.0)),),
+            },
+            'properties': {
+                'sitengr': '{new}{GEN1}',
+                },
+        }
         ]

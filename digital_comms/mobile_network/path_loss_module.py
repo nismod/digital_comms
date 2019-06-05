@@ -80,7 +80,7 @@ def path_loss_calculator(frequency, distance, ant_height, ant_type, building_hei
             "frequency of {} is NOT within correct range".format(frequency)
         )
     # print('path loss is {}'.format(path_loss))
-    # print('outdoor to indoor is {}'.format(outdoor_to_indoor_path_loss(indoor)))
+    # print('outdoor to indoor is {}'.format(outdoor_to_indoor_path_loss(indoor, seed_value)))
     path_loss = path_loss + outdoor_to_indoor_path_loss(indoor, seed_value)
 
     return round(path_loss, 2)
@@ -220,7 +220,7 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
                 (44.9 - 6.55*np.log10(max(30, hb))) *
                 ((np.log10(distance))**alpha_exponent) - alpha_hm - beta_hb
             )
-
+            # print('path loss p1 is {}'.format(path_loss))
         elif 1500 < frequency <= 2000:
 
             path_loss = (
@@ -325,7 +325,7 @@ def extended_hata(frequency, distance, ant_height, ant_type, building_height,
             )
 
         elif above_roof == 0:
-
+            # print('think path loss is {}'.format(path_loss))
             random_quantity = generate_log_normal_dist_value(1, 17, 1, seed_value)
             path_loss = (
                 path_loss + random_quantity

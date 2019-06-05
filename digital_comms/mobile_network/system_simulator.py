@@ -18,7 +18,7 @@ from digital_comms.mobile_network.path_loss_module import path_loss_calculator
 #set numpy seed
 np.random.seed(42)
 
-class NetworkManager(object):
+class SimulationManager(object):
     """
     Meta-object for managing all transmitters and receivers in wireless system.
 
@@ -34,7 +34,7 @@ class NetworkManager(object):
         A dict containing all simulation parameters necessary.
 
     """
-    def __init__(self, area, sites, receivers, simulation_parameters):
+    def __init__(self, area, sites, site_areas, receivers, simulation_parameters):
 
         self.area = {}
         self.sites = {}
@@ -44,8 +44,11 @@ class NetworkManager(object):
 
         for site in sites:
             site_id = site['properties']["sitengr"]
-            site_object = Transmitter(site, simulation_parameters)
-            self.sites[site_id] = site_object
+            for site_area in site_areas:
+                site_area_id = site['properties']["sitengr"]
+                if site_id == site_area_id:
+                    site_object = Transmitter(site, site_area, simulation_parameters)
+                    self.sites[site_id] = site_object
 
             area_containing_sites = self.area[area_id]
             area_containing_sites.add_site(site_object)
@@ -59,12 +62,15 @@ class NetworkManager(object):
             area_containing_receivers.add_receiver(receiver)
 
 
-    def build_new_assets(self, list_of_new_assets, area_id,
+    def build_new_assets(self, list_of_new_assets, new_site_areas, area_id,
         simulation_parameters):
 
         for site in list_of_new_assets:
             site_id = site['properties']["sitengr"]
-            site_object = Transmitter(site, simulation_parameters)
+            for site_area in new_site_areas:
+                site_area_id = site_area['properties']['sitengr']
+                if site_id == site_area_id:
+                    site_object = Transmitter(site, site_area, simulation_parameters)
 
             self.sites[site_id] = site_object
 
@@ -101,11 +107,17 @@ class NetworkManager(object):
         """
         results = []
 
+        for area in self.area.values():
+            postcode_sector = area
+
+        postcode_sector_geom = shape(postcode_sector.geometry)
+
         seed_value = simulation_parameters['seed_value']
 
         for receiver in self.receivers.values():
-
-            closest_site, interfering_sites = (
+            # r_geom = shape(receiver.geometry)
+            # if postcode_sector_geom.contains(r_geom):
+            closest_site, site_area, interfering_sites = (
                 self.find_closest_available_sites(receiver)
             )
 
@@ -136,10 +148,11 @@ class NetworkManager(object):
             )
 
             estimated_capacity = self.link_budget_capacity(
-                bandwidth, spectral_efficiency
+                bandwidth, spectral_efficiency, site_area, postcode_sector_geom
             )
 
             data = {
+                'num_sites': len(self.sites),
                 'path_loss': path_loss,
                 'ave_inf_pl': ave_inf_pl,
                 'received_power': f_received_power,
@@ -193,7 +206,9 @@ class NetworkManager(object):
 
         interfering_sites = all_closest_sites[1:4]
 
-        return closest_site, interfering_sites
+        site_area = (shape(closest_site.site_area)).area/1e6
+
+        return closest_site, site_area, interfering_sites
 
 
     def calculate_path_loss(self, closest_site, receiver,
@@ -225,7 +240,7 @@ class NetworkManager(object):
         ant_height = closest_site.ant_height
         ant_type =  'macro'
 
-        if interference_strt_distance < 500 :
+        if interference_strt_distance < 250 :
             type_of_sight = 'los'
         else:
             type_of_sight = 'nlos'
@@ -324,7 +339,7 @@ class NetworkManager(object):
                 round(i_strt_distance['s12'], 0)
                 )
 
-            if interference_strt_distance < 500 :
+            if interference_strt_distance < 250 :
                 type_of_sight = 'los'
             else:
                 type_of_sight = 'nlos'
@@ -375,7 +390,6 @@ class NetworkManager(object):
 
 
     def calculate_noise(self, bandwidth):
-        #TODO
         """
         Terminal noise can be calculated as:
 
@@ -465,23 +479,23 @@ class NetworkManager(object):
                     return spectral_efficiency
 
 
-    def link_budget_capacity(self, bandwidth, spectral_efficiency):
+    def link_budget_capacity(self, bandwidth, spectral_efficiency,
+        site_area, postcode_sector_geom):
         """
-        Estimate wireless link capacity (Mbps) based on bandwidth and
-        receiver signal.
+        Estimate site area wireless link capacity (Mbps km^2) based on
+        bandwidth and receiver signal.
 
-        capacity (Mbps) = bandwidth (MHz) + log2*(1+SINR[dB])
+        capacity (Mbps km^2) = bandwidth (MHz) *
+            spectral_efficiency (bps/Hz) /
+            cell_area (km^2)
 
         """
-        # if spectral_efficiency == None:
-        #     spectral_efficiency = 0.01
+        bandwidth_in_hertz = bandwidth * 1e6 #MHz to Hz
 
-        bandwidth_in_hertz = bandwidth*1000000
+        link_budget_capacity_km2 = (bandwidth_in_hertz * spectral_efficiency) / site_area
+        link_budget_capacity_mbps_km2 = link_budget_capacity_km2 / 1e6 #bps to Mbps
 
-        link_budget_capacity = bandwidth_in_hertz*spectral_efficiency
-        link_budget_capacity_mbps = link_budget_capacity / 1000000
-
-        return link_budget_capacity_mbps
+        return link_budget_capacity_mbps_km2
 
 
     def find_sites_in_area(self):
@@ -630,12 +644,13 @@ class Transmitter(object):
     A site object is specific site.
 
     """
-    def __init__(self, data, simulation_parameters):
+    def __init__(self, data, site_area, simulation_parameters):
 
         #id and geographic info
         self.id = data['properties']['sitengr']
         self.coordinates = data['geometry']['coordinates']
         self.geometry = data['geometry']
+        self.site_area = site_area['geometry']
 
         self.ant_type = 'macro'
         self.ant_height = simulation_parameters['tx_baseline_height']
@@ -656,6 +671,7 @@ class Receiver(object):
     def __init__(self, data, simulation_parameters):
         self.id = data['properties']['ue_id']
         self.coordinates = data['geometry']["coordinates"]
+        self.geometry = data['geometry']
 
         self.misc_losses = data['properties']['misc_losses']
         self.gain = data['properties']['gain']
