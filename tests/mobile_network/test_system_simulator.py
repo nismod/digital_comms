@@ -10,6 +10,7 @@ from scripts.mobile_simulator_run import (
     determine_environment,
     get_sites,
     generate_receivers,
+    get_results
     )
 
 
@@ -115,11 +116,15 @@ def test_build_new_assets(base_system, setup_build_new_transmitter,
 def test_estimate_link_budget(system_single_receiver, setup_modulation_coding_lut,
     setup_simulation_parameters):
 
-    actual_result = system_single_receiver.estimate_link_budget(
+    system_single_receiver.estimate_link_budget(
         0.7, 10, '5G', 30, 'urban', setup_modulation_coding_lut,
         setup_simulation_parameters
         )
 
+    system_single_receiver.populate_site_data()
+
+    actual_result = get_results(system_single_receiver)
+    print(actual_result)
     ####calculation in link_budget_validation.xlsx
     # find closest_transmitters
     # <Receiver id:AB1>
@@ -151,7 +156,7 @@ def test_estimate_link_budget(system_single_receiver, setup_modulation_coding_lu
 
     #divide capacity by cell area to represent spectrum reuse...
 
-    assert round(actual_result[0]['capacity_mbps'],2) == 2169.80
+    assert round(actual_result[0]['capacity_mbps_km2'],2) == 2169.80
 
 
 def test_find_closest_available_sites(base_system):

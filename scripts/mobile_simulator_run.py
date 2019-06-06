@@ -293,7 +293,10 @@ def generate_receivers(postcode_sector, site_areas,
         site_area_geom = shape(site_area['geometry'])
         site_area_km2 = site_area_geom.area / 1e6
 
-        num_receivers = (pop_density * site_area_km2) / simulation_parameters['overbooking_factor']
+        num_receivers = (
+            (pop_density * site_area_km2) #/ 100
+            (simulation_parameters['overbooking_factor'])
+            )
 
         geom_box = site_area_geom.bounds
 
@@ -420,7 +423,7 @@ def generate_interfering_sites(postcode_sector, simulation_parameters):
     return interfering_sites
 
 
-def obtain_threshold_values(results, simulation_parameters):
+def obtain_threshold_values(manager, simulation_parameters):
     """
     Get the threshold capacity based on a given percentile.
 
@@ -435,45 +438,45 @@ def obtain_threshold_values(results, simulation_parameters):
 
     percentile = simulation_parameters['percentile']
 
-    for result in results:
+    for receiver in manager.find_receivers_area():
 
-        rp = result['received_power']
+        rp = receiver.capacity_metrics['received_power']
         if rp == None:
             pass
         else:
             received_power.append(rp)
 
-        i = result['interference']
+        i = receiver.capacity_metrics['interference']
         if i == None:
             pass
         else:
             interference.append(i)
 
-        n = result['noise']
+        n = receiver.capacity_metrics['noise']
         if n == None:
             pass
         else:
             noise.append(n)
 
-        i_plus_n = result['i_plus_n']
+        i_plus_n = receiver.capacity_metrics['i_plus_n']
         if i_plus_n == None:
             pass
         else:
             noise.append(i_plus_n)
 
-        sinr_value = result['sinr']
+        sinr_value = receiver.capacity_metrics['sinr']
         if sinr_value == None:
             pass
         else:
             sinr.append(sinr_value)
 
-        se = result['spectral_efficiency']
+        se = receiver.capacity_metrics['spectral_efficiency']
         if se == None:
             pass
         else:
             spectral_efficency.append(se)
 
-        capacity_mbps = result['capacity_mbps']
+        capacity_mbps = receiver.capacity_metrics['capacity_mbps_km2']
         if capacity_mbps == None:
             pass
         else:
@@ -519,6 +522,57 @@ def return_single_list(list1, list2):
 
     return output
 
+
+# def threshold_values_for_sites(manager, simulation_parameters):
+
+#     percentile = simulation_parameters['percentile']
+
+#     se_values = []
+#     capacity_values_km2 = []
+#     for receiver in manager.find_receivers_area():
+#         # if not site.id.startswith('site_id_interfering_'):
+#         # print('length of se is {}'.format(len(site.spectral_efficiency)))
+#         try:
+#             se_percentile = np.percentile(site.spectral_efficiency, percentile)
+#             se_values.append(se_percentile)
+#         except:
+#             pass
+#         print('length of capacity is {}'.format(len(site.capacity_km2)))
+#         try:
+#             capacity_perc = np.percentile(site.capacity_km2, percentile)
+#             capacity_values_km2.append(capacity_perc)
+#         except:
+#             pass
+#     print('length of capacity_values_km2 is {}'.format(len(capacity_values_km2)))
+#     se = sum(se_values)/len(se_values)
+#     capacity_mbps_km2 = sum(capacity_values_km2) / len(capacity_values_km2)
+
+#     return capacity_mbps_km2, se
+
+
+def get_results(manager):
+    results = []
+    for item in manager.find_receivers_area():
+        results.append({
+            'num_sites': item.capacity_metrics['num_sites'],
+            'path_loss': item.capacity_metrics['path_loss'],
+            'ave_inf_pl': item.capacity_metrics['ave_inf_pl'],
+            'received_power': item.capacity_metrics['received_power'],
+            'distance': item.capacity_metrics['distance'],
+            'interference': item.capacity_metrics['interference'],
+            'network_load': item.capacity_metrics['network_load'],
+            'ave_distance': item.capacity_metrics['ave_distance'],
+            'noise': item.capacity_metrics['noise'],
+            'i_plus_n': item.capacity_metrics['i_plus_n'],
+            'sinr': item.capacity_metrics['sinr'],
+            'spectral_efficiency': item.capacity_metrics['spectral_efficiency'],
+            'capacity_mbps_km2': item.capacity_metrics['capacity_mbps_km2'],
+            'x': item.capacity_metrics['x'],
+            'y': item.capacity_metrics['y'],
+            })
+    return results
+
+
 def write_results(results, frequency, bandwidth, num_sites, num_receivers,
     site_density, environment, technology, generation, mast_height, r_density,
     postcode_sector_name):
@@ -544,7 +598,7 @@ def write_results(results, frequency, bandwidth, num_sites, num_receivers,
             'received_power_dBm', 'receiver_path_loss_dB',
             'interference_dBm', 'ave_inference_pl_dB', 'inference_ave_distance',
             'network_load',  'noise_dBm', 'i_plus_n_dBm', 'sinr',
-            'spectral_efficency_bps_hz', 'single_sector_capacity_mbps',
+            'spectral_efficency_bps_hz', 'single_sector_capacity_mbps_km2',
             'x', 'y'
             ))
     else:
@@ -575,7 +629,7 @@ def write_results(results, frequency, bandwidth, num_sites, num_receivers,
             result['i_plus_n'],
             result['sinr'],
             result['spectral_efficiency'],
-            result['capacity_mbps'],
+            result['capacity_mbps_km2'],
             result['x'],
             result['y'],
             ))
@@ -585,8 +639,8 @@ def write_results(results, frequency, bandwidth, num_sites, num_receivers,
 
 def write_lookup_table(
     total_sites_required, received_power, interference, noise, i_plus_n,
-    cell_edge_spectral_efficency, cell_edge_sinr, single_sector_capacity_mbps,
-    area_capacity_mbps, network_efficiency, environment, operator, technology,
+    cell_edge_spectral_efficency, cell_edge_sinr, single_sector_capacity_mbps_km2,
+    area_capacity_mbps_km2, network_efficiency, environment, operator, technology,
     frequency, bandwidth, mast_height, area_site_density, generation,
     postcode_sector_name):
 
@@ -608,8 +662,8 @@ def write_lookup_table(
             'num_sites', 'site_density_km2', 'generation',
             'received_power_dBm', 'interference_dBm', 'noise_dBm',
             'i_plus_n_dBm', 'sinr', 'spectral_efficency_bps_hz',
-            'single_sector_capacity_mbps',
-            'area_capacity_mbps')
+            'single_sector_capacity_mbps_km2',
+            'area_capacity_mbps_km2')
             )
     else:
         lut_file = open(directory, 'a', newline='')
@@ -632,8 +686,8 @@ def write_lookup_table(
         i_plus_n,
         cell_edge_sinr,
         cell_edge_spectral_efficency,
-        single_sector_capacity_mbps,
-        area_capacity_mbps,
+        single_sector_capacity_mbps_km2,
+        area_capacity_mbps_km2,
         ))
 
     lut_file.close()
@@ -774,6 +828,11 @@ def run_simulator(postcode_sector_name, transmitter_type, simulation_parameters,
                     simulation_parameters,
                     )
 
+                # for site_area in site_areas:
+                #     print(site_area)
+                #     print((shape(site_area['geometry']).area/1e6))
+
+                print('number of receivers is {}'.format(len(receivers)))
                 manager = SimulationManager(
                     geojson_postcode_sector, all_transmitters, site_areas,
                     receivers, simulation_parameters
@@ -788,16 +847,24 @@ def run_simulator(postcode_sector_name, transmitter_type, simulation_parameters,
 
                 time_step_idx += 1
 
-                results = manager.estimate_link_budget(
+                manager.estimate_link_budget(
                     frequency, bandwidth, generation, mast_height,
                     environment, modulation_and_coding_lut,
                     simulation_parameters
                     )
 
+                manager.populate_site_data()
+
+                # single_sector_capacity_mbps, spectral_efficency = threshold_values_for_sites(
+                #     manager, simulation_parameters
+                #     )
+
                 received_power, interference, noise, i_plus_n, spectral_efficency, \
                     sinr, single_sector_capacity_mbps = (
-                        obtain_threshold_values(results, simulation_parameters)
+                        obtain_threshold_values(manager, simulation_parameters)
                         )
+
+                results = get_results(manager)
 
                 network_efficiency = calculate_network_efficiency(
                     spectral_efficency,

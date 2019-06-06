@@ -2,7 +2,7 @@ from scripts.mobile_cluster_input_files import segments_for_simulator
 from scripts.mobile_simulator_run import run_simulator
 
 SIMULATION_PARAMETERS = {
-    'iterations': 5,
+    'iterations': 1,
     'seed_value': None,
     'tx_baseline_height': 30,
     'tx_upper_height': 40,
@@ -22,16 +22,16 @@ SIMULATION_PARAMETERS = {
 }
 
 SPECTRUM_PORTFOLIO = [
-    # ('generic', 'FDD DL', 0.7, 10, '5G'),
+    ('generic', 'FDD DL', 0.7, 10, '5G'),
     ('generic', 'FDD DL', 0.8, 10, '4G'),
-    # ('generic', 'FDD DL', 1.8, 10, '4G'),
-    # ('generic', 'FDD DL', 2.6, 10, '4G'),
-    # ('generic', 'FDD DL', 3.5, 80, '5G'),
+    ('generic', 'FDD DL', 1.8, 10, '4G'),
+    ('generic', 'FDD DL', 2.6, 10, '4G'),
+    ('generic', 'FDD DL', 3.5, 80, '5G'),
 ]
 
 MAST_HEIGHT = [
     (30),
-    # (40)
+    (40)
 ]
 
 MODULATION_AND_CODING_LUT =[
