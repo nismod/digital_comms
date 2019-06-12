@@ -435,10 +435,12 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
             )
 
         else:
-
             print("distance is out of cell range at {}m".format(distance))
-            #fallback value needs refining
-            path_loss = 250
+            path_loss = (
+                40 * np.log10(5000) + 7.8 - 18*np.log10(ant_height) -
+                18*np.log10(ue_height) + 2*np.log10(frequency) +
+                generate_log_normal_dist_value(1, 3, 1, seed_value)
+            )
 
     elif ant_type == 'micro' and settlement_type == 'urban' and type_of_sight == 'nlos':
 
@@ -452,7 +454,10 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
     # macro cells
     elif ant_type == 'macro' and settlement_type == 'urban' and type_of_sight == 'los':
 
-        if 10 < distance < breakpoint_urban:
+        if distance <= 10:
+            path_loss = 0
+
+        elif 10 < distance < breakpoint_urban:
 
             path_loss = (
                 22 * np.log10(distance) + 28 + 20*np.log10(frequency) +
@@ -472,9 +477,11 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
                 'ant_type {}, settlement_type {}, type_of_sight {}, distance {}'
                 .format(ant_type, settlement_type, type_of_sight, distance)
                 )
-            # print("distance is out of cell range at {}m".format(distance))
-            #fallback value needs refining
-            path_loss = 250
+            path_loss = (
+                (40*np.log10(5000) + 7.8 - 18*np.log10(ant_height) -
+                18*np.log10(ue_height) + 2*np.log10(frequency)) +
+                generate_log_normal_dist_value(1, 4, 1, seed_value)
+            )
 
     elif ant_type == 'macro' and settlement_type == 'urban' and type_of_sight == 'nlos':
 
@@ -491,14 +498,24 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
                 generate_log_normal_dist_value(1, 6, 1, seed_value)
             )
 
+        elif distance <= 10:
+            path_loss = 0
+
         else:
             print(
                 'ant_type {}, settlement_type {}, type_of_sight {}, distance {}'
                 .format(ant_type, settlement_type, type_of_sight, distance)
                 )
             print("parameters not in 3GPP applicability ranges")
-            #fallback value needs refining
-            path_loss = 250
+            path_loss = (
+                (161.04 - 7.1*np.log10(street_width) +
+                7.5*np.log10(building_height) -
+                (24.37-3.7*(building_height/ant_height)**2) *
+                np.log10(ant_height) + (43.42-3.1*np.log10(ant_height)) *
+                (np.log10(5000)-3)+ 20*np.log10(frequency) -
+                (3.2*(np.log10(11.75*ue_height))**2-4.97)) +
+                generate_log_normal_dist_value(1, 6, 1, seed_value)
+            )
 
     elif ant_type == 'macro' and settlement_type != 'urban' and type_of_sight == 'los':
 
@@ -524,7 +541,10 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
 
             return pl2
 
-        if (10 < distance < breakpoint_suburban_rural and
+        if distance <= 10:
+            path_loss = 0
+
+        elif (10 < distance < breakpoint_suburban_rural and
             check_applicability(building_height, street_width, ant_height, ue_height)):
 
             path_loss = suburban_los_pl1(distance)
@@ -541,12 +561,15 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
                 .format(ant_type, settlement_type, type_of_sight, distance)
                 )
             print("parameters not in 3GPP applicability ranges")
-            #fallback value needs refining
-            path_loss = 250
+            pl1 = suburban_los_pl1(breakpoint_suburban_rural)
+            path_loss = pl1 + suburban_los_pl2(10000)
 
     elif ant_type == 'macro' and settlement_type != 'urban' and type_of_sight == 'nlos':
 
-        if (10 < distance < 5000 and
+        if distance <= 10:
+            path_loss = 0
+
+        elif (10 < distance < 5000 and
             check_applicability(building_height, street_width, ant_height, ue_height)):
 
             path_loss = (
@@ -560,24 +583,32 @@ def e_utra_3gpp_tr36_814(frequency, distance, ant_height, ant_type, building_hei
                 (3.2*(np.log10(11.75*ue_height))**2-4.97)) +
                 generate_log_normal_dist_value(1, 8, 1, seed_value)
             )
-            # print(generate_log_normal_dist_value(1, 8, 1, seed_value))
-        elif distance <= 10:
-            path_loss = 250
 
         elif distance > 5000:
-            path_loss = 250
-
-        else:
             print(
                 'ant_type {}, settlement_type {}, type_of_sight {}, distance {}'
                 .format(ant_type, settlement_type, type_of_sight, distance)
                 )
             print("parameters not in 3GPP applicability ranges")
-            #fallback value needs refining
-            path_loss = 250
+            path_loss = (
+                (161.04-7.1*np.log10(street_width) +
+                7.5*np.log10(building_height) -
+                (24.37-3.7*(building_height/ant_height)**2) *
+                np.log10(ant_height) +
+                (43.42-3.1*np.log10(ant_height)) *
+                (np.log10(5000)-3) +
+                20*np.log10(frequency) -
+                (3.2*(np.log10(11.75*ue_height))**2-4.97)) +
+                generate_log_normal_dist_value(1, 8, 1, seed_value)
+            )
+        else:
+            print(
+                'ant_type {}, settlement_type {}, type_of_sight {}, distance {}'
+                .format(ant_type, settlement_type, type_of_sight, distance)
+                )
 
     else:
-        path_loss = 250
+        path_loss = 0
         raise ValueError('Did not recognise parameter combination')
 
     return round(path_loss, 2)

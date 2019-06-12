@@ -23,10 +23,10 @@ SIMULATION_PARAMETERS = {
 
 SPECTRUM_PORTFOLIO = [
     ('generic', 'FDD DL', 0.7, 10, '5G'),
-    ('generic', 'FDD DL', 0.8, 10, '4G'),
-    ('generic', 'FDD DL', 1.8, 10, '4G'),
-    ('generic', 'FDD DL', 2.6, 10, '4G'),
-    ('generic', 'FDD DL', 3.5, 80, '5G'),
+    # ('generic', 'FDD DL', 0.8, 10, '4G'),
+    # ('generic', 'FDD DL', 1.8, 10, '4G'),
+    # ('generic', 'FDD DL', 2.6, 10, '4G'),
+    # ('generic', 'FDD DL', 3.5, 80, '5G'),
 ]
 
 MAST_HEIGHT = [
@@ -71,40 +71,31 @@ MODULATION_AND_CODING_LUT =[
 
 SITE_DENSITIES = {
     'urban': [
-        7.22, 3.21, 1.8, 1.15, 0.8, #0.59,
-        0.45, #0.36, 0.29, 0.24, 0.2, 0.17,
-        0.15, #0.13, 0.11, 0.1, 0.09, 0.08,
-        0.07, #0.05, 0.03, 0.02
+        8, 3, 1, 0.5
     ],
-    'suburban': [
-        0.59, #0.45, 0.36,
-        0.29, #0.24, 0.2,
-        #0.17,
-        0.15, #0.13, 0.09, 0.07,
-        0.06,
-        #0.05, 0.03,
-        0.0236, #0.018, 0.0143,
-        #0.0115, 0.0095,
-        0.008,
-    ],
-    'rural': [
-        0.0500, 0.0115, 0.0080, #0.0051,
-        0.0040,
-        #0.0029, 0.0024,
-        0.0018, 0.0016, 0.0013,
-        # 0.0009, #0.0007,
-        # 0.0006,
-    ]
+    # 'suburban': [
+    #     0.6, 0.5, 0.4,
+    #     0.3, 0.2, 0.1,
+    #     0.05
+    # ],
+    # 'rural': [
+    #     0.05, 0.04, 0.03,
+    #     0.02, 0.01, 0.005,
+    #     0.0025, 0.001
+    # ]
 }
 
 # sectors = segments_for_simulator()
 
 SECTORS = [
+    # ('ML12 6', 'rural'),
+    ('NW1 6', 'urban'),
+    # ('LS19 7', 'suburban'),
+]
     # ('LS1 3', 'urban'),
     # ('LS6 2', 'suburban'),
     # ('LS17 9', 'rural'),
-    ('ML12 6', 'rural'),
-]
+
 
 for sector, environment in SECTORS:
 

@@ -161,29 +161,29 @@ def test_extended_hata_model_value_errors():
     #stochastic component is 0.68 (seed=42)
     (3.5,500,10,'micro',20,20,'urban','los',1.5,42, (round(98.26+1,2))),
     (3.5,1000,10,'micro',20,20,'urban','los',1.5,42, (round(107.72+1,2))),
-    (3.5,6000,10,'micro',20,20,'urban','los',1.5,42, 250),
+    (3.5,6000,10,'micro',20,20,'urban','los',1.5,42, 136.68),
     # #stochastic component is 0.56 (seed=42)
     (3.5,500,10,'micro',20,20,'urban','nlos',1.5,42, (135.90+0.94)),
     (3.5,500,25, 'macro',20,20,'urban','los',1.5,42, (round(98.26+0.94,2))),
     (3.5,2000,25,'macro',20,20,'urban','los',1.5,42, round(112.6+0.94,2)),
-    (3.5,6000,10,'macro',20,20,'urban','los',1.5,42, 250),
+    (3.5,6000,10,'macro',20,20,'urban','los',1.5,42, 136.62),
     #stochastic component is 0.42 (seed=42)
     (3.5,1000,25,'macro',20,20,'urban','nlos',1.5,42, (round(141.69+0.85,2))),
-    (3.5,6000,10,'macro',20,20,'urban','nlos',1.5,42, 250),
+    (3.5,6000,10,'macro',20,20,'urban','nlos',1.5,42, 191.91),
     #stochastic component is 0.56 (seed=42)
     (3.5,1000,35,'macro',10,20,'suburban','los',1.5,42, round(107.74+0.94,2)),
     #stochastic component is 0.56 & 0.42 (seed=42)
     (3.5,4000,35,'macro',10,20,'suburban','los',1.5,42, (round(126.73+0.94+0.85,2))),
     #stochastic component is 0.34 (seed=42)
     (3.5,500,35,'macro',10,20,'suburban','nlos',1.5,42, (121.39+0.79)),
-    (3.5,6000,10,'macro',80,20,'suburban','los',1.5,42, 250),
+    (3.5,6000,10,'macro',80,20,'suburban','los',1.5,42, 164.12),
     #stochastic component is 0.56 (seed=42)
     (3.5,1000,35,'macro',10,20,'rural','los',1.5,42, round(107.74+0.94,2)),
     #stochastic component is 0.56 + 0.42 (seed=42)
     (3.5,4000,35,'macro',10,20,'rural','los',1.5,42, (round(126.73+0.85+0.94,2))),
     #stochastic component is 0.34 (seed=42)
     (3.5,500,35,'macro',10,20,'rural','nlos',1.5,42, (121.39+0.79)),
-    (3.5,6000,10,'macro',80,20,'rural','nlos',1.5,42, 250),
+    (3.5,6000,10,'macro',80,20,'rural','nlos',1.5,42, 418.36),
     ])
 
 

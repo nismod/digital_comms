@@ -265,6 +265,7 @@ def generate_receivers(postcode_sector, site_areas,
         Contains the quantity of desired receivers within the area boundary.
 
     """
+    print('len(site_areas) {}'.format(len(site_areas)))
     postcode_sector_geom = shape(postcode_sector['geometry'])
 
     intersecting_site_areas = []
@@ -294,7 +295,7 @@ def generate_receivers(postcode_sector, site_areas,
         site_area_km2 = site_area_geom.area / 1e6
 
         num_receivers = (
-            (pop_density * site_area_km2) #/ 100
+            (pop_density * site_area_km2) /
             (simulation_parameters['overbooking_factor'])
             )
 
@@ -367,14 +368,22 @@ def determine_environment(simulation_parameters):
     return environment
 
 
-def generate_interfering_sites(postcode_sector, simulation_parameters):
+def generate_interfering_sites(postcode_sector,
+    simulation_parameters, environment):
     """
 
     """
     coordinates = []
 
     geom = shape(postcode_sector['geometry'])
-    geom_length = geom.length/8
+
+    if environment == 'urban':
+        geom_length = geom.length/3
+    elif environment == 'suburban':
+        geom_length = geom.length/4
+    else:
+        geom_length = geom.length/10
+
     geom_buffer = geom.buffer(geom_length)
     geom_box = geom_buffer.bounds
 
@@ -523,39 +532,13 @@ def return_single_list(list1, list2):
     return output
 
 
-# def threshold_values_for_sites(manager, simulation_parameters):
-
-#     percentile = simulation_parameters['percentile']
-
-#     se_values = []
-#     capacity_values_km2 = []
-#     for receiver in manager.find_receivers_area():
-#         # if not site.id.startswith('site_id_interfering_'):
-#         # print('length of se is {}'.format(len(site.spectral_efficiency)))
-#         try:
-#             se_percentile = np.percentile(site.spectral_efficiency, percentile)
-#             se_values.append(se_percentile)
-#         except:
-#             pass
-#         print('length of capacity is {}'.format(len(site.capacity_km2)))
-#         try:
-#             capacity_perc = np.percentile(site.capacity_km2, percentile)
-#             capacity_values_km2.append(capacity_perc)
-#         except:
-#             pass
-#     print('length of capacity_values_km2 is {}'.format(len(capacity_values_km2)))
-#     se = sum(se_values)/len(se_values)
-#     capacity_mbps_km2 = sum(capacity_values_km2) / len(capacity_values_km2)
-
-#     return capacity_mbps_km2, se
-
-
 def get_results(manager):
     results = []
     for item in manager.find_receivers_area():
         results.append({
             'num_sites': item.capacity_metrics['num_sites'],
             'path_loss': item.capacity_metrics['path_loss'],
+            'type_of_sight': item.capacity_metrics['type_of_sight'],
             'ave_inf_pl': item.capacity_metrics['ave_inf_pl'],
             'received_power': item.capacity_metrics['received_power'],
             'distance': item.capacity_metrics['distance'],
@@ -595,7 +578,7 @@ def write_results(results, frequency, bandwidth, num_sites, num_receivers,
             'environment', 'frequency_GHz','bandwidth_MHz','technology',
             'generation', 'mast_height_m', 'num_sites', 'num_receivers',
             'site_density_km2','r_density_km2',
-            'received_power_dBm', 'receiver_path_loss_dB',
+            'received_power_dBm', 'distance_m', 'receiver_path_loss_dB', 'type_of_sight',
             'interference_dBm', 'ave_inference_pl_dB', 'inference_ave_distance',
             'network_load',  'noise_dBm', 'i_plus_n_dBm', 'sinr',
             'spectral_efficency_bps_hz', 'single_sector_capacity_mbps_km2',
@@ -620,7 +603,9 @@ def write_results(results, frequency, bandwidth, num_sites, num_receivers,
             site_density,
             r_density,
             result['received_power'],
+            result['distance'],
             result['path_loss'],
+            result['type_of_sight'],
             result['interference'],
             result['ave_inf_pl'],
             result['ave_distance'],
@@ -713,8 +698,7 @@ def write_shapefile(data, postcode_sector_name, filename):
     }
 
     # Create path
-    directory = os.path.join(DATA_INTERMEDIATE,
-        'system_simulator', postcode_sector_name)
+    directory = os.path.join(DATA_INTERMEDIATE, 'system_simulator', postcode_sector_name)
     if not os.path.exists(directory):
         os.makedirs(directory)
 
@@ -766,30 +750,25 @@ def run_simulator(postcode_sector_name, transmitter_type, simulation_parameters,
     environment = determine_environment(postcode_sector_lut)
 
     interfering_sites = generate_interfering_sites(
-        geojson_postcode_sector, simulation_parameters
-        )
-
-    write_shapefile(
-        interfering_sites, postcode_sector_name,
-        '{}_interfering_sites.shp'.format(postcode_sector_name)
+        geojson_postcode_sector, simulation_parameters, environment
         )
 
     densities_to_test = site_densities[environment]
-
-    transmitters = []
 
     for operator, technology, frequency, bandwidth, generation in spectrum_portfolio:
         for mast_height in mast_heights:
             time_step_idx = 0
             site_numbers_tested = []
+            transmitters = []
             for density in densities_to_test[::-1]:
-                # print('density {}'.format(density))
+                print('density {}'.format(density))
+                print('area_km2 {}'.format(postcode_sector_lut['area_km2']))
 
                 total_sites_required = math.ceil(density * postcode_sector_lut['area_km2'])
 
                 if total_sites_required in site_numbers_tested:
                     continue
-
+                print('total_sites_required {}'.format(total_sites_required))
                 site_numbers_tested.append(total_sites_required)
                 # print('site numbers tested {}'.format(site_numbers_tested))
                 # print('raw number of total sites required {}'.format(total_sites_required))
@@ -808,7 +787,6 @@ def run_simulator(postcode_sector_name, transmitter_type, simulation_parameters,
                             geojson_postcode_sector,
                             simulation_parameters,
                             )
-
                 else:
                     while len(transmitters) < total_sites_required:
                         transmitters, site_areas = find_and_deploy_new_site(
@@ -819,6 +797,8 @@ def run_simulator(postcode_sector_name, transmitter_type, simulation_parameters,
                                 simulation_parameters,
                                 )
 
+                print('len(transmitters) {}'.format(len(transmitters)))
+
                 all_transmitters = return_single_list(transmitters, interfering_sites)
 
                 receivers = generate_receivers(
@@ -828,10 +808,6 @@ def run_simulator(postcode_sector_name, transmitter_type, simulation_parameters,
                     simulation_parameters,
                     )
 
-                # for site_area in site_areas:
-                #     print(site_area)
-                #     print((shape(site_area['geometry']).area/1e6))
-
                 print('number of receivers is {}'.format(len(receivers)))
                 manager = SimulationManager(
                     geojson_postcode_sector, all_transmitters, site_areas,
@@ -840,7 +816,7 @@ def run_simulator(postcode_sector_name, transmitter_type, simulation_parameters,
 
                 current_site_density = manager.site_density()
 
-                print("{} GHz {}m Height {} Density, {}".format(
+                print("{}GHz, {}m, {} sites per km^2, {}".format(
                     frequency, mast_height, round(current_site_density, 4),
                     generation
                     ))
@@ -854,10 +830,6 @@ def run_simulator(postcode_sector_name, transmitter_type, simulation_parameters,
                     )
 
                 manager.populate_site_data()
-
-                # single_sector_capacity_mbps, spectral_efficency = threshold_values_for_sites(
-                #     manager, simulation_parameters
-                #     )
 
                 received_power, interference, noise, i_plus_n, spectral_efficency, \
                     sinr, single_sector_capacity_mbps = (
@@ -879,19 +851,6 @@ def run_simulator(postcode_sector_name, transmitter_type, simulation_parameters,
                 # print('current_site_density {}'.format(current_site_density))
                 r_density = manager.receiver_density()
 
-                write_shapefile(
-                    transmitters, postcode_sector_name,
-                    '{}_transmitters_{}.shp'.format(postcode_sector_name, current_site_density)
-                    )
-
-                num_sites = len(manager.sites)
-                num_receivers = len(manager.receivers)
-
-                write_results(results, frequency, bandwidth, num_sites, num_receivers,
-                    current_site_density, environment, technology, generation, mast_height,
-                    r_density, postcode_sector_name
-                    )
-
                 write_lookup_table(
                     total_sites_required, received_power, interference, noise, i_plus_n,
                     spectral_efficency, sinr, single_sector_capacity_mbps,
@@ -900,16 +859,32 @@ def run_simulator(postcode_sector_name, transmitter_type, simulation_parameters,
                     generation, postcode_sector_name
                     )
 
-                write_shapefile(
-                    site_areas, postcode_sector_name,
-                    '{}_cell_areas_{}.shp'.format(postcode_sector_name, current_site_density)
+                write_results(results, frequency, bandwidth, len(manager.sites), len(manager.receivers),
+                    current_site_density, environment, technology, generation, mast_height,
+                    r_density, postcode_sector_name
                     )
 
-                write_shapefile(
-                    receivers, postcode_sector_name,
-                    '{}_receivers_{}.shp'.format(postcode_sector_name, current_site_density)
-                    )
+                # write_shapefile(
+                #     transmitters, postcode_sector_name,
+                #     '{}_transmitters_{}.shp'.format(postcode_sector_name, current_site_density)
+                #     )
+
+                # write_shapefile(
+                #     site_areas, postcode_sector_name,
+                #     '{}_cell_areas_{}.shp'.format(postcode_sector_name, current_site_density)
+                #     )
+
+                # write_shapefile(
+                #     receivers, postcode_sector_name,
+                #     '{}_receivers_{}.shp'.format(postcode_sector_name, current_site_density)
+                #     )
 
                 manager = []
                 site_areas = []
+                results = []
                 print('--------------------')
+
+    # write_shapefile(
+    #     interfering_sites, postcode_sector_name,
+    #     '{}_interfering_sites.shp'.format(postcode_sector_name)
+    #     )

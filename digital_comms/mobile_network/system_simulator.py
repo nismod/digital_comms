@@ -135,7 +135,7 @@ class SimulationManager(object):
             )
 
             # print((shape(site_area['geometry'])).area)
-            path_loss, distance = self.calculate_path_loss(
+            path_loss, r_distance, type_of_sight = self.calculate_path_loss(
                 closest_site, receiver, frequency,
                 environment, seed_value
             )
@@ -172,9 +172,10 @@ class SimulationManager(object):
             receiver.capacity_metrics =  {
                 'num_sites': len(self.sites),
                 'path_loss': path_loss,
+                'type_of_sight': type_of_sight,
                 'ave_inf_pl': ave_inf_pl,
                 'received_power': f_received_power,
-                'distance': distance,
+                'distance': r_distance,
                 'interference': np.log10(f_interference),
                 'network_load': simulation_parameters['network_load'],
                 'ave_distance': ave_distance,
@@ -263,7 +264,14 @@ class SimulationManager(object):
         ant_height = closest_site.ant_height
         ant_type =  'macro'
 
-        if interference_strt_distance < 250 :
+        if ant_height == 30:
+            los_distance = 200
+        elif ant_height == 40:
+            los_distance = 400
+        else:
+            print('Unrecognised antenna height')
+
+        if interference_strt_distance < los_distance :
             type_of_sight = 'los'
         else:
             type_of_sight = 'nlos'
@@ -288,7 +296,7 @@ class SimulationManager(object):
             seed_value
             )
 
-        return path_loss, interference_strt_distance
+        return path_loss, interference_strt_distance, type_of_sight
 
 
     def calc_received_power(self, site, receiver, path_loss):
@@ -362,13 +370,21 @@ class SimulationManager(object):
                 round(i_strt_distance['s12'], 0)
                 )
 
-            if interference_strt_distance < 250 :
+            ant_height = interference_site.ant_height
+            ant_type =  'macro'
+
+            if ant_height == 30:
+                los_distance = 250
+            elif ant_height == 40:
+                los_distance = 400
+            else:
+                print('Unrecognised antenna height')
+
+            if interference_strt_distance < los_distance :
                 type_of_sight = 'los'
             else:
                 type_of_sight = 'nlos'
 
-            ant_height = interference_site.ant_height
-            ant_type =  'macro'
             building_height = 20
             street_width = 20
             type_of_sight = type_of_sight
@@ -395,6 +411,7 @@ class SimulationManager(object):
                 receiver,
                 path_loss
                 )
+
             ave_distance += interference_strt_distance
             ave_pl += path_loss
 
