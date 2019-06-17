@@ -7,7 +7,8 @@ Written by Edward J. Oughton
 import pytest
 from digital_comms.mobile_network.model import (
     NetworkManager, LAD, PostcodeSector,
-    lookup_clutter_geotype, lookup_capacity
+    lookup_clutter_geotype, lookup_capacity,
+    interpolate
     )
 
 class TestNetworkManager():
@@ -129,7 +130,7 @@ class TestPostcode():
         testLAD.add_pcd_sector(testPostcode)
 
         testCapacity = testLAD.capacity()
-        print(testCapacity)
+
         #LAD area = 2km^2
         #cells = 1 x site w/6 cells
         #(effectively classed as 2 sites as 3 sectors are assumed in LUT)
@@ -166,4 +167,21 @@ def test_lookup_capacity(setup_capacity_lookup):
 
     with pytest.raises(KeyError):
         lookup_capacity(setup_capacity_lookup,
-            'rural', '800', '10', '2', '30')
+            'Rural', '100', '50', '2', '50')
+
+
+def test_interpolate():
+
+    x0 = 10
+    y0 = 20
+    x1 = 20
+    y1 = 40
+    x = 15
+
+    answer = interpolate(x0, y0, x1, y1, x)
+
+    assert answer == 30
+
+    answer = interpolate(x0, y0, x1, y1, 30)
+
+    assert answer == 60

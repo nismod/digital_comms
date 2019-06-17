@@ -82,6 +82,7 @@ def test_decide_interventions(non_4g_system, basic_system,
 
     assert actual_result == ([], 250000)
 
+
     actual_result = decide_interventions(
         'macrocell-700-3500', 101834, 2,
         mixed_system, 2020, 0.15, 0.25, 30
@@ -163,16 +164,59 @@ def test_decide_interventions(non_4g_system, basic_system,
     assert actual_result[1] == 0
 
     actual_result = decide_interventions(
-        'small-cell-and-spectrum', 215668 , 1000,
+        'small-cell-and-spectrum', 203668 , 1000,
         mixed_system, 2020, 0.5, 0.25, 30
     )
 
-    #build
-    # site_100 CB11 50917
-    # site_100 CB11 50917
-    # small_cell_site2 CB11 12000
-    # site_200 CB12 50917
-    # site_200 CB12 50917
 
-    assert len(actual_result[0]) == 5
-    assert actual_result[1] == 0
+
+
+
+
+    # won't build in these areas because they are rural
+
+    # #build
+    # # site_100 CB11 50917
+    # # site_100 CB11 50917
+    # # site_200 CB12 50917
+    # # site_200 CB12 50917
+    # # avoids building small cells in rural areas
+    # assert len(actual_result[0]) == 4
+    # assert actual_result[1] == 0
+
+    # actual_result = decide_interventions(
+    # 'small-cell-and-spectrum', 239668, 1000,
+    # mixed_system, 2020, 0.5, 0.25, 30
+    # )
+
+    # #build
+    # # site_100 CB11 50917
+    # # site_100 CB11 50917
+    # # small_cell_site2 CB11 12000
+    # # small_cell_site? CB11 12000
+    # # small_cell_site? CB11 12000
+    # # site_200 CB12 50917
+    # # site_200 CB12 50917
+
+    # #budget ran out after building 7 assets
+    # assert len(actual_result[0]) == 7
+    # assert actual_result[1] == 0
+
+    # actual_result = decide_interventions(
+    # 'small-cell-and-spectrum', 251668 , 10,
+    # mixed_system, 2020, 0.5, 0.25, 30
+    # )
+
+    # #build
+    # # site_100 CB11 50917
+    # # site_100 CB11 50917
+    # # small_cell_site1 CB11 12000
+    # # small_cell_site2 CB11 12000
+    # # small_cell_site3 CB11 12000
+    # # small_cell_site4 CB11 12000
+    # # site_200 CB12 50917
+    # # site_200 CB12 50917
+
+    # #service obligation capacity met
+    # assert len(actual_result[0]) == 8
+    # assert actual_result[1] == 0

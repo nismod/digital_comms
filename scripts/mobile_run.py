@@ -200,6 +200,7 @@ with open(SYSTEM_FILENAME, 'r') as system_file:
             'frequency': frequency,
             'sectors': 3,
             'mast_height': 30,
+            'type': 'macrocell_site'
             # 'bandwidth': pcd_sector['id'],
         })
 
@@ -214,7 +215,7 @@ CAPACITY_LOOKUP_FILENAME = os.path.join(
     INTERMEDIATE_PATH, 'system_simulator'
     )
 PATH_LIST = glob.iglob(os.path.join(
-    INTERMEDIATE_PATH, 'system_simulator', '**/*.csv'), recursive=True)
+    INTERMEDIATE_PATH, 'system_simulator', '**/*lookup*.csv'), recursive=True)
 
 capacity_lookup_table = {}
 
@@ -223,15 +224,15 @@ for path in PATH_LIST:
         reader = csv.DictReader(capacity_lookup_file)
         for row in reader:
             environment = row["environment"]
-            frequency = row["frequency"].replace(' MHz', '')
-            bandwidth = row["bandwidth"].replace(' ', '')
-            mast_height = int(row['mast_height'])
-            density = float(row["area_site_density"])
-            capacity = float(row["area_capacity_mbps"])
+            frequency = str(int(float(row["frequency_GHz"]) * 1e3))
+            bandwidth = row["bandwidth_MHz"]
+            mast_height = '30' #row['mast_height_m']
+            density = float(row["site_density_km2"])
+            capacity = float(row["area_capacity_mbps_km2"])
             cell_edge_spectral_efficency = float(
-                row['cell_edge_spectral_efficency']
+                row['spectral_efficency_bps_hz']
                 )
-            network_efficiency = float(row['network_efficiency'])
+            # network_efficiency = float(row['network_efficiency'])
 
             if (environment, frequency, bandwidth, mast_height) \
                 not in capacity_lookup_table:
@@ -257,7 +258,7 @@ clutter_lookup = []
 with open(CLUTTER_GEOTYPE_FILENAME, 'r') as clutter_geotype_file:
     reader = csv.DictReader(clutter_geotype_file)
     for row in reader:
-        geotype = row['geotype']
+        geotype = row['geotype'].lower()
         population_density = float(row['population_density'])
         clutter_lookup.append((population_density, geotype))
 
@@ -494,7 +495,7 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
         # ('baseline', 'baseline', 'sectorisation', 30),
         # ('high', 'high', 'sectorisation', 30),
 
-        ('low', 'low', 'macro-densification', 30),
+        # ('low', 'low', 'macro-densification', 30),
         # ('baseline', 'baseline', 'macro-densification', 30),
         # ('high', 'high', 'macro-densification', 30),
 
@@ -503,7 +504,7 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
         # ('high', 'high', 'deregulation', 40),
 
         # ('low', 'low', 'small-cell-and-spectrum', 30),
-        # ('baseline', 'baseline', 'small-cell-and-spectrum', 30),
+        ('baseline', 'baseline', 'small-cell-and-spectrum', 30),
         # ('high', 'high', 'small-cell-and-spectrum', 30),
     ]:
     print("Running:", pop_scenario, throughput_scenario, \
@@ -541,7 +542,7 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
                 service_obligation_capacity, traffic,
                 market_share, mast_height
                 )
-
+        # print([p['frequency'] for p in assets])
         interventions_built, budget = decide_interventions(
             intervention_strategy, budget, service_obligation_capacity,
             system, year, traffic, market_share, mast_height
@@ -549,6 +550,10 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
 
         assets = upgrade_existing_assets(assets, interventions_built, mast_height)
 
+        print(assets)
+
+        print('macros: {}'.format(len([a for a in assets if a['type'] == 'macrocell_site'])))
+        print('small_cells {}'.format(len([a for a in assets if a['type'] == 'small_cell'])))
         system = NetworkManager(
             lads, postcode_sectors, assets,
             capacity_lookup_table, clutter_lookup,
@@ -568,7 +573,7 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
                     intervention_strategy)
         write_lad_results(system, year, pop_scenario, throughput_scenario,
                           intervention_strategy, cost_by_lad)
-        write_pcd_results(system, year, pop_scenario, throughput_scenario,
-                          intervention_strategy, cost_by_pcd)
+        # write_pcd_results(system, year, pop_scenario, throughput_scenario,
+        #                   intervention_strategy, cost_by_pcd)
 
     system = None

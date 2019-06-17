@@ -139,7 +139,7 @@ def setup_assets():
             "technology": "LTE",
             "type": "macrocell_site",
             "frequency": ["800", "2600"],
-            "bandwidth": "2x10MHz",
+            "bandwidth": "10",
             "build_date": 2017,
             "sectors": 3,
         },
@@ -149,7 +149,7 @@ def setup_assets():
             "technology": "LTE",
             "type": "macrocell_site",
             "frequency": ["800", "2600"],
-            "bandwidth": "2x10MHz",
+            "bandwidth": "10",
             "build_date": 2017,
             "sectors": 3,
         },
@@ -164,7 +164,7 @@ def setup_mixed_assets():
             "technology": "LTE",
             "type": "macrocell_site",
             "frequency": ["800", "2600"],
-            "bandwidth": "2x10MHz",
+            "bandwidth": "10",
             "build_date": 2017,
             "sectors": 3,
         },
@@ -174,7 +174,7 @@ def setup_mixed_assets():
             "technology": "LTE",
             "type": "macrocell_site",
             "frequency": ["800", "2600"],
-            "bandwidth": "2x10MHz",
+            "bandwidth": "10",
             "build_date": 2017,
             "sectors": 3,
         },
@@ -184,7 +184,7 @@ def setup_mixed_assets():
             'frequency': '3700',
             'technology': 'same',
             'type': 'small_cell',
-            'bandwidth': '2x25MHz',
+            'bandwidth': '25',
             'sectors': 1,
             'build_date': None,
         },
@@ -194,7 +194,7 @@ def setup_mixed_assets():
             'frequency': '3700',
             'technology': 'same',
             'type': 'small_cell',
-            'bandwidth': '2x25MHz',
+            'bandwidth': '25',
             'sectors': 1,
             'build_date': None,
         },
@@ -204,7 +204,7 @@ def setup_mixed_assets():
             'frequency': '3700',
             'technology': 'same',
             'type': 'small_cell',
-            'bandwidth': '2x25MHz',
+            'bandwidth': '25',
             'sectors': 1,
             'build_date': None,
         },
@@ -214,7 +214,7 @@ def setup_mixed_assets():
             'frequency': '3700',
             'technology': 'same',
             'type': 'small_cell',
-            'bandwidth': '2x25MHz',
+            'bandwidth': '25',
             'sectors': 1,
             'build_date': None,
         },
@@ -230,7 +230,7 @@ def setup_six_sectored_assets():
             "technology": "LTE",
             "type": "macrocell_site",
             "frequency": ["800", "2600"],
-            "bandwidth": "2x10MHz",
+            "bandwidth": "10",
             "build_date": 2017,
             "sectors": 6,
         },
@@ -240,7 +240,7 @@ def setup_six_sectored_assets():
             "technology": "LTE",
             "type": "macrocell_site",
             "frequency": ["800", "2600"],
-            "bandwidth": "2x10MHz",
+            "bandwidth": "10",
             "build_date": 2017,
             "sectors": 6,
         }
@@ -255,85 +255,90 @@ def setup_site_sectors():
 @fixture(scope='function')
 def setup_capacity_lookup():
     return {
-        ("Urban", "700", "2x10MHz", 30): [
+        ("urban", "700", "10", '30'): [
             (0, 0),
             (1, 2),
         ],
-        ("Urban", "800", "2x10MHz", 30): [
+        ("urban", "800", "10", '30'): [
             (0, 0),
             (1, 2),
         ],
-        ("Urban", "2600", "2x10MHz", 30): [
+        ("urban", "2600", "10", '30'): [
             (0, 0),
             (3, 5),
         ],
-        ("Urban", "3500", "2x10MHz", 30): [
+        ("urban", "3500", "80", '30'): [
             (0, 0),
             (3, 5),
         ],
-        ('Small cells', '3700', '2x25MHz', 30): [
+        ('small_cells', '3700', '25', '30'): [
             (0, 0),
             (3, 10),
         ],
-        ("Rural", "700", "2x10MHz", 30): [
+        ("rural", "700", "10", '30'): [
             (0, 0),
             (1, 2),
         ],
-        ("Rural", "800", "2x10MHz", 30): [
+        ("rural", "800", "10", '30'): [
             (0, 0),
+            (0.25, 0.5),
+            (0.5, 1),
+            (0.75, 1.5),
             (1, 2),
             (2, 4),
         ],
-        ("Rural", "2600", "2x10MHz", 30): [
+        ("rural", "2600", "10", '30'): [
             (0, 0),
             (2, 4),
             (3, 5),
         ],
-        ("Rural", "3500", "2x10MHz", 30): [
+        ("rural", "3500", "80", '30'): [
             (0, 0),
             (3, 5),
         ],
-        ("Rural", "1800", "2x10MHz", 30): [
+        ("rural", "1800", "10", '30'): [
             (0, 0),
             (0, 0),
         ],
-        ("Urban", "700", "2x10MHz", 40): [
+        ("urban", "700", "10", '40'): [
             (0, 0),
             (2, 4),
         ],
-        ("Urban", "800", "2x10MHz", 40): [
+        ("urban", "800", "10", '40'): [
             (0, 0),
             (2, 4),
         ],
-        ("Urban", "2600", "2x10MHz", 40): [
+        ("urban", "2600", "10", '40'): [
             (0, 0),
             (6, 10),
         ],
-        ("Urban", "3500", "2x10MHz", 40): [
+        ("urban", "3500", "80", '40'): [
             (0, 0),
             (6, 10),
         ],
-        ('Small cells', '3700', '2x25MHz', 40): [
+        ('small_cells', '3700', '25', 'small_cells'): [
             (0, 0),
-            (6, 20),
+            (2, 10),
+            (4, 20),
+            (5, 25),
         ],
-        ("Rural", "700", "2x10MHz", 40): [
+        ("rural", "700", "10", '40'): [
             (0, 0),
             (2, 4),
         ],
-        ("Rural", "800", "2x10MHz", 40): [
+        ("rural", "800", "10", '40'): [
             (0, 0),
             (2, 4),
         ],
-        ("Rural", "2600", "2x10MHz", 40): [
+        ("rural", "2600", "10", '40'): [
             (0, 0),
             (6, 10),
         ],
-        ("Rural", "3500", "2x10MHz", 40): [
+        ("rural", "3500", "80", '40'): [
             (0, 0),
             (6, 10),
         ],
-        ("Rural", "1800", "2x10MHz", 40): [
+        ("rural", "1800", "10", '40'): [
             (0, 0),
             (0, 0),
         ],
@@ -343,9 +348,9 @@ def setup_capacity_lookup():
 @fixture(scope='function')
 def setup_clutter_lookup():
     return  [
-        (0.0, 'Rural'),
+        (0.0, 'rural'),
         (782.0, 'Suburban'),
-        (7959.0, 'Urban'),
+        (7959.0, 'urban'),
     ]
 
 
@@ -414,7 +419,7 @@ def setup_built_interventions():
             "technology": "LTE",
             "type": "macrocell_site",
             "frequency": ["800"],
-            "bandwidth": "2x10MHz",
+            "bandwidth": "10",
             "build_date": 2017
         },
         {
@@ -423,7 +428,7 @@ def setup_built_interventions():
             "technology": "LTE",
             "type": "macrocell_site",
             "frequency": ["2600"],
-            "bandwidth": "2x10MHz",
+            "bandwidth": "10",
             "build_date": 2017
         }
     ]
@@ -444,7 +449,7 @@ def setup_interventions():
                 'frequency': '800',
                 'technology': 'LTE',
                 'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
+                'bandwidth': '10',
                 # set build date when deciding
                 'build_date': None,
             },
@@ -454,7 +459,7 @@ def setup_interventions():
                 'frequency': '2600',
                 'technology': 'LTE',
                 'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
+                'bandwidth': '10',
                 # set build date when deciding
                 'build_date': None,
             },
@@ -472,7 +477,7 @@ def setup_interventions():
                 'frequency': '700',
                 'technology': 'LTE',
                 'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
+                'bandwidth': '10',
                 # set build date when deciding
                 'build_date': None,
             },
@@ -490,7 +495,7 @@ def setup_interventions():
                 'frequency': '3500',
                 'technology': 'LTE',
                 'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
+                'bandwidth': '10',
                 # set build date when deciding
                 'build_date': None,
             },
@@ -546,7 +551,7 @@ def setup_interventions():
                 'frequency': '3700',
                 'technology': '5G',
                 'type': 'small_cell',
-                'bandwidth': '2x25MHz',
+                'bandwidth': '25',
                 # set build date when deciding
                 'build_date': None,
             },

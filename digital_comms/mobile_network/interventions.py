@@ -104,7 +104,7 @@ INTERVENTIONS = {
                 'frequency': '800',
                 'technology': 'LTE',
                 'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
+                'bandwidth': 10,
                 'sectors': 3,
                 'mast_height': 30,
                 'build_date': None,
@@ -114,7 +114,7 @@ INTERVENTIONS = {
                 'frequency': '1800',
                 'technology': 'LTE',
                 'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
+                'bandwidth': 10,
                 'sectors': 3,
                 'mast_height': 30,
                 'build_date': None,
@@ -124,7 +124,7 @@ INTERVENTIONS = {
                 'frequency': '2600',
                 'technology': 'LTE',
                 'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
+                'bandwidth': 10,
                 'sectors': 3,
                 'mast_height': 30,
                 'build_date': None,
@@ -142,7 +142,7 @@ INTERVENTIONS = {
                 'frequency': '700',
                 'technology': 'LTE',
                 'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
+                'bandwidth': '10',
                 'sectors': 3,
                 'mast_height': 30,
                 'build_date': None,
@@ -160,7 +160,7 @@ INTERVENTIONS = {
                 'frequency': '3500',
                 'technology': '5G',
                 'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
+                'bandwidth': '10',
                 'sectors': 3,
                 'mast_height': 30,
                 'build_date': None,
@@ -178,7 +178,7 @@ INTERVENTIONS = {
                 'frequency': 'x6_sectors',
                 'technology': '5G',
                 'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
+                'bandwidth': '10',
                 'sectors': 6,
                 'mast_height': 30,
                 'build_date': None,
@@ -197,7 +197,7 @@ INTERVENTIONS = {
                 'frequency': ['800', '1800', '2600'],
                 'technology': '4G',
                 'type': 'macro_site',
-                'bandwidth': '2x10MHz',
+                'bandwidth': '10',
                 'sectors': 3,
                 'mast_height': 30,
                 'build_date': None,
@@ -216,7 +216,7 @@ INTERVENTIONS = {
                 'frequency': ['700', '800', '1800', '2600', '3500'],
                 'technology': '5G',
                 'type': 'macro_site',
-                'bandwidth': '2x10MHz',
+                'bandwidth': '10',
                 'sectors': 3,
                 'mast_height': 30,
                 'build_date': None,
@@ -235,7 +235,8 @@ INTERVENTIONS = {
                 'frequency': '3700',
                 'technology': 'same',
                 'type': 'small_cell',
-                'bandwidth': '2x25MHz',
+                'bandwidth': '25',
+                'height': '30',
                 'sectors': 1,
                 'build_date': None,
             },
@@ -678,7 +679,8 @@ def _suggest_interventions(budget, available_interventions,
                 while True:
 
                     unique_id = (
-                        site_ngr + '_' + str(current_number + 1) + '_' + area.id + '_build_4G_macro_site'
+                        site_ngr + '_' + str(current_number + 1) + '_' +
+                        area.id + '_build_4G_macro_site'
                         )
 
                     if unique_id in unique_intervention_ids:
@@ -825,44 +827,71 @@ def _suggest_interventions(budget, available_interventions,
         if budget <= 0:
             break
 
+        # build small cells to next density
         if 'small_cell' in available_interventions and timestep >= 2020:
+            #only allow small cells to be deployed in urban areas
+            if (area.clutter_environment == 'rural' or
+                area.clutter_environment == 'suburban'):
+                continue
+
             if _area_satisfied(area, area_interventions,
                 service_obligation_capacity, traffic,
                 market_share, mast_height):
                 continue
 
-            current_number = 0
-            if site_ngr.startswith('small_cell_site'):
-                current_number += 1
+            # area_sq_km = area.area
+            if 'small_cell_sites' in assets_by_site:
+                current_number = len(assets_by_site['small_cell_sites'])
+            else:
+                current_number = 0
 
             build_option = INTERVENTIONS['small_cell']['assets_to_build']
             cost = INTERVENTIONS['small_cell']['cost']
 
-            unique_id = (
-                'small_cell_site_' + '5G_' + str(current_number + 1)
-                )
+            while True:
 
-            if unique_id not in unique_intervention_ids:
+                # unique_id = (
+                #     'small_cell_site_' + '5G_' + str(current_number + 1)
+                #     )
 
-                unique_intervention_ids.append(unique_id)
+                # if unique_id in unique_intervention_ids:
+                #     current_number += 1
+                #     continue
+                # else:
+                #     unique_intervention_ids.append(unique_id)
 
                 to_build = copy.deepcopy(build_option)
-                to_build[0]['site_ngr'] =  'small_cell_site' + str(current_number + 1)
+                to_build[0]['site_ngr'] =  'small_cell' #unique_id
                 to_build[0]['build_date'] = timestep
                 to_build[0]['cost'] = cost
                 to_build[0]['pcd_sector'] = area.id
+                to_build[0]['item'] = 'small_cell'
+                to_build[0]['lad'] = area.lad_id
 
                 area_interventions += to_build
                 built_interventions += to_build
-                assets_by_site[area.id] = [to_build]
-                current_number += 1
+                # assets_by_site[unique_id] = [to_build]
+
                 budget -= cost
 
-                if budget <= 0 or _area_satisfied(area,
-                    area_interventions,
-                    service_obligation_capacity,
-                    traffic, market_share, mast_height):
+                current_number += 1
+
+                if budget <= 0 or \
+                    _area_satisfied(area, area_interventions,
+                    service_obligation_capacity, traffic,
+                    market_share, mast_height):
+                    # print('budget <= 0 / _area_satisfied')
                     break
+
+        #             if len(area_interventions) >= 20:
+        #                 # print('len(area_interventions)')
+        #                 break
+
+        #             # if calc_capacity(area, area_interventions,
+        #             #     service_obligation_capacity, traffic,
+        #             #     market_share, mast_height) >= check_max_capacity(area):
+        #             #     # print('calc_capacity')
+        #             #     break
 
     return built_interventions, budget, unique_intervention_ids
 
@@ -901,7 +930,7 @@ def _area_satisfied(area, assets, service_obligation_capacity,
         area, assets, service_obligation_capacity,
         traffic, market_share, mast_height
         )
-    # print(reached_capacity)
+    # print(reached_capacity, target_capacity)
     return reached_capacity >= target_capacity
 
 def calc_capacity(area, assets, service_obligation_capacity,
@@ -920,24 +949,27 @@ def calc_capacity(area, assets, service_obligation_capacity,
         assets,
         area._capacity_lookup_table,
         area._clutter_lookup,
-        service_obligation_capacity,
+        'test', #service_obligation_capacity,
         traffic,
         market_share,
         mast_height
     )
-
+    # print('test_area {}'.format(test_area.capacity))
     return test_area.capacity
 
 def check_max_capacity(area):
 
     density = float(area.population) / float(area.area)
-
+    # print(density)
     if density < 782:
         #rural sum(800, 1800, 2600)
+        # print('rural')
         return 1.6051
     elif 782 <= density < 7959:
         #suburban sum(800, 1800, 2600)
+        # print('suburban')
         return 46.801895
     elif 7959 <= density:
         #urban sum(800, 1800, 2600)
+        # print('urban')
         return 490.7478
