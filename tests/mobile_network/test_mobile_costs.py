@@ -20,71 +20,58 @@ def test_costs():
     input_data = [
         {
             'capex': 200,
-            'opex': 50
+            'opex': 50,
+            'build_date': 2020,
+            'pcd_sector': '',
+            'ran_type': '',
+            'site_ngr': '',
+            'frequency': '',
+            'bandwidth': '',
+            'sectors': '',
+            'technology': '',
+            'type': '',
+            'item': '',
+            'mast_height': '',
+            'lad': '',
         }
     ]
 
-    # output_data = calculate_costs(input_data, 0.05, 0)
+    output_data = calculate_costs(input_data, 0.05, 2019, 2019)
 
-    # assert round(output_data[0]['capex'], 0) == 200
-    # assert round(output_data[0]['opex'], 0) == 50
+    assert round(output_data[0]['capex'], 0) == 200
+    assert round(output_data[0]['opex'], 0) == 50
 
-    # # input_data = [
-    # #     {
-    # #         'capex': 200,
-    # #         'opex': 50
-    # #     }
-    # # ]
+    output_data = calculate_costs(input_data, 0.1, 2019, 2019)
 
-    # output_data = calculate_costs(input_data, 0.1, 0)
+    assert round(output_data[0]['capex'], 0) == 200
+    assert round(output_data[0]['opex'], 0) == 50
 
-    # assert round(output_data[0]['capex'], 0) == 200
-    # assert round(output_data[0]['opex'], 0) == 50
+    output_data = calculate_costs(input_data, 0.05, 2019, 2021)
 
-    # # input_data = [
-    # #     {
-    # #         'capex': 200,
-    # #         'opex': 50
-    # #     }
-    # # ]
+    assert round(output_data[0]['capex'], 0) == 181
+    assert round(output_data[0]['opex'], 0) == 45
 
-    # output_data = calculate_costs(input_data, 0.05, 2)
+    output_data = calculate_costs(input_data, 0.1, 2019, 2021)
 
-    # assert round(output_data[0]['capex'], 0) == 181
-    # assert round(output_data[0]['opex'], 0) == 45
+    assert round(output_data[0]['capex'], 0) == 165
+    assert round(output_data[0]['opex'], 0) == 41
 
-    # # input_data = [
-    # #     {
-    # #         'capex': 200,
-    # #         'opex': 50
-    # #     }
-    # # ]
-
-    # output_data = calculate_costs(input_data, 0.1, 2)
-
-    # assert round(output_data[0]['capex'], 0) == 165
-    # assert round(output_data[0]['opex'], 0) == 41
-
-    # # input_data = [
-    # #     {
-    # #         'capex': 200,
-    # #         'opex': 50
-    # #     }
-    # # ]
-
-    output_data = calculate_costs(input_data, 0.05, 5)
+    output_data = calculate_costs(input_data, 0.05, 2019, 2024)
 
     assert round(output_data[0]['capex'], 0) == 157
     assert round(output_data[0]['opex'], 0) == 39
 
-    # input_data = [
-    #     {
-    #         'capex': 200,
-    #         'opex': 50
-    #     }
-    # ]
-
-    output_data = calculate_costs(input_data, 0.1, 5)
+    output_data = calculate_costs(input_data, 0.1, 2019, 2024)
 
     assert round(output_data[0]['capex'], 0) == 124
     assert round(output_data[0]['opex'], 0) == 31
+
+    output_data = calculate_costs(input_data, 0.05, 2019, 2039)
+
+    assert round(output_data[0]['capex'], 0) == 75
+    assert round(output_data[0]['opex'], 0) == 19
+
+    output_data = calculate_costs(input_data, 0.1, 2019, 2039)
+
+    assert round(output_data[0]['capex'], 0) == 30
+    assert round(output_data[0]['opex'], 0) == 7

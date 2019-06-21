@@ -9,8 +9,8 @@ from itertools import groupby
 
 ################################################################
 # EXAMPLE COST LOOKUP TABLE
-# - TODO come back to net present value or total cost
-# of ownership for costs
+# - TODO come back to net present value or total capex
+# of ownership for capexs
 ################################################################
 
 
@@ -18,7 +18,7 @@ STRATEGIES = {
     # Intervention Strategy X
     # Minimal Intervention 'Do Nothing Scenario'
     # Build no more additional sites -> will lead to a capacity
-    # margin deficit. The cost will be the replacement of
+    # margin deficit. The capex will be the replacement of
     # existing units annually based on the (decommissioning
     # rate of 10%) common asset lifetime of 10 years
     # Capacity will be the sum of 800 and 2600 MHz
@@ -28,7 +28,7 @@ STRATEGIES = {
 
     # Intervention Strategy X
     # Integrate 700 and 3500 MHz on to the macrocellular layer
-    # The cost will be the addtion of another carrier on each
+    # The capex will be the addtion of another carrier on each
     # basestation ~£15k (providing thre is 4G already)
     # If 4G isn't present, the site will need major upgrades.
     'macrocell-700-3500': (
@@ -41,7 +41,7 @@ STRATEGIES = {
 
     # Intervention Strategy X
     # Increase sectoration on macrocell sites
-    # The cost will include three additional cells,
+    # The capex will include three additional cells,
     # so from x3 to x6.
     'sectorisation': (
         'carrier_800_1800_2600', 'carrier_700',
@@ -50,7 +50,7 @@ STRATEGIES = {
 
     # Intervention Strategy X
     # Build more macrocell sites
-    # The cost will include three multicarrier cells,
+    # The capex will include three multicarrier cells,
     # mast & civil works.
     'macro-densification': (
         'carrier_800_1800_2600',
@@ -62,26 +62,26 @@ STRATEGIES = {
 
     # # Intervention Strategy X
     # # Share new active equipment
-    # # The cost of new equipment will effectively reduce.
+    # # The capex of new equipment will effectively reduce.
     # 'neutral_hosting': ('share_activate_equipment'),
 
     # Intervention Strategy X
     # Deregulate the height of macrocell sites
-    # The cost includes raising the height of the
+    # The capex includes raising the height of the
     # existing site mast.
     'deregulation': ('carrier_800_1800_2600', 'carrier_700',
         'carrier_3500', 'raise_mast_height'),
 
     # Intervention Strategy X
     # Deregulate the height of macrocell sites
-    # The cost includes raising the height of the
+    # The capex includes raising the height of the
     # existing site mast.
     'cloud-ran': ('carrier_800_1800_2600', 'carrier_700',
         'carrier_3500', 'macro_5G_c_ran'),
 
     # Intervention Strategy X
     # Deploy a small cell layer at 3700 MHz
-    # The cost will include the small cell unit and the
+    # The capex will include the small cell unit and the
     # civil works per cell
     'small-cell-and-spectrum': (
         'carrier_800_1800_2600', 'carrier_700',
@@ -97,7 +97,9 @@ INTERVENTIONS = {
         'name': 'Upgrade site to LTE',
         'description': 'If a site has only 2G/3G',
         'result': '800, 1800 and 2600 bands available',
-        'cost': 142446,
+        # 'capex': 142446,
+        'capex': 142446,
+        'opex': 10000,
         'assets_to_build': [
             {
                 'site_ngr': None,
@@ -106,7 +108,7 @@ INTERVENTIONS = {
                 'type': 'macrocell_site',
                 'bandwidth': 10,
                 'sectors': 3,
-                'mast_height': 30,
+                'mast_height': None,
                 'build_date': None,
             },
             {
@@ -116,7 +118,7 @@ INTERVENTIONS = {
                 'type': 'macrocell_site',
                 'bandwidth': 10,
                 'sectors': 3,
-                'mast_height': 30,
+                'mast_height': None,
                 'build_date': None,
             },
             {
@@ -126,7 +128,7 @@ INTERVENTIONS = {
                 'type': 'macrocell_site',
                 'bandwidth': 10,
                 'sectors': 3,
-                'mast_height': 30,
+                'mast_height': None,
                 'build_date': None,
             },
         ]
@@ -135,16 +137,18 @@ INTERVENTIONS = {
         'name': 'Build 700 MHz carrier',
         'description': 'Available if a site has LTE',
         'result': '700 band available',
-        'cost': 50917,
+        # 'capex': 50917,
+        'capex': 50917,
+        'opex': 2000,
         'assets_to_build': [
             {
                 'site_ngr': None,
                 'frequency': '700',
-                'technology': 'LTE',
+                'technology': '5G',
                 'type': 'macrocell_site',
                 'bandwidth': '10',
                 'sectors': 3,
-                'mast_height': 30,
+                'mast_height': None,
                 'build_date': None,
             },
         ]
@@ -153,7 +157,9 @@ INTERVENTIONS = {
         'name': 'Build 3500 MHz carrier',
         'description': 'Available if a site has LTE',
         'result': '3500 band available',
-        'cost': 50917,
+        # 'capex': 50917,
+        'capex': 50917,
+        'opex': 2000,
         'assets_to_build': [
             {
                 'site_ngr': None,
@@ -162,7 +168,7 @@ INTERVENTIONS = {
                 'type': 'macrocell_site',
                 'bandwidth': '10',
                 'sectors': 3,
-                'mast_height': 30,
+                'mast_height': None,
                 'build_date': None,
             },
         ]
@@ -171,7 +177,9 @@ INTERVENTIONS = {
         'name': 'sectorisation carrier',
         'description': 'Available if a site has LTE',
         'result': '6 sectors are available',
-        'cost': 50000, #£10k each, plus £20 installation
+        # 'capex': 50000, #£10k each, plus £20 installation
+        'capex': 50000,
+        'opex': 2000,
         'assets_to_build': [
             {
                 'site_ngr': None,
@@ -180,7 +188,7 @@ INTERVENTIONS = {
                 'type': 'macrocell_site',
                 'bandwidth': '10',
                 'sectors': 6,
-                'mast_height': 30,
+                'mast_height': None,
                 'build_date': None,
             },
         ]
@@ -190,7 +198,9 @@ INTERVENTIONS = {
         'description': 'Must be deployed at preset densities \
             to be modelled',
         'result': 'Macrocell sites available at given density',
-        'cost': 150000,
+        # 'capex': 150000,
+        'capex': 150000,
+        'opex': 10000,
         'assets_to_build': [
             {
                 'site_ngr': '',
@@ -199,7 +209,7 @@ INTERVENTIONS = {
                 'type': 'macro_site',
                 'bandwidth': '10',
                 'sectors': 3,
-                'mast_height': 30,
+                'mast_height': None,
                 'build_date': None,
             },
         ]
@@ -209,7 +219,9 @@ INTERVENTIONS = {
         'description': 'Must be deployed at preset densities \
             to be modelled',
         'result': 'Macrocell sites available at given density',
-        'cost': 150000,
+        # 'capex': 150000,
+        'capex': 150000,
+        'opex': 10000,
         'assets_to_build': [
             {
                 'site_ngr': '',
@@ -218,7 +230,7 @@ INTERVENTIONS = {
                 'type': 'macro_site',
                 'bandwidth': '10',
                 'sectors': 3,
-                'mast_height': 30,
+                'mast_height': None,
                 'build_date': None,
             },
         ]
@@ -228,15 +240,17 @@ INTERVENTIONS = {
         'description': 'Must be deployed at preset densities \
             to be modelled',
         'result': '2x25 MHz small cells available at given density',
-        'cost': 12000,
+        # 'capex': 12000,
+        'capex': 12000,
+        'opex': 1000,
         'assets_to_build': [
             {
                 'site_ngr': 'small_cell_site',
                 'frequency': '3700',
-                'technology': 'same',
+                'technology': '5G',
                 'type': 'small_cell',
                 'bandwidth': '25',
-                'height': '30',
+                'mast_height': '30',
                 'sectors': 1,
                 'build_date': None,
             },
@@ -247,7 +261,9 @@ INTERVENTIONS = {
         'description': 'Must be deployed at preset densities to \
             be modelled',
         'result': 'Same technology but with new enhanced capacity',
-        'cost': 30000,
+        # 'cost': 30000,
+        'capex': 30000,
+        'opex': 0,
         'assets_to_build': [
             {
                 'site_ngr': 'extended_height',
@@ -256,7 +272,7 @@ INTERVENTIONS = {
                 'type': 'extended_height_macro',
                 'bandwidth': None,
                 'sectors': None,
-                'mast_height': 40,
+                'mast_height': '40',
                 'build_date': None,
             },
         ]
@@ -266,7 +282,9 @@ INTERVENTIONS = {
         'description': 'Must be deployed within viable distance \
             from exchange',
         'result': 'Network architecture change to SDN/NFV',
-        'cost': 30000,
+        # 'capex': 30000,
+        'capex': 30000,
+        'opex': 1000,
         'assets_to_build': [
             {
                 'site_ngr': None,
@@ -275,6 +293,7 @@ INTERVENTIONS = {
                 'type': 'macro_5G_c_ran',
                 'bandwidth': None,
                 'sectors': None,
+                'mast_height': '40',
                 'build_date': None,
             },
         ]
@@ -321,7 +340,7 @@ def decide_interventions(strategy, budget,
         1: int
             Remaining budget
         2: int
-            Total costs of intervention build step
+            Total capex of intervention build step
 
     """
     available_interventions = STRATEGIES[strategy]
@@ -423,7 +442,8 @@ def _suggest_interventions(budget, available_interventions,
         if 'carrier_800_1800_2600' in available_interventions:
 
             build_option = INTERVENTIONS['carrier_800_1800_2600']['assets_to_build']
-            cost = INTERVENTIONS['carrier_800_1800_2600']['cost']
+            capex = INTERVENTIONS['carrier_800_1800_2600']['capex']
+            opex = INTERVENTIONS['carrier_800_1800_2600']['opex']
 
             for site_ngr, site_assets in assets_by_site.items():
                 if site_ngr == 'small_cell_site':
@@ -450,13 +470,15 @@ def _suggest_interventions(budget, available_interventions,
                             to_build['lad'] = area.lad_id
                             to_build['build_date'] = timestep
                             to_build['item'] = 'carrier_800_1800_2600'
-                            to_build['cost'] = cost
+                            to_build['mast_height'] = area.mast_height
+                            to_build['capex'] = capex
+                            to_build['opex'] = opex
 
                             area_interventions.append(to_build)
                             built_interventions.append(to_build)
                             assets_by_site[site_ngr] = [to_build]
 
-                            budget -= cost
+                            budget -= capex
 
                             if budget <= 0:
                                 break
@@ -473,7 +495,8 @@ def _suggest_interventions(budget, available_interventions,
                 continue
 
             build_option = INTERVENTIONS['carrier_700']['assets_to_build']
-            cost = INTERVENTIONS['carrier_700']['cost']
+            capex = INTERVENTIONS['carrier_700']['capex']
+            opex = INTERVENTIONS['carrier_700']['opex']
 
             for site_ngr, site_assets in assets_by_site.items():
 
@@ -501,13 +524,15 @@ def _suggest_interventions(budget, available_interventions,
                             to_build['lad'] = area.lad_id
                             to_build['build_date'] = timestep
                             to_build['item'] = 'carrier_700'
-                            to_build['cost'] = cost
+                            to_build['mast_height'] = area.mast_height
+                            to_build['capex'] = capex
+                            to_build['opex'] = opex
 
                             area_interventions.append(to_build)
                             built_interventions.append(to_build)
                             assets_by_site[site_ngr] = [to_build]
 
-                            budget -= cost
+                            budget -= capex
                             if budget <= 0:
                                 break
 
@@ -523,7 +548,8 @@ def _suggest_interventions(budget, available_interventions,
                 continue
 
             build_option = INTERVENTIONS['carrier_3500']['assets_to_build']
-            cost = INTERVENTIONS['carrier_3500']['cost']
+            capex = INTERVENTIONS['carrier_3500']['capex']
+            opex = INTERVENTIONS['carrier_3500']['opex']
 
             for site_ngr, site_assets in assets_by_site.items():
                 if site_ngr == 'small_cell_site':
@@ -549,13 +575,15 @@ def _suggest_interventions(budget, available_interventions,
                             to_build['lad'] = area.lad_id
                             to_build['build_date'] = timestep
                             to_build['item'] = 'carrier_3500'
-                            to_build['cost'] = cost
+                            to_build['mast_height'] = area.mast_height
+                            to_build['capex'] = capex
+                            to_build['opex'] = opex
 
                             area_interventions.append(to_build)
                             built_interventions.append(to_build)
                             assets_by_site[site_ngr] = [to_build]
 
-                            budget -= cost
+                            budget -= capex
 
                             if budget <= 0:
                                 break
@@ -570,7 +598,8 @@ def _suggest_interventions(budget, available_interventions,
                 continue
 
             build_option = INTERVENTIONS['add_3_sectors']['assets_to_build']
-            cost = INTERVENTIONS['add_3_sectors']['cost']
+            capex = INTERVENTIONS['add_3_sectors']['capex']
+            opex = INTERVENTIONS['add_3_sectors']['opex']
 
             for site_ngr, site_assets in assets_by_site.items():
                 if site_ngr == 'small_cell_site':
@@ -601,13 +630,15 @@ def _suggest_interventions(budget, available_interventions,
                             to_build['lad'] = area.lad_id
                             to_build['build_date'] = timestep
                             to_build['item'] = 'add_3_sectors'
-                            to_build['cost'] = cost
+                            to_build['mast_height'] = area.mast_height
+                            to_build['capex'] = capex
+                            to_build['opex'] = opex
 
                             area_interventions.append(to_build)
                             built_interventions.append(to_build)
                             assets_by_site[site_ngr] = [to_build]
 
-                            budget -= cost
+                            budget -= capex
                             if budget <= 0:
                                 break
 
@@ -615,44 +646,52 @@ def _suggest_interventions(budget, available_interventions,
             break
 
         if 'raise_mast_height' in available_interventions:
+            # print( area.mast_height)
             if _area_satisfied(area, area_interventions,
                 service_obligation_capacity, traffic,
                 market_share, mast_height):
                 continue
 
             build_option = INTERVENTIONS['raise_mast_height']['assets_to_build']
-            cost = INTERVENTIONS['raise_mast_height']['cost']
+            capex = INTERVENTIONS['raise_mast_height']['capex']
+            opex = INTERVENTIONS['raise_mast_height']['opex']
 
             for site_ngr, site_assets in assets_by_site.items():
                 if site_ngr == 'small_cell_site':
                     continue
 
-                unique_id = (site_ngr + '_' + 'raise_mast_height')
+                current_tech, current_freqs = current_tech_and_freqs(site_assets)
 
-                if unique_id not in unique_intervention_ids:
-                    unique_intervention_ids.append(unique_id)
-                    for option in build_option:
-                        to_build = copy.copy(option)
-                        to_build['site_ngr'] = site_ngr
-                        to_build['pcd_sector'] = area.id
-                        to_build['build_date'] = timestep
-                        to_build['technology'] = site_assets[0]['technology']
-                        to_build['frequency'] = site_assets[0]['frequency']
-                        to_build['ran_type'] = 'distributed'
-                        to_build['bandwidth'] = 'frequency_dependent'
-                        to_build['sectors'] = site_assets[0]['sectors']
-                        to_build['pcd_sector'] = area.id
-                        to_build['lad'] = area.lad_id
-                        to_build['build_date'] = timestep
-                        to_build['item'] = 'raise_mast_height'
-                        to_build['cost'] = cost
+                if area.mast_height != '40':
 
-                        area_interventions.append(to_build)
-                        built_interventions.append(to_build)
+                    unique_id = (site_ngr + '_' + 'raise_mast_height')
 
-                        budget -= cost
-                        if budget <= 0:
-                            break
+                    if unique_id not in unique_intervention_ids:
+                        unique_intervention_ids.append(unique_id)
+                        for option in build_option:
+                            to_build = copy.copy(option)
+                            to_build['site_ngr'] = site_ngr
+                            to_build['pcd_sector'] = area.id
+                            to_build['build_date'] = timestep
+                            to_build['technology'] = site_assets[0]['technology']
+                            to_build['frequency'] = site_assets[0]['frequency']
+                            to_build['ran_type'] = 'distributed'
+                            to_build['bandwidth'] = 'frequency_dependent'
+                            to_build['sectors'] = site_assets[0]['sectors']
+                            to_build['pcd_sector'] = area.id
+                            to_build['lad'] = area.lad_id
+                            to_build['build_date'] = timestep
+                            to_build['item'] = 'raise_mast_height'
+                            to_build['mast_height'] = '40'
+                            to_build['capex'] = capex
+                            to_build['opex'] = opex
+
+                            area_interventions.append(to_build)
+                            built_interventions.append(to_build)
+
+                            budget -= capex
+                            if budget <= 0:
+                                break
 
         if budget <= 0:
             break
@@ -670,7 +709,8 @@ def _suggest_interventions(budget, available_interventions,
                     continue
 
                 build_option = INTERVENTIONS['build_4G_macro_site']['assets_to_build']
-                cost = INTERVENTIONS['build_4G_macro_site']['cost']
+                capex = INTERVENTIONS['build_4G_macro_site']['capex']
+                opex = INTERVENTIONS['build_4G_macro_site']['opex']
 
                 current_number = 0
                 if site_ngr.startswith('site_'):
@@ -700,13 +740,15 @@ def _suggest_interventions(budget, available_interventions,
                         to_build[0]['lad'] = area.lad_id
                         to_build[0]['build_date'] = timestep
                         to_build[0]['item'] = 'build_4G_macro_site'
-                        to_build[0]['cost'] = cost
+                        to_build[0]['mast_height'] = '30'
+                        to_build[0]['capex'] = capex
+                        to_build[0]['opex'] = opex
 
                         area_interventions += to_build
                         built_interventions += to_build
                         assets_by_site[site_ngr] = [to_build]
 
-                        budget -= cost
+                        budget -= capex
                         current_number += 1
 
                         if calc_capacity(area, area_interventions,
@@ -736,7 +778,8 @@ def _suggest_interventions(budget, available_interventions,
                     continue
 
                 build_option = INTERVENTIONS['build_5G_macro_site']['assets_to_build']
-                cost = INTERVENTIONS['build_5G_macro_site']['cost']
+                capex = INTERVENTIONS['build_5G_macro_site']['capex']
+                opex = INTERVENTIONS['build_5G_macro_site']['opex']
 
                 current_number = 0
                 if site_ngr.startswith('site_'):
@@ -765,13 +808,15 @@ def _suggest_interventions(budget, available_interventions,
                         to_build[0]['lad'] = area.lad_id
                         to_build[0]['build_date'] = timestep
                         to_build[0]['item'] = 'build_5G_macro_site'
-                        to_build[0]['cost'] = cost
+                        to_build[0]['mast_height'] = '30'
+                        to_build[0]['capex'] = capex
+                        to_build[0]['opex'] = opex
 
                         area_interventions += to_build
                         built_interventions += to_build
                         assets_by_site[site_ngr] = [to_build]
 
-                        budget -= cost
+                        budget -= capex
 
                         if budget <= 0 or \
                             _area_satisfied(area, area_interventions,
@@ -790,7 +835,7 @@ def _suggest_interventions(budget, available_interventions,
                 continue
 
             build_option = INTERVENTIONS['macro_5G_c_ran']['assets_to_build']
-            cost = INTERVENTIONS['macro_5G_c_ran']['cost']
+            capex = INTERVENTIONS['macro_5G_c_ran']['capex']
 
             for site_ngr, site_assets in assets_by_site.items():
                 if site_ngr == 'small_cell_site':
@@ -815,12 +860,14 @@ def _suggest_interventions(budget, available_interventions,
                         to_build['lad'] = area.lad_id
                         to_build['build_date'] = timestep
                         to_build['item'] = 'macro_5G_c_ran'
-                        to_build['cost'] = cost
+                        to_build['mast_height'] = area.mast_height
+                        to_build['capex'] = capex
+                        to_build['opex'] = opex
 
                         area_interventions.append(to_build)
                         built_interventions.append(to_build)
 
-                        budget -= cost
+                        budget -= capex
                         if budget <= 0:
                             break
 
@@ -839,14 +886,15 @@ def _suggest_interventions(budget, available_interventions,
                 market_share, mast_height):
                 continue
 
-            # area_sq_km = area.area
+            # area_sq_km = area.area'
             if 'small_cell_sites' in assets_by_site:
                 current_number = len(assets_by_site['small_cell_sites'])
             else:
                 current_number = 0
 
             build_option = INTERVENTIONS['small_cell']['assets_to_build']
-            cost = INTERVENTIONS['small_cell']['cost']
+            capex = INTERVENTIONS['small_cell']['capex']
+            opex = INTERVENTIONS['small_cell']['opex']
 
             while True:
 
@@ -863,16 +911,17 @@ def _suggest_interventions(budget, available_interventions,
                 to_build = copy.deepcopy(build_option)
                 to_build[0]['site_ngr'] =  'small_cell' #unique_id
                 to_build[0]['build_date'] = timestep
-                to_build[0]['cost'] = cost
                 to_build[0]['pcd_sector'] = area.id
                 to_build[0]['item'] = 'small_cell'
                 to_build[0]['lad'] = area.lad_id
+                to_build[0]['capex'] = capex
+                to_build[0]['opex'] = opex
 
                 area_interventions += to_build
                 built_interventions += to_build
                 # assets_by_site[unique_id] = [to_build]
 
-                budget -= cost
+                budget -= capex
 
                 current_number += 1
 

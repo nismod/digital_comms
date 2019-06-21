@@ -47,11 +47,13 @@ POPULATION_SCENARIOS = [
     "baseline",
     "low",
 ]
+
 THROUGHPUT_SCENARIOS = [
     "high",
     "baseline",
     "low",
 ]
+
 INTERVENTION_STRATEGIES = [
     "minimal",
     "macrocell-700-3500",
@@ -199,7 +201,7 @@ with open(SYSTEM_FILENAME, 'r') as system_file:
             'technology': technology,
             'frequency': frequency,
             'sectors': 3,
-            'mast_height': 30,
+            'mast_height': '30',
             'type': 'macrocell_site'
             # 'bandwidth': pcd_sector['id'],
         })
@@ -226,7 +228,7 @@ for path in PATH_LIST:
             environment = row["environment"]
             frequency = str(int(float(row["frequency_GHz"]) * 1e3))
             bandwidth = row["bandwidth_MHz"]
-            mast_height = '30' #row['mast_height_m']
+            mast_height = str(row['mast_height_m'])
             density = float(row["site_density_km2"])
             capacity = float(row["area_capacity_mbps_km2"])
             cell_edge_spectral_efficency = float(
@@ -284,7 +286,7 @@ def upgrade_existing_assets(assets, interventions_built, mast_height):
             assets_to_add.append(intervention)
 
     upgraded_assets = []
-
+    print('number of raised masts {}'.format(len(raised_masts)))
     for asset in assets:
         if asset['site_ngr'] in raised_masts:
             upgraded_assets.append({
@@ -296,7 +298,7 @@ def upgrade_existing_assets(assets, interventions_built, mast_height):
                 'frequency': asset['frequency'],
                 'sectors': asset['sectors'],
                 'ran_type': 'distributed',
-                'mast_height': mast_height,
+                'mast_height': '40',
             })
         if asset['site_ngr'] in macro_5G_c_ran:
             upgraded_assets.append({
@@ -315,8 +317,28 @@ def upgrade_existing_assets(assets, interventions_built, mast_height):
 
     return all_assets
 
+
+def allocate_costs(interventions_built):
+    """
+    Allocate costs to lad and postcode level.
+
+    """
+    capex_by_lad = defaultdict(int)
+    capex_by_pcd = defaultdict(int)
+    opex_by_lad = defaultdict(int)
+    opex_by_pcd = defaultdict(int)
+
+    for item in interventions_built:
+        capex_by_lad[item['lad']] += item['capex']
+        capex_by_pcd[item['pcd_sector']] += item['capex']
+        opex_by_lad[item['lad']] += item['opex']
+        opex_by_pcd[item['pcd_sector']] += item['opex']
+
+    return capex_by_lad, capex_by_pcd, opex_by_lad, opex_by_pcd
+
+
 def write_lad_results(network_manager, year, pop_scenario, throughput_scenario,
-                      intervention_strategy, cost_by_lad):
+                      intervention_strategy, capex_by_lad, opex_by_lad):
     suffix = _get_suffix(
         pop_scenario, throughput_scenario, intervention_strategy
         )
@@ -331,7 +353,7 @@ def write_lad_results(network_manager, year, pop_scenario, throughput_scenario,
         metrics_file = open(metrics_filename, 'w', newline='')
         metrics_writer = csv.writer(metrics_file)
         metrics_writer.writerow(
-            ('year', 'area_id', 'area_name', 'cost', 'demand',
+            ('year', 'area_id', 'area_name', 'capex', 'opex', 'demand',
             'capacity', 'capacity_deficit', 'population', 'area',
             'pop_density')
             )
@@ -342,7 +364,8 @@ def write_lad_results(network_manager, year, pop_scenario, throughput_scenario,
     for lad in network_manager.lads.values():
         area_id = lad.id
         area_name = lad.name
-        cost = cost_by_lad[lad.id]
+        capex = capex_by_lad[lad.id]
+        opex = opex_by_lad[lad.id]
         demand = lad.demand()
         capacity = lad.capacity()
         capacity_deficit = capacity - demand
@@ -351,14 +374,14 @@ def write_lad_results(network_manager, year, pop_scenario, throughput_scenario,
         pop_d = lad.population_density
 
         metrics_writer.writerow(
-            (year, area_id, area_name, cost, demand, capacity,
+            (year, area_id, area_name, capex, opex, demand, capacity,
             capacity_deficit, pop, area, pop_d)
             )
 
     metrics_file.close()
 
 def write_pcd_results(network_manager, year, pop_scenario, throughput_scenario,
-                      intervention_strategy, cost_by_pcd):
+                      intervention_strategy, capex_by_pcd, opex_by_pcd):
 
     suffix = _get_suffix(
         pop_scenario, throughput_scenario, intervention_strategy
@@ -374,7 +397,7 @@ def write_pcd_results(network_manager, year, pop_scenario, throughput_scenario,
         metrics_file = open(metrics_filename, 'w', newline='')
         metrics_writer = csv.writer(metrics_file)
         metrics_writer.writerow(
-            ('year', 'postcode', 'cost', 'demand', 'capacity',
+            ('year', 'postcode', 'capex', 'opex', 'demand', 'capacity',
             'capacity_deficit', 'population', 'pop_density', 'environment'))
     else:
         metrics_file = open(metrics_filename, 'a', newline='')
@@ -387,10 +410,11 @@ def write_pcd_results(network_manager, year, pop_scenario, throughput_scenario,
         pop = pcd.population
         pop_d = pcd.population_density
         environment = pcd.clutter_environment
-        cost = cost_by_pcd[pcd.id]
+        capex = capex_by_pcd[pcd.id]
+        opex = opex_by_pcd[pcd.id]
 
         metrics_writer.writerow(
-            (year, pcd.id, cost, demand, capacity,
+            (year, pcd.id, capex, opex, demand, capacity,
             capacity_deficit, pop, pop_d, environment)
             )
 
@@ -413,7 +437,7 @@ def write_decisions(decisions, year, pop_scenario,
         decisions_writer.writerow((
             'year', 'pcd_sector', 'site_ngr', 'build_date',
             'type', 'technology', 'frequency', 'bandwidth',
-            'sectors'))
+            'sectors', 'mast_height'))
     else:
         decisions_file = open(decisions_filename, 'a', newline='')
         decisions_writer = csv.writer(decisions_file)
@@ -427,11 +451,12 @@ def write_decisions(decisions, year, pop_scenario,
         frequency = intervention['frequency']
         bandwidth = intervention['bandwidth']
         sectors = intervention['sectors']
+        mast_height = intervention['mast_height']
 
         decisions_writer.writerow((
             year, pcd_sector, site_ngr, build_date,
             intervention_type, technology, frequency,
-            bandwidth, sectors
+            bandwidth, sectors, mast_height
             ))
 
     decisions_file.close()
@@ -453,14 +478,16 @@ def write_spend(interventions_built, year, pop_scenario,
         spend_file = open(spend_filename, 'w', newline='')
         spend_writer = csv.writer(spend_file)
         spend_writer.writerow(
-            ('year', 'pcd_sector', 'lad', 'item', 'cost'))
+            ('year', 'pcd_sector', 'lad', 'item', 'capex', 'opex'))
     else:
         spend_file = open(spend_filename, 'a', newline='')
         spend_writer = csv.writer(spend_file)
 
     for row in interventions_built:
         spend_writer.writerow(
-            (year, row['pcd_sector'], row['lad'], row['item'], row['cost']))
+            (year, row['pcd_sector'], row['lad'], row['item'],
+            row['capex'], row['opex'])
+            )
 
     spend_file.close()
 
@@ -484,11 +511,11 @@ def _get_suffix(pop_scenario, throughput_scenario,
 
 for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
         # ('low', 'low', 'minimal', 30),
-        # ('baseline', 'baseline', 'minimal', 30),
+        ('baseline', 'baseline', 'minimal', 30),
         # ('high', 'high', 'minimal', 30),
 
         # ('low', 'low', 'macrocell-700-3500', 30),
-        # ('baseline', 'baseline', 'macrocell-700-3500', 30),
+        ('baseline', 'baseline', 'macrocell-700-3500', 30),
         # ('high', 'high', 'macrocell-700-3500', 30),
 
         # ('low', 'low', 'sectorisation', 30),
@@ -496,7 +523,7 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
         # ('high', 'high', 'sectorisation', 30),
 
         # ('low', 'low', 'macro-densification', 30),
-        # ('baseline', 'baseline', 'macro-densification', 30),
+        ('baseline', 'baseline', 'macro-densification', 30),
         # ('high', 'high', 'macro-densification', 30),
 
         # ('low', 'low', 'deregulation', 40),
@@ -508,7 +535,7 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
         # ('high', 'high', 'small-cell-and-spectrum', 30),
     ]:
     print("Running:", pop_scenario, throughput_scenario, \
-        intervention_strategy)
+        intervention_strategy, mast_height)
 
     #copy initial system list using '[:]'
     assets = initial_system[:]
@@ -540,7 +567,7 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
                 lads, postcode_sectors, assets,
                 capacity_lookup_table, clutter_lookup,
                 service_obligation_capacity, traffic,
-                market_share, mast_height
+                market_share, '30'
                 )
         # print([p['frequency'] for p in assets])
         interventions_built, budget = decide_interventions(
@@ -548,9 +575,24 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
             system, year, traffic, market_share, mast_height
             )
 
+        # for intervention in interventions_built:
+        #     if intervention['site_ngr'] == 'site_1':
+        #         print(intervention)
+
+        # print(interventions_built)
         assets = upgrade_existing_assets(assets, interventions_built, mast_height)
 
-        print(assets)
+        # for asset in assets:
+        #     if asset['site_ngr'] == 'site_1':
+        #         print(asset)
+
+        # unique = []
+        # for asset in assets:
+        #     for key in asset.keys():
+        #         unique.append(key)
+
+        # print(set(unique))
+        system = None
 
         print('macros: {}'.format(len([a for a in assets if a['type'] == 'macrocell_site'])))
         print('small_cells {}'.format(len([a for a in assets if a['type'] == 'small_cell'])))
@@ -561,19 +603,17 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
             market_share, mast_height
             )
 
-        cost_by_lad = defaultdict(int)
-        cost_by_pcd = defaultdict(int)
-        for item in interventions_built:
-            cost_by_lad[item['lad']] += item['cost']
-            cost_by_pcd[item['pcd_sector']] += item['cost']
+        capex_by_lad, capex_by_pcd, opex_by_lad, opex_by_pcd = allocate_costs(
+            interventions_built
+            )
 
-        write_decisions(interventions_built, year, pop_scenario,
-                        throughput_scenario, intervention_strategy)
+        write_decisions(interventions_built, year, pop_scenario, throughput_scenario,
+                    intervention_strategy)
         write_spend(interventions_built, year, pop_scenario, throughput_scenario,
                     intervention_strategy)
         write_lad_results(system, year, pop_scenario, throughput_scenario,
-                          intervention_strategy, cost_by_lad)
+                          intervention_strategy, capex_by_lad, opex_by_lad)
         # write_pcd_results(system, year, pop_scenario, throughput_scenario,
-        #                   intervention_strategy, cost_by_pcd)
+        #                   intervention_strategy, capex_by_lad, opex_by_lad)
 
     system = None

@@ -292,7 +292,7 @@ def generate_receivers(postcode_sector, site_areas,
         site_area_km2 = site_area_geom.area / 1e6
 
         num_receivers = (
-            (pop_density * site_area_km2) / 400
+            (pop_density * site_area_km2) / 300
             # (simulation_parameters['overbooking_factor'])
             )
 

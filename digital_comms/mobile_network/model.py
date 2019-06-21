@@ -289,8 +289,7 @@ class PostcodeSector(object):
         self.penetration = 0.8
 
         self.assets = assets
-        # if service_obligation_capacity == 'test':
-        #     print('macro capacity {}'.format(self._macrocell_site_capacity(service_obligation_capacity)))
+
         self.capacity = (
             self._macrocell_site_capacity(service_obligation_capacity) +
             self._small_cell_capacity(service_obligation_capacity)
@@ -588,7 +587,6 @@ def lookup_capacity(capacity_lookup, clutter_environment,
         If combination is not found in the lookup table.
 
     """
-    # print(clutter_environment, frequency, bandwidth, mast_height)
     if (clutter_environment, frequency, bandwidth, mast_height) not in capacity_lookup:
         raise KeyError("Combination %s not found in lookup table",
                        (clutter_environment, frequency, bandwidth, mast_height))
@@ -597,8 +595,8 @@ def lookup_capacity(capacity_lookup, clutter_environment,
     density_capacities = capacity_lookup[
         (str(clutter_environment), str(frequency), str(bandwidth), str(mast_height))
         ]
-    # if frequency == '800':
-    #     print('density_capacities {}'.format(density_capacities))
+
+    # print('density_capacities {}'.format(density_capacities))
     lowest_density, lowest_capacity = density_capacities[0]
     # if frequency == '800':
     #     print('lowest_density {}, lowest_capacity {}'.format(lowest_density, lowest_capacity))

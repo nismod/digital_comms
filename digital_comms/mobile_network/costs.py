@@ -1,7 +1,7 @@
 """Cost module
 """
 
-def calculate_costs(data, discount_rate, timestep):
+def calculate_costs(data, discount_rate, start_timestep, current_timestep):
     """
     Calculates the discounted cost for capex and opex, depending on timestep.
 
@@ -21,28 +21,46 @@ def calculate_costs(data, discount_rate, timestep):
     output = []
 
     for datum in data:
+
         output_datum = {}
+
         cost = datum['capex']
-        discounted_cost = discount_function(cost, discount_rate, timestep)
+        discounted_cost = discount_function(
+            cost, discount_rate, start_timestep, current_timestep
+            )
         output_datum['capex'] = discounted_cost
 
         cost = datum['opex']
-        discounted_cost = discount_function(cost, discount_rate, timestep)
+        discounted_cost = discount_function(
+            cost, discount_rate, start_timestep, current_timestep
+            )
         output_datum['opex'] = discounted_cost
+
+        output_datum['build_date'] = datum['build_date']
+        output_datum['pcd_sector'] = datum['pcd_sector']
+        output_datum['ran_type'] = datum['ran_type']
+        output_datum['site_ngr'] = datum['site_ngr']
+        output_datum['frequency'] = datum['frequency']
+        output_datum['bandwidth'] = datum['bandwidth']
+        output_datum['sectors'] = datum['sectors']
+        output_datum['technology'] = datum['technology']
+        output_datum['type'] = datum['type']
+        output_datum['item'] = datum['item']
+        output_datum['mast_height'] = datum['mast_height']
+        output_datum['lad'] = datum['lad']
 
         output.append(output_datum)
 
     return output
 
 
-def discount_function(cost, discount_rate, timestep):
+def discount_function(cost, discount_rate, start_timestep, current_timestep):
     """
     Discount cost based on timestep
 
     """
-    # print('timestep {}'.format(timestep))
-    # print('1 + discount_rate {}'.format(1 + discount_rate))
-    # print('cost / (1 + discount_rate)**(timestep-1) {}'.format(cost / (1 + discount_rate)**(timestep)))
+    timestep = current_timestep - start_timestep
+
     discounted_cost = (
         cost / (1 + discount_rate)**(timestep)
         )
