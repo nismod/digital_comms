@@ -35,21 +35,75 @@ def load_in_results():
     return output
 
 
+def transform_data_labels(data):
+
+    data = data.rename(index=str,
+        columns =
+        {
+            'year': 'Year',
+            'area_id': 'Area',
+            'area_name': 'Name',
+            'capex': 'Capex',
+            'opex': 'opex',
+            'demand': 'Demand (Mbps/km^2)',
+            'capacity': 'Capacity (Mbps/km^2)',
+            'capacity_deficit': 'Capacity Margin (Mbps/km^2)',
+            'population': 'Population',
+            'area': 'Area (km^2)',
+            'pop_density': 'Population Density (Persons per km^2)',
+            'scenario_pop': 'Population Scenario',
+            'scenario_data': 'Data Scenario',
+            'strategy': 'Strategy'
+        }
+    )
+
+    data['Data Scenario'] = data['Data Scenario'].replace(
+        {
+            'low': 'Low',
+            'base': 'Baseline',
+            'high': 'High'
+        }
+    )
+
+    data['Population Scenario'] = data['Population Scenario'].replace(
+        {
+            'low': 'Low',
+            'base': 'Baseline',
+            'high': 'High'
+        }
+    )
+
+
+    data['Strategy'] = data['Strategy'].replace(
+        {
+            'minimal': 'No Investment',
+            'macrocell-700-3500': 'Spectrum Integration',
+            'deregulation': 'Deregulation',
+            'macro-densification': 'Macro Densification',
+            'small-cell-and-spectrum': 'Hybrid Deployment'
+        }
+    )
+
+    return data
+
 def aggregate_data(data):
 
-    # average_demand = data.groupby([
-    #     'year','scenario_pop','scenario_data','strategy'
-    #     ])['demand'].mean('demand_mean')
-
-    # plotting_function(average_demand, 'average_demand')
+    data = data[data['Strategy'] != 'minimal']
 
     average_capacity = data.groupby([
-        'year','scenario_pop','scenario_data','strategy'
-        ]).mean('capacity_mean')
+        'Year','Population Scenario','Data Scenario','Strategy'
+        ]).mean().reset_index()
 
-    plotting_function(average_capacity, 'average_capacity')
-    # print(data.head())
-    data.groupby('total', as_index=False).agg({"year": "sum"})
+    plot = plotting_function(average_capacity, 'average_capacity')
+
+
+    # plot = sns.relplot(x="year", y="capex",
+    #             kind="line", legend="full", data=average_capacity)
+
+    # figure = plot.fig
+    # figure.savefig(os.path.join(DATA_OUTPUT + '/cost_average_capacity.png'))
+
+    # data.groupby('total', as_index=False).agg({"year": "sum"})
 
     # aggreagted_costs = data.groupby('year','scenario_pop','scenario_data','strategy', as_index=False).agg({"cost": "sum"})
 
@@ -63,39 +117,29 @@ def aggregate_data(data):
     # # palette = dict(zip(dots.coherence.unique(),
     # #                 sns.color_palette("rocket_r", 6)))
 
-    # # Plot the lines on two facets
-    # plot = sns.relplot(x="year", y="cost",
-    #             kind="line", legend="full", data=aggreagted_costs)
-
-    # plot.savefig(DATA_OUTPUT + '/cost_{}.png'.format(aggreagted_costs))
-
     return print('completed')
 
 
 def plotting_function(data, filename):
 
-    data_subset = data[['site_density_km2','frequency_GHz','mast_height_m',
-    'sinr', 'spectral_efficency_bps_hz', 'capacity_per_Hz_km2']]
-
-    data_subset.columns = ['Density (Km^2)', 'Frequency (GHz)', 'Height (m)',
-        'SINR', 'SE', 'Capacity']
-
-    long_data = pd.melt(data_subset,
-        id_vars=['Density (Km^2)', 'Frequency (GHz)', 'Height (m)'],
-        value_vars=['SINR', 'SE', 'Capacity'])
-
-    long_data.columns = ['Density (Km^2)', 'Frequency (GHz)', 'Height (m)',
-        'Metric', 'Value']
 
     sns.set(font_scale=1.1)
 
-    plot = sns.catplot(x='Density (Km^2)', y='Value', hue="Frequency (GHz)",
-        kind="bar", col="Height (m)", row="Metric", data=long_data,
-        sharey='row')
+    plot = sns.catplot(x='Year', y='Capex', kind="bar",
+        col="Population Scenario",
+        row="Strategy", row_order=[
+            "Spectrum Integration",
+            "Deregulation",
+            "Macro Densification",
+            "Hybrid Deployment"
+            ], sharex=False, data=data)
 
-    plot.axes[0,0].set_ylabel('SINR (dB)')
-    plot.axes[1,0].set_ylabel('SE (Bps/Hz)')
-    plot.axes[2,0].set_ylabel('Capacity (Bps/Hz/Km^2)')
+    [plt.setp(ax.get_xticklabels(), rotation=45) for ax in plot.axes.flat]
+    plot.axes[0,0].set_ylabel('Capex (£Bn)')
+    plot.axes[1,0].set_ylabel('Capex (£Bn)')
+    plot.axes[2,0].set_ylabel('Capex (£Bn)')
+    plot.axes[3,0].set_ylabel('Capex (£Bn)')
+    plt.subplots_adjust(hspace=0.4, wspace=0.4)
 
     plot.savefig(DATA_OUTPUT + '/capacity_plot_{}.png'.format(filename))
 
@@ -105,6 +149,8 @@ def plotting_function(data, filename):
 if __name__ == '__main__':
 
     data = load_in_results()
+
+    data = transform_data_labels(data)
 
     aggregated_data = aggregate_data(data)
 
