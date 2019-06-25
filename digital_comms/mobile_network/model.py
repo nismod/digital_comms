@@ -2,6 +2,7 @@
 """
 from collections import defaultdict
 from itertools import tee
+# from digital_comms.mobile_network.interventions import INTERVENTIONS
 
 class NetworkManager(object):
     """Model controller class.
@@ -102,7 +103,7 @@ class NetworkManager(object):
                     capacity_lookup_table, clutter_lookup,
                     service_obligation_capacity, traffic,
                     market_share, mast_height)
-                # print(pcd_sector)
+
                 self.postcode_sectors[pcd_sector_id] = pcd_sector
 
                 lad_containing_pcd_sector = self.lads[lad_id]
@@ -289,12 +290,17 @@ class PostcodeSector(object):
         self.penetration = 0.8
 
         self.assets = assets
-
+        # for asset in self.assets:
+        #     print(asset)
+        #     if not 'opex' in asset:
+        #         print(asset)
         self.capacity = (
             self._macrocell_site_capacity(service_obligation_capacity) +
             self._small_cell_capacity(service_obligation_capacity)
             )
 
+        self.opex = self.calculate_opex
+        # print(self.opex)
     def __repr__(self):
         return "<PostcodeSector id:{}>".format(self.id)
 
@@ -455,6 +461,16 @@ class PostcodeSector(object):
                 '30')
             # print('small cell capacity {}, {}, {}'.format(capacity, num_small_cells, self.area))
         return capacity
+
+    @property
+    def calculate_opex(self):
+
+        opex = 0
+
+        for asset in self.assets:
+            opex += asset['opex']
+
+        return opex
 
     @property
     def capacity_margin(self):

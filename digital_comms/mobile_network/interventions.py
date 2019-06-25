@@ -751,6 +751,9 @@ def _suggest_interventions(budget, available_interventions,
                         budget -= capex
                         current_number += 1
 
+                        if len(area_interventions) >= 20:
+                            break
+
                         if calc_capacity(area, area_interventions,
                             service_obligation_capacity, traffic,
                             market_share, mast_height) >= check_max_capacity(area):
@@ -817,6 +820,9 @@ def _suggest_interventions(budget, available_interventions,
                         assets_by_site[site_ngr] = [to_build]
 
                         budget -= capex
+
+                        if len(area_interventions) >= 20:
+                            break
 
                         if budget <= 0 or \
                             _area_satisfied(area, area_interventions,
@@ -925,6 +931,9 @@ def _suggest_interventions(budget, available_interventions,
 
                 current_number += 1
 
+                if len(area_interventions) >= 20:
+                    break
+
                 if budget <= 0 or \
                     _area_satisfied(area, area_interventions,
                     service_obligation_capacity, traffic,
@@ -932,9 +941,6 @@ def _suggest_interventions(budget, available_interventions,
                     # print('budget <= 0 / _area_satisfied')
                     break
 
-        #             if len(area_interventions) >= 20:
-        #                 # print('len(area_interventions)')
-        #                 break
 
         #             # if calc_capacity(area, area_interventions,
         #             #     service_obligation_capacity, traffic,

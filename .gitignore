@@ -54,6 +54,7 @@ MANIFEST
 # Data
 data/*
 results/*
+data_visualisation/*
 scripts/script_config.ini
 cache
 
