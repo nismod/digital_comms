@@ -117,6 +117,7 @@ def setup_non_4g_assets():
             "bandwidth": "",
             "build_date": 2012,
             "sectors": 3,
+            'opex': 10000,
         },
         {
             "pcd_sector": "CB12",
@@ -127,6 +128,7 @@ def setup_non_4g_assets():
             "bandwidth": "",
             "build_date": 2012,
             "sectors": 3,
+            'opex': 10000,
         }
     ]
 
@@ -142,6 +144,7 @@ def setup_assets():
             "bandwidth": "10",
             "build_date": 2017,
             "sectors": 3,
+            'opex': 10000,
         },
         {
             "pcd_sector": "CB12",
@@ -152,6 +155,7 @@ def setup_assets():
             "bandwidth": "10",
             "build_date": 2017,
             "sectors": 3,
+            'opex': 10000,
         },
     ]
 
@@ -167,6 +171,7 @@ def setup_mixed_assets():
             "bandwidth": "10",
             "build_date": 2017,
             "sectors": 3,
+            'opex': 10000,
         },
         {
             "pcd_sector": "CB12",
@@ -177,6 +182,7 @@ def setup_mixed_assets():
             "bandwidth": "10",
             "build_date": 2017,
             "sectors": 3,
+            'opex': 10000,
         },
         {
             'pcd_sector': "CB11",
@@ -187,6 +193,7 @@ def setup_mixed_assets():
             'bandwidth': '25',
             'sectors': 1,
             'build_date': None,
+            'opex': 2000,
         },
         {
             'pcd_sector': "CB11",
@@ -197,6 +204,7 @@ def setup_mixed_assets():
             'bandwidth': '25',
             'sectors': 1,
             'build_date': None,
+            'opex': 2000,
         },
         {
             'pcd_sector': "CB12",
@@ -207,6 +215,7 @@ def setup_mixed_assets():
             'bandwidth': '25',
             'sectors': 1,
             'build_date': None,
+            'opex': 2000,
         },
         {
             'pcd_sector': "CB12",
@@ -217,6 +226,7 @@ def setup_mixed_assets():
             'bandwidth': '25',
             'sectors': 1,
             'build_date': None,
+            'opex': 2000,
         },
     ]
 
@@ -233,6 +243,7 @@ def setup_six_sectored_assets():
             "bandwidth": "10",
             "build_date": 2017,
             "sectors": 6,
+            'opex': 3000,
         },
         {
             "pcd_sector": "CB12",
@@ -243,6 +254,7 @@ def setup_six_sectored_assets():
             "bandwidth": "10",
             "build_date": 2017,
             "sectors": 6,
+            'opex': 3000,
         }
     ]
 

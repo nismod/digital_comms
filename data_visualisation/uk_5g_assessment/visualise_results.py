@@ -241,6 +241,8 @@ def transform_pcd_data_labels(data):
         }
     )
 
+    data = data.drop(data[(data.Capacity == 0)].index)
+
     return data
 
 
@@ -315,11 +317,13 @@ def plot_pcd_pairplot(data, category, year, scenario, strategy):
     data = data[['Population Density', 'Demand', 'Capacity',
         'Capacity Margin', category]]
 
+    sns.set(font_scale=1)
+
     plot = sns.pairplot(data, hue=category, markers=".")
 
     plot.fig.subplots_adjust(top=0.9)
     plot.fig.suptitle(
-        'Scenario: {}, Strategy: {}, Year: {}'.format(scenario, strategy, year), fontsize=16)
+        'Scenario: {}, Strategy: {}, Year: {}'.format(scenario, strategy, year))#, fontsize=16)
 
     plot.axes[0,0].set_ylabel('Pop. Density (km^2)')
     plot.axes[1,0].set_ylabel('Demand (Mbps km^2)')
@@ -330,22 +334,22 @@ def plot_pcd_pairplot(data, category, year, scenario, strategy):
     plot.axes[3,2].set_xlabel('Capacity (Mbps km^2)')
     plot.axes[3,3].set_xlabel('Capacity Margin (Mbps km^2)')
 
-    plot.axes[0,0].set(xlim=(0, 60000), ylim=(0, 40000))
-    plot.axes[1,0].set(xlim=(0, 60000), ylim=(0, 3000))
-    plot.axes[2,0].set(xlim=(0, 60000), ylim=(0, 1500))
-    plot.axes[3,0].set(xlim=(0, 60000), ylim=(-2000, 1000))
-    plot.axes[0,1].set(xlim=(0, 3000), ylim=(0, 40000))
-    plot.axes[1,1].set(xlim=(0, 3000), ylim=(0, 3000))
-    plot.axes[2,1].set(xlim=(0, 3000), ylim=(0, 1500))
-    plot.axes[3,1].set(xlim=(0, 3000), ylim=(-2000, 1000))
-    plot.axes[0,2].set(xlim=(0, 5000), ylim=(0, 40000))
-    plot.axes[1,2].set(xlim=(0, 5000), ylim=(0, 3000))
-    plot.axes[2,2].set(xlim=(0, 5000), ylim=(0, 1500))
-    plot.axes[3,2].set(xlim=(0, 5000), ylim=(-2000, 1000))
-    plot.axes[0,3].set(xlim=(-2000, 1000), ylim=(0, 40000))
-    plot.axes[1,3].set(xlim=(-2000, 1000), ylim=(0, 3000))
-    plot.axes[2,3].set(xlim=(-2000, 1000), ylim=(0, 1500))
-    plot.axes[3,3].set(xlim=(-2000, 1000), ylim=(-2000, 1000))
+    plot.axes[0,0].set(xlim=(0, 70000), ylim=(0, 50000))
+    plot.axes[1,0].set(xlim=(0, 70000), ylim=(0, 4000))
+    plot.axes[2,0].set(xlim=(0, 70000), ylim=(0, 200))
+    plot.axes[3,0].set(xlim=(0, 70000), ylim=(-2000, 2000))
+    plot.axes[0,1].set(xlim=(0, 4000), ylim=(0, 50000))
+    plot.axes[1,1].set(xlim=(0, 4000), ylim=(0, 4000))
+    plot.axes[2,1].set(xlim=(0, 4000), ylim=(0, 2000))
+    plot.axes[3,1].set(xlim=(0, 4000), ylim=(-2000, 2000))
+    plot.axes[0,2].set(xlim=(0, 6000), ylim=(0, 50000))
+    plot.axes[1,2].set(xlim=(0, 6000), ylim=(0, 4000))
+    plot.axes[2,2].set(xlim=(0, 6000), ylim=(0, 200))
+    plot.axes[3,2].set(xlim=(0, 6000), ylim=(-2000, 2000))
+    plot.axes[0,3].set(xlim=(-2000, 2000), ylim=(0, 50000))
+    plot.axes[1,3].set(xlim=(-2000, 2000), ylim=(0, 4000))
+    plot.axes[2,3].set(xlim=(-2000, 2000), ylim=(0, 2000))
+    plot.axes[3,3].set(xlim=(-2000, 2000), ylim=(-2000, 2000))
 
     plot.savefig(DATA_OUTPUT_PLOTS + '/pcd_pairplot_{}_{}_{}_{}.png'.format(
         scenario.lower(), strategy.lower(), year, category.lower())
@@ -384,28 +388,6 @@ def generate_plot_sequences(data):
                     )
 
     return print('completed all plot sequences')
-
-
-# def plot_pcd_distplot(data):
-
-#     data = data.loc[(data['Scenario'] == 'Baseline')]
-#     data = data.loc[(data['Strategy'] == 'Spectrum Integration')]
-
-#     # plot = sns.FacetGrid(data, col="", hue="")
-
-#     pop_density_plot = sns.distplot(data[['Population Density']])
-#     pop_density_plot.figure.savefig(DATA_OUTPUT_PLOTS + '/pcd_pop_density.png')
-
-#     demand_plot = sns.distplot(data[['Demand']])
-#     demand_plot.figure.savefig(DATA_OUTPUT_PLOTS + '/pcd_demand.png')
-
-#     capacity_plot = sns.distplot(data[['Capacity']])
-#     capacity_plot.figure.savefig(DATA_OUTPUT_PLOTS + '/pcd_capacity.png')
-
-#     capacity_margin_plot = sns.distplot(data[['Capacity Margin']])
-#     capacity_margin_plot.figure.savefig(DATA_OUTPUT_PLOTS + '/pcd_capacity_margin.png')
-
-#     return print('completed plots')
 
 
 def aggregate_pcd_data(data):
@@ -526,15 +508,15 @@ def generate_pcd_results():
     pcd_data = load_in_pcd_results()
     pcd_data = transform_pcd_data_labels(pcd_data)
     demand_line_plots(pcd_data, 'median_demand_metrics')
-    # generate_plot_sequences(pcd_data)
-    # generate_gifs(pcd_data)
+    generate_plot_sequences(pcd_data)
+    generate_gifs(pcd_data)
 
     return print('generated postcode gifs')
 
 
 def run_functions():
 
-    # generate_lad_results()
+    generate_lad_results()
 
     generate_pcd_results()
 

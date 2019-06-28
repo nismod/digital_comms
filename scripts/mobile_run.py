@@ -67,7 +67,7 @@ INTERVENTION_STRATEGIES = [
 
 MARKET_SHARE = 0.25
 ANNUAL_BUDGET = (2 * 10 ** 9) * MARKET_SHARE
-SERVICE_OBLIGATION_CAPACITY = 2
+SERVICE_OBLIGATION_CAPACITY = 0#2
 PERCENTAGE_OF_TRAFFIC_IN_BUSY_HOUR = 0.15
 
 ################################################################
@@ -218,8 +218,10 @@ print('Loading lookup tables')
 CAPACITY_LOOKUP_FILENAME = os.path.join(
     INTERMEDIATE_PATH, 'system_simulator'
     )
+# PATH_LIST = glob.iglob(os.path.join(
+#     INTERMEDIATE_PATH, 'system_simulator', '**/*lookup*.csv'), recursive=True)
 PATH_LIST = glob.iglob(os.path.join(
-    INTERMEDIATE_PATH, 'system_simulator', '**/*lookup*.csv'), recursive=True)
+    INTERMEDIATE_PATH, 'system_simulator', '**/*test_lookup*.csv'), recursive=True)
 
 capacity_lookup_table = {}
 
@@ -288,7 +290,7 @@ def upgrade_existing_assets(assets, interventions_built, mast_height):
             assets_to_add.append(intervention)
 
     upgraded_assets = []
-    print('number of raised masts {}'.format(len(raised_masts)))
+    # print('number of raised masts {}'.format(len(raised_masts)))
     for asset in assets:
         if asset['site_ngr'] in raised_masts:
             upgraded_assets.append({
@@ -405,7 +407,8 @@ def write_pcd_results(network_manager, year, pop_scenario, throughput_scenario,
         metrics_writer.writerow(
             ('year', 'postcode', 'capex', 'opex', 'demand',
             'user_throughput', 'capacity', 'capacity_deficit',
-            'population', 'area', 'pop_density', 'environment'))
+            'assets', 'population', 'area', 'pop_density',
+            'environment'))
 
     else:
         metrics_file = open(metrics_filename, 'a', newline='')
@@ -418,6 +421,7 @@ def write_pcd_results(network_manager, year, pop_scenario, throughput_scenario,
         user_throughput = pcd.user_throughput
         capacity = pcd.capacity
         capacity_deficit = capacity - demand
+        assets = len(pcd.assets)
         pop = pcd.population
         area = pcd.area
         pop_d = pcd.population_density
@@ -425,7 +429,7 @@ def write_pcd_results(network_manager, year, pop_scenario, throughput_scenario,
 
         metrics_writer.writerow(
             (year, pcd.id, capex, opex, demand, user_throughput, capacity,
-            capacity_deficit, pop, area, pop_d, environment)
+            capacity_deficit, assets, pop, area, pop_d, environment)
             )
 
     metrics_file.close()
@@ -523,29 +527,29 @@ def _get_suffix(pop_scenario, throughput_scenario,
 ################################################################
 
 for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
-        ('low', 'low', 'minimal', 30),
-        ('baseline', 'baseline', 'minimal', 30),
-        ('high', 'high', 'minimal', 30),
+        # ('low', 'low', 'minimal', 30),
+        # ('baseline', 'baseline', 'minimal', 30),
+        # ('high', 'high', 'minimal', 30),
 
-        ('low', 'low', 'macrocell-700-3500', 30),
-        ('baseline', 'baseline', 'macrocell-700-3500', 30),
-        ('high', 'high', 'macrocell-700-3500', 30),
+        # ('low', 'low', 'macrocell-700-3500', 30),
+        # ('baseline', 'baseline', 'macrocell-700-3500', 30),
+        # ('high', 'high', 'macrocell-700-3500', 30),
 
-        ('low', 'low', 'sectorisation', 30),
-        ('baseline', 'baseline', 'sectorisation', 30),
-        ('high', 'high', 'sectorisation', 30),
+        # ('low', 'low', 'sectorisation', 30),
+        # ('baseline', 'baseline', 'sectorisation', 30),
+        # ('high', 'high', 'sectorisation', 30),
 
-        ('low', 'low', 'macro-densification', 30),
+        # ('low', 'low', 'macro-densification', 30),
         ('baseline', 'baseline', 'macro-densification', 30),
-        ('high', 'high', 'macro-densification', 30),
+        # ('high', 'high', 'macro-densification', 30),
 
-        ('low', 'low', 'deregulation', 40),
-        ('baseline', 'baseline', 'deregulation', 40),
-        ('high', 'high', 'deregulation', 40),
+        # ('low', 'low', 'deregulation', 40),
+        # ('baseline', 'baseline', 'deregulation', 40),
+        # ('high', 'high', 'deregulation', 40),
 
-        ('low', 'low', 'small-cell-and-spectrum', 30),
-        ('baseline', 'baseline', 'small-cell-and-spectrum', 30),
-        ('high', 'high', 'small-cell-and-spectrum', 30),
+        # ('low', 'low', 'small-cell-and-spectrum', 30),
+        # ('baseline', 'baseline', 'small-cell-and-spectrum', 30),
+        # ('high', 'high', 'small-cell-and-spectrum', 30),
     ]:
     print("Running:", pop_scenario, throughput_scenario, \
         intervention_strategy, mast_height)
@@ -582,17 +586,26 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
                 service_obligation_capacity, traffic,
                 market_share, '30'
                 )
+
+        # assets_in_iv274 = []
+        # for asset in assets:
+        #     if asset['pcd_sector'] == 'IV274':
+        #         assets_in_iv274.append(asset['site_ngr'])
+        # print('assets in iv274 = {}'.format(sorted(assets_in_iv274)))
         # print([p['frequency'] for p in assets])
+
         interventions_built, budget = decide_interventions(
             intervention_strategy, budget, service_obligation_capacity,
             system, year, traffic, market_share, mast_height
             )
 
+        # assets_in_iv274 = []
         # for intervention in interventions_built:
-        #     if intervention['site_ngr'] == 'site_1':
-        #         print(intervention)
-
-        # print(interventions_built)
+        #     if intervention['pcd_sector'] == 'IV274':
+        #         assets_in_iv274.append(intervention)
+        # print('assets in iv274 = {}'.format(len(assets_in_iv274)))
+        # import pprint
+        # pprint.pprint(assets_in_iv274)
         assets = upgrade_existing_assets(assets, interventions_built, mast_height)
 
         # for asset in assets:
@@ -620,15 +633,16 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
             interventions_built, system
             )
 
-        # write_decisions(interventions_built, year, pop_scenario, throughput_scenario,
-        #             intervention_strategy)
-        # write_spend(interventions_built, year, pop_scenario, throughput_scenario,
-        #             intervention_strategy)
-        # write_lad_results(system, year, pop_scenario, throughput_scenario,
-        #                   intervention_strategy, capex_by_lad, opex_by_lad)
+        write_decisions(interventions_built, year, pop_scenario, throughput_scenario,
+                    intervention_strategy)
+        write_spend(interventions_built, year, pop_scenario, throughput_scenario,
+                    intervention_strategy)
+        write_lad_results(system, year, pop_scenario, throughput_scenario,
+                          intervention_strategy, capex_by_lad, opex_by_lad)
         write_pcd_results(system, year, pop_scenario, throughput_scenario,
                           intervention_strategy, capex_by_pcd, opex_by_pcd)
-
+        print('len(assets) {}'.format(len(assets)))
+    interventions_built = []
     system = None
 #
     # for area in system.postcode_sectors.values():

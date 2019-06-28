@@ -54,7 +54,7 @@ class TestLAD():
 
         #test pcd_sector demand
         testDemand = round(testPostcode.demand,2)
-        assert testDemand == 1.14
+        assert testDemand == 0.15
 
         testLAD.add_pcd_sector(testPostcode)
 
@@ -71,7 +71,7 @@ class TestLAD():
 
         #test pcd_sector demand
         testDemand = round(testPostcode.demand,2)
-        assert testDemand == 0.46
+        assert testDemand == 0.05
 
         testLAD.add_pcd_sector(testPostcode)
 
@@ -92,7 +92,7 @@ class TestLAD():
         #0.92 = 0.46*2
         #0.8 = (2.28+0.92)/(2+2)
         testDemand = round(testLAD.demand(),2)
-        assert testDemand == 0.8
+        assert testDemand == 0.1
 
         testCoverage = testLAD.coverage()
         assert testCoverage == 1

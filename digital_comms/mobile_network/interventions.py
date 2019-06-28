@@ -55,9 +55,9 @@ STRATEGIES = {
     'macro-densification': (
         'carrier_800_1800_2600',
         'build_4G_macro_site',
-        'carrier_700',
-        'carrier_3500',
-        'build_5G_macro_site',
+        # 'carrier_700',
+        # 'carrier_3500',
+        # 'build_5G_macro_site',
         ),
 
     # # Intervention Strategy X
@@ -461,16 +461,16 @@ def _suggest_interventions(budget, available_interventions,
                             unique_intervention_ids.append(unique_id)
 
                             to_build = copy.copy(option)
+                            to_build['pcd_sector'] = area.id
                             to_build['site_ngr'] = site_ngr
+                            to_build['build_date'] = timestep
                             to_build['technology'] = '4G'
                             to_build['frequency'] = ['800', '1800', '2600']
                             to_build['ran_type'] = 'distributed'
                             to_build['sectors'] = 3
-                            to_build['pcd_sector'] = area.id
-                            to_build['lad'] = area.lad_id
-                            to_build['build_date'] = timestep
-                            to_build['item'] = 'carrier_800_1800_2600'
                             to_build['mast_height'] = area.mast_height
+                            to_build['lad'] = area.lad_id
+                            to_build['item'] = 'carrier_800_1800_2600'
                             to_build['capex'] = capex
                             to_build['opex'] = opex
 
@@ -479,6 +479,9 @@ def _suggest_interventions(budget, available_interventions,
                             assets_by_site[site_ngr] = [to_build]
 
                             budget -= capex
+
+                            if len(area_interventions) >= 1:
+                                break
 
                             if budget <= 0:
                                 break
@@ -699,14 +702,24 @@ def _suggest_interventions(budget, available_interventions,
         if 'build_4G_macro_site' in available_interventions and \
             timestep < 2020:
 
+            if area.id == 'IV274':
+                print('assets in iv274 = {}'.format(len(area.assets)))
             if _area_satisfied(area, area_interventions,
                 service_obligation_capacity, traffic,
                 market_share, mast_height):
+                if area.id == 'IV274':
+                    print('area satisfied')
                 continue
 
             for site_ngr, site_assets in assets_by_site.items():
                 if site_ngr == 'small_cell_site':
                     continue
+
+                # print('len(area_interventions) {}'.format(len(area_interventions)))
+                if len(area_interventions) >= 1:
+                    if area.id == 'IV274':
+                        print('built single intervention')
+                    break
 
                 build_option = INTERVENTIONS['build_4G_macro_site']['assets_to_build']
                 capex = INTERVENTIONS['build_4G_macro_site']['capex']
@@ -716,54 +729,58 @@ def _suggest_interventions(budget, available_interventions,
                 if site_ngr.startswith('site_'):
                     current_number += 1
 
-                while True:
+                unique_id = (
+                    site_ngr + '_' + str(current_number + 1) + '_' +
+                    area.id + '_build_4G_macro_site'
+                    )
 
-                    unique_id = (
-                        site_ngr + '_' + str(current_number + 1) + '_' +
-                        area.id + '_build_4G_macro_site'
-                        )
+                if unique_id in unique_intervention_ids:
+                    current_number += 1
+                    continue
+                else:
 
-                    if unique_id in unique_intervention_ids:
-                        current_number += 1
-                        continue
-                    else:
+                    unique_intervention_ids.append(unique_id)
+                    to_build = copy.deepcopy(build_option)
+                    to_build[0]['site_ngr'] = 'site_' + str(current_number + 1)
+                    to_build[0]['technology'] = '4G'
+                    to_build[0]['frequency'] = ['800', '1800', '2600']
+                    to_build[0]['ran_type'] = 'distributed'
+                    to_build[0]['bandwidth'] = 'frequency_dependent'
+                    to_build[0]['sectors'] = 3
+                    to_build[0]['pcd_sector'] = area.id
+                    to_build[0]['lad'] = area.lad_id
+                    to_build[0]['build_date'] = timestep
+                    to_build[0]['item'] = 'build_4G_macro_site'
+                    to_build[0]['mast_height'] = '30'
+                    to_build[0]['capex'] = capex
+                    to_build[0]['opex'] = opex
 
-                        unique_intervention_ids.append(unique_id)
-                        to_build = copy.deepcopy(build_option)
-                        to_build[0]['site_ngr'] = 'site_' + str(current_number + 1)
-                        to_build[0]['technology'] = '4G'
-                        to_build[0]['frequency'] = ['800', '1800', '2600']
-                        to_build[0]['ran_type'] = 'distributed'
-                        to_build[0]['bandwidth'] = 'frequency_dependent'
-                        to_build[0]['sectors'] = 3
-                        to_build[0]['pcd_sector'] = area.id
-                        to_build[0]['lad'] = area.lad_id
-                        to_build[0]['build_date'] = timestep
-                        to_build[0]['item'] = 'build_4G_macro_site'
-                        to_build[0]['mast_height'] = '30'
-                        to_build[0]['capex'] = capex
-                        to_build[0]['opex'] = opex
+                    area_interventions += to_build
+                    built_interventions += to_build
+                    assets_by_site[site_ngr] = [to_build]
 
-                        area_interventions += to_build
-                        built_interventions += to_build
-                        assets_by_site[site_ngr] = [to_build]
+                    budget -= capex
+                    current_number += 1
 
-                        budget -= capex
-                        current_number += 1
+                    if len(area_interventions) >= 1:
+                        if area.id == 'IV274':
+                            print('built single intervention')
+                        break
 
-                        if len(area_interventions) >= 20:
-                            break
+                    if calc_capacity(area, area_interventions,
+                        service_obligation_capacity, traffic,
+                        market_share, mast_height) >= check_max_capacity(area):
+                        if area.id == 'IV274':
+                            print('capacity met')
+                        break
 
-                        if calc_capacity(area, area_interventions,
-                            service_obligation_capacity, traffic,
-                            market_share, mast_height) >= check_max_capacity(area):
-                            break
-
-                        if budget <= 0 or \
-                            _area_satisfied(area, area_interventions,
-                            service_obligation_capacity, traffic,
-                            market_share, mast_height):
-                            break
+                    if budget <= 0 or \
+                        _area_satisfied(area, area_interventions,
+                        service_obligation_capacity, traffic,
+                        market_share, mast_height):
+                        if area.id == 'IV274':
+                            print('budget spent')
+                        break
 
 
         if budget <= 0:
@@ -771,14 +788,25 @@ def _suggest_interventions(budget, available_interventions,
 
         if 'build_5G_macro_site' in available_interventions and \
             timestep >= 2020:
+
+            if area.id == 'IV274':
+                print('assets in iv274 = {}'.format(len(area.assets)))
+
             if _area_satisfied(area, area_interventions,
                 service_obligation_capacity, traffic,
                 market_share, mast_height):
+                if area.id == 'IV274':
+                    print('area satisfied')
                 continue
 
             for site_ngr, site_assets in assets_by_site.items():
                 if site_ngr == 'small_cell_site':
                     continue
+
+                if len(area_interventions) >= 1:
+                    if area.id == 'IV274':
+                        print('built single intervention')
+                    break
 
                 build_option = INTERVENTIONS['build_5G_macro_site']['assets_to_build']
                 capex = INTERVENTIONS['build_5G_macro_site']['capex']
@@ -789,6 +817,11 @@ def _suggest_interventions(budget, available_interventions,
                     current_number += 1
 
                 while True:
+
+                    if len(area_interventions) >= 1:
+                        if area.id == 'IV274':
+                            print('built single intervention')
+                        break
 
                     unique_id = (
                         site_ngr + '_' + str(current_number + 1) + '_build_5G_macro_site'
@@ -821,13 +854,19 @@ def _suggest_interventions(budget, available_interventions,
 
                         budget -= capex
 
-                        if len(area_interventions) >= 20:
+                        if calc_capacity(area, area_interventions,
+                            service_obligation_capacity, traffic,
+                            market_share, mast_height) >= check_max_capacity(area):
+                            if area.id == 'IV274':
+                                print('capacity met')
                             break
 
                         if budget <= 0 or \
                             _area_satisfied(area, area_interventions,
-                            service_obligation_capacity,traffic,
+                            service_obligation_capacity, traffic,
                             market_share, mast_height) :
+                            if area.id == 'IV274':
+                                print('budget spent')
                             break
 
         if budget <= 0:
@@ -887,6 +926,9 @@ def _suggest_interventions(budget, available_interventions,
                 area.clutter_environment == 'suburban'):
                 continue
 
+            if len(area_interventions) >= 1:
+                break
+
             if _area_satisfied(area, area_interventions,
                 service_obligation_capacity, traffic,
                 market_share, mast_height):
@@ -930,9 +972,6 @@ def _suggest_interventions(budget, available_interventions,
                 budget -= capex
 
                 current_number += 1
-
-                if len(area_interventions) >= 20:
-                    break
 
                 if budget <= 0 or \
                     _area_satisfied(area, area_interventions,
@@ -998,7 +1037,8 @@ def calc_capacity(area, assets, service_obligation_capacity,
         "area": area.area,
         "user_throughput": area.user_throughput,
     }
-
+    # if len(assets) > 0:
+    #     print(assets)
     test_area = PostcodeSector(
         data,
         assets,
@@ -1009,7 +1049,10 @@ def calc_capacity(area, assets, service_obligation_capacity,
         market_share,
         mast_height
     )
-    # print('test_area {}'.format(test_area.capacity))
+    # if len(assets) > 0:
+    #     # print(assets)
+    #     print('test_area {}'.format(test_area.capacity))
+
     return test_area.capacity
 
 def check_max_capacity(area):

@@ -266,14 +266,17 @@ class PostcodeSector(object):
         clutter_lookup, service_obligation_capacity,
         traffic, market_share, mast_height):
 
+        # {'site_ngr': 'site_7718', 'frequency': ['700', '800', '1800', '2600'], 'technology': '5G', 'type': 'macrocell_site', 'bandwidth': 'frequency_dependent', 'sectors': 3, 'mast_height': 30, 'build_date': 2020, 'ran_type': 'distributed', 'pcd_sector': 'UB54', 'lad': 'E09000009', 'item': 'carrier_700', 'capex': 50917, 'opex': 2000},
+
+
         self.id = data["id"]
         self.lad_id = data["lad_id"]
         self.population = data["population"]
         self.area = data["area"]
 
-        self.user_throughput = data["user_throughput"]
+        self.user_throughput = self._calculate_user_throughput(data["user_throughput"])
         self.user_demand = self._calculate_user_demand(
-            self.user_throughput, traffic
+            self.user_throughput, traffic, self.population_density
             )
         self.market_share = market_share
         self.mast_height = mast_height
@@ -300,11 +303,40 @@ class PostcodeSector(object):
             )
 
         self.opex = self.calculate_opex
+        # if service_obligation_capacity == 'test':
+        #     if len(assets) > 1:
+        #         print('--------')
+        #         print(self.capacity)
+        #         print('here')
         # print(self.opex)
     def __repr__(self):
         return "<PostcodeSector id:{}>".format(self.id)
 
-    def _calculate_user_demand(self, user_throughput, traffic):
+    def _calculate_user_throughput(self, user_throughput):
+        """
+        Adjust the user throughput by geotype
+
+        """
+        geotype = check_geotype(self.population_density)
+
+        geotype_weights = {
+            'urban': 1,
+            'suburban 1': 0.93,
+            'suburban 2': 0.2,
+            'rural 1': 0.13,
+            'rural 2': 0.1,
+            'rural 3': 0.09,
+            'rural 4': 0.09,
+        }
+
+        weight = geotype_weights[geotype]
+
+        adjusted_user_throughput = user_throughput * weight
+
+        return adjusted_user_throughput
+
+    def _calculate_user_demand(self, user_throughput,
+        traffic, population_density):
         """
         Calculate Mb/second from GB/month supplied as throughput scenario
         Notes
@@ -369,6 +401,7 @@ class PostcodeSector(object):
 
         return demand_per_kmsq
 
+
     @property
     def population_density(self):
         """
@@ -377,15 +410,22 @@ class PostcodeSector(object):
         """
         return self.population / self.area
 
+
     def _macrocell_site_capacity(self, service_obligation_capacity):
         capacity = 0
 
+        # if service_obligation_capacity == 'test':
+        #     if self.id == 'IV274':
+        #         print(len(self.assets))
         for frequency in ['800', '1800', '2600', '700', '3500']:
             num_sites = 0
             for asset in self.assets:
                 for asset_frequency in asset['frequency']:
                     if asset_frequency == frequency:
                         num_sites += 1
+                        # if service_obligation_capacity == 'test':
+                        #     if self.id == 'IV274':
+                        #         print(num_sites)
                         if asset['sectors'] == 6:
                             num_sites += 1
 
@@ -418,8 +458,15 @@ class PostcodeSector(object):
                 str(bandwidth),
                 site_density,
                 str(self.mast_height))
+
             # if service_obligation_capacity == 'test':
-            #     print(tech_capacity)
+            #     if self.id == 'IV274':
+            #         print('site_density = {}'.format(site_density))
+                    # assets_in_iv274.append(asset['site_ngr'])
+
+            # print('assets in iv274 = {}'.format(sorted(assets_in_iv274)))
+            # print(tech_capacity)
+
             capacity += tech_capacity
 
         return capacity
@@ -638,7 +685,9 @@ def lookup_capacity(capacity_lookup, clutter_environment,
     highest_density, highest_capacity = density_capacities[-1]
     # if frequency == '800':
     #     print('highest_density {}, highest_capacity {}'.format(highest_density, highest_capacity))
+
     return highest_capacity
+
 
 def interpolate(x0, y0, x1, y1, x):
     """Linear interpolation between two values
@@ -661,3 +710,35 @@ def interpolate(x0, y0, x1, y1, x):
     """
     y = (y0 * (x1 - x) + y1 * (x - x0)) / (x1 - x0)
     return y
+
+def check_geotype(population_density):
+    """
+    Returns the geotype based on population density
+
+    """
+    if population_density >= 7959:
+        geotype = 'urban'
+
+    elif 3119 <= population_density < 7959:
+        geotype = 'suburban 1'
+
+    elif 782 <= population_density < 3119:
+        geotype = 'suburban 2'
+
+    elif 112 <= population_density < 782:
+        geotype = 'rural 1'
+
+    elif 47 <= population_density < 112:
+        geotype = 'rural 2'
+
+    elif 25 <= population_density < 47:
+        geotype = 'rural 3'
+
+    elif population_density < 25:
+        geotype = 'rural 4'
+
+    else:
+        print('did not recognise population density')
+        geotype = 'rural 4'
+
+    return geotype
