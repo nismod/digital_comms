@@ -18,6 +18,7 @@ DATA = os.path.join(BASE_PATH, '..', 'results', 'mobile_outputs')
 DATA_OUTPUT_PLOTS = os.path.join(BASE_PATH,'..','data_visualisation','uk_5g_assessment','plots')
 DATA_OUTPUT_GIFS = os.path.join(BASE_PATH,'..','data_visualisation','uk_5g_assessment','gifs')
 
+
 def load_in_lad_results():
 
     filenames = glob.iglob(os.path.join(DATA, '*metrics*'))

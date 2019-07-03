@@ -6,7 +6,7 @@ May 2019
 
 """
 from rtree import index
-from shapely.geometry import shape, Point
+from shapely.geometry import shape, Point, LineString
 import numpy as np
 from geographiclib.geodesic import Geodesic
 from itertools import tee
@@ -34,67 +34,25 @@ class SimulationManager(object):
         A dict containing all simulation parameters necessary.
 
     """
-    def __init__(self, area, sites, site_areas, receivers, simulation_parameters):
+    def __init__(self, transmitter, interfering_transmitters,
+        receivers, cell_area, simulation_parameters):
 
-        self.area = {}
-        self.sites = {}
+        self.transmitter = Transmitter(transmitter[0], simulation_parameters)
+        self.cell_area = CellArea(cell_area[0])
         self.receivers = {}
-        area_id = area['properties']['RMSect'].replace(' ', '')
-        self.area[area_id] = Area(area)
+        self.interfering_transmitters = {}
 
-        # unique_sites = set()
-        # unique_site_areas = set()
-
-        for site in sites:
-            site_id = site['properties']["sitengr"]
-            for site_area in site_areas:
-                site_area_id = site_area['properties']["sitengr"]
-                if site_id == site_area_id:
-                    # print(site_id, site_area_id)
-
-                    site_object = Transmitter(site, site_area, simulation_parameters)
-                    self.sites[site_id] = site_object
-
-                    # for site in self.sites.values():
-                    #     if site.id == site_id:
-                    #         print((shape(site.site_area)).area)
-
-                    # print(self.sites)
-                    # print((shape(site['geometry'])).area)
-                    # unique_sites.add((shape(site['geometry'])).area)
-                    # unique_site_areas.add((shape(site_area['geometry'])).area)
-
-                    area_containing_sites = self.area[area_id]
-                    area_containing_sites.add_site(site_object)
-
-        # print(unique_site_areas)
         for receiver in receivers:
             receiver_id = receiver['properties']["ue_id"]
             receiver = Receiver(receiver, simulation_parameters)
             self.receivers[receiver_id] = receiver
 
-            area_containing_receivers = self.area[area_id]
-            area_containing_receivers.add_receiver(receiver)
-
-        # for site in self.sites.values():
-        #     print(site)
-        #     print((shape(site.site_area)).area)
-
-    def build_new_assets(self, list_of_new_assets, new_site_areas, area_id,
-        simulation_parameters):
-
-        for site in list_of_new_assets:
-            site_id = site['properties']["sitengr"]
-            for site_area in new_site_areas:
-                site_area_id = site_area['properties']['sitengr']
-                if site_id == site_area_id:
-                    site_object = Transmitter(site, site_area, simulation_parameters)
-
-            self.sites[site_id] = site_object
-
-            for area_containing_sites in self.area.values():
-                if area_containing_sites.id == area_id:
-                    area_containing_sites.add_site(site_object)
+        for interfering_transmitter in interfering_transmitters:
+            site_id = interfering_transmitter['properties']["site_id"]
+            site_object = InterferingTransmitter(
+                interfering_transmitter, simulation_parameters
+                )
+            self.interfering_transmitters[site_id] = site_object
 
 
     def estimate_link_budget(self, frequency, bandwidth,
@@ -128,25 +86,17 @@ class SimulationManager(object):
         seed_value = simulation_parameters['seed_value']
 
         for receiver in self.receivers.values():
-            # r_geom = shape(receiver.geometry)
-            # if postcode_sector_geom.contains(r_geom):
-            closest_site, site_area, interfering_sites = (
-                self.find_closest_available_sites(receiver)
-            )
 
-            # print((shape(site_area['geometry'])).area)
             path_loss, r_distance, type_of_sight = self.calculate_path_loss(
-                closest_site, receiver, frequency,
-                environment, seed_value
+                receiver, frequency, environment, seed_value
             )
 
-            received_power = self.calc_received_power(
-                closest_site, receiver, path_loss
+            received_power = self.calc_received_power(self.transmitter,
+                receiver, path_loss
             )
 
             interference, ave_distance, ave_inf_pl = self.calculate_interference(
-                interfering_sites, receiver, frequency, environment,
-                seed_value)
+                receiver, frequency, environment, seed_value)
 
             noise = self.calculate_noise(
                 bandwidth
@@ -162,15 +112,10 @@ class SimulationManager(object):
             )
 
             link_budget_capacity_mbps_km2 = self.link_budget_capacity(
-                bandwidth, spectral_efficiency, site_area
+                bandwidth, spectral_efficiency
             )
 
-            receiver.transmitter = closest_site.id
-
-            receiver.capacity = link_budget_capacity_mbps_km2
-
-            receiver.capacity_metrics =  {
-                'num_sites': len(self.sites),
+            results.append({
                 'path_loss': path_loss,
                 'type_of_sight': type_of_sight,
                 'ave_inf_pl': ave_inf_pl,
@@ -183,12 +128,10 @@ class SimulationManager(object):
                 'i_plus_n': np.log10(i_plus_n),
                 'sinr': sinr,
                 'spectral_efficiency': spectral_efficiency,
-                'capacity_mbps_km2': link_budget_capacity_mbps_km2,
-                'x': receiver.coordinates[0],
-                'y': receiver.coordinates[1],
-                }
-
-            # results.append(data)
+                'estimated_capacity': link_budget_capacity_mbps_km2,
+                'receiver_x': receiver.coordinates[0],
+                'receiver_y': receiver.coordinates[1],
+                })
 
             # print('received_power is {}'.format(received_power))
             # print('interference is {}'.format(interference))
@@ -202,76 +145,24 @@ class SimulationManager(object):
         return results
 
 
-    def find_closest_available_sites(self, receiver):
-        """
-        Returns a list of all sites, ranked based on proximity
-        to the receiver.
-
-        """
-        idx = index.Index()
-
-        for site in self.sites.values():
-            # print(site.id)
-            # print((shape(site.site_area)).area)
-            idx.insert(0, Point(site.coordinates).bounds, site)
-
-        number_of_sites = len(self.sites.values())
-        # print('number of sites {}'.format(number_of_sites))
-        all_closest_sites =  list(
-            idx.nearest(
-                Point(receiver.coordinates).bounds,
-                number_of_sites, objects='raw')
-                )
-
-        closest_site = all_closest_sites[0]
-        # print('closest_site {}'.format(closest_site.id))
-        # print('closest_site {}'.format(shape(closest_site.site_area).area))
-        receiver.sitengr = closest_site.id
-
-        interfering_sites = all_closest_sites[1:4]
-
-        site_area = (shape(closest_site.site_area)).area/1e6
-        # print(site_area)
-        return closest_site, site_area, interfering_sites
-
-
-    def calculate_path_loss(self, closest_site, receiver,
+    def calculate_path_loss(self, receiver,
         frequency, environment, seed_value):
 
-        x2_receiver = receiver.coordinates[0]
-        y2_receiver = receiver.coordinates[1]
-
-        x1_site, y1_site = transform_coordinates(
-            Proj(init='epsg:27700'), Proj(init='epsg:4326'),
-            closest_site.coordinates[0],
-            closest_site.coordinates[1],
+        temp_line = LineString([
+            (receiver.coordinates[0],
+            receiver.coordinates[1]),
+            (self.transmitter.coordinates[0],
+            self.transmitter.coordinates[1])]
             )
 
-        x2_receiver, y2_receiver = transform_coordinates(
-            Proj(init='epsg:27700'), Proj(init='epsg:4326'),
-            receiver.coordinates[0],
-            receiver.coordinates[1],
-            )
+        strt_distance = temp_line.length
 
-        Geo = Geodesic.WGS84
-
-        i_strt_distance = Geo.Inverse(
-            y1_site, x1_site,  y2_receiver, x2_receiver
-            )
-
-        interference_strt_distance = round(i_strt_distance['s12'],0)
-
-        ant_height = closest_site.ant_height
+        ant_height = self.transmitter.ant_height
         ant_type =  'macro'
 
-        if ant_height == 30:
-            los_distance = 200
-        elif ant_height == 40:
-            los_distance = 400
-        else:
-            print('Unrecognised antenna height')
+        los_distance = 250
 
-        if interference_strt_distance < los_distance :
+        if strt_distance < los_distance :
             type_of_sight = 'los'
         else:
             type_of_sight = 'nlos'
@@ -283,7 +174,7 @@ class SimulationManager(object):
 
         path_loss = path_loss_calculator(
             frequency,
-            interference_strt_distance,
+            strt_distance,
             ant_height,
             ant_type,
             building_height,
@@ -296,10 +187,10 @@ class SimulationManager(object):
             seed_value
             )
 
-        return path_loss, interference_strt_distance, type_of_sight
+        return path_loss, strt_distance, type_of_sight
 
 
-    def calc_received_power(self, site, receiver, path_loss):
+    def calc_received_power(self, transmitter, receiver, path_loss):
         """
         Calculate received power based on site and receiver
         characteristcs, and path loss.
@@ -308,9 +199,9 @@ class SimulationManager(object):
 
         """
         #calculate Equivalent Isotropically Radiated Power (EIRP)
-        eirp = float(site.power) + \
-            float(site.gain) - \
-            float(site.losses)
+        eirp = float(self.transmitter.power) + \
+            float(self.transmitter.gain) - \
+            float(self.transmitter.losses)
 
         received_power = eirp - \
             path_loss - \
@@ -322,7 +213,7 @@ class SimulationManager(object):
 
 
     def calculate_interference(
-        self, closest_sites, receiver, frequency, environment, seed_value):
+        self, receiver, frequency, environment, seed_value):
         """
         Calculate interference from other cells.
 
@@ -344,41 +235,21 @@ class SimulationManager(object):
         ave_pl = 0
 
         #calculate interference from other power sources
-        for interference_site in closest_sites:
+        for interfering_transmitter in self.interfering_transmitters.values():
 
-            #get distance
-            x2_interference = interference_site.coordinates[0]
-            y2_interference = interference_site.coordinates[1]
+            temp_line = LineString([
+                (receiver.coordinates[0],
+                receiver.coordinates[1]),
+                (interfering_transmitter.coordinates[0],
+                interfering_transmitter.coordinates[1])
+                ])
 
-            x2_interference, y2_interference = transform_coordinates(
-                Proj(init='epsg:27700'),
-                Proj(init='epsg:4326'),
-                interference_site.coordinates[0],
-                interference_site.coordinates[1]
-                )
+            interference_strt_distance = temp_line.length
 
-            Geo = Geodesic.WGS84
-
-            i_strt_distance = Geo.Inverse(
-                y2_interference,
-                x2_interference,
-                y1_receiver,
-                x1_receiver,
-                )
-
-            interference_strt_distance = int(
-                round(i_strt_distance['s12'], 0)
-                )
-
-            ant_height = interference_site.ant_height
+            ant_height = interfering_transmitter.ant_height
             ant_type =  'macro'
 
-            if ant_height == 30:
-                los_distance = 250
-            elif ant_height == 40:
-                los_distance = 400
-            else:
-                print('Unrecognised antenna height')
+            los_distance = 250
 
             if interference_strt_distance < los_distance :
                 type_of_sight = 'los'
@@ -407,7 +278,7 @@ class SimulationManager(object):
                 )
 
             received_interference = self.calc_received_power(
-                interference_site,
+                interfering_transmitter,
                 receiver,
                 path_loss
                 )
@@ -417,12 +288,12 @@ class SimulationManager(object):
 
             interference.append(received_interference)
         try:
-            ave_distance = ave_distance/len(closest_sites)
+            ave_distance = ave_distance/len(self.interfering_transmitters)
         except ZeroDivisionError:
             ave_distance = 0
 
         try:
-            ave_pl = ave_pl/len(closest_sites)
+            ave_pl = ave_pl/len(self.interfering_transmitters)
         except ZeroDivisionError:
             ave_pl = 0
 
@@ -519,8 +390,7 @@ class SimulationManager(object):
                     return spectral_efficiency
 
 
-    def link_budget_capacity(self, bandwidth, spectral_efficiency,
-        site_area):
+    def link_budget_capacity(self, bandwidth, spectral_efficiency):
         """
         Estimate site area wireless link capacity (Mbps km^2) based on
         bandwidth and receiver signal.
@@ -531,34 +401,13 @@ class SimulationManager(object):
 
         """
         bandwidth_in_hertz = bandwidth * 1e6 #MHz to Hz
-        # print('capacity is {}'.format(round(bandwidth_in_hertz * spectral_efficiency/1e6,2)))
-        # print('site_area is {}'.format(site_area))
-        link_budget_capacity_km2 = (bandwidth_in_hertz * spectral_efficiency) / site_area
+
+        link_budget_capacity_km2 = (
+            (bandwidth_in_hertz * spectral_efficiency) / (self.cell_area.area / 1e6)
+            )
         link_budget_capacity_mbps_km2 = link_budget_capacity_km2 / 1e6 #bps to Mbps
-        # print('link_budget_capacity_mbps_km2 is {}'.format(round(link_budget_capacity_mbps_km2,2)))
+
         return link_budget_capacity_mbps_km2
-
-
-    def find_sites_in_area(self):
-
-        if not self.sites:
-            return 0
-
-        area_geometry = ([(d.geometry) for d in self.area.values()][0])
-
-        idx = index.Index()
-
-        for site in self.sites.values():
-            idx.insert(0, Point(site.coordinates).bounds, site)
-
-        sites_in_area = []
-
-        for n in idx.intersection(shape(area_geometry).bounds, objects=True):
-            point = Point(n.object.coordinates)
-            if shape(area_geometry).contains(point):
-                sites_in_area.append(n.object)
-
-        return sites_in_area
 
 
     def site_density(self):
@@ -618,118 +467,15 @@ class SimulationManager(object):
         return receiver_density
 
 
-    def energy_consumption(self, simulation_parameters):
-        """
-        Gets the energy consumption of the sites in the area.
-
-        Parameters
-        ----------
-        total_power_dbm : float
-            Total dbm for all sites for a single cell.
-        watts_for_1_cell_per_site : float
-            Total watts for all sites for a single cell.
-        total_power_watts : float
-            Total watts for all cells in use.
-
-        """
-        if not self.area:
-            return 0
-
-        cells_per_site = simulation_parameters['sectorisation']
-
-        sites_in_area = self.find_sites_in_area()
-
-        total_power_dbm = [round(a.power) for a in sites_in_area]
-
-        watts_per_area = []
-        for value in total_power_dbm:
-            watts_for_1_cell_per_site = 10**(value / 10) / 1000
-            wattsd_per_site = watts_for_1_cell_per_site * cells_per_site
-            watts_per_area.append(wattsd_per_site)
-
-        total_power_watts = sum(watts_per_area)
-
-        return total_power_watts
-
-
-    def find_receivers_area(self):
-
-        if not self.sites:
-            return 0
-
-        area_geometry = ([(d.geometry) for d in self.area.values()][0])
-
-        idx = index.Index()
-
-        for receiver in self.receivers.values():
-            idx.insert(0, Point(receiver.coordinates).bounds, receiver)
-
-        receivers_in_area = []
-
-        for n in idx.intersection(shape(area_geometry).bounds, objects=True):
-            receiver = Point(n.object.coordinates)
-            if shape(area_geometry).intersects(receiver):
-                receivers_in_area.append(n.object)
-
-        return receivers_in_area
-
-
-    def populate_site_data(self):
-        """
-        Allocate receiver values to transmitters to allow cell edge rates to be
-        calculated for each site area.
-
-        """
-        for site in self.sites.values():
-            site_id = site.id
-            for receiver in self.receivers.values():
-                receiver_id = receiver.sitengr
-                if site_id == receiver_id:
-                    se = receiver.capacity_metrics['spectral_efficiency']
-                    site.spectral_efficiency.append(se)
-                    capacity = receiver.capacity_metrics['capacity_mbps_km2']
-                    site.capacity_km2.append(capacity)
-
-
-class Area(object):
-    """
-    The geographic area which holds all sites and receivers.
-
-    """
-    def __init__(self, data):
-        #id and geographic info
-        self.id = data['properties']['RMSect']
-        self.local_authority_ids =  data['properties']['local_authority_ids']
-        self.geometry = data['geometry']
-        self.coordinates = data['geometry']['coordinates']
-        self.area = self._calculate_area(data)
-
-        self._sites = {}
-        self._receivers = {}
-
-    def _calculate_area(self, data):
-        polygon = shape(data['geometry'])
-        area = polygon.area
-        return area
-
-    def add_site(self, site):
-        self._sites[site.id] = site
-
-    def add_receiver(self, receiver):
-        self._receivers[receiver.id] = receiver
-
-
 class Transmitter(object):
     """
     A site object is specific site.
 
     """
-    def __init__(self, data, site_area, simulation_parameters):
+    def __init__(self, data, simulation_parameters):
 
-        #id and geographic info
-        self.id = data['properties']['sitengr']
+        self.id = data['properties']['site_id']
         self.coordinates = data['geometry']['coordinates']
-        self.site_area = site_area['geometry']
 
         self.ant_type = 'macro'
         self.ant_height = simulation_parameters['tx_baseline_height']
@@ -737,8 +483,25 @@ class Transmitter(object):
         self.gain = simulation_parameters['tx_gain']
         self.losses = simulation_parameters['tx_losses']
 
-        self.spectral_efficiency = []
-        self.capacity_km2 = []
+    def __repr__(self):
+        return "<Transmitter id:{}>".format(self.id)
+
+
+class CellArea(object):
+    """
+    The geographic area which holds all sites and receivers.
+    """
+    def __init__(self, data):
+        self.id = data['properties']['cell_area_id']
+        self.geometry = data['geometry']
+        self.coordinates = data['geometry']['coordinates']
+        self.area = self._calculate_area(data)
+
+    def _calculate_area(self, data):
+        polygon = shape(data['geometry'])
+        area = polygon.area
+        return area
+
 
     def __repr__(self):
         return "<Transmitter id:{}>".format(self.id)
@@ -753,7 +516,6 @@ class Receiver(object):
     def __init__(self, data, simulation_parameters):
         self.id = data['properties']['ue_id']
         self.coordinates = data['geometry']["coordinates"]
-        self.geometry = data['geometry']
 
         self.misc_losses = data['properties']['misc_losses']
         self.gain = data['properties']['gain']
@@ -761,13 +523,24 @@ class Receiver(object):
         self.ue_height = data['properties']['ue_height']
         self.indoor = data['properties']['indoor']
 
-        self.sitengr = ''
-        self.transmitter = []
-        self.capacity = []
-        self.capacity_metrics = {}
-
     def __repr__(self):
         return "<Receiver id:{}>".format(self.id)
+
+
+class InterferingTransmitter(object):
+    """
+    A site object is specific site.
+    """
+    def __init__(self, data, simulation_parameters):
+
+        self.id = data['properties']['site_id']
+        self.coordinates = data['geometry']['coordinates']
+        self.geometry = data['geometry']
+
+        self.ant_height = simulation_parameters['tx_baseline_height']
+        self.power = simulation_parameters['tx_power']
+        self.gain = simulation_parameters['tx_gain']
+        self.losses = simulation_parameters['tx_losses']
 
 
 def transform_coordinates(old_proj, new_proj, x, y):
