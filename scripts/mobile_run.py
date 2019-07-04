@@ -221,7 +221,7 @@ CAPACITY_LOOKUP_FILENAME = os.path.join(
 # PATH_LIST = glob.iglob(os.path.join(
 #     INTERMEDIATE_PATH, 'system_simulator', '**/*lookup*.csv'), recursive=True)
 PATH_LIST = glob.iglob(os.path.join(
-    INTERMEDIATE_PATH, 'system_simulator', '**/*test_lookup*.csv'), recursive=True)
+    INTERMEDIATE_PATH, 'system_simulator', '**/*test_lookup_table*.csv'), recursive=True)
 
 capacity_lookup_table = {}
 
@@ -229,16 +229,15 @@ for path in PATH_LIST:
     with open(path, 'r') as capacity_lookup_file:
         reader = csv.DictReader(capacity_lookup_file)
         for row in reader:
-            environment = row["environment"]
+            environment = row["environment"].lower()
             frequency = str(int(float(row["frequency_GHz"]) * 1e3))
             bandwidth = row["bandwidth_MHz"]
             mast_height = str(row['mast_height_m'])
-            density = float(row["site_density_km2"])
-            capacity = float(row["area_capacity_mbps_km2"])
+            density = float(row["sites_per_km2"])
+            capacity = float(row["three_sector_capacity_mbps_km2"])
             cell_edge_spectral_efficency = float(
                 row['spectral_efficency_bps_hz']
                 )
-            # network_efficiency = float(row['network_efficiency'])
 
             if (environment, frequency, bandwidth, mast_height) \
                 not in capacity_lookup_table:
@@ -527,29 +526,29 @@ def _get_suffix(pop_scenario, throughput_scenario,
 ################################################################
 
 for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
-        # ('low', 'low', 'minimal', 30),
-        # ('baseline', 'baseline', 'minimal', 30),
-        # ('high', 'high', 'minimal', 30),
+        ('low', 'low', 'minimal', 30),
+        ('baseline', 'baseline', 'minimal', 30),
+        ('high', 'high', 'minimal', 30),
 
-        # ('low', 'low', 'macrocell-700-3500', 30),
-        # ('baseline', 'baseline', 'macrocell-700-3500', 30),
-        # ('high', 'high', 'macrocell-700-3500', 30),
+        ('low', 'low', 'macrocell-700-3500', 30),
+        ('baseline', 'baseline', 'macrocell-700-3500', 30),
+        ('high', 'high', 'macrocell-700-3500', 30),
 
-        # ('low', 'low', 'sectorisation', 30),
-        # ('baseline', 'baseline', 'sectorisation', 30),
-        # ('high', 'high', 'sectorisation', 30),
+        ('low', 'low', 'sectorisation', 30),
+        ('baseline', 'baseline', 'sectorisation', 30),
+        ('high', 'high', 'sectorisation', 30),
 
-        # ('low', 'low', 'macro-densification', 30),
+        ('low', 'low', 'macro-densification', 30),
         ('baseline', 'baseline', 'macro-densification', 30),
-        # ('high', 'high', 'macro-densification', 30),
+        ('high', 'high', 'macro-densification', 30),
 
-        # ('low', 'low', 'deregulation', 40),
-        # ('baseline', 'baseline', 'deregulation', 40),
-        # ('high', 'high', 'deregulation', 40),
+        ('low', 'low', 'deregulation', 40),
+        ('baseline', 'baseline', 'deregulation', 40),
+        ('high', 'high', 'deregulation', 40),
 
-        # ('low', 'low', 'small-cell-and-spectrum', 30),
-        # ('baseline', 'baseline', 'small-cell-and-spectrum', 30),
-        # ('high', 'high', 'small-cell-and-spectrum', 30),
+        ('low', 'low', 'small-cell-and-spectrum', 30),
+        ('baseline', 'baseline', 'small-cell-and-spectrum', 30),
+        ('high', 'high', 'small-cell-and-spectrum', 30),
     ]:
     print("Running:", pop_scenario, throughput_scenario, \
         intervention_strategy, mast_height)

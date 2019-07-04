@@ -266,9 +266,6 @@ class PostcodeSector(object):
         clutter_lookup, service_obligation_capacity,
         traffic, market_share, mast_height):
 
-        # {'site_ngr': 'site_7718', 'frequency': ['700', '800', '1800', '2600'], 'technology': '5G', 'type': 'macrocell_site', 'bandwidth': 'frequency_dependent', 'sectors': 3, 'mast_height': 30, 'build_date': 2020, 'ran_type': 'distributed', 'pcd_sector': 'UB54', 'lad': 'E09000009', 'item': 'carrier_700', 'capex': 50917, 'opex': 2000},
-
-
         self.id = data["id"]
         self.lad_id = data["lad_id"]
         self.population = data["population"]
@@ -293,15 +290,19 @@ class PostcodeSector(object):
         self.penetration = 0.8
 
         self.assets = assets
+
+        # self.capacity = self._macrocell_site_capacity()
+        # print(self.capacity)
         # for asset in self.assets:
         #     print(asset)
         #     if not 'opex' in asset:
         #         print(asset)
+
         self.capacity = (
             self._macrocell_site_capacity(service_obligation_capacity) +
             self._small_cell_capacity(service_obligation_capacity)
             )
-
+        # print(self.capacity)
         self.opex = self.calculate_opex
         # if service_obligation_capacity == 'test':
         #     if len(assets) > 1:
@@ -434,7 +435,7 @@ class PostcodeSector(object):
             #     print(site_density)
 
             if frequency == '3500':
-                bandwidth = '80'
+                bandwidth = '40'
             elif frequency == '3700':
                 bandwidth = '25'
             else:
@@ -458,14 +459,13 @@ class PostcodeSector(object):
                 str(bandwidth),
                 site_density,
                 str(self.mast_height))
-
+            # print(tech_capacity)
             # if service_obligation_capacity == 'test':
             #     if self.id == 'IV274':
             #         print('site_density = {}'.format(site_density))
                     # assets_in_iv274.append(asset['site_ngr'])
 
             # print('assets in iv274 = {}'.format(sorted(assets_in_iv274)))
-            # print(tech_capacity)
 
             capacity += tech_capacity
 
@@ -507,6 +507,7 @@ class PostcodeSector(object):
                 site_density,
                 '30')
             # print('small cell capacity {}, {}, {}'.format(capacity, num_small_cells, self.area))
+
         return capacity
 
     @property
@@ -650,6 +651,7 @@ def lookup_capacity(capacity_lookup, clutter_environment,
         If combination is not found in the lookup table.
 
     """
+    # print(capacity_lookup)
     if (clutter_environment, frequency, bandwidth, mast_height) not in capacity_lookup:
         raise KeyError("Combination %s not found in lookup table",
                        (clutter_environment, frequency, bandwidth, mast_height))
@@ -685,7 +687,7 @@ def lookup_capacity(capacity_lookup, clutter_environment,
     highest_density, highest_capacity = density_capacities[-1]
     # if frequency == '800':
     #     print('highest_density {}, highest_capacity {}'.format(highest_density, highest_capacity))
-
+    # print(highest_capacity)
     return highest_capacity
 
 

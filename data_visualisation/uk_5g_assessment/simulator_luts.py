@@ -60,9 +60,9 @@ def plot_main_lut(data):
         else:
             plotting_data = data
 
-        # plotting_function1(plotting_data, area_type)
+        plotting_function1(plotting_data, area_type)
 
-        # plotting_function2(plotting_data, area_type)
+        plotting_function2(plotting_data, area_type)
 
         plotting_function3(plotting_data, 'path_loss_dB', 'Path Loss (dB)')
         plotting_function3(plotting_data, 'received_power_dBm', 'Received Power (dBm)')
@@ -99,7 +99,7 @@ def plotting_function1(data, filename):
     plot.axes[1,0].set_ylabel('SE (Bps/Hz)')
     plot.axes[2,0].set_ylabel('Capacity (Bps/Hz/Km^2)')
 
-    plot.savefig(DATA_OUTPUT + '/capacity_plot_{}.png'.format(filename))
+    plot.savefig(DATA_OUTPUT + '/capacity_barplot1_{}.png'.format(filename))
 
     return 'completed {}'.format(filename)
 
@@ -122,6 +122,8 @@ def plotting_function2(data, filename):
     long_data.columns = ['Inter-Site Distance (km)', 'Frequency (GHz)', 'Height (m)',
         'Metric', 'Value']
 
+    sns.set(font_scale=0.9)
+
     plot = sns.FacetGrid(long_data, row="Metric", col="Height (m)", hue="Frequency (GHz)",
     sharey='row')
 
@@ -135,7 +137,7 @@ def plotting_function2(data, filename):
 
     plt.subplots_adjust(hspace=0.2, wspace=0.3, bottom=0.06)
 
-    plot.savefig(DATA_OUTPUT + '/capacity_barplot_{}.png'.format(filename))
+    plot.savefig(DATA_OUTPUT + '/capacity_barplot2_{}.png'.format(filename))
 
     return 'completed {}'.format(filename)
 
@@ -184,28 +186,13 @@ def plot_individual_luts(data):
     data = data[data['inter_site_distance_km'].isin([
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])]
 
-    # data['environment'] = data['environment'].replace(
-    #     {
-    #         'urban': 'Urban',
-    #         'suburban': 'Suburban',
-    #         'rural': 'Rural'
-    #     }
-    # )
-
-    # data_subset = data[['inter_site_distance_km','frequency_GHz','mast_height_m',
-    # metric_lower, 'spectral_efficency_bps_hz', 'capacity_per_Hz_km2', 'environment']]
-
-    # data_subset.columns = ['Inter-Site Distance (km)', 'Frequency (GHz)', 'Height (m)',
-    #     metric_higher, 'SE', 'Capacity', 'Env']
-
-    # plotting_function4(data, 'path_loss', 'Path Loss (dB)')
-    # plotting_function4(data, 'received_power', 'Received Power (dBm)')
-    # plotting_function4(data, 'interference', 'Interference (dBm)')
-    # plotting_function4(data, 'sinr', 'SINR')
-    # plotting_function4(data, 'spectral_efficiency', 'Spectral Efficiency (Bps/Hz)')
-    # plotting_function4(data, 'estimated_capacity', 'Average Capacity (Mbps/km^2)')
-
-    plotting_function5(data)
+    data['environment'] = data['environment'].replace(
+        {
+            'urban': 'Urban',
+            'suburban': 'Suburban',
+            'rural': 'Rural'
+        }
+    )
 
     plotting_function6(data)
 
@@ -214,107 +201,36 @@ def plot_individual_luts(data):
     return ('complete')
 
 
-def plotting_function4(data, metric_lower, metric_higher):
-
-
-    #environment	inter_site_distance	sites_per_km2	frequency	bandwidth	generation
-    # mast_height	receiver_x	receiver_y	path_loss	received_power	interference
-    # noise	sinr	spectral_efficiency	estimated_capacity
-
-    # data_subset = data[['inter_site_distance_km','frequency_GHz','mast_height_m',
-    # metric_lower, 'spectral_efficency_bps_hz', 'capacity_per_Hz_km2', 'environment']]
-
-    # data_subset.columns = ['Inter-Site Distance (km)', 'Frequency (GHz)', 'Height (m)',
-    #     metric_higher, 'SE', 'Capacity', 'Env']
-
-    long_data = pd.melt(data_subset,
-        id_vars=['Density (Km^2)', 'Frequency (GHz)', 'Height (m)'],
-        value_vars=['SINR', 'SE', 'Capacity'])
-
-    long_data.columns = ['Density (Km^2)', 'Frequency (GHz)', 'Height (m)',
-        'Metric', 'Value']
-
-
-    ax = sns.lineplot(x="inter_site_distance", y=metric_lower, hue="environment",
-        data=data, palette=sns.set_palette("husl"))
-
-    # plot = sns.FacetGrid(data_subset, row="Env", col="Height (m)", hue="Frequency (GHz)")
-
-    # plot.map(sns.lineplot, "Inter-Site Distance (km)", metric_higher).add_legend()
-
-    # plt.subplots_adjust(hspace=0.2, wspace=0.2, bottom=0.06)
-
-    ax.figure.savefig(DATA_OUTPUT + '/lineplot_{}.png'.format(metric_lower))
-
-    plt.cla()
-
-    return 'completed {}'.format(metric_lower)
-
-
-def plotting_function5(data):
-
-
-    #environment	inter_site_distance	sites_per_km2	frequency	bandwidth	generation
-    # mast_height	receiver_x	receiver_y	path_loss	received_power	interference
-    # noise	sinr	spectral_efficiency	estimated_capacity
-
-    data_subset = data[['inter_site_distance_km','frequency','mast_height',
-    'path_loss', 'received_power', 'interference', 'sinr', 'spectral_efficiency',
-    'estimated_capacity', 'environment']]
-
-    data_subset.columns = ['Inter-Site Distance (km)', 'Frequency (GHz)', 'Height (m)',
-        'Path Loss (DB)', 'Received Power (dB)', 'Interference (dB)', 'SINR',
-        'SE', 'Capacity (Mbps/km^2)', 'Env']
-
-    long_data = pd.melt(data_subset,
-        id_vars=['Inter-Site Distance (km)', 'Frequency (GHz)', 'Height (m)', 'Env'],
-        value_vars=['Path Loss (DB)', 'Received Power (dB)', 'Interference (dB)', 'SINR',
-            'SE', 'Capacity (Mbps/km^2)'])
-
-    long_data.columns = ['Inter-Site Distance (km)', 'Frequency (GHz)', 'Height (m)',
-    'Env', 'Metric', 'Value']
-
-    ax = sns.relplot(x="Inter-Site Distance (km)", y='Value', hue="Env", row="Metric",
-        col='Height (m)', kind="line", data=long_data, palette=sns.set_palette("husl"),
-        facet_kws=dict(sharex=False, sharey=False),)
-
-    # plot = sns.FacetGrid(data_subset, row="Env", col="Height (m)", hue="Frequency (GHz)")
-
-    # plot.map(sns.lineplot, "Inter-Site Distance (km)", metric_higher).add_legend()
-
-    # plt.subplots_adjust(hspace=0.2, wspace=0.2, bottom=0.06)
-
-    ax.savefig(DATA_OUTPUT + '/facet_lineplot.png')
-
-    plt.cla()
-
-    return print('completed')
-
-
 def plotting_function6(data):
 
     data_subset = data[['inter_site_distance_km','frequency','mast_height',
     'path_loss', 'received_power', 'interference', 'environment']]
 
     data_subset.columns = ['Inter-Site Distance (km)', 'Frequency (GHz)', 'Height (m)',
-        'Path Loss (DB)', 'Received Power (dB)', 'Interference (dB)', 'Env']
+        'Path Loss', 'Received Power', 'Interference', 'Environment']
 
     long_data = pd.melt(data_subset,
-        id_vars=['Inter-Site Distance (km)', 'Frequency (GHz)', 'Height (m)', 'Env'],
-        value_vars=['Path Loss (DB)', 'Received Power (dB)', 'Interference (dB)'])
+        id_vars=['Inter-Site Distance (km)', 'Frequency (GHz)', 'Height (m)', 'Environment'],
+        value_vars=['Path Loss', 'Received Power', 'Interference'])
 
     long_data.columns = ['Inter-Site Distance (km)', 'Frequency (GHz)', 'Height (m)',
-    'Env', 'Metric', 'Value']
+    'Environment', 'Metric', 'Value']
 
-    ax = sns.relplot(x="Inter-Site Distance (km)", y='Value', hue="Env", row="Metric",
+    ax = sns.relplot(x="Inter-Site Distance (km)", y='Value', hue="Environment", row="Metric",
         col='Height (m)', kind="line", data=long_data, palette=sns.set_palette("husl"),
-        facet_kws=dict(sharex=False, sharey=False),)
+        facet_kws=dict(sharex=False, sharey=False), hue_order=["Urban", "Suburban", "Rural"],
+        legend="full",)
 
-    # plot = sns.FacetGrid(data_subset, row="Env", col="Height (m)", hue="Frequency (GHz)")
+    handles = ax._legend_data.values()
+    labels = ax._legend_data.keys()
+    ax._legend.remove()
+    ax.fig.legend(handles=handles, labels=labels, loc='lower center', ncol=4)
 
-    # plot.map(sns.lineplot, "Inter-Site Distance (km)", metric_higher).add_legend()
+    ax.axes[0,0].set_ylabel('Path Loss (dB)')
+    ax.axes[1,0].set_ylabel('Receiver Power (dB)')
+    ax.axes[2,0].set_ylabel('Interference (dB)')
 
-    # plt.subplots_adjust(hspace=0.2, wspace=0.2, bottom=0.06)
+    plt.subplots_adjust(hspace=0.2, wspace=0.2, bottom=0.07)
 
     ax.savefig(DATA_OUTPUT + '/facet_lineplot_1.png')
 
@@ -329,24 +245,30 @@ def plotting_function7(data):
     'sinr', 'spectral_efficiency', 'estimated_capacity', 'environment']]
 
     data_subset.columns = ['Inter-Site Distance (km)', 'Frequency (GHz)', 'Height (m)',
-        'SINR', 'SE', 'Capacity (Mbps/km^2)', 'Env']
+        'SINR', 'SE', 'Capacity', 'Environment']
 
     long_data = pd.melt(data_subset,
-        id_vars=['Inter-Site Distance (km)', 'Frequency (GHz)', 'Height (m)', 'Env'],
-        value_vars=['SINR', 'SE', 'Capacity (Mbps/km^2)'])
+        id_vars=['Inter-Site Distance (km)', 'Frequency (GHz)', 'Height (m)', 'Environment'],
+        value_vars=['SINR', 'SE', 'Capacity'])
 
     long_data.columns = ['Inter-Site Distance (km)', 'Frequency (GHz)', 'Height (m)',
-    'Env', 'Metric', 'Value']
+    'Environment', 'Metric', 'Value']
 
-    ax = sns.relplot(x="Inter-Site Distance (km)", y='Value', hue="Env", row="Metric",
+    ax = sns.relplot(x="Inter-Site Distance (km)", y='Value', hue="Environment", row="Metric",
         col='Height (m)', kind="line", data=long_data, palette=sns.set_palette("husl"),
-        facet_kws=dict(sharex=False, sharey=False),)
+        facet_kws=dict(sharex=False, sharey=False), hue_order=["Urban", "Suburban", "Rural"],
+        legend="full")
 
-    # plot = sns.FacetGrid(data_subset, row="Env", col="Height (m)", hue="Frequency (GHz)")
+    ax.axes[0,0].set_ylabel('SINR')
+    ax.axes[1,0].set_ylabel('SE (Bps/Hz)')
+    ax.axes[2,0].set_ylabel('Capacity (Mbps/km^2)')
 
-    # plot.map(sns.lineplot, "Inter-Site Distance (km)", metric_higher).add_legend()
+    handles = ax._legend_data.values()
+    labels = ax._legend_data.keys()
+    ax._legend.remove()
+    ax.fig.legend(handles=handles, labels=labels, loc='lower center', ncol=4)
 
-    # plt.subplots_adjust(hspace=0.2, wspace=0.2, bottom=0.06)
+    plt.subplots_adjust(hspace=0.2, wspace=0.2, bottom=0.07)
 
     ax.savefig(DATA_OUTPUT + '/facet_lineplot2.png')
 
@@ -354,11 +276,12 @@ def plotting_function7(data):
 
     return print('completed')
 
+
 if __name__ == '__main__':
 
-    # data = load_in_all_main_lut()
+    data = load_in_all_main_lut()
 
-    # plot_main_lut(data)
+    plot_main_lut(data)
 
     individual_data = load_in_individual_luts()
 

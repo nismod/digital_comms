@@ -136,18 +136,18 @@ def strategy_line_plots(data, filename):
     plot.axes[2,0].set_ylabel('Capex (£ Millions)')
     plot.axes[3,0].set_ylabel('Opex (£ Thousands)')
 
-    plot.axes[0,0].set(xlim=(2019, 2030), ylim=(0, 50))
-    plot.axes[0,1].set(xlim=(2019, 2030), ylim=(0, 50))
-    plot.axes[0,2].set(xlim=(2019, 2030), ylim=(0, 50))
-    plot.axes[1,0].set(xlim=(2019, 2030), ylim=(-70, 35))
-    plot.axes[1,1].set(xlim=(2019, 2030), ylim=(-70, 35))
-    plot.axes[1,2].set(xlim=(2019, 2030), ylim=(-70, 35))
-    plot.axes[2,0].set(xlim=(2019, 2030), ylim=(0, 1.2))
-    plot.axes[2,1].set(xlim=(2019, 2030), ylim=(0, 1.2))
-    plot.axes[2,2].set(xlim=(2019, 2030), ylim=(0, 1.2))
-    plot.axes[3,0].set(xlim=(2019, 2030), ylim=(0, 60))
-    plot.axes[3,1].set(xlim=(2019, 2030), ylim=(0, 60))
-    plot.axes[3,2].set(xlim=(2019, 2030), ylim=(0, 60))
+    # plot.axes[0,0].set(xlim=(2019, 2030), ylim=(0, 50))
+    # plot.axes[0,1].set(xlim=(2019, 2030), ylim=(0, 50))
+    # plot.axes[0,2].set(xlim=(2019, 2030), ylim=(0, 50))
+    # plot.axes[1,0].set(xlim=(2019, 2030), ylim=(-70, 35))
+    # plot.axes[1,1].set(xlim=(2019, 2030), ylim=(-70, 35))
+    # plot.axes[1,2].set(xlim=(2019, 2030), ylim=(-70, 35))
+    # plot.axes[2,0].set(xlim=(2019, 2030), ylim=(0, 1.2))
+    # plot.axes[2,1].set(xlim=(2019, 2030), ylim=(0, 1.2))
+    # plot.axes[2,2].set(xlim=(2019, 2030), ylim=(0, 1.2))
+    # plot.axes[3,0].set(xlim=(2019, 2030), ylim=(0, 60))
+    # plot.axes[3,1].set(xlim=(2019, 2030), ylim=(0, 60))
+    # plot.axes[3,2].set(xlim=(2019, 2030), ylim=(0, 60))
 
     #plot spacing
     plt.subplots_adjust(hspace=0.3, wspace=0.2, bottom=0.08)
@@ -249,7 +249,7 @@ def transform_pcd_data_labels(data):
 
 def demand_line_plots(data, filename):
 
-    data = data.loc[(data['Strategy'] == 'No Investment')]
+    data = data.loc[(data['Strategy'] == 'No Investment')].reset_index()
 
     data['Year'] = pd.to_datetime(data["Year"].astype(str), format="%Y")
 
@@ -278,7 +278,7 @@ def demand_line_plots(data, filename):
     plot = sns.relplot(x='Year', y='Value',
         hue='Scenario', hue_order=['Low', 'Baseline', 'High'],
         # col="Scenario", col_order=["Low", "Baseline", "High"],
-        col="Metric", palette=palette,
+        col="Metric",
         facet_kws=dict(sharex=False, sharey=False),
         kind="line", legend="full", data=long_data)
 
@@ -335,22 +335,22 @@ def plot_pcd_pairplot(data, category, year, scenario, strategy):
     plot.axes[3,2].set_xlabel('Capacity (Mbps km^2)')
     plot.axes[3,3].set_xlabel('Capacity Margin (Mbps km^2)')
 
-    plot.axes[0,0].set(xlim=(0, 70000), ylim=(0, 50000))
-    plot.axes[1,0].set(xlim=(0, 70000), ylim=(0, 4000))
-    plot.axes[2,0].set(xlim=(0, 70000), ylim=(0, 200))
-    plot.axes[3,0].set(xlim=(0, 70000), ylim=(-2000, 2000))
-    plot.axes[0,1].set(xlim=(0, 4000), ylim=(0, 50000))
-    plot.axes[1,1].set(xlim=(0, 4000), ylim=(0, 4000))
-    plot.axes[2,1].set(xlim=(0, 4000), ylim=(0, 2000))
-    plot.axes[3,1].set(xlim=(0, 4000), ylim=(-2000, 2000))
-    plot.axes[0,2].set(xlim=(0, 6000), ylim=(0, 50000))
-    plot.axes[1,2].set(xlim=(0, 6000), ylim=(0, 4000))
-    plot.axes[2,2].set(xlim=(0, 6000), ylim=(0, 200))
-    plot.axes[3,2].set(xlim=(0, 6000), ylim=(-2000, 2000))
-    plot.axes[0,3].set(xlim=(-2000, 2000), ylim=(0, 50000))
-    plot.axes[1,3].set(xlim=(-2000, 2000), ylim=(0, 4000))
-    plot.axes[2,3].set(xlim=(-2000, 2000), ylim=(0, 2000))
-    plot.axes[3,3].set(xlim=(-2000, 2000), ylim=(-2000, 2000))
+    # plot.axes[0,0].set(xlim=(0, 70000), ylim=(0, 70000))
+    # plot.axes[1,0].set(xlim=(0, 70000), ylim=(0, 2000))
+    # plot.axes[2,0].set(xlim=(0, 70000), ylim=(0, 200))
+    # plot.axes[3,0].set(xlim=(0, 70000), ylim=(-500, 2000))
+    # plot.axes[0,1].set(xlim=(0, 4000), ylim=(0, 50000))
+    # plot.axes[1,1].set(xlim=(0, 4000), ylim=(0, 4000))
+    # plot.axes[2,1].set(xlim=(0, 4000), ylim=(0, 2000))
+    # plot.axes[3,1].set(xlim=(0, 4000), ylim=(-500, 2000))
+    # plot.axes[0,2].set(xlim=(0, 6000), ylim=(0, 50000))
+    # plot.axes[1,2].set(xlim=(0, 6000), ylim=(0, 4000))
+    # plot.axes[2,2].set(xlim=(0, 6000), ylim=(0, 200))
+    # plot.axes[3,2].set(xlim=(0, 6000), ylim=(-500, 2000))
+    # plot.axes[0,3].set(xlim=(-2000, 2000), ylim=(0, 50000))
+    # plot.axes[1,3].set(xlim=(-2000, 2000), ylim=(0, 4000))
+    # plot.axes[2,3].set(xlim=(-2000, 2000), ylim=(0, 2000))
+    # plot.axes[3,3].set(xlim=(-2000, 2000), ylim=(-500, 2000))
 
     plot.savefig(DATA_OUTPUT_PLOTS + '/pcd_pairplot_{}_{}_{}_{}.png'.format(
         scenario.lower(), strategy.lower(), year, category.lower())

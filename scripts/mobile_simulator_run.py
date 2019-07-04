@@ -259,7 +259,7 @@ def write_lookup_table(cell_edge_result, environment, cell_radius,
             ('environment', 'inter_site_distance', 'sites_per_km2', 'frequency_GHz',
             'bandwidth_MHz', 'generation', 'mast_height_m', 'path_loss_dB',
             'received_power_dBm', 'interference_dBm', 'network_load',
-            'noise_dBm', 'i_plus_n_dBm', 'sinr', 'spectral_efficency_bps_hz',
+            'noise_dBm', 'i_plus_n_dBm', 'sinr', 'spectral_efficiency_bps_hz',
             'single_sector_capacity_mbps_km2',
             'three_sector_capacity_mbps_km2')
             )
@@ -417,10 +417,10 @@ if __name__ == '__main__':
 
 
     SIMULATION_PARAMETERS = {
-        'iterations': 3,
+        'iterations': 2,
         'seed_value': None,
         'tx_baseline_height': 30,
-        'tx_upper_height': 40,
+        'tx_upper_height': 50,
         'tx_power': 40,
         'tx_gain': 16,
         'tx_losses': 1,
