@@ -83,12 +83,13 @@ class SimulationManager(object):
         """
         results = []
 
-        seed_value = simulation_parameters['seed_value']
+        seed_value1 = simulation_parameters['seed_value1']
+        seed_value2 = simulation_parameters['seed_value2']
 
         for receiver in self.receivers.values():
 
             path_loss, r_distance, type_of_sight = self.calculate_path_loss(
-                receiver, frequency, environment, seed_value
+                receiver, frequency, environment, seed_value1
             )
 
             received_power = self.calc_received_power(self.transmitter,
@@ -96,7 +97,7 @@ class SimulationManager(object):
             )
 
             interference, ave_distance, ave_inf_pl = self.calculate_interference(
-                receiver, frequency, environment, seed_value)
+                receiver, frequency, environment, seed_value2)
 
             noise = self.calculate_noise(
                 bandwidth
