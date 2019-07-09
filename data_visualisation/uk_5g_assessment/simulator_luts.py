@@ -62,13 +62,11 @@ def plot_main_lut(data):
 
         plotting_function1(plotting_data, area_type)
 
-        plotting_function2(plotting_data, area_type)
-
         plotting_function3(plotting_data, 'path_loss_dB', 'Path Loss (dB)')
         plotting_function3(plotting_data, 'received_power_dBm', 'Received Power (dBm)')
         plotting_function3(plotting_data, 'interference_dBm', 'Interference (dBm)')
         plotting_function3(plotting_data, 'sinr', 'SINR')
-        plotting_function3(plotting_data, 'spectral_efficency_bps_hz', 'Spectral Efficiency (Bps/Hz)')
+        plotting_function3(plotting_data, 'spectral_efficiency_bps_hz', 'Spectral Efficiency (Bps/Hz)')
         plotting_function3(plotting_data, 'three_sector_capacity_mbps_km2', 'Average Capacity (Mbps/km^2)')
 
     return ('complete')
@@ -77,7 +75,7 @@ def plot_main_lut(data):
 def plotting_function1(data, filename):
 
     data_subset = data[['sites_per_km2','frequency_GHz','mast_height_m',
-    'sinr', 'spectral_efficency_bps_hz', 'capacity_per_Hz_km2']]
+    'sinr', 'spectral_efficiency_bps_hz', 'capacity_per_Hz_km2']]
 
     data_subset.columns = ['Density (Km^2)', 'Frequency (GHz)', 'Height (m)',
         'SINR', 'SE', 'Capacity']
@@ -104,54 +102,16 @@ def plotting_function1(data, filename):
     return 'completed {}'.format(filename)
 
 
-def plotting_function2(data, filename):
-
-    data_subset = data[['inter_site_distance_km','frequency_GHz','mast_height_m',
-    'sinr', 'spectral_efficency_bps_hz', 'capacity_per_Hz_km2']]
-
-    data_subset.columns = ['Inter-Site Distance (km)', 'Frequency (GHz)', 'Height (m)',
-        'SINR', 'SE', 'Capacity']
-
-    data_subset = data_subset[data_subset['Inter-Site Distance (km)'].isin([
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])]
-
-    long_data = pd.melt(data_subset,
-        id_vars=['Inter-Site Distance (km)', 'Frequency (GHz)', 'Height (m)'],
-        value_vars=['SINR', 'SE', 'Capacity'])
-
-    long_data.columns = ['Inter-Site Distance (km)', 'Frequency (GHz)', 'Height (m)',
-        'Metric', 'Value']
-
-    sns.set(font_scale=0.9)
-
-    plot = sns.FacetGrid(long_data, row="Metric", col="Height (m)", hue="Frequency (GHz)",
-    sharey='row')
-
-    plot.map(sns.barplot, "Inter-Site Distance (km)", "Value").add_legend()
-
-    plot.axes[0,0].set_ylabel('SINR (dB)')
-    plot.axes[1,0].set_ylabel('SE (Bps/Hz)')
-    plot.axes[2,0].set_ylabel('Capacity (Bps/Hz/Km^2)')
-
-    plt.gca().xaxis.set_major_formatter(FuncFormatter(lambda x, _: int(x)))
-
-    plt.subplots_adjust(hspace=0.2, wspace=0.3, bottom=0.06)
-
-    plot.savefig(DATA_OUTPUT + '/capacity_barplot2_{}.png'.format(filename))
-
-    return 'completed {}'.format(filename)
-
-
 def plotting_function3(data, metric_lower, metric_higher):
 
     data_subset = data[['inter_site_distance_km','frequency_GHz','mast_height_m',
-    metric_lower, 'spectral_efficency_bps_hz', 'capacity_per_Hz_km2', 'environment']]
+    metric_lower, 'spectral_efficiency_bps_hz', 'capacity_per_Hz_km2', 'environment']]
 
     data_subset.columns = ['Inter-Site Distance (km)', 'Frequency (GHz)', 'Height (m)',
         metric_higher, 'SE', 'Capacity', 'Env']
 
-    data_subset = data_subset[data_subset['Inter-Site Distance (km)'].isin([
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])]
+    # data_subset = data_subset[data_subset['Inter-Site Distance (km)'].isin([
+    #     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])]
 
     plot = sns.FacetGrid(data_subset, row="Env", col="Height (m)", hue="Frequency (GHz)")
 
@@ -183,14 +143,19 @@ def load_in_individual_luts():
 
 def plot_individual_luts(data):
 
-    data = data[data['inter_site_distance_km'].isin([
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])]
+    # data = data[data['inter_site_distance_km'].isin([
+    #     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])]
 
-    data['environment'] = data['environment'].replace(
+    # data = data[data['inter_site_distance_km'].isin([
+    #     1, 2, 3, 4, 5, 6, 10, 15, 20, 25, 30, 35])]
+
+    data = data.replace(
         {
-            'urban': 'Urban',
-            'suburban': 'Suburban',
-            'rural': 'Rural'
+            'environment':{
+                'urban': 'Urban',
+                'suburban': 'Suburban',
+                'rural': 'Rural',
+            }
         }
     )
 
