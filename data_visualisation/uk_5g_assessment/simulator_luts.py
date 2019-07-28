@@ -15,8 +15,10 @@ CONFIG.read(os.path.join(os.path.dirname(__file__),'..','..','scripts', 'script_
 BASE_PATH = CONFIG['file_locations']['base_path']
 
 DATA = os.path.join(BASE_PATH, 'intermediate', 'system_simulator')
-DATA_OUTPUT = os.path.join(BASE_PATH, '..', 'data_visualisation', 'uk_5g_assessment')
+DATA_OUTPUT = os.path.join(BASE_PATH, '..', 'data_visualisation', 'uk_5g_assessment', 'figures')
 
+if not os.path.exists(DATA_OUTPUT):
+    os.mkdir(DATA_OUTPUT)
 
 def load_in_all_main_lut():
 

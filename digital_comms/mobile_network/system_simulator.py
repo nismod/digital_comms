@@ -85,11 +85,12 @@ class SimulationManager(object):
 
         seed_value1 = simulation_parameters['seed_value1']
         seed_value2 = simulation_parameters['seed_value2']
+        iterations = simulation_parameters['iterations']
 
         for receiver in self.receivers.values():
 
             path_loss, r_distance, type_of_sight = self.calculate_path_loss(
-                receiver, frequency, environment, seed_value1
+                receiver, frequency, environment, seed_value1, iterations
             )
 
             received_power = self.calc_received_power(self.transmitter,
@@ -97,7 +98,7 @@ class SimulationManager(object):
             )
 
             interference, ave_distance, ave_inf_pl = self.calculate_interference(
-                receiver, frequency, environment, seed_value2)
+                receiver, frequency, environment, seed_value2, iterations)
 
             noise = self.calculate_noise(
                 bandwidth
@@ -147,7 +148,7 @@ class SimulationManager(object):
 
 
     def calculate_path_loss(self, receiver,
-        frequency, environment, seed_value):
+        frequency, environment, seed_value, iterations):
 
         temp_line = LineString([
             (receiver.coordinates[0],
@@ -185,7 +186,8 @@ class SimulationManager(object):
             receiver.ue_height,
             above_roof,
             location,
-            seed_value
+            seed_value,
+            iterations
             )
 
         return path_loss, strt_distance, type_of_sight
@@ -214,7 +216,7 @@ class SimulationManager(object):
 
 
     def calculate_interference(
-        self, receiver, frequency, environment, seed_value):
+        self, receiver, frequency, environment, seed_value, iterations):
         """
         Calculate interference from other cells.
 
@@ -276,6 +278,7 @@ class SimulationManager(object):
                 above_roof,
                 indoor,
                 seed_value,
+                iterations
                 )
 
             received_interference = self.calc_received_power(

@@ -73,6 +73,7 @@ def generate_receivers(cell_area, inter_site_distance, simulation_parameters):
     for i in range(len(x_axis)):
         for j in range(len(y_axis)):
             receiver = Point((xv[i,j], yv[i,j]))
+            indoor_outdoor_probability = np.random.rand(1,1)[0][0]
             if geom.contains(receiver):
                 receivers.append({
                     'type': "Feature",
@@ -86,7 +87,8 @@ def generate_receivers(cell_area, inter_site_distance, simulation_parameters):
                         "gain": simulation_parameters['rx_gain'],
                         "losses": simulation_parameters['rx_losses'],
                         "ue_height": float(simulation_parameters['rx_height']),
-                        "indoor": False,
+                        "indoor": (True if float(indoor_outdoor_probability) < \
+                            float(0.5) else False),
                     }
                 })
                 id_number += 1
@@ -94,25 +96,25 @@ def generate_receivers(cell_area, inter_site_distance, simulation_parameters):
             else:
                 pass
 
-    iterations = simulation_parameters['iterations']
-    output = []
+    # iterations = simulation_parameters['iterations']
+    # output = []
 
-    for receiver in receivers:
-        for i in range(1, (iterations + 1)):
-            output.append({
-                'type': receiver['type'],
-                'geometry': receiver['geometry'],
-                'properties': {
-                    'ue_id': str(receiver['properties']['ue_id'] + str(i)),
-                    "misc_losses": receiver['properties']['misc_losses'],
-                    "gain": receiver['properties']['gain'],
-                    "losses": receiver['properties']['losses'],
-                    "ue_height": receiver['properties']['ue_height'],
-                    "indoor": receiver['properties']['indoor'],
-                }
-            })
+    # for receiver in receivers:
+    #     for i in range(1, (iterations + 1)):
+    #         output.append({
+    #             'type': receiver['type'],
+    #             'geometry': receiver['geometry'],
+    #             'properties': {
+    #                 'ue_id': str(receiver['properties']['ue_id'] + str(i)),
+    #                 "misc_losses": receiver['properties']['misc_losses'],
+    #                 "gain": receiver['properties']['gain'],
+    #                 "losses": receiver['properties']['losses'],
+    #                 "ue_height": receiver['properties']['ue_height'],
+    #                 "indoor": receiver['properties']['indoor'],
+    #             }
+    #         })
 
-    return output
+    return receivers
 
 
 def obtain_threshold_values(results, simulation_parameters):
@@ -417,7 +419,7 @@ if __name__ == '__main__':
 
 
     SIMULATION_PARAMETERS = {
-        'iterations': 1,
+        'iterations': 100,
         'seed_value1': 1,
         'seed_value2': 2,
         'tx_baseline_height': 30,
@@ -447,7 +449,7 @@ if __name__ == '__main__':
 
     MAST_HEIGHT = [
         (30),
-        (40)
+        # (40)
     ]
 
     MODULATION_AND_CODING_LUT =[
@@ -485,34 +487,34 @@ if __name__ == '__main__':
         ('5G', 15, '256QAM', 948, 7.4063, 22.7),
     ]
 
-    # CELL_RADII = {
-    #     'urban': [
-    #         200, 300, 400, 500, 600, 700, 800, 900, 1000,
-    #         1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800,
-    #         1900, 2000, 2500, 3000, 3500, 4000,
-    #     ],
-    #     'suburban': [
-    #         700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500,
-    #         1750, 2000, 2250, 2500, 3000, 3500, 4000, 4500, 5000,
-    #         5500, 6000,
-    #     ],
-    #     'rural': [
-    #         2500, 5000, 7500, 10000, 12500, 15000, 17500, 20000,
-    #         22500, 25000, 27500, 30000, 32500,
-    #         ]
-    # }
-
     CELL_RADII = {
         'urban': [
-            5000, 15000, 25000
+            200, 300, 400, 500, 600, 700, 800, 900, 1000,
+            1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800,
+            1900, 2000, 2500, 3000, 3500, 4000,
         ],
         'suburban': [
-            5000, 15000, 25000
+            700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500,
+            1750, 2000, 2250, 2500, 3000, 3500, 4000, 4500, 5000,
+            5500, 6000,
         ],
         'rural': [
-            5000, 15000, 25000
+            2500, 5000, 7500, 10000, 12500, 15000, 17500, 20000,
+            22500, 25000, 27500, 30000, 32500,
             ]
     }
+
+    # CELL_RADII = {
+    #     'urban': [
+    #         500, 1000, 3000, #6000, 12000
+    #     ],
+    #     'suburban': [
+    #        1000, 3000, 6000,
+    #     ],
+    #     'rural': [
+    #         3000, 6000, 12000
+    #         ]
+    # }
 
     run_simulator(
         SIMULATION_PARAMETERS,
