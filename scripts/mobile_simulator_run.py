@@ -12,7 +12,7 @@ import csv
 
 import math
 import fiona
-from shapely.geometry import shape, Point
+from shapely.geometry import shape, Point, LineString, mapping
 import numpy as np
 from random import choice
 from rtree import index
@@ -32,7 +32,7 @@ DATA_RAW = os.path.join(BASE_PATH, 'raw')
 DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 
 
-def generate_receivers(cell_area, inter_site_distance, simulation_parameters):
+def generate_receivers(cell_area, simulation_parameters, grid):
     """
     The indoor probability provides a likelihood of a user being indoor,
     given the building footprint area and number of floors for all
@@ -50,74 +50,136 @@ def generate_receivers(cell_area, inter_site_distance, simulation_parameters):
     receivers : List of dicts
         Contains the quantity of desired receivers within the area boundary.
     """
-    geom = shape(cell_area[0]['geometry'])
-    geom_box = geom.bounds
-
-    minx = geom_box[0]
-    miny = geom_box[1]
-    maxx = geom_box[2]
-    maxy = geom_box[3]
-
     receivers = []
 
-    id_number = 0
+    if grid == 1:
 
-    x_axis = np.linspace(
-        minx, maxx, num=(int(math.sqrt(geom.area) / (math.sqrt(geom.area)/20)))
-        )
-    y_axis = np.linspace(
-        miny, maxy, num=(int(math.sqrt(geom.area) / (math.sqrt(geom.area)/20)))
-        )
+        geom = shape(cell_area[0]['geometry'])
+        geom_box = geom.bounds
 
-    xv, yv = np.meshgrid(x_axis, y_axis, sparse=False, indexing='ij')
-    for i in range(len(x_axis)):
-        for j in range(len(y_axis)):
-            receiver = Point((xv[i,j], yv[i,j]))
+        minx = geom_box[0]
+        miny = geom_box[1]
+        maxx = geom_box[2]
+        maxy = geom_box[3]
+
+        id_number = 0
+
+        x_axis = np.linspace(
+            minx, maxx, num=(int(math.sqrt(geom.area) / (math.sqrt(geom.area)/10)))
+            )
+        y_axis = np.linspace(
+            miny, maxy, num=(int(math.sqrt(geom.area) / (math.sqrt(geom.area)/10)))
+            )
+
+        xv, yv = np.meshgrid(x_axis, y_axis, sparse=False, indexing='ij')
+        for i in range(len(x_axis)):
+            for j in range(len(y_axis)):
+                receiver = Point((xv[i,j], yv[i,j]))
+                indoor_outdoor_probability = np.random.rand(1,1)[0][0]
+                if geom.contains(receiver):
+                    receivers.append({
+                        'type': "Feature",
+                        'geometry': {
+                            "type": "Point",
+                            "coordinates": [xv[i,j], yv[i,j]],
+                        },
+                        'properties': {
+                            'ue_id': "id_{}".format(id_number),
+                            "misc_losses": simulation_parameters['rx_misc_losses'],
+                            "gain": simulation_parameters['rx_gain'],
+                            "losses": simulation_parameters['rx_losses'],
+                            "ue_height": float(simulation_parameters['rx_height']),
+                            "indoor": (True if float(indoor_outdoor_probability) < \
+                                float(0.5) else False),
+                        }
+                    })
+                    id_number += 1
+
+                else:
+                    pass
+    else:
+        centroid = shape(cell_area[0]['geometry']).centroid
+
+        coord = cell_area[0]['geometry']['coordinates'][0][0]
+        path = LineString([(coord), (centroid)])
+        length = int(path.length)
+        increment = int(length / 20)
+
+        id_number = 0
+        for increment_value in range(1, 11):
+            point = path.interpolate(increment * increment_value)
             indoor_outdoor_probability = np.random.rand(1,1)[0][0]
-            if geom.contains(receiver):
-                receivers.append({
-                    'type': "Feature",
-                    'geometry': {
-                        "type": "Point",
-                        "coordinates": [xv[i,j], yv[i,j]],
-                    },
-                    'properties': {
-                        'ue_id': "id_{}".format(id_number),
-                        "misc_losses": simulation_parameters['rx_misc_losses'],
-                        "gain": simulation_parameters['rx_gain'],
-                        "losses": simulation_parameters['rx_losses'],
-                        "ue_height": float(simulation_parameters['rx_height']),
-                        "indoor": (True if float(indoor_outdoor_probability) < \
-                            float(0.5) else False),
-                    }
-                })
-                id_number += 1
-
-            else:
-                pass
-
-    # iterations = simulation_parameters['iterations']
-    # output = []
-
-    # for receiver in receivers:
-    #     for i in range(1, (iterations + 1)):
-    #         output.append({
-    #             'type': receiver['type'],
-    #             'geometry': receiver['geometry'],
-    #             'properties': {
-    #                 'ue_id': str(receiver['properties']['ue_id'] + str(i)),
-    #                 "misc_losses": receiver['properties']['misc_losses'],
-    #                 "gain": receiver['properties']['gain'],
-    #                 "losses": receiver['properties']['losses'],
-    #                 "ue_height": receiver['properties']['ue_height'],
-    #                 "indoor": receiver['properties']['indoor'],
-    #             }
-    #         })
+            receivers.append({
+                'type': "Feature",
+                'geometry': mapping(point),
+                'properties': {
+                    'ue_id': "id_{}".format(id_number),
+                    "misc_losses": simulation_parameters['rx_misc_losses'],
+                    "gain": simulation_parameters['rx_gain'],
+                    "losses": simulation_parameters['rx_losses'],
+                    "ue_height": float(simulation_parameters['rx_height']),
+                    "indoor": (True if float(indoor_outdoor_probability) < \
+                        float(0.5) else False),
+                }
+            })
+            id_number += 1
 
     return receivers
 
 
-def obtain_threshold_values(results, simulation_parameters):
+def obtain_independent_threshold_values(results, simulation_parameters):
+    """
+    Get the threshold capacity based on a given percentile.
+    """
+
+    path_loss_values = []
+    received_power_values = []
+    interference_values = []
+    sinr_values = []
+    spectral_efficiency_values = []
+    estimated_capacity_values = []
+
+    for result in results:
+
+        path_loss_values.append(result['path_loss'])
+        received_power_values.append(result['received_power'])
+        interference_values.append(result['interference'])
+        sinr = result['sinr']
+        if sinr == None:
+            sinr = 0
+        else:
+            sinr_values.append(sinr)
+        spectral_efficiency = result['spectral_efficiency']
+        if spectral_efficiency == None:
+            spectral_efficiency = 0
+        else:
+            spectral_efficiency_values.append(spectral_efficiency)
+        estimated_capacity = result['estimated_capacity']
+        if estimated_capacity == None:
+            estimated_capacity = 0
+        else:
+            estimated_capacity_values.append(estimated_capacity)
+
+    cell_edge_result = {
+        'path_loss': find_average(path_loss_values),
+        'received_power': find_average(received_power_values),
+        'interference': find_average(interference_values),
+        'sinr': find_average(sinr_values),
+        'spectral_efficiency': find_average(spectral_efficiency_values),
+        'estimated_capacity': find_average(estimated_capacity_values),
+    }
+
+    return cell_edge_result
+
+
+def find_average(data):
+
+    average = sum(data) / len(data)
+
+    return average
+
+
+def obtain_threshold_values_choice(results, simulation_parameters):
     """
     Get the threshold capacity based on a given percentile.
     """
@@ -144,29 +206,6 @@ def obtain_threshold_values(results, simulation_parameters):
             matching_result.append(result)
 
     return choice(matching_result)
-
-
-def convert_shape_to_projected_crs(line, original_crs, new_crs):
-    """
-    Existing elevation path needs to be converted from WGS84 to projected
-    coordinates.
-    """
-    # Geometry transform function based on pyproj.transform
-    project = partial(
-        pyproj.transform,
-        pyproj.Proj(init = original_crs),
-        pyproj.Proj(init = new_crs)
-        )
-
-    new_geom = transform(project, LineString(line['geometry']['coordinates']))
-
-    output = {
-        'type': 'Feature',
-        'geometry': mapping(new_geom),
-        'properties': line['properties']
-        }
-
-    return output
 
 
 def convert_results_geojson(data):
@@ -214,8 +253,8 @@ def write_full_results(data, environment, cell_radius, frequency,
     results_writer.writerow(
         ('environment', 'inter_site_distance', 'sites_per_km2', 'frequency',
         'bandwidth', 'generation', 'mast_height', 'receiver_x',
-        'receiver_y', 'path_loss', 'received_power', 'interference',
-        'noise', 'sinr', 'spectral_efficiency', 'estimated_capacity'))
+        'receiver_y', 'path_loss', 'r_model', 'received_power', 'interference',
+        'i_model', 'noise', 'sinr', 'spectral_efficiency', 'estimated_capacity'))
 
     for row in data:
         results_writer.writerow((
@@ -229,8 +268,10 @@ def write_full_results(data, environment, cell_radius, frequency,
             row['receiver_x'],
             row['receiver_y'],
             row['path_loss'],
+            row['r_model'],
             row['received_power'],
             row['interference'],
+            row['i_model'],
             row['noise'],
             row['sinr'],
             row['spectral_efficiency'],
@@ -260,16 +301,14 @@ def write_lookup_table(cell_edge_result, environment, cell_radius,
         lut_writer.writerow(
             ('environment', 'inter_site_distance', 'sites_per_km2', 'frequency_GHz',
             'bandwidth_MHz', 'generation', 'mast_height_m', 'path_loss_dB',
-            'received_power_dBm', 'interference_dBm', 'network_load',
-            'noise_dBm', 'i_plus_n_dBm', 'sinr', 'spectral_efficiency_bps_hz',
-            'single_sector_capacity_mbps_km2',
+            'received_power_dBm', 'interference_dBm',
+            'sinr', 'spectral_efficiency_bps_hz',
             'three_sector_capacity_mbps_km2')
             )
     else:
         lut_file = open(directory, 'a', newline='')
         lut_writer = csv.writer(lut_file)
 
-    # output and report results for this timestep
     lut_writer.writerow(
         (environment,
         inter_site_distance,
@@ -281,12 +320,8 @@ def write_lookup_table(cell_edge_result, environment, cell_radius,
         cell_edge_result['path_loss'],
         cell_edge_result['received_power'],
         cell_edge_result['interference'],
-        cell_edge_result['network_load'],
-        cell_edge_result['noise'],
-        cell_edge_result['i_plus_n'],
         cell_edge_result['sinr'],
         cell_edge_result['spectral_efficiency'],
-        cell_edge_result['estimated_capacity'],
         cell_edge_result['estimated_capacity'] * 3,
         ))
 
@@ -313,12 +348,10 @@ def write_shapefile(data, filename):
         'properties': OrderedDict(prop_schema)
     }
 
-    # Create path
     directory = os.path.join(DATA_INTERMEDIATE, 'system_simulator')
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    # print(os.path.join(directory, filename))
     # Write all elements to output file
     with fiona.open(
         os.path.join(directory, filename), 'w',
@@ -330,11 +363,6 @@ def write_shapefile(data, filename):
 def run_simulator(simulation_parameters, spectrum_portfolio, mast_heights,
     cell_radii, modulation_and_coding_lut):
 
-
-    # with fiona.open(
-    #     os.path.join(DATA_RAW, 'crystal_palace_to_mursley.shp'), 'r') as source:
-    #         unprojected_line = next(iter(source))
-    #         unprojected_point = unprojected_line['geometry']['coordinates'][0]
     unprojected_point = {
         'type': 'Feature',
         'geometry': {
@@ -345,11 +373,13 @@ def run_simulator(simulation_parameters, spectrum_portfolio, mast_heights,
             'site_id': 'Crystal Palace Radio Tower'
             }
         }
+
     environments =[
         'urban',
         'suburban',
         'rural'
     ]
+
     for environment in environments:
         for cell_radius in cell_radii[environment]:
 
@@ -361,10 +391,8 @@ def run_simulator(simulation_parameters, spectrum_portfolio, mast_heights,
                     cell_radius
                     )
 
-            receivers = generate_receivers(
-                cell_area, cell_radius,
-                SIMULATION_PARAMETERS
-                )
+            receivers = generate_receivers(cell_area, SIMULATION_PARAMETERS, 0)
+
             print('num receivers = {}'.format(len(receivers)))
             for frequency, bandwidth, generation in spectrum_portfolio:
                 for mast_height in mast_heights:
@@ -386,8 +414,7 @@ def run_simulator(simulation_parameters, spectrum_portfolio, mast_heights,
                         'test_capacity_data_{}_{}_{}_{}.csv'.format(
                             environment, cell_radius, frequency, mast_height))
 
-
-                    cell_edge_result = obtain_threshold_values(
+                    cell_edge_result = obtain_independent_threshold_values(
                         results, simulation_parameters
                         )
 
@@ -396,34 +423,26 @@ def run_simulator(simulation_parameters, spectrum_portfolio, mast_heights,
                         os.path.join(DATA_INTERMEDIATE, 'system_simulator'),
                         'test_lookup_table.csv')
 
-            #         geojson_receivers = convert_results_geojson(results)
-
-            #         write_shapefile(geojson_receivers, 'receivers_{}.shp'.format(inter_site_distance))
-            #         write_shapefile(transmitter, 'transmitter_{}.shp'.format(inter_site_distance))
-            #         write_shapefile(cell_area, 'cell_area_{}.shp'.format(inter_site_distance))
-            #         write_shapefile(interfering_transmitters, 'interfering_transmitters_{}.shp'.format(inter_site_distance))
-            #         write_shapefile(interfering_cell_areas, 'interfering_cell_areas_{}.shp'.format(inter_site_distance))
-
-            #         average_capacity = []
-            #         for result in results:
-            #             average_capacity.append(result['estimated_capacity'])
-            #         print('------')
-            #         print_ave_capacity = round(sum(average_capacity)/len(average_capacity))
-            #         print('isd: {}, {}'.format(inter_site_distance, print_ave_capacity))
+                    ### write out as shapes, if desired, for debugging purposes
+                    # geojson_receivers = convert_results_geojson(results)
+                    # write_shapefile(geojson_receivers, 'receivers_{}.shp'.format(cell_radius))
+                    # write_shapefile(transmitter, 'transmitter_{}.shp'.format(cell_radius))
+                    # write_shapefile(cell_area, 'cell_area_{}.shp'.format(cell_radius))
+                    # write_shapefile(interfering_transmitters, 'interfering_transmitters_{}.shp'.format(cell_radius))
+                    # write_shapefile(interfering_cell_areas, 'interfering_cell_areas_{}.shp'.format(cell_radius))
 
             print('complete')
-
 
 
 if __name__ == '__main__':
 
 
     SIMULATION_PARAMETERS = {
-        'iterations': 100,
+        'iterations': 50,
         'seed_value1': 1,
         'seed_value2': 2,
         'tx_baseline_height': 30,
-        'tx_upper_height': 50,
+        'tx_upper_height': 40,
         'tx_power': 40,
         'tx_gain': 16,
         'tx_losses': 1,
@@ -435,8 +454,7 @@ if __name__ == '__main__':
         'percentile': 50,
         'desired_transmitter_density': 10,
         'sectorisation': 3,
-        # 'interfering_sites': 20,
-        # 'overbooking_factor': 50,
+        'overbooking_factor': 50,
     }
 
     SPECTRUM_PORTFOLIO = [
@@ -449,7 +467,7 @@ if __name__ == '__main__':
 
     MAST_HEIGHT = [
         (30),
-        # (40)
+        (100)
     ]
 
     MODULATION_AND_CODING_LUT =[
@@ -489,32 +507,19 @@ if __name__ == '__main__':
 
     CELL_RADII = {
         'urban': [
-            200, 300, 400, 500, 600, 700, 800, 900, 1000,
-            1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800,
-            1900, 2000, 2500, 3000, 3500, 4000,
+            250, 500, 750, 1000, 1500, 2000, 2500, 3000,
+            4000, 5000, 10000, 15000, 20000, 25000, 30000
         ],
         'suburban': [
-            700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500,
-            1750, 2000, 2250, 2500, 3000, 3500, 4000, 4500, 5000,
-            5500, 6000,
+            250, 500, 750, 1000, 1500, 2000, 2500, 3000,
+            4000, 5000, 10000, 15000, 20000, 25000, 30000
         ],
         'rural': [
-            2500, 5000, 7500, 10000, 12500, 15000, 17500, 20000,
-            22500, 25000, 27500, 30000, 32500,
+            250, 500, 750, 1000, 1500, 2000, 2500, 3000,
+            4000, 5000, 10000, 15000, 20000, 25000, 30000
             ]
     }
 
-    # CELL_RADII = {
-    #     'urban': [
-    #         500, 1000, 3000, #6000, 12000
-    #     ],
-    #     'suburban': [
-    #        1000, 3000, 6000,
-    #     ],
-    #     'rural': [
-    #         3000, 6000, 12000
-    #         ]
-    # }
 
     run_simulator(
         SIMULATION_PARAMETERS,

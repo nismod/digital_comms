@@ -89,7 +89,7 @@ class SimulationManager(object):
 
         for receiver in self.receivers.values():
 
-            path_loss, r_distance, type_of_sight = self.calculate_path_loss(
+            path_loss, r_model, r_distance, type_of_sight = self.calculate_path_loss(
                 receiver, frequency, environment, seed_value1, iterations
             )
 
@@ -97,7 +97,7 @@ class SimulationManager(object):
                 receiver, path_loss
             )
 
-            interference, ave_distance, ave_inf_pl = self.calculate_interference(
+            interference, i_model, ave_distance, ave_inf_pl = self.calculate_interference(
                 receiver, frequency, environment, seed_value2, iterations)
 
             noise = self.calculate_noise(
@@ -119,11 +119,13 @@ class SimulationManager(object):
 
             results.append({
                 'path_loss': path_loss,
+                'r_model': r_model,
                 'type_of_sight': type_of_sight,
                 'ave_inf_pl': ave_inf_pl,
                 'received_power': f_received_power,
                 'distance': r_distance,
                 'interference': np.log10(f_interference),
+                'i_model': i_model,
                 'network_load': simulation_parameters['network_load'],
                 'ave_distance': ave_distance,
                 'noise': f_noise,
@@ -174,7 +176,7 @@ class SimulationManager(object):
         above_roof = 0
         location = receiver.indoor
 
-        path_loss = path_loss_calculator(
+        path_loss, model = path_loss_calculator(
             frequency,
             strt_distance,
             ant_height,
@@ -190,7 +192,7 @@ class SimulationManager(object):
             iterations
             )
 
-        return path_loss, strt_distance, type_of_sight
+        return path_loss, model, strt_distance, type_of_sight
 
 
     def calc_received_power(self, transmitter, receiver, path_loss):
@@ -237,9 +239,11 @@ class SimulationManager(object):
         ave_distance = 0
         ave_pl = 0
 
+        interfering_transmitter_id = 0
         #calculate interference from other power sources
         for interfering_transmitter in self.interfering_transmitters.values():
 
+            # if interfering_transmitter_id < 3:
             temp_line = LineString([
                 (receiver.coordinates[0],
                 receiver.coordinates[1]),
@@ -265,7 +269,7 @@ class SimulationManager(object):
             above_roof = 0
             indoor = receiver.indoor
 
-            path_loss = path_loss_calculator(
+            path_loss, model = path_loss_calculator(
                 frequency,
                 interference_strt_distance,
                 ant_height,
@@ -291,17 +295,22 @@ class SimulationManager(object):
             ave_pl += path_loss
 
             interference.append(received_interference)
-        try:
-            ave_distance = ave_distance/len(self.interfering_transmitters)
-        except ZeroDivisionError:
-            ave_distance = 0
+            # interfering_transmitter_id += 1
 
-        try:
-            ave_pl = ave_pl/len(self.interfering_transmitters)
-        except ZeroDivisionError:
-            ave_pl = 0
+            # try:
+            #     ave_distance = ave_distance/len(self.interfering_transmitters)
+            # except ZeroDivisionError:
+            #     ave_distance = 0
 
-        return interference, ave_distance, ave_pl
+            # try:
+            #     ave_pl = ave_pl/len(self.interfering_transmitters)
+            # except ZeroDivisionError:
+            #     ave_pl = 0
+
+            # else:
+            #     break
+
+        return interference, model, ave_distance, ave_pl
 
 
     def calculate_noise(self, bandwidth):
@@ -341,13 +350,16 @@ class SimulationManager(object):
         """
         raw_received_power = 10**received_power
 
-        interference_values = []
+        interference_list = []
         for value in interference:
             output_value = 10**value
-            interference_values.append(output_value)
+            interference_list.append(output_value)
+
+        interference_list.sort(reverse=True)
+        interference_list = interference_list[:3]
 
         network_load = simulation_parameters['network_load']
-        i_summed = sum(interference_values)
+        i_summed = sum(interference_list)
         raw_sum_of_interference = i_summed * (network_load/100)
 
         raw_noise = 10**noise
@@ -496,7 +508,7 @@ class CellArea(object):
     The geographic area which holds all sites and receivers.
     """
     def __init__(self, data):
-        self.id = data['properties']['cell_area_id']
+        self.id = data['properties']['site_id']
         self.geometry = data['geometry']
         self.coordinates = data['geometry']['coordinates']
         self.area = self._calculate_area(data)

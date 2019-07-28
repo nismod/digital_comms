@@ -236,7 +236,7 @@ for path in PATH_LIST:
             density = float(row["sites_per_km2"])
             capacity = float(row["three_sector_capacity_mbps_km2"])
             cell_edge_spectral_efficency = float(
-                row['spectral_efficency_bps_hz']
+                row['spectral_efficiency_bps_hz']
                 )
 
             if (environment, frequency, bandwidth, mast_height) \
