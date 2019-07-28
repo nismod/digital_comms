@@ -4,10 +4,11 @@ from __future__ import print_function, absolute_import, division
 
 import pytest
 from pytest import fixture
-from shapely.geometry import Point, LineString
+from shapely.geometry import Point, LineString, shape, mapping
 import os
 from collections import OrderedDict
 from digital_comms.mobile_network.model import NetworkManager
+from digital_comms.mobile_network.system_simulator import SimulationManager
 
 @pytest.fixture
 def rootdir():
@@ -116,6 +117,7 @@ def setup_non_4g_assets():
             "bandwidth": "",
             "build_date": 2012,
             "sectors": 3,
+            'opex': 10000,
         },
         {
             "pcd_sector": "CB12",
@@ -126,6 +128,7 @@ def setup_non_4g_assets():
             "bandwidth": "",
             "build_date": 2012,
             "sectors": 3,
+            'opex': 10000,
         }
     ]
 
@@ -138,9 +141,10 @@ def setup_assets():
             "technology": "LTE",
             "type": "macrocell_site",
             "frequency": ["800", "2600"],
-            "bandwidth": "2x10MHz",
+            "bandwidth": "10",
             "build_date": 2017,
             "sectors": 3,
+            'opex': 10000,
         },
         {
             "pcd_sector": "CB12",
@@ -148,9 +152,10 @@ def setup_assets():
             "technology": "LTE",
             "type": "macrocell_site",
             "frequency": ["800", "2600"],
-            "bandwidth": "2x10MHz",
+            "bandwidth": "10",
             "build_date": 2017,
             "sectors": 3,
+            'opex': 10000,
         },
     ]
 
@@ -163,9 +168,10 @@ def setup_mixed_assets():
             "technology": "LTE",
             "type": "macrocell_site",
             "frequency": ["800", "2600"],
-            "bandwidth": "2x10MHz",
+            "bandwidth": "10",
             "build_date": 2017,
             "sectors": 3,
+            'opex': 10000,
         },
         {
             "pcd_sector": "CB12",
@@ -173,9 +179,10 @@ def setup_mixed_assets():
             "technology": "LTE",
             "type": "macrocell_site",
             "frequency": ["800", "2600"],
-            "bandwidth": "2x10MHz",
+            "bandwidth": "10",
             "build_date": 2017,
             "sectors": 3,
+            'opex': 10000,
         },
         {
             'pcd_sector': "CB11",
@@ -183,9 +190,10 @@ def setup_mixed_assets():
             'frequency': '3700',
             'technology': 'same',
             'type': 'small_cell',
-            'bandwidth': '2x25MHz',
+            'bandwidth': '25',
             'sectors': 1,
             'build_date': None,
+            'opex': 2000,
         },
         {
             'pcd_sector': "CB11",
@@ -193,9 +201,10 @@ def setup_mixed_assets():
             'frequency': '3700',
             'technology': 'same',
             'type': 'small_cell',
-            'bandwidth': '2x25MHz',
+            'bandwidth': '25',
             'sectors': 1,
             'build_date': None,
+            'opex': 2000,
         },
         {
             'pcd_sector': "CB12",
@@ -203,9 +212,10 @@ def setup_mixed_assets():
             'frequency': '3700',
             'technology': 'same',
             'type': 'small_cell',
-            'bandwidth': '2x25MHz',
+            'bandwidth': '25',
             'sectors': 1,
             'build_date': None,
+            'opex': 2000,
         },
         {
             'pcd_sector': "CB12",
@@ -213,9 +223,10 @@ def setup_mixed_assets():
             'frequency': '3700',
             'technology': 'same',
             'type': 'small_cell',
-            'bandwidth': '2x25MHz',
+            'bandwidth': '25',
             'sectors': 1,
             'build_date': None,
+            'opex': 2000,
         },
     ]
 
@@ -229,9 +240,10 @@ def setup_six_sectored_assets():
             "technology": "LTE",
             "type": "macrocell_site",
             "frequency": ["800", "2600"],
-            "bandwidth": "2x10MHz",
+            "bandwidth": "10",
             "build_date": 2017,
             "sectors": 6,
+            'opex': 3000,
         },
         {
             "pcd_sector": "CB12",
@@ -239,9 +251,10 @@ def setup_six_sectored_assets():
             "technology": "LTE",
             "type": "macrocell_site",
             "frequency": ["800", "2600"],
-            "bandwidth": "2x10MHz",
+            "bandwidth": "10",
             "build_date": 2017,
             "sectors": 6,
+            'opex': 3000,
         }
     ]
 
@@ -254,85 +267,90 @@ def setup_site_sectors():
 @fixture(scope='function')
 def setup_capacity_lookup():
     return {
-        ("Urban", "700", "2x10MHz", 30): [
+        ("urban", "700", "10", '30'): [
             (0, 0),
             (1, 2),
         ],
-        ("Urban", "800", "2x10MHz", 30): [
+        ("urban", "800", "10", '30'): [
             (0, 0),
             (1, 2),
         ],
-        ("Urban", "2600", "2x10MHz", 30): [
+        ("urban", "2600", "10", '30'): [
             (0, 0),
             (3, 5),
         ],
-        ("Urban", "3500", "2x10MHz", 30): [
+        ("urban", "3500", "80", '30'): [
             (0, 0),
             (3, 5),
         ],
-        ('Small cells', '3700', '2x25MHz', 30): [
+        ('small_cells', '3700', '25', '30'): [
             (0, 0),
             (3, 10),
         ],
-        ("Rural", "700", "2x10MHz", 30): [
+        ("rural", "700", "10", '30'): [
             (0, 0),
             (1, 2),
         ],
-        ("Rural", "800", "2x10MHz", 30): [
+        ("rural", "800", "10", '30'): [
             (0, 0),
+            (0.25, 0.5),
+            (0.5, 1),
+            (0.75, 1.5),
             (1, 2),
             (2, 4),
         ],
-        ("Rural", "2600", "2x10MHz", 30): [
+        ("rural", "2600", "10", '30'): [
             (0, 0),
             (2, 4),
             (3, 5),
         ],
-        ("Rural", "3500", "2x10MHz", 30): [
+        ("rural", "3500", "80", '30'): [
             (0, 0),
             (3, 5),
         ],
-        ("Rural", "1800", "2x10MHz", 30): [
+        ("rural", "1800", "10", '30'): [
             (0, 0),
             (0, 0),
         ],
-        ("Urban", "700", "2x10MHz", 40): [
+        ("urban", "700", "10", '40'): [
             (0, 0),
             (2, 4),
         ],
-        ("Urban", "800", "2x10MHz", 40): [
+        ("urban", "800", "10", '40'): [
             (0, 0),
             (2, 4),
         ],
-        ("Urban", "2600", "2x10MHz", 40): [
+        ("urban", "2600", "10", '40'): [
             (0, 0),
             (6, 10),
         ],
-        ("Urban", "3500", "2x10MHz", 40): [
+        ("urban", "3500", "80", '40'): [
             (0, 0),
             (6, 10),
         ],
-        ('Small cells', '3700', '2x25MHz', 40): [
+        ('small_cells', '3700', '25', 'small_cells'): [
             (0, 0),
-            (6, 20),
+            (2, 10),
+            (4, 20),
+            (5, 25),
         ],
-        ("Rural", "700", "2x10MHz", 40): [
+        ("rural", "700", "10", '40'): [
             (0, 0),
             (2, 4),
         ],
-        ("Rural", "800", "2x10MHz", 40): [
+        ("rural", "800", "10", '40'): [
             (0, 0),
             (2, 4),
         ],
-        ("Rural", "2600", "2x10MHz", 40): [
+        ("rural", "2600", "10", '40'): [
             (0, 0),
             (6, 10),
         ],
-        ("Rural", "3500", "2x10MHz", 40): [
+        ("rural", "3500", "80", '40'): [
             (0, 0),
             (6, 10),
         ],
-        ("Rural", "1800", "2x10MHz", 40): [
+        ("rural", "1800", "10", '40'): [
             (0, 0),
             (0, 0),
         ],
@@ -342,9 +360,9 @@ def setup_capacity_lookup():
 @fixture(scope='function')
 def setup_clutter_lookup():
     return  [
-        (0.0, 'Rural'),
+        (0.0, 'rural'),
         (782.0, 'Suburban'),
-        (7959.0, 'Urban'),
+        (7959.0, 'urban'),
     ]
 
 
@@ -413,7 +431,7 @@ def setup_built_interventions():
             "technology": "LTE",
             "type": "macrocell_site",
             "frequency": ["800"],
-            "bandwidth": "2x10MHz",
+            "bandwidth": "10",
             "build_date": 2017
         },
         {
@@ -422,7 +440,7 @@ def setup_built_interventions():
             "technology": "LTE",
             "type": "macrocell_site",
             "frequency": ["2600"],
-            "bandwidth": "2x10MHz",
+            "bandwidth": "10",
             "build_date": 2017
         }
     ]
@@ -443,7 +461,7 @@ def setup_interventions():
                 'frequency': '800',
                 'technology': 'LTE',
                 'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
+                'bandwidth': '10',
                 # set build date when deciding
                 'build_date': None,
             },
@@ -453,7 +471,7 @@ def setup_interventions():
                 'frequency': '2600',
                 'technology': 'LTE',
                 'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
+                'bandwidth': '10',
                 # set build date when deciding
                 'build_date': None,
             },
@@ -471,7 +489,7 @@ def setup_interventions():
                 'frequency': '700',
                 'technology': 'LTE',
                 'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
+                'bandwidth': '10',
                 # set build date when deciding
                 'build_date': None,
             },
@@ -489,7 +507,7 @@ def setup_interventions():
                 'frequency': '3500',
                 'technology': 'LTE',
                 'type': 'macrocell_site',
-                'bandwidth': '2x10MHz',
+                'bandwidth': '10',
                 # set build date when deciding
                 'build_date': None,
             },
@@ -545,7 +563,7 @@ def setup_interventions():
                 'frequency': '3700',
                 'technology': '5G',
                 'type': 'small_cell',
-                'bandwidth': '2x25MHz',
+                'bandwidth': '25',
                 # set build date when deciding
                 'build_date': None,
             },
@@ -992,8 +1010,8 @@ def setup_transmitters():
                 "ant_height": 14.9,
                 "type": 'macro',
                 "power": 40,
-                "gain": 20,
-                "losses": 2,
+                "gain": 16,
+                "losses": 1,
                 "pcd_sector": "CB1 2",
             }
         },
@@ -1010,8 +1028,8 @@ def setup_transmitters():
                 "ant_height": 13.7,
                 "type": 'macro',
                 "power": 40,
-                "gain": 20,
-                "losses": 2,
+                "gain": 16,
+                "losses": 1,
                 "pcd_sector": "CB1 1",
             }
         },
@@ -1028,8 +1046,8 @@ def setup_transmitters():
                 "ant_height": 14.9,
                 "type": 'macro',
                 "power": 40,
-                "gain": 20,
-                "losses": 2,
+                "gain": 16,
+                "losses": 1,
                 "pcd_sector": "CB1 2",
             }
         },
@@ -1046,9 +1064,51 @@ def setup_transmitters():
                 "ant_height": 14.9,
                 "type": 'macro',
                 "power": 40,
-                "gain": 20,
-                "losses": 2,
+                "gain": 16,
+                "losses": 1,
                 "pcd_sector": "CB1 2",
+            }
+        },
+        ]
+
+
+@fixture(scope='function')
+def setup_interfering_sites():
+    return [
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [547750.2222151064, 252126.76048813056]
+            },
+            'properties': {
+                "operator":'voda',
+                "opref": 31745,
+                "sitengr": 'site_id_interfering_1',
+                "ant_height": 14.9,
+                "type": 'macro',
+                "power": 40,
+                "gain": 16,
+                "losses": 1,
+                "pcd_sector": "CB22",
+            }
+        },
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [544809.5557435964, 259520.0001617251]
+            },
+            'properties': {
+                "operator":'voda',
+                "opref": 31745,
+                "sitengr": 'site_id_interfering_2',
+                "ant_height": 14.9,
+                "type": 'macro',
+                "power": 40,
+                "gain": 16,
+                "losses": 1,
+                "pcd_sector": "CB45",
             }
         }
         ]
@@ -1127,4 +1187,167 @@ def setup_single_receiver():
                 "indoor": True,
             }
         },
+        ]
+
+
+@pytest.fixture
+def setup_simulation_parameters():
+    return {
+    'iterations': 100,
+    'seed_value': 42,
+    'tx_baseline_height': 30,
+    'tx_upper_height': 40,
+    'tx_power': 40,
+    'tx_gain': 16,
+    'tx_losses': 1,
+    'rx_gain': 4,
+    'rx_losses': 4,
+    'rx_misc_losses': 4,
+    'rx_height': 1.5,
+    'network_load': 50,
+    'percentile': 95,
+    'desired_transmitter_density': 10,
+    'sectorisation': 3,
+    }
+
+
+@pytest.fixture
+def base_system(setup_cb41_postcode_sector, setup_site_areas, setup_simulation_parameters,
+    setup_transmitters, setup_receivers):
+
+    geojson_postcode_sector = setup_cb41_postcode_sector
+
+    geojson_postcode_sector['properties']['local_authority_ids'] = [
+        'E07000008'
+        ]
+
+    system = SimulationManager(geojson_postcode_sector, setup_transmitters, setup_site_areas,
+        setup_receivers, setup_simulation_parameters)
+
+    return system
+
+
+@pytest.fixture
+def postcode_sector_lut():
+
+    yield {
+        'postcode_sector': 'CB11',
+        'indoor_probability': 100,
+        'outdoor_probability': 0,
+        'residential_count': 20,
+        'non_residential_count': 20,
+        'estimated_population': 50,
+        'area': 200,
+        'pop_density_km2': 0.25,
+    }
+
+
+# transmitter_areas = []
+# for site in areas:
+#     point_geom = shape(site['geometry'])
+#     buffer = point_geom.buffer(10)
+#     transmitter_areas.append({
+#         'type': site['type'],
+#         'geometry': mapping(site),
+#         'properties': {
+#             'sitengr': site['sitengr'],
+#             'pcd_sector': site['pcd_sector']
+#         }
+#     })
+# import pprint
+# pprint.pprint(transmitter_areas)
+
+
+@fixture(scope='function')
+def setup_site_areas():
+    return [
+            {'geometry': {'coordinates': (((544575.1049227581, 259475.22477912105),
+                                        (544735.1049227581, 259475.22477912105),
+                                        (544735.1049227581, 259635.22477912105),
+                                        (544575.1049227581, 259635.22477912105),
+                                        (544575.1049227581, 259475.22477912105)),),
+            'type': 'Polygon'},
+            'properties': {'pcd_sector': 'CB1 2', 'sitengr': 'TL4454059600'},
+            'type': 'Feature'},
+            {'geometry': {'coordinates': (((545185.1768673284, 259575.21841664566),
+                                            (545345.1768673284, 259575.21841664566),
+                                            (545345.1768673284, 259735.21841664566),
+                                            (545185.1768673284, 259735.21841664566),
+                                            (545185.1768673284, 259575.21841664566)),),
+                        'type': 'Polygon'},
+            'properties': {'pcd_sector': 'CB1 1', 'sitengr': 'TL4515059700'},
+            'type': 'Feature'},
+            {'geometry': {'coordinates': (((545205.5165949427, 259403.84577720467),
+                                            (545365.5165949427, 259403.84577720467),
+                                            (545365.5165949427, 259563.84577720467),
+                                            (545205.5165949427, 259563.84577720467),
+                                            (545205.5165949427, 259403.84577720467)),),
+                        'type': 'Polygon'},
+            'properties': {'pcd_sector': 'CB1 2', 'sitengr': 'TL4529059480'},
+            'type': 'Feature'},
+            {'geometry': {'coordinates': (((545805.2027838879, 259515.2986071491),
+                                            (545965.2027838879, 259515.2986071491),
+                                            (545965.2027838879, 259675.2986071491),
+                                            (545805.2027838879, 259675.2986071491),
+                                            (545805.2027838879, 259515.2986071491)),),
+                        'type': 'Polygon'},
+            'properties': {'pcd_sector': 'CB1 2', 'sitengr': 'TL4577059640'},
+            'type': 'Feature'}]
+
+@pytest.fixture
+def system_single_receiver(setup_cb41_postcode_sector, setup_simulation_parameters,
+    setup_transmitters, setup_site_areas, setup_single_receiver):
+
+    geojson_postcode_sector = setup_cb41_postcode_sector
+
+    geojson_postcode_sector['properties']['local_authority_ids'] = [
+        'E07000008'
+        ]
+
+    system = SimulationManager(geojson_postcode_sector, setup_transmitters,
+        setup_site_areas, setup_single_receiver, setup_simulation_parameters)
+
+    return system
+
+
+@pytest.fixture
+def setup_build_new_transmitter():
+    return [
+        {
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [544766, 259988]
+            },
+            'properties': {
+                    "operator": 'unknown',
+                    "sitengr": '{new}{GEN1}',
+                    "ant_height": 20,
+                    "tech": 'LTE',
+                    "freq": 700,
+                    "type": 17,
+                    "power": 30,
+                    "gain": 16,
+                    "losses": 1,
+                }
+        }
+    ]
+
+@pytest.fixture
+def setup_new_site_area():
+    return [
+        {
+            'type': 'Feature',
+            'geometry': {
+                'type': 'Polygon',
+                'coordinates': (((544686.0, 259908.0),
+                                (544846.0, 259908.0),
+                                (544846.0, 260068.0),
+                                (544686.0, 260068.0),
+                                (544686.0, 259908.0)),),
+            },
+            'properties': {
+                'sitengr': '{new}{GEN1}',
+                },
+        }
         ]

@@ -139,7 +139,7 @@ def get_selection_list(selection_dict):
 
     return output
 
-def segments_for_transmitter_module():
+def segments_for_simulator():
 
     segment_number = 3
 
@@ -177,8 +177,15 @@ if __name__ == "__main__":
             'BS1 5',
         ]
 
-    elif sys.argv[1] == 'segments_for_transmitter_module':
+    elif sys.argv[1] == 'leeds':
+        selection = [
+            'LS1 3',
+            'LS6 2',
+            'LS17 9',
+        ]
 
-        selection = segments_for_transmitter_module()
+    elif sys.argv[1] == 'segments_for_simulator':
+
+        selection = segments_for_simulator()
 
     print(*selection, sep='\n')

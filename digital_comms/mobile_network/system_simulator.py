@@ -6,7 +6,7 @@ May 2019
 
 """
 from rtree import index
-from shapely.geometry import shape, Point
+from shapely.geometry import shape, Point, LineString
 import numpy as np
 from geographiclib.geodesic import Geodesic
 from itertools import tee
@@ -18,7 +18,7 @@ from digital_comms.mobile_network.path_loss_module import path_loss_calculator
 #set numpy seed
 np.random.seed(42)
 
-class NetworkManager(object):
+class SimulationManager(object):
     """
     Meta-object for managing all transmitters and receivers in wireless system.
 
@@ -34,43 +34,25 @@ class NetworkManager(object):
         A dict containing all simulation parameters necessary.
 
     """
-    def __init__(self, area, sites, receivers, simulation_parameters):
+    def __init__(self, transmitter, interfering_transmitters,
+        receivers, cell_area, simulation_parameters):
 
-        self.area = {}
-        self.sites = {}
+        self.transmitter = Transmitter(transmitter[0], simulation_parameters)
+        self.cell_area = CellArea(cell_area[0])
         self.receivers = {}
-        area_id = area['properties']['RMSect'].replace(' ', '')
-        self.area[area_id] = Area(area)
-
-        for site in sites:
-            site_id = site['properties']["sitengr"]
-            site_object = Transmitter(site, simulation_parameters)
-            self.sites[site_id] = site_object
-
-            area_containing_sites = self.area[area_id]
-            area_containing_sites.add_site(site_object)
+        self.interfering_transmitters = {}
 
         for receiver in receivers:
             receiver_id = receiver['properties']["ue_id"]
             receiver = Receiver(receiver, simulation_parameters)
             self.receivers[receiver_id] = receiver
 
-            area_containing_receivers = self.area[area_id]
-            area_containing_receivers.add_receiver(receiver)
-
-
-    def build_new_assets(self, list_of_new_assets, area_id,
-        simulation_parameters):
-
-        for site in list_of_new_assets:
-            site_id = site['properties']["sitengr"]
-            site_object = Transmitter(site, simulation_parameters)
-
-            self.sites[site_id] = site_object
-
-            for area_containing_sites in self.area.values():
-                if area_containing_sites.id == area_id:
-                    area_containing_sites.add_site(site_object)
+        for interfering_transmitter in interfering_transmitters:
+            site_id = interfering_transmitter['properties']["site_id"]
+            site_object = InterferingTransmitter(
+                interfering_transmitter, simulation_parameters
+                )
+            self.interfering_transmitters[site_id] = site_object
 
 
     def estimate_link_budget(self, frequency, bandwidth,
@@ -101,46 +83,59 @@ class NetworkManager(object):
         """
         results = []
 
+        seed_value1 = simulation_parameters['seed_value1']
+        seed_value2 = simulation_parameters['seed_value2']
+        iterations = simulation_parameters['iterations']
+
         for receiver in self.receivers.values():
 
-            closest_site, interfering_sites = (
-                self.find_closest_available_sites(receiver)
+            path_loss, r_model, r_distance, type_of_sight = self.calculate_path_loss(
+                receiver, frequency, environment, seed_value1, iterations
             )
 
-            path_loss = self.calculate_path_loss(
-                closest_site, receiver, frequency, mast_height, environment
+            received_power = self.calc_received_power(self.transmitter,
+                receiver, path_loss
             )
 
-            received_power = self.calc_received_power(
-                closest_site, receiver, path_loss
-            )
-
-            interference = self.calculate_interference(
-                interfering_sites, receiver, frequency, environment)
+            interference, i_model, ave_distance, ave_inf_pl = self.calculate_interference(
+                receiver, frequency, environment, seed_value2, iterations)
 
             noise = self.calculate_noise(
                 bandwidth
             )
 
-            sinr = self.calculate_sinr(
-                received_power, interference, noise, simulation_parameters
-            )
+            f_received_power, f_interference, f_noise, i_plus_n, sinr = \
+                self.calculate_sinr(received_power, interference, noise,
+                simulation_parameters
+                )
 
             spectral_efficiency = self.modulation_scheme_and_coding_rate(
                 sinr, generation, modulation_and_coding_lut
             )
 
-            estimated_capacity = self.link_budget_capacity(
+            link_budget_capacity_mbps_km2 = self.link_budget_capacity(
                 bandwidth, spectral_efficiency
             )
 
-            data = {
-                'spectral_efficiency': spectral_efficiency,
+            results.append({
+                'path_loss': path_loss,
+                'r_model': r_model,
+                'type_of_sight': type_of_sight,
+                'ave_inf_pl': ave_inf_pl,
+                'received_power': f_received_power,
+                'distance': r_distance,
+                'interference': np.log10(f_interference),
+                'i_model': i_model,
+                'network_load': simulation_parameters['network_load'],
+                'ave_distance': ave_distance,
+                'noise': f_noise,
+                'i_plus_n': np.log10(i_plus_n),
                 'sinr': sinr,
-                'capacity_mbps': estimated_capacity
-                }
-
-            results.append(data)
+                'spectral_efficiency': spectral_efficiency,
+                'estimated_capacity': link_budget_capacity_mbps_km2,
+                'receiver_x': receiver.coordinates[0],
+                'receiver_y': receiver.coordinates[1],
+                })
 
             # print('received_power is {}'.format(received_power))
             # print('interference is {}'.format(interference))
@@ -154,68 +149,24 @@ class NetworkManager(object):
         return results
 
 
-    def find_closest_available_sites(self, receiver):
-        """
-        Returns a list of all sites, ranked based on proximity
-        to the receiver.
+    def calculate_path_loss(self, receiver,
+        frequency, environment, seed_value, iterations):
 
-        """
-        idx = index.Index()
-
-        for site in self.sites.values():
-            idx.insert(0, Point(site.coordinates).bounds, site)
-
-        number_of_sites = len(self.sites.values())
-
-        all_closest_sites =  list(
-            idx.nearest(
-                Point(receiver.coordinates).bounds,
-                number_of_sites, objects='raw')
-                )
-
-        closest_site = all_closest_sites[0]
-
-        interfering_sites = all_closest_sites[1:4]
-
-        return closest_site, interfering_sites
-
-
-    def calculate_path_loss(self, closest_site, receiver,
-        frequency, mast_height, environment):
-
-        # for area in self.area.values():
-        #     local_authority_ids = area.local_authority_ids
-
-        x2_receiver = receiver.coordinates[0]
-        y2_receiver = receiver.coordinates[1]
-
-        x1_site, y1_site = transform_coordinates(
-            Proj(init='epsg:27700'), Proj(init='epsg:4326'),
-            closest_site.coordinates[0],
-            closest_site.coordinates[1],
+        temp_line = LineString([
+            (receiver.coordinates[0],
+            receiver.coordinates[1]),
+            (self.transmitter.coordinates[0],
+            self.transmitter.coordinates[1])]
             )
 
-        x2_receiver, y2_receiver = transform_coordinates(
-            Proj(init='epsg:27700'), Proj(init='epsg:4326'),
-            receiver.coordinates[0],
-            receiver.coordinates[1],
-            )
+        strt_distance = temp_line.length
 
-        Geo = Geodesic.WGS84
-
-        i_strt_distance = Geo.Inverse(
-            y1_site, x1_site,  y2_receiver, x2_receiver
-            )
-
-        interference_strt_distance = round(i_strt_distance['s12'],0)
-
-        ant_height = mast_height
+        ant_height = self.transmitter.ant_height
         ant_type =  'macro'
 
-        # type_of_sight, building_height, street_width = built_environment_module(
-        # site_geom, receiver_geom
+        los_distance = 250
 
-        if interference_strt_distance < 250 :
+        if strt_distance < los_distance :
             type_of_sight = 'los'
         else:
             type_of_sight = 'nlos'
@@ -225,9 +176,9 @@ class NetworkManager(object):
         above_roof = 0
         location = receiver.indoor
 
-        path_loss = path_loss_calculator(
+        path_loss, model = path_loss_calculator(
             frequency,
-            interference_strt_distance,
+            strt_distance,
             ant_height,
             ant_type,
             building_height,
@@ -236,17 +187,15 @@ class NetworkManager(object):
             type_of_sight,
             receiver.ue_height,
             above_roof,
-            location
+            location,
+            seed_value,
+            iterations
             )
 
-        # print('path loss for {} to nearest cell {} is {}'.format(
-        #     receiver.id, closest_site.id, path_loss)
-        #     )
-
-        return path_loss
+        return path_loss, model, strt_distance, type_of_sight
 
 
-    def calc_received_power(self, site, receiver, path_loss):
+    def calc_received_power(self, transmitter, receiver, path_loss):
         """
         Calculate received power based on site and receiver
         characteristcs, and path loss.
@@ -255,9 +204,9 @@ class NetworkManager(object):
 
         """
         #calculate Equivalent Isotropically Radiated Power (EIRP)
-        eirp = float(site.power) + \
-            float(site.gain) - \
-            float(site.losses)
+        eirp = float(self.transmitter.power) + \
+            float(self.transmitter.gain) - \
+            float(self.transmitter.losses)
 
         received_power = eirp - \
             path_loss - \
@@ -269,7 +218,7 @@ class NetworkManager(object):
 
 
     def calculate_interference(
-        self, closest_sites, receiver, frequency, environment):
+        self, receiver, frequency, environment, seed_value, iterations):
         """
         Calculate interference from other cells.
 
@@ -287,48 +236,40 @@ class NetworkManager(object):
             receiver.coordinates[1]
             )
 
+        ave_distance = 0
+        ave_pl = 0
+
+        interfering_transmitter_id = 0
         #calculate interference from other power sources
-        for interference_site in closest_sites:
+        for interfering_transmitter in self.interfering_transmitters.values():
 
-            #get distance
-            x2_interference = interference_site.coordinates[0]
-            y2_interference = interference_site.coordinates[1]
+            # if interfering_transmitter_id < 3:
+            temp_line = LineString([
+                (receiver.coordinates[0],
+                receiver.coordinates[1]),
+                (interfering_transmitter.coordinates[0],
+                interfering_transmitter.coordinates[1])
+                ])
 
-            x2_interference, y2_interference = transform_coordinates(
-                Proj(init='epsg:27700'),
-                Proj(init='epsg:4326'),
-                interference_site.coordinates[0],
-                interference_site.coordinates[1]
-                )
+            interference_strt_distance = temp_line.length
 
-            Geo = Geodesic.WGS84
+            ant_height = interfering_transmitter.ant_height
+            ant_type =  'macro'
 
-            i_strt_distance = Geo.Inverse(
-                y2_interference,
-                x2_interference,
-                y1_receiver,
-                x1_receiver,
-                )
+            los_distance = 250
 
-            interference_strt_distance = int(
-                round(i_strt_distance['s12'], 0)
-                )
-
-
-            if interference_strt_distance < 250 :
+            if interference_strt_distance < los_distance :
                 type_of_sight = 'los'
             else:
                 type_of_sight = 'nlos'
 
-            ant_height = 20
-            ant_type =  'macro'
             building_height = 20
             street_width = 20
-            type_of_sight = 'nlos'
+            type_of_sight = type_of_sight
             above_roof = 0
             indoor = receiver.indoor
 
-            path_loss = path_loss_calculator(
+            path_loss, model = path_loss_calculator(
                 frequency,
                 interference_strt_distance,
                 ant_height,
@@ -340,27 +281,39 @@ class NetworkManager(object):
                 receiver.ue_height,
                 above_roof,
                 indoor,
+                seed_value,
+                iterations
                 )
 
-            # print('interference path loss for {} to {} is {}'.format(
-            #     receiver.id, interference_site.id, path_loss)
-            #     )
-
-            #calc interference from other cells
             received_interference = self.calc_received_power(
-                interference_site,
+                interfering_transmitter,
                 receiver,
                 path_loss
                 )
 
-            #add cell interference to list
-            interference.append(received_interference)
+            ave_distance += interference_strt_distance
+            ave_pl += path_loss
 
-        return interference
+            interference.append(received_interference)
+            # interfering_transmitter_id += 1
+
+            # try:
+            #     ave_distance = ave_distance/len(self.interfering_transmitters)
+            # except ZeroDivisionError:
+            #     ave_distance = 0
+
+            # try:
+            #     ave_pl = ave_pl/len(self.interfering_transmitters)
+            # except ZeroDivisionError:
+            #     ave_pl = 0
+
+            # else:
+            #     break
+
+        return interference, model, ave_distance, ave_pl
 
 
     def calculate_noise(self, bandwidth):
-        #TODO
         """
         Terminal noise can be calculated as:
 
@@ -397,22 +350,27 @@ class NetworkManager(object):
         """
         raw_received_power = 10**received_power
 
-        interference_values = []
+        interference_list = []
         for value in interference:
             output_value = 10**value
-            interference_values.append(output_value)
+            interference_list.append(output_value)
+
+        interference_list.sort(reverse=True)
+        interference_list = interference_list[:3]
 
         network_load = simulation_parameters['network_load']
-
-        raw_sum_of_interference = sum(interference_values) * (1+(network_load/100))
+        i_summed = sum(interference_list)
+        raw_sum_of_interference = i_summed * (network_load/100)
 
         raw_noise = 10**noise
 
-        sinr = np.log10(
-            raw_received_power / (raw_sum_of_interference + raw_noise)
-            )
+        i_plus_n = (raw_sum_of_interference + raw_noise)
 
-        return round(sinr, 2)
+        sinr = round(np.log10(
+            raw_received_power / i_plus_n
+            ),2)
+
+        return received_power, raw_sum_of_interference, noise, i_plus_n, sinr
 
 
     def modulation_scheme_and_coding_rate(self, sinr,
@@ -422,8 +380,7 @@ class NetworkManager(object):
         coding rate.
 
         """
-        spectral_efficiency = 0
-
+        spectral_efficiency = 0.1
         for lower, upper in pairwise(modulation_and_coding_lut):
             if lower[0] and upper[0] == generation:
 
@@ -432,48 +389,41 @@ class NetworkManager(object):
 
                 if sinr >= lower_sinr and sinr < upper_sinr:
                     spectral_efficiency = lower[4]
-                    break
+                    return spectral_efficiency
 
-        return spectral_efficiency
+                highest_value = modulation_and_coding_lut[-1]
+                if sinr >= highest_value[5]:
+
+                    spectral_efficiency = highest_value[4]
+                    return spectral_efficiency
+
+
+                lowest_value = modulation_and_coding_lut[0]
+
+                if sinr < lowest_value[5]:
+
+                    spectral_efficiency = 0
+                    return spectral_efficiency
 
 
     def link_budget_capacity(self, bandwidth, spectral_efficiency):
         """
-        Estimate wireless link capacity (Mbps) based on bandwidth and
-        receiver signal.
+        Estimate site area wireless link capacity (Mbps km^2) based on
+        bandwidth and receiver signal.
 
-        capacity (Mbps) = bandwidth (MHz) + log2*(1+SINR[dB])
+        capacity (Mbps km^2) = bandwidth (MHz) *
+            spectral_efficiency (bps/Hz) /
+            cell_area (km^2)
 
         """
-        #estimated_capacity = round(bandwidth*np.log2(1+sinr), 2)
-        bandwidth_in_hertz = bandwidth*1000000
+        bandwidth_in_hertz = bandwidth * 1e6 #MHz to Hz
 
-        link_budget_capacity = bandwidth_in_hertz*spectral_efficiency
-        link_budget_capacity_mbps = link_budget_capacity / 1000000
+        link_budget_capacity_km2 = (
+            (bandwidth_in_hertz * spectral_efficiency) / (self.cell_area.area / 1e6)
+            )
+        link_budget_capacity_mbps_km2 = link_budget_capacity_km2 / 1e6 #bps to Mbps
 
-        return link_budget_capacity_mbps
-
-
-    def find_sites_in_area(self):
-
-        if not self.sites:
-            return 0
-
-        area_geometry = ([(d.geometry) for d in self.area.values()][0])
-
-        idx = index.Index()
-
-        for site in self.sites.values():
-            idx.insert(0, Point(site.coordinates).bounds, site)
-
-        sites_in_area = []
-
-        for n in idx.intersection(shape(area_geometry).bounds, objects=True):
-            point = Point(n.object.coordinates)
-            if shape(area_geometry).contains(point):
-                sites_in_area.append(n.object)
-
-        return sites_in_area
+        return link_budget_capacity_mbps_km2
 
 
     def site_density(self):
@@ -533,68 +483,6 @@ class NetworkManager(object):
         return receiver_density
 
 
-    def energy_consumption(self, simulation_parameters):
-        """
-        Gets the energy consumption of the sites in the area.
-
-        Parameters
-        ----------
-        total_power_dbm : float
-            Total dbm for all sites for a single cell.
-        watts_for_1_cell_per_site : float
-            Total watts for all sites for a single cell.
-        total_power_watts : float
-            Total watts for all cells in use.
-
-        """
-        if not self.area:
-            return 0
-
-        cells_per_site = simulation_parameters['sectorisation']
-
-        sites_in_area = self.find_sites_in_area()
-
-        total_power_dbm = [round(a.power) for a in sites_in_area]
-
-        watts_per_area = []
-        for value in total_power_dbm:
-            watts_for_1_cell_per_site = 10**(value / 10) / 1000
-            wattsd_per_site = watts_for_1_cell_per_site * cells_per_site
-            watts_per_area.append(wattsd_per_site)
-
-        total_power_watts = sum(watts_per_area)
-
-        return total_power_watts
-
-
-class Area(object):
-    """
-    The geographic area which holds all sites and receivers.
-
-    """
-    def __init__(self, data):
-        #id and geographic info
-        self.id = data['properties']['RMSect']
-        self.local_authority_ids =  data['properties']['local_authority_ids']
-        self.geometry = data['geometry']
-        self.coordinates = data['geometry']['coordinates']
-        self.area = self._calculate_area(data)
-
-        self._sites = {}
-        self._receivers = {}
-
-    def _calculate_area(self, data):
-        polygon = shape(data['geometry'])
-        area = polygon.area
-        return area
-
-    def add_site(self, site):
-        self._sites[site.id] = site
-
-    def add_receiver(self, receiver):
-        self._receivers[receiver.id] = receiver
-
-
 class Transmitter(object):
     """
     A site object is specific site.
@@ -602,16 +490,34 @@ class Transmitter(object):
     """
     def __init__(self, data, simulation_parameters):
 
-        #id and geographic info
-        self.id = data['properties']['sitengr']
+        self.id = data['properties']['site_id']
         self.coordinates = data['geometry']['coordinates']
-        self.geometry = data['geometry']
 
         self.ant_type = 'macro'
         self.ant_height = simulation_parameters['tx_baseline_height']
         self.power = simulation_parameters['tx_power']
         self.gain = simulation_parameters['tx_gain']
         self.losses = simulation_parameters['tx_losses']
+
+    def __repr__(self):
+        return "<Transmitter id:{}>".format(self.id)
+
+
+class CellArea(object):
+    """
+    The geographic area which holds all sites and receivers.
+    """
+    def __init__(self, data):
+        self.id = data['properties']['site_id']
+        self.geometry = data['geometry']
+        self.coordinates = data['geometry']['coordinates']
+        self.area = self._calculate_area(data)
+
+    def _calculate_area(self, data):
+        polygon = shape(data['geometry'])
+        area = polygon.area
+        return area
+
 
     def __repr__(self):
         return "<Transmitter id:{}>".format(self.id)
@@ -635,6 +541,22 @@ class Receiver(object):
 
     def __repr__(self):
         return "<Receiver id:{}>".format(self.id)
+
+
+class InterferingTransmitter(object):
+    """
+    A site object is specific site.
+    """
+    def __init__(self, data, simulation_parameters):
+
+        self.id = data['properties']['site_id']
+        self.coordinates = data['geometry']['coordinates']
+        self.geometry = data['geometry']
+
+        self.ant_height = simulation_parameters['tx_baseline_height']
+        self.power = simulation_parameters['tx_power']
+        self.gain = simulation_parameters['tx_gain']
+        self.losses = simulation_parameters['tx_losses']
 
 
 def transform_coordinates(old_proj, new_proj, x, y):

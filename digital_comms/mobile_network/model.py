@@ -2,6 +2,7 @@
 """
 from collections import defaultdict
 from itertools import tee
+# from digital_comms.mobile_network.interventions import INTERVENTIONS
 
 class NetworkManager(object):
     """Model controller class.
@@ -63,6 +64,7 @@ class NetworkManager(object):
             TODO
         * 1: :obj:`int`
             TODO
+
     """
     def __init__(self, lads, pcd_sectors, assets,
         capacity_lookup_table, clutter_lookup,
@@ -91,7 +93,6 @@ class NetworkManager(object):
             assets_by_pcd[asset['pcd_sector']].append(asset)
 
         for pcd_sector_data in pcd_sectors:
-
             try:
                 lad_id = pcd_sector_data["lad_id"]
                 pcd_sector_id = pcd_sector_data["id"]
@@ -270,9 +271,9 @@ class PostcodeSector(object):
         self.population = data["population"]
         self.area = data["area"]
 
-        self.user_throughput = data["user_throughput"]
+        self.user_throughput = self._calculate_user_throughput(data["user_throughput"])
         self.user_demand = self._calculate_user_demand(
-            self.user_throughput, traffic
+            self.user_throughput, traffic, self.population_density
             )
         self.market_share = market_share
         self.mast_height = mast_height
@@ -286,20 +287,57 @@ class PostcodeSector(object):
             self.population_density
         )
 
-        # TODO: replace hard-coded parameter
         self.penetration = 0.8
 
-        # Keep list of assets
         self.assets = assets
-        self.capacity = (
-            self._macrocell_site_capacity() +
-            self._small_cell_capacity()
-            )
 
+        # self.capacity = self._macrocell_site_capacity()
+        # print(self.capacity)
+        # for asset in self.assets:
+        #     print(asset)
+        #     if not 'opex' in asset:
+        #         print(asset)
+
+        self.capacity = (
+            self._macrocell_site_capacity(service_obligation_capacity) +
+            self._small_cell_capacity(service_obligation_capacity)
+            )
+        # print(self.capacity)
+        self.opex = self.calculate_opex
+        # if service_obligation_capacity == 'test':
+        #     if len(assets) > 1:
+        #         print('--------')
+        #         print(self.capacity)
+        #         print('here')
+        # print(self.opex)
     def __repr__(self):
         return "<PostcodeSector id:{}>".format(self.id)
 
-    def _calculate_user_demand(self, user_throughput, traffic):
+    def _calculate_user_throughput(self, user_throughput):
+        """
+        Adjust the user throughput by geotype
+
+        """
+        geotype = check_geotype(self.population_density)
+
+        geotype_weights = {
+            'urban': 1,
+            'suburban 1': 0.93,
+            'suburban 2': 0.2,
+            'rural 1': 0.13,
+            'rural 2': 0.1,
+            'rural 3': 0.09,
+            'rural 4': 0.09,
+        }
+
+        weight = geotype_weights[geotype]
+
+        adjusted_user_throughput = user_throughput * weight
+
+        return adjusted_user_throughput
+
+    def _calculate_user_demand(self, user_throughput,
+        traffic, population_density):
         """
         Calculate Mb/second from GB/month supplied as throughput scenario
         Notes
@@ -364,6 +402,7 @@ class PostcodeSector(object):
 
         return demand_per_kmsq
 
+
     @property
     def population_density(self):
         """
@@ -372,33 +411,75 @@ class PostcodeSector(object):
         """
         return self.population / self.area
 
-    def _macrocell_site_capacity(self):
+
+    def _macrocell_site_capacity(self, service_obligation_capacity):
         capacity = 0
 
+        # if service_obligation_capacity == 'test':
+        #     if self.id == 'IV274':
+        #         print(len(self.assets))
         for frequency in ['800', '1800', '2600', '700', '3500']:
             num_sites = 0
             for asset in self.assets:
                 for asset_frequency in asset['frequency']:
                     if asset_frequency == frequency:
                         num_sites += 1
+                        # if service_obligation_capacity == 'test':
+                        #     if self.id == 'IV274':
+                        #         print(num_sites)
                         if asset['sectors'] == 6:
                             num_sites += 1
 
             site_density = float(num_sites) / self.area
+            # if service_obligation_capacity == 'test':
+            #     print(site_density)
+
+            if frequency == '3500':
+                bandwidth = '40'
+            elif frequency == '3700':
+                bandwidth = '25'
+            else:
+                bandwidth = '10'
+            # print('{}, site_density {}'.format(frequency, site_density))
+
+            # if service_obligation_capacity == 'test':
+            #     print(
+            #     #self._capacity_lookup_table,
+            #     self.clutter_environment,
+            #     str(frequency),
+            #     str(bandwidth),
+            #     site_density,
+            #     str(self.mast_height)
+            #     )
 
             tech_capacity = lookup_capacity(
                 self._capacity_lookup_table,
                 self.clutter_environment,
-                frequency,
-                "2x10MHz",
+                str(frequency),
+                str(bandwidth),
                 site_density,
-                self.mast_height)
+                str(self.mast_height))
+            # print(tech_capacity)
+            # if service_obligation_capacity == 'test':
+            #     if self.id == 'IV274':
+            #         print('site_density = {}'.format(site_density))
+                    # assets_in_iv274.append(asset['site_ngr'])
+
+            # print('assets in iv274 = {}'.format(sorted(assets_in_iv274)))
 
             capacity += tech_capacity
 
         return capacity
 
-    def _small_cell_capacity(self):
+    def _small_cell_capacity(self, service_obligation_capacity):
+        # print(self.assets)
+        # print([a for a in self.assets if a['type'] == "small_cell"])
+
+        # [{'pcd_sector': 'CB12', 'site_ngr': 'small_cell_site', 'frequency': '3700',
+        # 'technology': 'same', 'type': 'small_cell', 'bandwidth': '25', 'sectors': 1,
+        # 'build_date': None}, {'pcd_sector': 'CB12', 'site_ngr': 'small_cell_site',
+        # 'frequency': '3700', 'technology': 'same', 'type': 'small_cell',
+        # 'bandwidth': '25', 'sectors': 1, 'build_date': None}]
 
         num_small_cells = len([
             asset
@@ -406,17 +487,38 @@ class PostcodeSector(object):
             if asset['type'] == "small_cell"
         ])
 
-        site_density = float(num_small_cells) / self.area
-
-        capacity = lookup_capacity(
-            self._capacity_lookup_table,
-            "Small cells",
-            "3700",
-            "2x25MHz",
-            site_density,
-            self.mast_height)
+        if num_small_cells == 0:
+            capacity = 0
+        else:
+            site_density = float(num_small_cells) / self.area
+            # if service_obligation_capacity == 'test':
+            #     print(
+            #     # self._capacity_lookup_table,
+            #     'small_cells',
+            #     '3700',
+            #     '25',
+            #     '30'
+            #     )
+            capacity = lookup_capacity(
+                self._capacity_lookup_table,
+                'small_cells',
+                '3700',
+                '25',
+                site_density,
+                '30')
+            # print('small cell capacity {}, {}, {}'.format(capacity, num_small_cells, self.area))
 
         return capacity
+
+    @property
+    def calculate_opex(self):
+
+        opex = 0
+
+        for asset in self.assets:
+            opex += asset['opex']
+
+        return opex
 
     @property
     def capacity_margin(self):
@@ -549,23 +651,33 @@ def lookup_capacity(capacity_lookup, clutter_environment,
         If combination is not found in the lookup table.
 
     """
+    # print(capacity_lookup)
     if (clutter_environment, frequency, bandwidth, mast_height) not in capacity_lookup:
         raise KeyError("Combination %s not found in lookup table",
                        (clutter_environment, frequency, bandwidth, mast_height))
-
+    # if frequency == '800':
+    #     print(clutter_environment, frequency, bandwidth, mast_height)
     density_capacities = capacity_lookup[
-        (clutter_environment, frequency, bandwidth, mast_height)
+        (str(clutter_environment), str(frequency), str(bandwidth), str(mast_height))
         ]
 
+    # print('density_capacities {}'.format(density_capacities))
     lowest_density, lowest_capacity = density_capacities[0]
-
-    if site_density < lowest_density:
+    # if frequency == '800':
+    #     print('lowest_density {}, lowest_capacity {}'.format(lowest_density, lowest_capacity))
+    if float(site_density) < lowest_density:
         return 0
 
     for a, b in pairwise(density_capacities):
         lower_density, lower_capacity = a
         upper_density, upper_capacity = b
-        if lower_density <= site_density and site_density < upper_density:
+        if lower_density <= float(site_density) and float(site_density) < upper_density:
+            # if frequency == '800':
+                # print(interpolate(
+                # lower_density, lower_capacity,
+                # upper_density, upper_capacity,
+                # site_density
+                # ))
             return interpolate(
                 lower_density, lower_capacity,
                 upper_density, upper_capacity,
@@ -573,7 +685,11 @@ def lookup_capacity(capacity_lookup, clutter_environment,
                 )
 
     highest_density, highest_capacity = density_capacities[-1]
+    # if frequency == '800':
+    #     print('highest_density {}, highest_capacity {}'.format(highest_density, highest_capacity))
+    # print(highest_capacity)
     return highest_capacity
+
 
 def interpolate(x0, y0, x1, y1, x):
     """Linear interpolation between two values
@@ -596,3 +712,35 @@ def interpolate(x0, y0, x1, y1, x):
     """
     y = (y0 * (x1 - x) + y1 * (x - x0)) / (x1 - x0)
     return y
+
+def check_geotype(population_density):
+    """
+    Returns the geotype based on population density
+
+    """
+    if population_density >= 7959:
+        geotype = 'urban'
+
+    elif 3119 <= population_density < 7959:
+        geotype = 'suburban 1'
+
+    elif 782 <= population_density < 3119:
+        geotype = 'suburban 2'
+
+    elif 112 <= population_density < 782:
+        geotype = 'rural 1'
+
+    elif 47 <= population_density < 112:
+        geotype = 'rural 2'
+
+    elif 25 <= population_density < 47:
+        geotype = 'rural 3'
+
+    elif population_density < 25:
+        geotype = 'rural 4'
+
+    else:
+        print('did not recognise population density')
+        geotype = 'rural 4'
+
+    return geotype

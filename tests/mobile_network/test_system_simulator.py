@@ -1,532 +1,374 @@
-import pytest
-import os
-import numpy as np
-from shapely.geometry import shape, Point
+# import pytest
+# import os
+# import numpy as np
+# from shapely.geometry import shape, Point
 
-from digital_comms.mobile_network.system_simulator import NetworkManager
-from scripts.mobile_simulator_run import (
-    read_postcode_sector,
-    get_local_authority_ids,
-    determine_environment,
-    get_sites,
-    generate_receivers,
-    find_and_deploy_new_site,
-    )
-
-
-@pytest.fixture
-def setup_simulation_parameters():
-    return {
-    'iterations': 100,
-    'tx_baseline_height': 30,
-    'tx_upper_height': 40,
-    'tx_power': 40,
-    'tx_gain': 16,
-    'tx_losses': 1,
-    'rx_gain': 4,
-    'rx_losses': 4,
-    'rx_misc_losses': 4,
-    'rx_height': 1.5,
-    'network_load': 50,
-    'percentile': 95,
-    'desired_transmitter_density': 10,
-    'sectorisation': 3,
-    }
 
+# from scripts.mobile_simulator_run import (
+#     get_local_authority_ids,
+#     determine_environment,
+#     get_sites,
+#     generate_receivers,
+#     get_results
+#     )
 
-@pytest.fixture
-def base_system(setup_cb41_postcode_sector, setup_simulation_parameters,
-    setup_transmitters, setup_receivers):
 
-    geojson_postcode_sector = setup_cb41_postcode_sector
+# def test_determine_environment(postcode_sector_lut):
 
-    geojson_postcode_sector['properties']['local_authority_ids'] = [
-        'E07000008'
-        ]
+#     postcode_sector_lut == 10000
+#     test_urban_1 = {
+#         'pop_density_km2': 10000,
+#     }
 
-    system = NetworkManager(geojson_postcode_sector, setup_transmitters,
-        setup_receivers, setup_simulation_parameters)
+#     assert determine_environment(test_urban_1) == 'urban'
 
-    return system
+#     test_suburban_1 = {
+#         'pop_density_km2': 7000,
+#     }
 
-@pytest.fixture
-def system_single_receiver(setup_cb41_postcode_sector, setup_simulation_parameters,
-    setup_transmitters, setup_single_receiver):
+#     assert determine_environment(test_suburban_1) == 'suburban'
 
-    geojson_postcode_sector = setup_cb41_postcode_sector
+#     test_suburban_2 = {
+#         'pop_density_km2': 1000,
+#     }
 
-    geojson_postcode_sector['properties']['local_authority_ids'] = [
-        'E07000008'
-        ]
+#     assert determine_environment(test_suburban_2) == 'suburban'
 
-    system = NetworkManager(geojson_postcode_sector, setup_transmitters,
-        setup_single_receiver, setup_simulation_parameters)
+#     test_rural_1 = {
+#         'pop_density_km2': 500,
+#     }
 
-    return system
+#     assert determine_environment(test_rural_1) == 'rural'
 
+#     test_rural_2 = {
+#         'pop_density_km2': 100,
+#     }
 
-@pytest.fixture
-def postcode_sector_lut():
+#     assert determine_environment(test_rural_2) == 'rural'
 
-    yield {
-        'postcode_sector': 'CB11',
-        'indoor_probability': 100,
-        'outdoor_probability': 0,
-        'residential_count': 20,
-        'non_residential_count': 20,
-        'estimated_population': 50,
-        'area': 200,
-    }
+#     test_rural_3 = {
+#         'pop_density_km2': 50,
+#     }
 
+#     assert determine_environment(test_rural_3) == 'rural'
 
-def test_determine_environment(postcode_sector_lut):
+#     actual_results = determine_environment(postcode_sector_lut)
 
-    test_urban_1 = {
-        'estimated_population': 10000,
-        'area': 1,
-    }
+#     expected_result = 'rural'
 
-    assert determine_environment(test_urban_1) == 'urban'
+#     assert actual_results == expected_result
 
-    test_suburban_1 = {
-        'estimated_population': 7000,
-        'area': 1,
-    }
 
-    assert determine_environment(test_suburban_1) == 'suburban'
+# # def test_generate_receivers(setup_postcode_sector,
+# #     postcode_sector_lut, setup_simulation_parameters):
 
-    test_suburban_2 = {
-        'estimated_population': 1000,
-        'area': 1,
-    }
+# #     actual_receivers = generate_receivers(
+# #         setup_postcode_sector, postcode_sector_lut,
+# #         setup_simulation_parameters
+# #         )
 
-    assert determine_environment(test_suburban_2) == 'suburban'
+# #     receiver_1 = actual_receivers[0]
 
-    test_rural_1 = {
-        'estimated_population': 500,
-        'area': 1,
-    }
+# #     assert len(actual_receivers) == 100
+# #     assert receiver_1['properties']['ue_id'] == 'id_0'
+# #     assert receiver_1['properties']['misc_losses'] == 4
+# #     assert receiver_1['properties']['gain'] == 4
+# #     assert receiver_1['properties']['losses'] == 4
+# #     assert receiver_1['properties']['ue_height'] == 1.5
+# #     assert receiver_1['properties']['indoor'] == 'True'
 
-    assert determine_environment(test_rural_1) == 'rural'
 
-    test_rural_2 = {
-        'estimated_population': 100,
-        'area': 1,
-    }
+# def test_simulation_manager(base_system):
 
-    assert determine_environment(test_rural_2) == 'rural'
+#     assert len(base_system.area) == 1
+#     assert len(base_system.sites) == 4
+#     assert len(base_system.receivers) == 3
 
-    test_rural_3 = {
-        'estimated_population': 50,
-        'area': 1,
-    }
-
-    assert determine_environment(test_rural_3) == 'rural'
-
-    actual_results = determine_environment(postcode_sector_lut)
-
-    expected_result = 'rural'
-
-    assert actual_results == expected_result
 
+# def test_build_new_assets(base_system, setup_build_new_transmitter,
+#     setup_new_site_area, setup_simulation_parameters):
 
-def test_get_sites(setup_postcode_sector, setup_simulation_parameters):
+#     base_system.build_new_assets(
+#         setup_build_new_transmitter, setup_new_site_area, 'CB11', setup_simulation_parameters
+#         )
 
-    postcode_sector = setup_postcode_sector
+#     assert len(base_system.sites) == 5
 
-    actual_sites = get_sites(postcode_sector, 'synthetic',
-        setup_simulation_parameters)
+# def test_estimate_link_budget(system_single_receiver, setup_modulation_coding_lut,
+#     setup_simulation_parameters):
 
-    geom = shape(postcode_sector['geometry'])
+#     system_single_receiver.estimate_link_budget(
+#         0.7, 10, '5G', 30, 'urban', setup_modulation_coding_lut,
+#         setup_simulation_parameters
+#         )
 
-    actual_sites_in_shape = []
+#     system_single_receiver.populate_site_data()
 
-    for site in actual_sites:
-        if geom.contains(Point(site['geometry']['coordinates'])):
-            actual_sites_in_shape.append(site)
+#     actual_result = get_results(system_single_receiver)
+#     print(actual_result)
+#     ####calculation in link_budget_validation.xlsx
+#     # find closest_transmitters
+#     # <Receiver id:AB1>
+#     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>,
+#     # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
+#     # <Receiver id:AB3>
+#     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>,
+#     # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
+#     # <Receiver id:AB2>
+#     # [<Transmitter id:TL4454059600>, <Transmitter id:TL4529059480>,
+#     # <Transmitter id:TL4515059700>, <Transmitter id:TL4577059640>]
 
-    assert len(actual_sites_in_shape) == 1
+#     # find path_loss for AB3
+#     # path loss for AB3 to nearest cell TL4454059600 is 99.44
+#     # distance 0.475
+#     # interference path loss for AB3 to TL4515059700 is 119.96
+#     # distance 0.477
+#     # interference path loss for AB3 to TL4529059480 is 120.02
+#     # distance 1.078
+#     # interference path loss for AB3 to TL4577059640 is 132.4
+#     # received_power is -45.44
+#     # interference is [-65.96, -66.02, -78.4]
+#     # noise is -102.47722915699805
+#     # sinr is 20.07
 
-
-def test_generate_receivers(setup_postcode_sector,
-    postcode_sector_lut, setup_simulation_parameters):
-
-    actual_receivers = generate_receivers(
-        setup_postcode_sector, postcode_sector_lut,
-        setup_simulation_parameters
-        )
-
-    receiver_1 = actual_receivers[0]
-
-    assert len(actual_receivers) == 100
-    assert receiver_1['properties']['ue_id'] == 'id_0'
-    assert receiver_1['properties']['misc_losses'] == 4
-    assert receiver_1['properties']['gain'] == 4
-    assert receiver_1['properties']['losses'] == 4
-    assert receiver_1['properties']['indoor'] == True
-
-
-def test_find_and_deploy_new_site(base_system,
-    setup_postcode_sector, setup_simulation_parameters):
-
-    new_transmitter = find_and_deploy_new_site(
-        base_system.sites, 1, setup_postcode_sector, 1,
-        setup_simulation_parameters
-        )
-
-    expected_transmitter = [
-        {
-            'type': "Feature",
-            'geometry': {
-                "type": "Point",
-                "coordinates": [545393.3136180863, 258614.45929655718]
-            },
-            'properties': {
-                    "operator": 'unknown',
-                    "sitengr": '{new}{GEN1.1}',
-                    "ant_height": 30,
-                    "tech": 'LTE',
-                    "freq": 700,
-                    "type": 17,
-                    "power": 40,
-                    "gain": 16,
-                    "losses": 1,
-                }
-        }
-    ]
-
-    assert len(new_transmitter) == 1
-    assert new_transmitter == expected_transmitter
-
-    new_transmitter = find_and_deploy_new_site(
-        base_system.sites, 1, setup_postcode_sector, 1,
-        setup_simulation_parameters
-        )
-
-    expected_transmitter = [
-        {
-            'type': "Feature",
-            'geometry': {
-                "type": "Point",
-                "coordinates": [545311.9353406072, 258483.37922303876]
-            },
-            'properties': {
-                    "operator": 'unknown',
-                    "sitengr": '{new}{GEN1.1}',
-                    "ant_height": 30,
-                    "tech": 'LTE',
-                    "freq": 700,
-                    "type": 17,
-                    "power": 40,
-                    "gain": 16,
-                    "losses": 1,
-                }
-        }
-    ]
-
-    assert len(new_transmitter) == 1
-    assert new_transmitter == expected_transmitter
-
-
-def test_network_manager(base_system):
-
-    assert len(base_system.area) == 1
-    assert len(base_system.sites) == 4
-    assert len(base_system.receivers) == 3
-
-
-def test_build_new_assets(base_system, setup_simulation_parameters):
-
-    build_this_transmitter = [
-        {
-            'type': "Feature",
-            'geometry': {
-                "type": "Point",
-                "coordinates": [0.124896, 52.215965]
-            },
-            'properties': {
-                    "operator": 'unknown',
-                    "sitengr": '{new}{GEN1}',
-                    "ant_height": 20,
-                    "tech": 'LTE',
-                    "freq": 700,
-                    "type": 17,
-                    "power": 30,
-                    "gain": 16,
-                    "losses": 1,
-                }
-        }
-    ]
-
-    base_system.build_new_assets(
-        build_this_transmitter, 'CB11', setup_simulation_parameters
-        )
-
-    assert len(base_system.sites) == 5
-
-def test_estimate_link_budget(system_single_receiver, setup_modulation_coding_lut,
-    setup_simulation_parameters):
-
-    actual_result = system_single_receiver.estimate_link_budget(
-        0.7, 10, '5G', 30, 'urban', setup_modulation_coding_lut,
-        setup_simulation_parameters
-        )
-    # print(actual_result)
-    # find closest_transmitters
-    # <Receiver id:AB1>
-    # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>,
-    # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
-    # <Receiver id:AB3>
-    # [<Transmitter id:TL4454059600>, <Transmitter id:TL4515059700>,
-    # <Transmitter id:TL4529059480>, <Transmitter id:TL4577059640>]
-    # <Receiver id:AB2>
-    # [<Transmitter id:TL4454059600>, <Transmitter id:TL4529059480>,
-    # <Transmitter id:TL4515059700>, <Transmitter id:TL4577059640>]
+#     # find spectral efficiency (self.modulation_scheme_and_coding_rate)
 
-    # find path_loss for AB3
-    # path loss for AB3 to nearest cell TL4454059600 is 99.44
-    # distance 0.475
-    # interference path loss for AB3 to TL4515059700 is 119.96
-    # distance 0.477
-    # interference path loss for AB3 to TL4529059480 is 120.02
-    # distance 1.078
-    # interference path loss for AB3 to TL4577059640 is 132.4
-    # received_power is -45.44
-    # interference is [-65.96, -66.02, -78.4]
-    # noise is -102.47722915699805
-    # sinr is 20.07
-
-    # find spectral efficiency (self.modulation_scheme_and_coding_rate)
-
-    # find (self.estimate_capacity)
-
-    assert actual_result[0]['capacity_mbps'] == 62.266
+#     # find (self.estimate_capacity)
 
+#     #divide capacity by cell area to represent spectrum reuse...
 
-def test_find_closest_available_sites(base_system):
+#     assert round(actual_result[0]['capacity_mbps_km2'],2) == 2169.80
 
-    receiver = base_system.receivers['AB3']
 
-    transmitter, interfering_transmitters = (
-        base_system.find_closest_available_sites(receiver)
-        )
+# def test_find_closest_available_sites(base_system):
 
-    assert transmitter.id == 'TL4454059600'
+#     receiver = base_system.receivers['AB3']
 
-    interfering_transmitter_ids = [t.id for t in interfering_transmitters]
+#     transmitter, site_area, interfering_transmitters = (
+#         base_system.find_closest_available_sites(receiver)
+#         )
 
-    expected_result = [
-        'TL4515059700', 'TL4529059480', 'TL4577059640'
-        ]
+#     assert transmitter.id == 'TL4454059600'
 
-    assert interfering_transmitter_ids == expected_result
+#     interfering_transmitter_ids = [t.id for t in interfering_transmitters]
 
+#     expected_result = [
+#         'TL4515059700', 'TL4529059480', 'TL4577059640'
+#         ]
 
-def test_calculate_path_loss(base_system):
+#     assert interfering_transmitter_ids == expected_result
 
-    #path_loss
-    frequency = 0.7
-    interference_strt_distance = 158
-    ant_height = 20
-    # ant_type = 'macro'
-    # building_height = 20
-    # street_width = 20
-    # settlement_type = 'urban'
-    # type_of_sight = 'nlos'
-    ue_height = 1.5
-    # above_roof = 0
-
-    receiver = base_system.receivers['AB3']
 
-    transmitter, interfering_transmitters = (
-        base_system.find_closest_available_sites(receiver)
-        )
+# def test_calculate_path_loss(base_system):
 
-    actual_result = base_system.calculate_path_loss(
-        transmitter, receiver, frequency, ant_height, 'urban'
-        )
+#     #path_loss
+#     frequency = 0.7
+#     interference_strt_distance = 158
+#     ant_height = 30
+#     # ant_type = 'macro'
+#     # building_height = 20
+#     # street_width = 20
+#     # settlement_type = 'urban'
+#     # type_of_sight = 'nlos'
+#     ue_height = 1.5
+#     # above_roof = 0
+#     seed_value = 42
 
-    #model requires frequency in MHz rather than GHz.
-    frequency = frequency*1000
-    #model requires distance in kilometers rather than meters.
-    distance = interference_strt_distance/1000
+#     receiver = base_system.receivers['AB3']
 
-    #find smallest value
-    hm = min(ant_height, ue_height)
-    #find largest value
-    hb = max(ant_height, ue_height)
+#     transmitter, site_area, interfering_transmitters = (
+#         base_system.find_closest_available_sites(receiver)
+#         )
 
-    alpha_hm = (1.1*np.log10(frequency) - 0.7) * min(10, hm) - \
-        (1.56*np.log10(frequency) - 0.8) + max(0, (20*np.log10(hm/10)))
+#     actual_result = base_system.calculate_path_loss(
+#         transmitter, receiver, frequency, 'urban',
+#         seed_value
+#         )
 
-    beta_hb = min(0, (20*np.log10(hb/30)))
+#     #model requires frequency in MHz rather than GHz.
+#     frequency = frequency*1000
+#     #model requires distance in kilometers rather than meters.
+#     distance = interference_strt_distance/1000
 
-    alpha_exponent = 1
+#     #find smallest value
+#     hm = min(ant_height, ue_height)
+#     #find largest value
+#     hb = max(ant_height, ue_height)
 
-    path_loss = round((
-        69.6 + 26.2*np.log10(frequency) -
-        13.82*np.log10(max(30, hb)) +
-        (44.9 - 6.55*np.log10(max(30, hb))) *
-        (np.log10(distance))**alpha_exponent - alpha_hm - beta_hb), 2
-    )
+#     alpha_hm = (1.1*np.log10(frequency) - 0.7) * min(10, hm) - \
+#         (1.56*np.log10(frequency) - 0.8) + max(0, (20*np.log10(hm/10)))
 
-    #stochastic component for geometry/distance 0.64
-    #stochastic component for building penetration loss 3.31
-    path_loss = path_loss + 3.31 + 0.64
+#     beta_hb = min(0, (20*np.log10(hb/30)))
 
-    assert actual_result == round(path_loss,2)
+#     alpha_exponent = 1
 
+#     path_loss = round((
+#         69.6 + 26.2*np.log10(frequency) -
+#         13.82*np.log10(max(30, hb)) +
+#         (44.9 - 6.55*np.log10(max(30, hb))) *
+#         (np.log10(distance))**alpha_exponent - alpha_hm - beta_hb), 2
+#     )
 
-def test_calc_received_power(base_system):
+#     #stochastic component for geometry/distance 0.64
+#     #stochastic component for building penetration loss 3.31
+#     path_loss = path_loss + 3.31 + 0.64
 
-    receiver = base_system.receivers['AB3']
+#     assert actual_result[0] == round(path_loss,2)
 
-    transmitter, interfering_transmitters = (
-        base_system.find_closest_available_sites(receiver)
-        )
 
-    actual_received_power = base_system.calc_received_power(
-        transmitter,
-        receiver,
-        173.94
-        )
+# def test_calc_received_power(base_system):
 
-    #eirp = power + gain - losses
-    #58 = 40 + 20 - 2
-    #received_power = eirp - path_loss - misc_losses + gain - losses
-    #-119.94 = 58 - 173.94 - 4 + 4 - 4
-    expected_received_power = ((40 + 16 - 1) - 173.94 - 4 + 4 - 4)
+#     receiver = base_system.receivers['AB3']
 
-    assert actual_received_power == expected_received_power
+#     transmitter, site_area, interfering_transmitters = (
+#         base_system.find_closest_available_sites(receiver)
+#         )
 
+#     actual_received_power = base_system.calc_received_power(
+#         transmitter,
+#         receiver,
+#         99.44
+#         )
 
-def test_calculate_interference(base_system):
+#     #eirp = power + gain - losses
+#     #55 = 40 + 16 - 1
+#     #received_power = eirp - path_loss - misc_losses + gain - losses
+#     #-48.44 = 55 - 99.44 - 4 + 4 - 4
+#     expected_received_power = ((40 + 16 - 1) - 99.44 - 4 + 4 - 4)
 
-    frequency = 0.7
+#     assert actual_received_power == expected_received_power
 
-    receiver = base_system.receivers['AB3']
 
-    transmitter, interfering_transmitters = (
-        base_system.find_closest_available_sites(receiver)
-        )
+# def test_calculate_interference(base_system):
 
+#     frequency = 0.7
 
-    actual_interference = base_system.calculate_interference(
-        interfering_transmitters,
-        receiver,
-        frequency,
-        'urban'
-        )
+#     receiver = base_system.receivers['AB3']
 
-    #AB3
-    #eirp = power + gain - losses
-    #received_power = eirp - path_loss - misc_losses + gain - losses
-    #interference 1
-    #path loss(0.7 475 20 macro 20 20 urban nlos 1.5 0)
-    #-65.89 = (40 + 16 - 1) - 119.96 - 4 + 4 - 4
-    #interference 2
-    #path_loss(0.7 477 20 macro 20 20 urban nlos 1.5 0)
-    #-66.02 = (40 + 16 - 1) - 120.02 - 4 + 4 - 4
-    #interference 3
-    #path_loss(0.7 1078 20 macro 20 20 urban nlos 1.5 0)
-    #-78.4 = (40 + 16 - 1) - 132.4 - 4 + 4 - 4
+#     transmitter, site_area, interfering_transmitters = (
+#         base_system.find_closest_available_sites(receiver)
+#         )
 
-    expected_interference = [
-        -68.96, -69.02, -81.4
-        ]
+#     actual_interference = base_system.calculate_interference(
+#         interfering_transmitters,
+#         receiver,
+#         frequency,
+#         'urban',
+#         42
+#         )
 
-    assert actual_interference == expected_interference
+#     #AB3
+#     #eirp = power + gain - losses
+#     #received_power = eirp - path_loss - misc_losses + gain - losses
+#     #interference 1
+#     #path loss(0.7 475 20 macro 20 20 urban nlos 1.5 0) + indoor penetration loss
+#     #-65.43 = (40 + 16 - 1) - (113.12+3.31) - 4 + 4 - 4
+#     #interference 2
+#     #path_loss(0.7 477 20 macro 20 20 urban nlos 1.5 0) + indoor penetration loss
+#     #-65.5 = (40 + 16 - 1) - (113.19+3.31) - 4 + 4 - 4
+#     #interference 3
+#     #path_loss(0.7 1078 20 macro 20 20 urban nlos 1.5 0) + indoor penetration loss
+#     #-77.88 = (40 + 16 - 1) - (125.57+3.31) - 4 + 4 - 4 + 3.31
 
+#     rounded_results = [round(i,2) for i in actual_interference[0]]
 
-def test_calculate_noise(base_system):
+#     expected_interference = [
+#         -65.43, -65.5, -77.88
+#         ]
 
-    bandwidth = 100
+#     assert rounded_results == expected_interference
 
-    actual_result = round(base_system.calculate_noise(bandwidth),2)
 
-    expected_result = -92.48
+# def test_calculate_noise(base_system):
 
-    assert actual_result == expected_result
+#     bandwidth = 100
 
+#     actual_result = round(base_system.calculate_noise(bandwidth),2)
 
-def test_calculate_sinr(base_system, setup_simulation_parameters):
+#     expected_result = -92.48
 
-    #calculation in link_budget_validation.xlsx
+#     assert actual_result == expected_result
 
-    actual_sinr = base_system.calculate_sinr(-45.44, [-65.96, -66.02, -78.4], -102.48,
-        setup_simulation_parameters)
 
-    assert actual_sinr == 20.07
+# def test_calculate_sinr(base_system, setup_simulation_parameters):
 
+#     #calculation in link_budget_validation.xlsx
 
-def test_modulation_scheme_and_coding_rate(base_system, setup_modulation_coding_lut):
+#     actual_sinr = base_system.calculate_sinr(-48.44, [-65.43, -65.5, -77.88], -102.48,
+#         setup_simulation_parameters)
+#     # print(actual_sinr)
+#     assert actual_sinr[4] == 17.02
 
-    actual_result = base_system.modulation_scheme_and_coding_rate(
-        10, '4G', setup_modulation_coding_lut
-        )
 
-    expected_result = 1.9141
+# def test_modulation_scheme_and_coding_rate(base_system, setup_modulation_coding_lut):
 
-    assert actual_result == expected_result
+#     actual_result = base_system.modulation_scheme_and_coding_rate(
+#         10, '4G', setup_modulation_coding_lut
+#         )
 
-    actual_result = base_system.modulation_scheme_and_coding_rate(
-        10, '5G', setup_modulation_coding_lut
-        )
+#     expected_result = 1.9141
 
-    expected_result = 3.3223
+#     assert actual_result == expected_result
 
-    assert actual_result == expected_result
+#     actual_result = base_system.modulation_scheme_and_coding_rate(
+#         10, '5G', setup_modulation_coding_lut
+#         )
 
+#     expected_result = 3.3223
 
-def test_link_budget_capacity(base_system):
+#     assert actual_result == expected_result
 
-    bandwidth = 10
-    spectral_effciency = 2
 
-    actual_estimate_capacity = base_system.link_budget_capacity(
-        bandwidth, spectral_effciency
-        )
+# def test_link_budget_capacity(base_system):
 
-    expected_estimate_capacity = (
-        ((bandwidth*1000000)*spectral_effciency)/1000000
-        )
+#     bandwidth = 10
+#     spectral_effciency = 2
+#     site_area = 0.0256
 
-    assert actual_estimate_capacity == expected_estimate_capacity
+#     actual_estimate_capacity = round(base_system.link_budget_capacity(
+#         bandwidth, spectral_effciency, site_area,
+#         ),2)
 
+#     expected_estimate_capacity = round((
+#         ((bandwidth*1e6)*spectral_effciency/site_area)/1e6
+#         ),2)
 
-def test_find_sites_in_area(base_system):
+#     assert actual_estimate_capacity == expected_estimate_capacity
 
-    actual_sites = base_system.find_sites_in_area()
 
-    assert len(actual_sites) == 2
+# def test_find_sites_in_area(base_system):
 
+#     actual_sites = base_system.find_sites_in_area()
 
-def test_site_density(base_system):
+#     assert len(actual_sites) == 2
 
-    # CB43 area is 2,180,238 m^2
-    # sites = 2
-    # 0.91733 sites per km^2 = 2 / (2,180,238 / 1e6)
-    actual_site_density = round(base_system.site_density(),2)
 
-    assert actual_site_density == 0.92
+# def test_site_density(base_system):
 
+#     # CB43 area is 2,180,238 m^2
+#     # sites = 2
+#     # 0.91733 sites per km^2 = 2 / (2,180,238 / 1e6)
+#     actual_site_density = round(base_system.site_density(),2)
 
-def test_receiver_density(base_system):
+#     assert actual_site_density == 0.92
 
-    # CB43 area is 2,180,238 m^2
-    # receivers = 3
-    # 1.375 receivers per km^2 = 3 / (2,180,238 / 1e6)
-    actual_receiver_density = round(base_system.receiver_density(),2)
 
-    assert actual_receiver_density == 1.38
+# def test_receiver_density(base_system):
 
+#     # CB43 area is 2,180,238 m^2
+#     # receivers = 3
+#     # 1.375 receivers per km^2 = 3 / (2,180,238 / 1e6)
+#     actual_receiver_density = round(base_system.receiver_density(),2)
 
-def test_energy_consumption(base_system, setup_simulation_parameters):
+#     assert actual_receiver_density == 1.38
 
-    # sites = 2
-    # power = 40 dBm
-    actual_energy_consumption = base_system.energy_consumption(
-        setup_simulation_parameters
-        )
 
-    assert actual_energy_consumption == 60
+# def test_energy_consumption(base_system, setup_simulation_parameters):
+
+#     # sites = 2
+#     # power = 40 dBm
+#     actual_energy_consumption = base_system.energy_consumption(
+#         setup_simulation_parameters
+#         )
+
+#     assert actual_energy_consumption == 60
