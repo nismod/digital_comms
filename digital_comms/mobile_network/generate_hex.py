@@ -173,7 +173,7 @@ def find_site_locations(cell_area, interfering_cell_areas):
             'type': 'Feature',
             'geometry': mapping(interfering_cell['centroid']),
             'properties': {
-                'site_id': 'transmitter'
+                'site_id': interfering_cell['properties']['site_id']
             }
         })
 
@@ -204,7 +204,7 @@ def generate_cell_areas(point, inter_site_distance):
             },
             'centroid': (Polygon(poly).centroid),
             'properties': {
-                'cell_area_id': id_num
+                'site_id': id_num
                 }
             })
 
