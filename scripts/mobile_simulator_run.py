@@ -303,7 +303,7 @@ def write_lookup_table(cell_edge_result, environment, cell_radius,
             'bandwidth_MHz', 'generation', 'mast_height_m', 'path_loss_dB',
             'received_power_dBm', 'interference_dBm',
             'sinr', 'spectral_efficiency_bps_hz',
-            'three_sector_capacity_mbps_km2')
+            'capacity_mbps_km2')
             )
     else:
         lut_file = open(directory, 'a', newline='')
@@ -382,7 +382,7 @@ def run_simulator(simulation_parameters, spectrum_portfolio, mast_heights,
 
     for environment in environments:
         for cell_radius in cell_radii[environment]:
-
+            print(cell_radius)
             print('--working on {}: {}'.format(environment, cell_radius))
 
             transmitter, interfering_transmitters, cell_area, interfering_cell_areas = \
@@ -467,7 +467,7 @@ if __name__ == '__main__':
 
     MAST_HEIGHT = [
         (30),
-        (100)
+        (40)
     ]
 
     MODULATION_AND_CODING_LUT =[
@@ -505,21 +505,18 @@ if __name__ == '__main__':
         ('5G', 15, '256QAM', 948, 7.4063, 22.7),
     ]
 
-    CELL_RADII = {
-        'urban': [
-            250, 500, 750, 1000, 1500, 2000, 2500, 3000,
-            4000, 5000, 10000, 15000, 20000, 25000, 30000
-        ],
-        'suburban': [
-            250, 500, 750, 1000, 1500, 2000, 2500, 3000,
-            4000, 5000, 10000, 15000, 20000, 25000, 30000
-        ],
-        'rural': [
-            250, 500, 750, 1000, 1500, 2000, 2500, 3000,
-            4000, 5000, 10000, 15000, 20000, 25000, 30000
-            ]
-    }
+    def generate_cell_radii(min, max, increment):
+        for n in range(min, max, increment):
+            yield n
 
+    CELL_RADII = {
+        'urban': 
+            generate_cell_radii(250, 30000, 250),
+        'suburban': 
+            generate_cell_radii(250, 30000, 250),        
+        'rural': 
+            generate_cell_radii(250, 30000, 250)
+        }
 
     run_simulator(
         SIMULATION_PARAMETERS,

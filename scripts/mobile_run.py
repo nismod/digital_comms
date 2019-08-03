@@ -234,7 +234,7 @@ for path in PATH_LIST:
             bandwidth = row["bandwidth_MHz"]
             mast_height = str(row['mast_height_m'])
             density = float(row["sites_per_km2"])
-            capacity = float(row["three_sector_capacity_mbps_km2"])
+            capacity = float(row["capacity_mbps_km2"])
             cell_edge_spectral_efficency = float(
                 row['spectral_efficiency_bps_hz']
                 )
@@ -534,17 +534,17 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
         ('baseline', 'baseline', 'macrocell-700-3500', 30),
         ('high', 'high', 'macrocell-700-3500', 30),
 
-        ('low', 'low', 'sectorisation', 30),
-        ('baseline', 'baseline', 'sectorisation', 30),
-        ('high', 'high', 'sectorisation', 30),
+        # ('low', 'low', 'sectorisation', 30),
+        # ('baseline', 'baseline', 'sectorisation', 30),
+        # ('high', 'high', 'sectorisation', 30),
 
-        ('low', 'low', 'macro-densification', 30),
-        ('baseline', 'baseline', 'macro-densification', 30),
-        ('high', 'high', 'macro-densification', 30),
+        # ('low', 'low', 'macro-densification', 30),
+        # ('baseline', 'baseline', 'macro-densification', 30),
+        # ('high', 'high', 'macro-densification', 30),
 
-        ('low', 'low', 'deregulation', 40),
-        ('baseline', 'baseline', 'deregulation', 40),
-        ('high', 'high', 'deregulation', 40),
+        # ('low', 'low', 'deregulation', 40),
+        # ('baseline', 'baseline', 'deregulation', 40),
+        # ('high', 'high', 'deregulation', 40),
 
         ('low', 'low', 'small-cell-and-spectrum', 30),
         ('baseline', 'baseline', 'small-cell-and-spectrum', 30),
@@ -619,8 +619,8 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
         # print(set(unique))
         system = None
         # print(assets)
-        print('macros: {}'.format(len([a for a in assets if a['type'] == 'macrocell_site'])))
-        print('small_cells {}'.format(len([a for a in assets if a['type'] == 'small_cell'])))
+        # print('macros: {}'.format(len([a for a in assets if a['type'] == 'macrocell_site'])))
+        # print('small_cells {}'.format(len([a for a in assets if a['type'] == 'small_cell'])))
         system = NetworkManager(
             lads, postcode_sectors, assets,
             capacity_lookup_table, clutter_lookup,
@@ -640,7 +640,7 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
                           intervention_strategy, capex_by_lad, opex_by_lad)
         write_pcd_results(system, year, pop_scenario, throughput_scenario,
                           intervention_strategy, capex_by_pcd, opex_by_pcd)
-        print('len(assets) {}'.format(len(assets)))
+        # print('len(assets) {}'.format(len(assets)))
     interventions_built = []
     system = None
 #
