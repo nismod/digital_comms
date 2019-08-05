@@ -180,34 +180,44 @@ class LAD(object):
 
     def capacity(self):
         """
-        Calculate mean capacity from all nested sectors
+        Calculate capacity per square kilometer (Mbps km^2)
+        from all nested postcode sectors.
+
         Returns
         -------
-        obj
-            Mean capacity of the local area district
+        float
+            Capacity of the local area district (Mbps km^2)
+
         Notes
         -----
         Function returns `0` when no postcode sectors are
         configured to the LAD.
+
         """
         if not self._pcd_sectors:
             return 0
 
         summed_capacity = sum([
             pcd_sector.capacity
-            for pcd_sector in self._pcd_sectors.values()])
-
-        return summed_capacity / len(self._pcd_sectors)
+            for pcd_sector in self._pcd_sectors.values()]
+        )
+        summed_area = sum(
+            pcd_sector.area
+            for pcd_sector in self._pcd_sectors.values()
+        )
+        return summed_capacity / summed_area
 
 
     def demand(self):
         """
         Calculate demand per square kilometer (Mbps km^2)
-        from all nested postcode sectors
+        from all nested postcode sectors.
+
         Returns
         -------
         obj
-            Demand of the local area district
+            Demand of the local area district (Mbps km^2)
+
         Notes
         -----
         Function returns `0` when no postcode sectors
@@ -231,11 +241,13 @@ class LAD(object):
     def coverage(self):
         """
         Calculate coverage as the proportion of the population
-        able to obtain the specified capacity threshold
+        able to obtain the specified capacity threshold.
+
         Returns
         -------
         obj
             Coverage in the local area district
+        
         Notes
         -----
         Function returns `0` when no postcode sectors are
@@ -278,10 +290,9 @@ class PostcodeSector(object):
         self.market_share = market_share
         self.mast_height = mast_height
         self.service_obligation_capacity = service_obligation_capacity
-
+        
         self._capacity_lookup_table = capacity_lookup_table
         self._clutter_lookup = clutter_lookup
-
         self.clutter_environment = lookup_clutter_geotype(
             self._clutter_lookup,
             self.population_density
@@ -486,7 +497,7 @@ class PostcodeSector(object):
             for asset in self.assets
             if asset['type'] == "small_cell"
         ])
-
+        # print(num_small_cells)
         if num_small_cells == 0:
             capacity = 0
         else:
@@ -506,7 +517,8 @@ class PostcodeSector(object):
                 '25',
                 site_density,
                 '30')
-            # print('small cell capacity {}, {}, {}'.format(capacity, num_small_cells, self.area))
+            # print('{}: small cell capacity {}, {}, {}'.format(
+            # self.id, capacity, num_small_cells, self.area))
 
         return capacity
 
@@ -651,7 +663,6 @@ def lookup_capacity(capacity_lookup, clutter_environment,
         If combination is not found in the lookup table.
 
     """
-    # print(capacity_lookup)
     if (clutter_environment, frequency, bandwidth, mast_height) not in capacity_lookup:
         raise KeyError("Combination %s not found in lookup table",
                        (clutter_environment, frequency, bandwidth, mast_height))
