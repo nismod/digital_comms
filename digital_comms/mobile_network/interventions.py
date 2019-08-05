@@ -14,6 +14,9 @@ from itertools import groupby
 ################################################################
 
 
+TOTAL_ASSETS_ALLOWED_PER_YEAR = 1
+
+
 STRATEGIES = {
     # Intervention Strategy X
     # Minimal Intervention 'Do Nothing Scenario'
@@ -36,55 +39,24 @@ STRATEGIES = {
         ),
 
     # Intervention Strategy X
-    # Integrate 700
-    'macrocell-700': ('carrier_800_1800_2600', 'carrier_700'),
-
-    # Intervention Strategy X
-    # Increase sectoration on macrocell sites
-    # The capex will include three additional cells,
-    # so from x3 to x6.
-    'sectorisation': (
-        'carrier_800_1800_2600', 'carrier_700',
-        'carrier_3500', 'add_3_sectors',
-        ),
-
-    # Intervention Strategy X
     # Build more macrocell sites
     # The capex will include three multicarrier cells,
     # mast & civil works.
     'macro-densification': (
         'carrier_800_1800_2600',
         'build_4G_macro_site',
-        # 'carrier_700',
-        # 'carrier_3500',
-        # 'build_5G_macro_site',
+        'carrier_700',
+        'carrier_3500',
+        'build_5G_macro_site',
         ),
-
-    # # Intervention Strategy X
-    # # Share new active equipment
-    # # The capex of new equipment will effectively reduce.
-    # 'neutral_hosting': ('share_activate_equipment'),
-
-    # Intervention Strategy X
-    # Deregulate the height of macrocell sites
-    # The capex includes raising the height of the
-    # existing site mast.
-    'deregulation': ('carrier_800_1800_2600', 'carrier_700',
-        'carrier_3500', 'raise_mast_height'),
-
-    # Intervention Strategy X
-    # Deregulate the height of macrocell sites
-    # The capex includes raising the height of the
-    # existing site mast.
-    'cloud-ran': ('carrier_800_1800_2600', 'carrier_700',
-        'carrier_3500', 'macro_5G_c_ran'),
 
     # Intervention Strategy X
     # Deploy a small cell layer at 3700 MHz
     # The capex will include the small cell unit and the
     # civil works per cell
     'small-cell-and-spectrum': (
-        'carrier_800_1800_2600', 'carrier_700',
+        'carrier_800_1800_2600', 
+        'carrier_700',
         'carrier_3500',
         'small_cell'
         ),
@@ -173,26 +145,6 @@ INTERVENTIONS = {
             },
         ]
     },
-    'add_3_sectors': {
-        'name': 'sectorisation carrier',
-        'description': 'Available if a site has LTE',
-        'result': '6 sectors are available',
-        # 'capex': 50000, #£10k each, plus £20 installation
-        'capex': 50000,
-        'opex': 2000,
-        'assets_to_build': [
-            {
-                'site_ngr': None,
-                'frequency': 'x6_sectors',
-                'technology': '5G',
-                'type': 'macrocell_site',
-                'bandwidth': '10',
-                'sectors': 6,
-                'mast_height': None,
-                'build_date': None,
-            },
-        ]
-    },
     'build_4G_macro_site': {
         'name': 'Build a new 4G macro site',
         'description': 'Must be deployed at preset densities \
@@ -256,48 +208,7 @@ INTERVENTIONS = {
             },
         ]
     },
-    'raise_mast_height': {
-        'name': 'Raises existing mast height',
-        'description': 'Must be deployed at preset densities to \
-            be modelled',
-        'result': 'Same technology but with new enhanced capacity',
-        # 'cost': 30000,
-        'capex': 30000,
-        'opex': 0,
-        'assets_to_build': [
-            {
-                'site_ngr': 'extended_height',
-                'frequency': None,
-                'technology': None,
-                'type': 'extended_height_macro',
-                'bandwidth': None,
-                'sectors': None,
-                'mast_height': '40',
-                'build_date': None,
-            },
-        ]
-    },
-    'macro_5G_c_ran': {
-        'name': 'Replace D-Ran with C-RAN',
-        'description': 'Must be deployed within viable distance \
-            from exchange',
-        'result': 'Network architecture change to SDN/NFV',
-        # 'capex': 30000,
-        'capex': 30000,
-        'opex': 1000,
-        'assets_to_build': [
-            {
-                'site_ngr': None,
-                'frequency': None,
-                'technology': '5G_c_ran',
-                'type': 'macro_5G_c_ran',
-                'bandwidth': None,
-                'sectors': None,
-                'mast_height': '40',
-                'build_date': None,
-            },
-        ]
-    },
+    
 }
 
 
@@ -480,7 +391,7 @@ def _suggest_interventions(budget, available_interventions,
 
                             budget -= capex
 
-                            if len(area_interventions) >= 1:
+                            if len(area_interventions) >= 5:
                                 break
 
                             if budget <= 0:
@@ -594,132 +505,17 @@ def _suggest_interventions(budget, available_interventions,
         if budget <= 0:
             break
 
-        if 'add_3_sectors' in available_interventions:
-            if _area_satisfied(area, area_interventions,
-                service_obligation_capacity, traffic,
-                market_share, mast_height):
-                continue
-
-            build_option = INTERVENTIONS['add_3_sectors']['assets_to_build']
-            capex = INTERVENTIONS['add_3_sectors']['capex']
-            opex = INTERVENTIONS['add_3_sectors']['opex']
-
-            for site_ngr, site_assets in assets_by_site.items():
-                if site_ngr == 'small_cell_site':
-                    continue
-
-                sectors = [site['sectors'] for site in site_assets]
-
-                current_tech, current_freqs = current_tech_and_freqs(site_assets)
-
-                if '5G' in current_tech and \
-                    '700' in current_freqs and \
-                    '3500' in current_freqs and \
-                    6 not in sectors:
-
-                    unique_id = (site_ngr + '_' + '5G' + '_' + 'add_3_sectors')
-
-                    if unique_id not in unique_intervention_ids:
-                        unique_intervention_ids.append(unique_id)
-                        for option in build_option:
-                            to_build = copy.copy(option)
-                            to_build['site_ngr'] = site_ngr
-                            to_build['technology'] = '5G'
-                            to_build['frequency'] = ['700', '800', '1800', '2600', '3500']
-                            to_build['ran_type'] = 'distributed'
-                            to_build['bandwidth'] = 'frequency_dependent'
-                            to_build['sectors'] = 6
-                            to_build['pcd_sector'] = area.id
-                            to_build['lad'] = area.lad_id
-                            to_build['build_date'] = timestep
-                            to_build['item'] = 'add_3_sectors'
-                            to_build['mast_height'] = area.mast_height
-                            to_build['capex'] = capex
-                            to_build['opex'] = opex
-
-                            area_interventions.append(to_build)
-                            built_interventions.append(to_build)
-                            assets_by_site[site_ngr] = [to_build]
-
-                            budget -= capex
-                            if budget <= 0:
-                                break
-
-        if budget <= 0:
-            break
-
-        if 'raise_mast_height' in available_interventions:
-            # print( area.mast_height)
-            if _area_satisfied(area, area_interventions,
-                service_obligation_capacity, traffic,
-                market_share, mast_height):
-                continue
-
-            build_option = INTERVENTIONS['raise_mast_height']['assets_to_build']
-            capex = INTERVENTIONS['raise_mast_height']['capex']
-            opex = INTERVENTIONS['raise_mast_height']['opex']
-
-            for site_ngr, site_assets in assets_by_site.items():
-                if site_ngr == 'small_cell_site':
-                    continue
-
-                current_tech, current_freqs = current_tech_and_freqs(site_assets)
-
-                if area.mast_height != '40':
-
-                    unique_id = (site_ngr + '_' + 'raise_mast_height')
-
-                    if unique_id not in unique_intervention_ids:
-                        unique_intervention_ids.append(unique_id)
-                        for option in build_option:
-                            to_build = copy.copy(option)
-                            to_build['site_ngr'] = site_ngr
-                            to_build['pcd_sector'] = area.id
-                            to_build['build_date'] = timestep
-                            to_build['technology'] = site_assets[0]['technology']
-                            to_build['frequency'] = site_assets[0]['frequency']
-                            to_build['ran_type'] = 'distributed'
-                            to_build['bandwidth'] = 'frequency_dependent'
-                            to_build['sectors'] = site_assets[0]['sectors']
-                            to_build['pcd_sector'] = area.id
-                            to_build['lad'] = area.lad_id
-                            to_build['build_date'] = timestep
-                            to_build['item'] = 'raise_mast_height'
-                            to_build['mast_height'] = '40'
-                            to_build['capex'] = capex
-                            to_build['opex'] = opex
-
-                            area_interventions.append(to_build)
-                            built_interventions.append(to_build)
-
-                            budget -= capex
-                            if budget <= 0:
-                                break
-
-        if budget <= 0:
-            break
-
         if 'build_4G_macro_site' in available_interventions and \
             timestep < 2020:
 
-            if area.id == 'IV274':
-                print('assets in iv274 = {}'.format(len(area.assets)))
             if _area_satisfied(area, area_interventions,
                 service_obligation_capacity, traffic,
                 market_share, mast_height):
-                if area.id == 'IV274':
-                    print('area satisfied')
                 continue
 
             for site_ngr, site_assets in assets_by_site.items():
                 if site_ngr == 'small_cell_site':
                     continue
-
-                # print('len(area_interventions) {}'.format(len(area_interventions)))
-                if len(area_interventions) >= 1:
-                    if area.id == 'IV274':
-                        print('built single intervention')
-                    break
 
                 build_option = INTERVENTIONS['build_4G_macro_site']['assets_to_build']
                 capex = INTERVENTIONS['build_4G_macro_site']['capex']
@@ -762,50 +558,39 @@ def _suggest_interventions(budget, available_interventions,
                     budget -= capex
                     current_number += 1
 
-                    if len(area_interventions) >= 1:
-                        if area.id == 'IV274':
-                            print('built single intervention')
+                    if check_built_interventions(area_interventions, 
+                        'build_4G_macro_site', TOTAL_ASSETS_ALLOWED_PER_YEAR):
                         break
 
                     if calc_capacity(area, area_interventions,
                         service_obligation_capacity, traffic,
                         market_share, mast_height) >= check_max_capacity(area):
-                        if area.id == 'IV274':
-                            print('capacity met')
+                        print('met max capacity {}'.format(check_max_capacity(area)))
                         break
 
                     if budget <= 0 or \
                         _area_satisfied(area, area_interventions,
                         service_obligation_capacity, traffic,
                         market_share, mast_height):
-                        if area.id == 'IV274':
-                            print('budget spent')
                         break
-
-
+        
         if budget <= 0:
             break
 
         if 'build_5G_macro_site' in available_interventions and \
             timestep >= 2020:
 
-            if area.id == 'IV274':
-                print('assets in iv274 = {}'.format(len(area.assets)))
-
             if _area_satisfied(area, area_interventions,
                 service_obligation_capacity, traffic,
                 market_share, mast_height):
-                if area.id == 'IV274':
-                    print('area satisfied')
                 continue
 
             for site_ngr, site_assets in assets_by_site.items():
                 if site_ngr == 'small_cell_site':
                     continue
 
-                if len(area_interventions) >= 1:
-                    if area.id == 'IV274':
-                        print('built single intervention')
+                if check_built_interventions(area_interventions, 
+                    'build_5G_macro_site', TOTAL_ASSETS_ALLOWED_PER_YEAR):
                     break
 
                 build_option = INTERVENTIONS['build_5G_macro_site']['assets_to_build']
@@ -818,9 +603,8 @@ def _suggest_interventions(budget, available_interventions,
 
                 while True:
 
-                    if len(area_interventions) >= 1:
-                        if area.id == 'IV274':
-                            print('built single intervention')
+                    if check_built_interventions(area_interventions, 
+                        'build_5G_macro_site', TOTAL_ASSETS_ALLOWED_PER_YEAR):
                         break
 
                     unique_id = (
@@ -857,63 +641,12 @@ def _suggest_interventions(budget, available_interventions,
                         if calc_capacity(area, area_interventions,
                             service_obligation_capacity, traffic,
                             market_share, mast_height) >= check_max_capacity(area):
-                            if area.id == 'IV274':
-                                print('capacity met')
                             break
 
                         if budget <= 0 or \
                             _area_satisfied(area, area_interventions,
                             service_obligation_capacity, traffic,
-                            market_share, mast_height) :
-                            if area.id == 'IV274':
-                                print('budget spent')
-                            break
-
-        if budget <= 0:
-            break
-
-        #deploy Cloud-RAN
-        if 'macro_5G_c_ran' in available_interventions:
-            if _area_satisfied(area, area_interventions,
-                service_obligation_capacity, traffic,
-                market_share, mast_height):
-                continue
-
-            build_option = INTERVENTIONS['macro_5G_c_ran']['assets_to_build']
-            capex = INTERVENTIONS['macro_5G_c_ran']['capex']
-
-            for site_ngr, site_assets in assets_by_site.items():
-                if site_ngr == 'small_cell_site':
-                    continue
-
-                unique_id = (site_ngr + '_' + 'raise_mast_height')
-
-                if unique_id not in unique_intervention_ids:
-                    unique_intervention_ids.append(unique_id)
-
-                    for option in build_option:
-                        to_build = copy.copy(option)
-                        to_build['site_ngr'] = site_ngr
-                        to_build['pcd_sector'] = area.id
-                        to_build['build_date'] = timestep
-                        to_build['technology'] = '5G'
-                        to_build['frequency'] = ['700', '800', '1800', '2600', '3500']
-                        to_build['ran_type'] = 'distributed'
-                        to_build['bandwidth'] = 'frequency_dependent'
-                        to_build['sectors'] = 3
-                        to_build['pcd_sector'] = area.id
-                        to_build['lad'] = area.lad_id
-                        to_build['build_date'] = timestep
-                        to_build['item'] = 'macro_5G_c_ran'
-                        to_build['mast_height'] = area.mast_height
-                        to_build['capex'] = capex
-                        to_build['opex'] = opex
-
-                        area_interventions.append(to_build)
-                        built_interventions.append(to_build)
-
-                        budget -= capex
-                        if budget <= 0:
+                            market_share, mast_height):
                             break
 
         if budget <= 0:
@@ -921,13 +654,14 @@ def _suggest_interventions(budget, available_interventions,
 
         # build small cells to next density
         if 'small_cell' in available_interventions and timestep >= 2020:
-            #only allow small cells to be deployed in urban areas
-            if (area.clutter_environment == 'rural' or
-                area.clutter_environment == 'suburban'):
+            # # only allow small cells to be deployed in urban areas
+            if (area.clutter_environment == 'rural'):# or
+                # or area.clutter_environment == 'suburban'):
                 continue
 
-            if len(area_interventions) >= 1:
-                break
+            # if check_built_interventions(area_interventions, 
+            #     'small_cell', TOTAL_ASSETS_ALLOWED_PER_YEAR):
+            #     break
 
             if _area_satisfied(area, area_interventions,
                 service_obligation_capacity, traffic,
@@ -961,6 +695,7 @@ def _suggest_interventions(budget, available_interventions,
                 to_build[0]['build_date'] = timestep
                 to_build[0]['pcd_sector'] = area.id
                 to_build[0]['item'] = 'small_cell'
+                to_build[0]['ran_type'] = 'distributed'
                 to_build[0]['lad'] = area.lad_id
                 to_build[0]['capex'] = capex
                 to_build[0]['opex'] = opex
@@ -980,14 +715,8 @@ def _suggest_interventions(budget, available_interventions,
                     # print('budget <= 0 / _area_satisfied')
                     break
 
-
-        #             # if calc_capacity(area, area_interventions,
-        #             #     service_obligation_capacity, traffic,
-        #             #     market_share, mast_height) >= check_max_capacity(area):
-        #             #     # print('calc_capacity')
-        #             #     break
-
     return built_interventions, budget, unique_intervention_ids
+
 
 def _suggest_target_postcodes(system, threshold=None):
     """
@@ -1027,6 +756,7 @@ def _area_satisfied(area, assets, service_obligation_capacity,
     # print(reached_capacity, target_capacity)
     return reached_capacity >= target_capacity
 
+
 def calc_capacity(area, assets, service_obligation_capacity,
     traffic, market_share, mast_height):
 
@@ -1055,6 +785,7 @@ def calc_capacity(area, assets, service_obligation_capacity,
 
     return test_area.capacity
 
+
 def check_max_capacity(area):
 
     density = float(area.population) / float(area.area)
@@ -1062,12 +793,29 @@ def check_max_capacity(area):
     if density < 782:
         #rural sum(800, 1800, 2600)
         # print('rural')
-        return 1.6051
+        return 410
     elif 782 <= density < 7959:
         #suburban sum(800, 1800, 2600)
         # print('suburban')
-        return 46.801895
+        return 650
     elif 7959 <= density:
         #urban sum(800, 1800, 2600)
         # print('urban')
-        return 490.7478
+        return 650
+
+
+def check_built_interventions(area_interventions, 
+    intervention_type, number):
+
+    interventions = []
+
+    for intervention in area_interventions:
+        if intervention['item'] == intervention_type:
+            interventions.append(intervention)
+
+    if len(interventions) > number:
+        answer = True
+    else:
+        answer = False
+
+    return answer
