@@ -393,7 +393,6 @@ def run_simulator(simulation_parameters, spectrum_portfolio, mast_heights,
 
             receivers = generate_receivers(cell_area, SIMULATION_PARAMETERS, 0)
 
-            print('num receivers = {}'.format(len(receivers)))
             for frequency, bandwidth, generation in spectrum_portfolio:
                 for mast_height in mast_heights:
 
@@ -431,7 +430,7 @@ def run_simulator(simulation_parameters, spectrum_portfolio, mast_heights,
                     # write_shapefile(interfering_transmitters, 'interfering_transmitters_{}.shp'.format(cell_radius))
                     # write_shapefile(interfering_cell_areas, 'interfering_cell_areas_{}.shp'.format(cell_radius))
 
-            print('complete')
+            # print('complete')
 
 
 if __name__ == '__main__':
@@ -511,11 +510,11 @@ if __name__ == '__main__':
 
     CELL_RADII = {
         'urban': 
-            generate_cell_radii(250, 30000, 250),
+            generate_cell_radii(250, 30000, 1000),
         'suburban': 
-            generate_cell_radii(250, 30000, 250),        
+            generate_cell_radii(250, 30000, 1000),        
         'rural': 
-            generate_cell_radii(250, 30000, 250)
+            generate_cell_radii(250, 30000, 1000)
         }
 
     run_simulator(
