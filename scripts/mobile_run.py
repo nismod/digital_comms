@@ -19,6 +19,7 @@ sys.path.append("..")
 
 from digital_comms.mobile_network.model import NetworkManager
 from digital_comms.mobile_network.interventions import decide_interventions
+from digital_comms.mobile_network.costs import calculate_costs
 
 ################################################################
 # SETUP MODEL RUN CONFIGURATION
@@ -37,10 +38,12 @@ INTERMEDIATE_PATH = os.path.join(BASE_PATH, 'intermediate')
 SHAPES_INPUT_PATH = os.path.join(BASE_PATH, 'raw', 'd_shapes')
 SYSTEM_OUTPUT_PATH = os.path.join(BASE_PATH, '..','results')
 
+DISCOUNT_RATE = 0.1
 BASE_YEAR = 2019
 END_YEAR = 2030
 TIMESTEP_INCREMENT = 1
 TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
+OVERBOOKING_FACTOR = 50
 
 POPULATION_SCENARIOS = [
     "high",
@@ -203,8 +206,9 @@ with open(SYSTEM_FILENAME, 'r') as system_file:
             'sectors': 3,
             'mast_height': '30',
             'type': 'macrocell_site',
+            'ran_type': 'distributed',
             'capex': 0,
-            'opex': 20000
+            'opex': 20000,
             # 'bandwidth': pcd_sector['id'],
         })
 
@@ -238,7 +242,8 @@ for path in PATH_LIST:
             cell_edge_spectral_efficency = float(
                 row['spectral_efficiency_bps_hz']
                 )
-
+            # if environment == 'small_cells':
+            #     print(environment, frequency, bandwidth, mast_height)
             if (environment, frequency, bandwidth, mast_height) \
                 not in capacity_lookup_table:
                 capacity_lookup_table[(
@@ -334,8 +339,8 @@ def allocate_costs(interventions_built, system):
     for item in interventions_built:
         capex_by_lad[item['lad']] += item['capex']
         capex_by_pcd[item['pcd_sector']] += item['capex']
-        # opex_by_lad[item['lad']] += item['opex']
-        # opex_by_pcd[item['pcd_sector']] += item['opex']
+        opex_by_lad[item['lad']] += item['opex']
+        opex_by_pcd[item['pcd_sector']] += item['opex']
 
     for area in system.postcode_sectors.values():
         opex_by_pcd[area.id] =+ area.opex
@@ -343,8 +348,10 @@ def allocate_costs(interventions_built, system):
     return capex_by_lad, capex_by_pcd, opex_by_lad, opex_by_pcd
 
 
-def write_lad_results(network_manager, year, pop_scenario, throughput_scenario,
-                      intervention_strategy, capex_by_lad, opex_by_lad):
+def write_lad_results(network_manager, year, pop_scenario, 
+    throughput_scenario, intervention_strategy, capex_by_lad, 
+    opex_by_lad, overbooking_factor):
+
     suffix = _get_suffix(
         pop_scenario, throughput_scenario, intervention_strategy
         )
@@ -361,7 +368,8 @@ def write_lad_results(network_manager, year, pop_scenario, throughput_scenario,
         metrics_writer.writerow(
             ('year', 'area_id', 'area_name', 'capex', 'opex', 'demand',
             'capacity', 'capacity_deficit', 'population', 'area',
-            'pop_density')
+            'pop_density', 'overbooking_factor', 
+            'per_user_busy_hour_capacity_mbps')
             )
     else:
         metrics_file = open(metrics_filename, 'a', newline='')
@@ -372,23 +380,28 @@ def write_lad_results(network_manager, year, pop_scenario, throughput_scenario,
         area_name = lad.name
         capex = capex_by_lad[lad.id]
         opex = opex_by_lad[lad.id]
-        demand = lad.demand()
+        demand = lad.demand() #* lad.area
         capacity = lad.capacity()
         capacity_deficit = capacity - demand
         pop = lad.population
         area = lad.area
         pop_d = lad.population_density
+        overbooking_factor = overbooking_factor
+        per_user_busy_hour_capacity_mbps = (
+            (capacity * area) / (pop / overbooking_factor)
+        )
 
         metrics_writer.writerow(
             (year, area_id, area_name, capex, opex, demand, capacity,
-            capacity_deficit, pop, area, pop_d)
+            capacity_deficit, pop, area, pop_d, overbooking_factor,
+            per_user_busy_hour_capacity_mbps)
             )
 
     metrics_file.close()
 
 
 def write_pcd_results(network_manager, year, pop_scenario, throughput_scenario,
-                      intervention_strategy, capex_by_pcd, opex_by_pcd):
+    intervention_strategy, capex_by_pcd, opex_by_pcd, overbooking_factor):
 
     suffix = _get_suffix(
         pop_scenario, throughput_scenario, intervention_strategy
@@ -407,7 +420,8 @@ def write_pcd_results(network_manager, year, pop_scenario, throughput_scenario,
             ('year', 'postcode', 'capex', 'opex', 'demand',
             'user_throughput', 'capacity', 'capacity_deficit',
             'assets', 'population', 'area', 'pop_density',
-            'environment'))
+            'environment', 'overbooking_factor', 
+            'per_user_busy_hour_capacity_mbps'))
 
     else:
         metrics_file = open(metrics_filename, 'a', newline='')
@@ -425,11 +439,18 @@ def write_pcd_results(network_manager, year, pop_scenario, throughput_scenario,
         area = pcd.area
         pop_d = pcd.population_density
         environment = pcd.clutter_environment
-
+        overbooking_factor = overbooking_factor
+        per_user_busy_hour_capacity_mbps = (
+            (capacity * area) / (pop / overbooking_factor)
+        )
+        
         metrics_writer.writerow(
-            (year, pcd.id, capex, opex, demand, user_throughput, capacity,
-            capacity_deficit, assets, pop, area, pop_d, environment)
+            (
+                year, pcd.id, capex, opex, demand, user_throughput, capacity,
+                capacity_deficit, assets, pop, area, pop_d, environment,
+                overbooking_factor, per_user_busy_hour_capacity_mbps
             )
+        )
 
     metrics_file.close()
 
@@ -534,21 +555,22 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
         ('baseline', 'baseline', 'macrocell-700-3500', 30),
         ('high', 'high', 'macrocell-700-3500', 30),
 
+        ('low', 'low', 'macro-densification', 30),
+        ('baseline', 'baseline', 'macro-densification', 30),
+        ('high', 'high', 'macro-densification', 30),
+
+        ('low', 'low', 'small-cell-and-spectrum', 30),
+        ('baseline', 'baseline', 'small-cell-and-spectrum', 30),
+        ('high', 'high', 'small-cell-and-spectrum', 30),
+
         # ('low', 'low', 'sectorisation', 30),
         # ('baseline', 'baseline', 'sectorisation', 30),
         # ('high', 'high', 'sectorisation', 30),
-
-        # ('low', 'low', 'macro-densification', 30),
-        # ('baseline', 'baseline', 'macro-densification', 30),
-        # ('high', 'high', 'macro-densification', 30),
 
         # ('low', 'low', 'deregulation', 40),
         # ('baseline', 'baseline', 'deregulation', 40),
         # ('high', 'high', 'deregulation', 40),
 
-        ('low', 'low', 'small-cell-and-spectrum', 30),
-        ('baseline', 'baseline', 'small-cell-and-spectrum', 30),
-        ('high', 'high', 'small-cell-and-spectrum', 30),
     ]:
     print("Running:", pop_scenario, throughput_scenario, \
         intervention_strategy, mast_height)
@@ -571,13 +593,12 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
             except:
                  pass
 
-        # Decide on new interventions
         budget = ANNUAL_BUDGET
         service_obligation_capacity = SERVICE_OBLIGATION_CAPACITY
         traffic = PERCENTAGE_OF_TRAFFIC_IN_BUSY_HOUR
         market_share = MARKET_SHARE
+        overbooking_factor = OVERBOOKING_FACTOR
 
-        # simulate first
         if year == BASE_YEAR:
             system = NetworkManager(
                 lads, postcode_sectors, assets,
@@ -586,41 +607,13 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
                 market_share, '30'
                 )
 
-        # assets_in_iv274 = []
-        # for asset in assets:
-        #     if asset['pcd_sector'] == 'IV274':
-        #         assets_in_iv274.append(asset['site_ngr'])
-        # print('assets in iv274 = {}'.format(sorted(assets_in_iv274)))
-        # print([p['frequency'] for p in assets])
-
         interventions_built, budget = decide_interventions(
             intervention_strategy, budget, service_obligation_capacity,
             system, year, traffic, market_share, mast_height
             )
 
-        # assets_in_iv274 = []
-        # for intervention in interventions_built:
-        #     if intervention['pcd_sector'] == 'IV274':
-        #         assets_in_iv274.append(intervention)
-        # print('assets in iv274 = {}'.format(len(assets_in_iv274)))
-        # import pprint
-        # pprint.pprint(assets_in_iv274)
-        assets = upgrade_existing_assets(assets, interventions_built, mast_height)
+        assets += interventions_built
 
-        # for asset in assets:
-        #     if asset['site_ngr'] == 'site_1':
-        #         print(asset)
-
-        # unique = []
-        # for asset in assets:
-        #     for key in asset.keys():
-        #         unique.append(key)
-
-        # print(set(unique))
-        system = None
-        # print(assets)
-        # print('macros: {}'.format(len([a for a in assets if a['type'] == 'macrocell_site'])))
-        # print('small_cells {}'.format(len([a for a in assets if a['type'] == 'small_cell'])))
         system = NetworkManager(
             lads, postcode_sectors, assets,
             capacity_lookup_table, clutter_lookup,
@@ -628,21 +621,20 @@ for pop_scenario, throughput_scenario, intervention_strategy, mast_height in [
             market_share, mast_height
             )
 
+        interventions_built = calculate_costs(interventions_built, DISCOUNT_RATE, BASE_YEAR, year)
+
         capex_by_lad, capex_by_pcd, opex_by_lad, opex_by_pcd = allocate_costs(
             interventions_built, system
             )
 
         write_decisions(interventions_built, year, pop_scenario, throughput_scenario,
-                    intervention_strategy)
+            intervention_strategy)
         write_spend(interventions_built, year, pop_scenario, throughput_scenario,
-                    intervention_strategy)
+            intervention_strategy)
         write_lad_results(system, year, pop_scenario, throughput_scenario,
-                          intervention_strategy, capex_by_lad, opex_by_lad)
+            intervention_strategy, capex_by_lad, opex_by_lad, overbooking_factor)
         write_pcd_results(system, year, pop_scenario, throughput_scenario,
-                          intervention_strategy, capex_by_pcd, opex_by_pcd)
-        # print('len(assets) {}'.format(len(assets)))
+            intervention_strategy, capex_by_pcd, opex_by_pcd, overbooking_factor)
+
     interventions_built = []
     system = None
-#
-    # for area in system.postcode_sectors.values():
-    #     opex_by_pcd[area['pcd_sector']] =+ area['opex']
