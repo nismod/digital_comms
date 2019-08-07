@@ -92,9 +92,6 @@ def generate_assets(postcode_sectors, number_of_assets_per_area):
                     'frequency': '800',
                     'technology': '4G',
                     'type': 'macrocell_site',
-                    'bandwidth': '10',
-                    'sectors': 3,
-                    'mast_height': '30',
                     'pcd_sector': pcd_sector['id'].replace(' ', ''),
                     'technical_lifetime': '10',
                     'capex': 50917,
@@ -109,9 +106,6 @@ def generate_assets(postcode_sectors, number_of_assets_per_area):
                     'frequency': '1800',
                     'technology': '4G',
                     'type': 'macrocell_site',
-                    'bandwidth': '10',
-                    'sectors': 3,
-                    'mast_height': '30',
                     'pcd_sector': pcd_sector['id'].replace(' ', ''),
                     'technical_lifetime': '10',
                     'capex': 50917,
@@ -126,9 +120,6 @@ def generate_assets(postcode_sectors, number_of_assets_per_area):
                     'frequency': '2600',
                     'technology': '4G',
                     'type': 'macrocell_site',
-                    'bandwidth': '10',
-                    'sectors': 3,
-                    'mast_height': '30',
                     'pcd_sector': pcd_sector['id'].replace(' ', ''),
                     'technical_lifetime': '10',
                     'capex': 50917,
@@ -143,9 +134,6 @@ def generate_assets(postcode_sectors, number_of_assets_per_area):
                     'frequency': '700',
                     'technology': '5G',
                     'type': 'macrocell_site',
-                    'bandwidth': '10',
-                    'sectors': 3,
-                    'mast_height': '30',
                     'pcd_sector': pcd_sector['id'].replace(' ', ''),
                     'technical_lifetime': '10',
                     'capex': 50917,
@@ -160,9 +148,6 @@ def generate_assets(postcode_sectors, number_of_assets_per_area):
                     'frequency': '3500',
                     'technology': '5G',
                     'type': 'macrocell_site',
-                    'bandwidth': '40',
-                    'sectors': 3,
-                    'mast_height': '30',
                     'pcd_sector': pcd_sector['id'].replace(' ', ''),
                     'technical_lifetime': '10',
                     'capex': 50917,
@@ -177,9 +162,6 @@ def generate_assets(postcode_sectors, number_of_assets_per_area):
                     'frequency': ['800', '1800', '2600'],
                     'technology': '4G',
                     'type': 'macrocell_site',
-                    'bandwidth': '10',
-                    'sectors': 3,
-                    'mast_height': '30',
                     'pcd_sector': pcd_sector['id'].replace(' ', ''),
                     'technical_lifetime': '10',
                     'capex': 142446,
@@ -194,9 +176,6 @@ def generate_assets(postcode_sectors, number_of_assets_per_area):
                     'frequency': ['700', '800', '1800', '2600', '3500'],
                     'technology': '5G',
                     'type': 'macrocell_site',
-                    'bandwidth': 'frequency_dependent',
-                    'sectors': 3,
-                    'mast_height': '30',
                     'pcd_sector': pcd_sector['id'].replace(' ', ''),
                     'technical_lifetime': '10',
                     'capex': 142446,
@@ -211,7 +190,6 @@ def generate_assets(postcode_sectors, number_of_assets_per_area):
                     'frequency': '3700',
                     'technology': '5G',
                     'type': 'small_cell',
-                    'bandwidth': '25',
                     'pcd_sector': pcd_sector['id'],
                     'capex': 12000,
                     'opex': 1000,
@@ -243,7 +221,7 @@ def csv_writer(data, filename):
 
 if __name__ == '__main__':
 
-    number_of_assets_per_area = 100
+    number_of_assets_per_area = 50
 
     print('Loading postcode sectors')
     postcode_sectors = load_postcode_sectors()
