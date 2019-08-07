@@ -41,7 +41,7 @@ def load_postcode_sectors():
 
 def load_capacity_lookup_table():
 
-    PATH_LIST = glob.iglob(os.path.join(INTERMEDIATE, 
+    PATH_LIST = glob.iglob(os.path.join(INTERMEDIATE,
         'system_simulator', '**/*test_lookup_table*.csv'), recursive=True)
 
     capacity_lookup_table = {}
@@ -78,12 +78,12 @@ def load_capacity_lookup_table():
     return capacity_lookup_table
 
 
-def generate_assets(postcode_sectors, capacity_lookup):
+def generate_assets(postcode_sectors, number_of_assets_per_area):
 
     all_possible_assets = []
 
     for pcd_sector in postcode_sectors:
-        for asset_id in range(0, 200):
+        for asset_id in range(0, number_of_assets_per_area):
             #add 800 to site
             all_possible_assets.append(
                 {
@@ -91,14 +91,14 @@ def generate_assets(postcode_sectors, capacity_lookup):
                         '800', pcd_sector['id'], asset_id),
                     'frequency': '800',
                     'technology': '4G',
-                    'type': 'macrocell_site',                
+                    'type': 'macrocell_site',
                     'bandwidth': '10',
                     'sectors': 3,
                     'mast_height': '30',
                     'pcd_sector': pcd_sector['id'].replace(' ', ''),
                     'technical_lifetime': '10',
                     'capex': 50917,
-                    'opex': 2000,                
+                    'opex': 2000,
                 }
             )
             #add 1800 to site
@@ -108,15 +108,15 @@ def generate_assets(postcode_sectors, capacity_lookup):
                         '1800', pcd_sector['id'], asset_id),
                     'frequency': '1800',
                     'technology': '4G',
-                    'type': 'macrocell_site',                
+                    'type': 'macrocell_site',
                     'bandwidth': '10',
                     'sectors': 3,
                     'mast_height': '30',
                     'pcd_sector': pcd_sector['id'].replace(' ', ''),
                     'technical_lifetime': '10',
                     'capex': 50917,
-                    'opex': 2000,                
-                } 
+                    'opex': 2000,
+                }
             )
             #add 2600 to site
             all_possible_assets.append(
@@ -125,16 +125,16 @@ def generate_assets(postcode_sectors, capacity_lookup):
                         '2600', pcd_sector['id'], asset_id),
                     'frequency': '2600',
                     'technology': '4G',
-                    'type': 'macrocell_site',                
+                    'type': 'macrocell_site',
                     'bandwidth': '10',
                     'sectors': 3,
                     'mast_height': '30',
                     'pcd_sector': pcd_sector['id'].replace(' ', ''),
                     'technical_lifetime': '10',
                     'capex': 50917,
-                    'opex': 2000,                
-                }  
-            )         
+                    'opex': 2000,
+                }
+            )
             #add 700 to site
             all_possible_assets.append(
                 {
@@ -142,14 +142,14 @@ def generate_assets(postcode_sectors, capacity_lookup):
                         '700', pcd_sector['id'], asset_id),
                     'frequency': '700',
                     'technology': '5G',
-                    'type': 'macrocell_site',                
+                    'type': 'macrocell_site',
                     'bandwidth': '10',
                     'sectors': 3,
                     'mast_height': '30',
                     'pcd_sector': pcd_sector['id'].replace(' ', ''),
                     'technical_lifetime': '10',
                     'capex': 50917,
-                    'opex': 2000,              
+                    'opex': 2000,
                 }
             )
             #add 3500 to site
@@ -159,14 +159,14 @@ def generate_assets(postcode_sectors, capacity_lookup):
                         '3500', pcd_sector['id'], asset_id),
                     'frequency': '3500',
                     'technology': '5G',
-                    'type': 'macrocell_site',                
+                    'type': 'macrocell_site',
                     'bandwidth': '40',
                     'sectors': 3,
                     'mast_height': '30',
                     'pcd_sector': pcd_sector['id'].replace(' ', ''),
                     'technical_lifetime': '10',
                     'capex': 50917,
-                    'opex': 2000,              
+                    'opex': 2000,
                 }
             )
             #build 4G site
@@ -176,14 +176,14 @@ def generate_assets(postcode_sectors, capacity_lookup):
                         pcd_sector['id'], asset_id),
                     'frequency': ['800', '1800', '2600'],
                     'technology': '4G',
-                    'type': 'macrocell_site',                
+                    'type': 'macrocell_site',
                     'bandwidth': '10',
                     'sectors': 3,
                     'mast_height': '30',
                     'pcd_sector': pcd_sector['id'].replace(' ', ''),
                     'technical_lifetime': '10',
                     'capex': 142446,
-                    'opex': 10000,              
+                    'opex': 10000,
                 }
             )
             #build 5G site
@@ -193,14 +193,14 @@ def generate_assets(postcode_sectors, capacity_lookup):
                         pcd_sector['id'], asset_id),
                     'frequency': ['700', '800', '1800', '2600', '3500'],
                     'technology': '5G',
-                    'type': 'macrocell_site',                
+                    'type': 'macrocell_site',
                     'bandwidth': 'frequency_dependent',
                     'sectors': 3,
                     'mast_height': '30',
                     'pcd_sector': pcd_sector['id'].replace(' ', ''),
                     'technical_lifetime': '10',
                     'capex': 142446,
-                    'opex': 10000,              
+                    'opex': 10000,
                 }
             )
             #build small cell
@@ -218,7 +218,7 @@ def generate_assets(postcode_sectors, capacity_lookup):
                     'technical_lifetime': 5,
                 }
             )
-    
+
     return all_possible_assets
 
 
@@ -243,14 +243,16 @@ def csv_writer(data, filename):
 
 if __name__ == '__main__':
 
+    number_of_assets_per_area = 100
+
     print('Loading postcode sectors')
     postcode_sectors = load_postcode_sectors()
-    
-    print('Loading capacity lookup table')
-    capacity_lookup = load_capacity_lookup_table()
-    
-    print('Loading postcode sectors')
-    assets = generate_assets(postcode_sectors, capacity_lookup)
+
+    # print('Loading capacity lookup table')
+    # capacity_lookup = load_capacity_lookup_table()
+
+    print('Generating assets')
+    assets = generate_assets(postcode_sectors, number_of_assets_per_area)
 
     print('Writing assets to .csv')
     csv_writer(assets, 'digital_interventions.csv')
