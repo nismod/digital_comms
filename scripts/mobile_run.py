@@ -21,8 +21,7 @@ CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
-SYSTEM_INPUT_PATH = os.path.join(BASE_PATH, 'raw', 'b_mobile_model','mobile_model_1.0')
-INTERMEDIATE_PATH = os.path.join(BASE_PATH, 'intermediate')
+INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 SHAPES_INPUT_PATH = os.path.join(BASE_PATH, 'raw', 'd_shapes')
 SYSTEM_OUTPUT_PATH = os.path.join(BASE_PATH, '..','results')
 
@@ -68,18 +67,18 @@ def load_postcode_sectors():
 
     """
     pcd_sectors = []
-    PCD_SECTOR_FILENAME = os.path.join(
-        BASE_PATH, 'processed', '_processed_postcode_sectors.csv'
-        )
+    PCD_SECTOR_FILENAME = os.path.join(INTERMEDIATE, 'mobile_model_inputs',
+        '_processed_postcode_sectors.csv'
+    )
 
     with open(PCD_SECTOR_FILENAME, 'r') as source:
         reader = csv.DictReader(source)
         for pcd_sector in reader:
             pcd_sectors.append({
-                "id": pcd_sector['postcode'].replace(" ", ""),
+                "id": pcd_sector['pcd_sector'].replace(" ", ""),
                 "lad_id": pcd_sector['lad'],
-                "area": float(pcd_sector['area']) / 1e6
-            })
+                "area_km2": float(pcd_sector['area_km2'])
+                })
 
     return pcd_sectors
 
@@ -126,7 +125,8 @@ def load_user_throughput_scenarios():
     }
 
     THROUGHPUT_FILENAME = os.path.join(BASE_PATH, 'raw', 'b_mobile_model',
-        'mobile_model_1.0', 'scenario_data', 'monthly_data_growth_scenarios.csv')
+        'mobile_model_1.0', 'scenario_data', 'monthly_data_growth_scenarios.csv'
+    )
 
     with open(THROUGHPUT_FILENAME, 'r') as throughput_file:
         reader = csv.reader(throughput_file)
@@ -148,9 +148,9 @@ def load_initial_system():
     Load in initial system of mobile sites.
 
     """
-    SYSTEM_FILENAME = os.path.join(
-        BASE_PATH, 'processed', 'final_processed_sites.csv'
-        )
+    SYSTEM_FILENAME = os.path.join(INTERMEDIATE, 'mobile_model_inputs',
+        'final_processed_sites.csv'
+    )
 
     initial_system = []
 
@@ -169,9 +169,6 @@ def load_initial_system():
                 'build_date': 2016,
                 'technology': technology,
                 'frequency': frequency,
-                'bandwidth': '10',
-                'sectors': 3,
-                'mast_height': '30',
                 'type': 'macrocell_site',
                 'capex': 0,
                 'opex': 20000
@@ -185,8 +182,9 @@ def load_capacity_lookup_table():
     Load in capacity density lookup table.
 
     """
-    PATH_LIST = glob.iglob(os.path.join(INTERMEDIATE_PATH,
-        'system_simulator', '**/*test_lookup_table*.csv'), recursive=True)
+    PATH_LIST = glob.iglob(os.path.join(INTERMEDIATE,
+        'system_simulator', '*capacity_lookup_table*.csv'), recursive=True
+    )
 
     capacity_lookup_table = {}
 
@@ -194,15 +192,12 @@ def load_capacity_lookup_table():
         with open(path, 'r') as capacity_lookup_file:
             reader = csv.DictReader(capacity_lookup_file)
             for row in reader:
+
                 environment = row["environment"].lower()
                 frequency = str(int(float(row["frequency_GHz"]) * 1e3))
-                bandwidth = row["bandwidth_MHz"]
-                # mast_height = str(row['mast_height_m'])
+                bandwidth = str(row["bandwidth_MHz"])
                 density = float(row["sites_per_km2"])
                 capacity = float(row["capacity_mbps_km2"])
-                cell_edge_spectral_efficency = float(
-                    row['spectral_efficiency_bps_hz']
-                    )
 
                 if (environment, frequency, bandwidth) \
                     not in capacity_lookup_table:
@@ -227,9 +222,9 @@ def load_clutter_geotype_lookup_table():
     Load in clutter geotype lookup table.
 
     """
-    CLUTTER_GEOTYPE_FILENAME = os.path.join(
-        SYSTEM_INPUT_PATH, 'lookup_tables', 'lookup_table_geotype.csv'
-        )
+    CLUTTER_GEOTYPE_FILENAME = os.path.join(INTERMEDIATE, 'mobile_model_inputs',
+        'lookup_table_geotype.csv'
+    )
 
     clutter_lookup = []
 
@@ -245,15 +240,13 @@ def load_clutter_geotype_lookup_table():
     return clutter_lookup
 
 
-def write_lad_results(network_manager, year, pop_scenario,
+def write_lad_results(network_manager, folder, year, pop_scenario,
     throughput_scenario, intervention_strategy, cost_by_lad):
     """
     Write LAD results to .csv file.
 
     """
-    suffix = _get_suffix(pop_scenario, throughput_scenario,
-        intervention_strategy)
-    folder = os.path.join(BASE_PATH, '..', 'results', 'mobile_model_1.0')
+    suffix = _get_suffix(pop_scenario, throughput_scenario, intervention_strategy)
     if not os.path.exists(folder):
         os.mkdir(folder)
     metrics_filename = os.path.join(folder, 'metrics_{}.csv'.format(suffix))
@@ -284,15 +277,14 @@ def write_lad_results(network_manager, year, pop_scenario,
 
     metrics_file.close()
 
-def write_pcd_results(network_manager, year, pop_scenario,
+
+def write_pcd_results(network_manager, folder, year, pop_scenario,
     throughput_scenario, intervention_strategy, cost_by_pcd):
     """
     Write postcode sector results to .csv file.
 
     """
-    suffix = _get_suffix(pop_scenario, throughput_scenario,
-        intervention_strategy)
-    folder = os.path.join(BASE_PATH, '..', 'results', 'mobile_model_1.0')
+    suffix = _get_suffix(pop_scenario, throughput_scenario, intervention_strategy)
     if not os.path.exists(folder):
         os.mkdir(folder)
     metrics_filename = os.path.join(folder,
@@ -322,20 +314,19 @@ def write_pcd_results(network_manager, year, pop_scenario,
 
     metrics_file.close()
 
-def write_decisions(decisions, year, pop_scenario,
+
+def write_decisions(decisions, folder, year, pop_scenario,
     throughput_scenario, intervention_strategy):
     """
     Write decisions to .csv file.
 
     """
-    suffix = _get_suffix(pop_scenario, throughput_scenario,
-        intervention_strategy)
-    folder = os.path.join(BASE_PATH, '..', 'results')
+    suffix = _get_suffix(pop_scenario, throughput_scenario, intervention_strategy)
+    # folder = os.path.join(BASE_PATH, '..', 'results')
     if not os.path.exists(folder):
         os.mkdir(folder)
-        os.mkdir(os.path.join(folder, 'mobile_model_1.0'))
-    decisions_filename =  os.path.join(folder,
-        'mobile_model_1.0', 'decisions_{}.csv'.format(suffix))
+        # os.mkdir(os.path.join(folder, 'mobile_model_1.0'))
+    decisions_filename =  os.path.join(folder, 'decisions_{}.csv'.format(suffix))
 
     if year == BASE_YEAR:
         decisions_file = open(decisions_filename, 'w', newline='')
@@ -363,15 +354,13 @@ def write_decisions(decisions, year, pop_scenario,
     decisions_file.close()
 
 
-def write_spend(spend, year, pop_scenario,
+def write_spend(spend, folder, year, pop_scenario,
     throughput_scenario, intervention_strategy):
     """
     Write asset spending results to .csv file.
 
     """
-    suffix = _get_suffix(pop_scenario, throughput_scenario,
-        intervention_strategy)
-    folder = os.path.join(BASE_PATH, '..', 'results', 'mobile_model_1.0')
+    suffix = _get_suffix(pop_scenario, throughput_scenario, intervention_strategy)
     if not os.path.exists(folder):
         os.mkdir(folder)
     spend_filename = os.path.join(folder, 'spend_{}.csv'.format(suffix))
@@ -415,6 +404,8 @@ if __name__ == '__main__':
     # - output demand, capacity, opex, energy demand, built interventions,
     #   build costs per year
     ################################################################
+
+    folder = os.path.join(BASE_PATH, '..', 'results')
 
     BASE_YEAR = 2020
     END_YEAR = 2030
@@ -544,11 +535,11 @@ if __name__ == '__main__':
                 cost_by_lad[lad] += cost
                 cost_by_pcd[pcd] += cost
 
-            write_decisions(interventions_built, year, pop_scenario,
-                throughput_scenario, intervention_strategy)
-            write_spend(spend, year, pop_scenario, throughput_scenario,
-                intervention_strategy)
-            write_lad_results(system, year, pop_scenario, throughput_scenario,
+            write_lad_results(system, folder, year, pop_scenario, throughput_scenario,
                 intervention_strategy, cost_by_lad)
-            write_pcd_results(system, year, pop_scenario, throughput_scenario,
+            write_pcd_results(system, folder, year, pop_scenario, throughput_scenario,
                 intervention_strategy, cost_by_pcd)
+            write_decisions(interventions_built, folder, year, pop_scenario,
+                throughput_scenario, intervention_strategy)
+            write_spend(spend, folder, year, pop_scenario, throughput_scenario,
+                intervention_strategy)
