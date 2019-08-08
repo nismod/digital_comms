@@ -18,7 +18,6 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 
 RAW = os.path.join(BASE_PATH, 'raw', 'b_mobile_model','mobile_model_1.0')
 INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
-PROCESSED = os.path.join(BASE_PATH, 'processed')
 
 def load_postcode_sectors(geotype_lookup):
     """
