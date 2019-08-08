@@ -26,9 +26,7 @@ def load_postcode_sectors(geotype_lookup):
 
     """
     pcd_sectors = []
-    PCD_SECTOR_FILENAME = os.path.join(
-        BASE_PATH, 'processed', '_processed_postcode_sectors.csv'
-        )
+    PCD_SECTOR_FILENAME = os.path.join(INTERMEDIATE, '_processed_postcode_sectors.csv')
 
     with open(PCD_SECTOR_FILENAME, 'r') as source:
         reader = csv.DictReader(source)
@@ -84,7 +82,8 @@ def pairwise(iterable):
 
 def load_capacity_lookup_table(geotypes):
 
-    PATH_LIST = glob.iglob(os.path.join(PROCESSED, '*capacity_lookup_table*.csv'))
+    PATH_LIST = glob.iglob(os.path.join(INTERMEDIATE, 'system_simulator',
+    '*capacity_lookup_table*.csv'))
 
     capacity_lookup_table = {}
 
