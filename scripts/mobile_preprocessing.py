@@ -565,24 +565,6 @@ def read_exchange_areas():
             yield area
 
 
-def select_routing_points(origin_point, dest_points, areas):
-
-    idx = index.Index(
-        (i, Point(dest_point['geometry']['coordinates']).bounds, dest_point)
-        for i, dest_point in enumerate(dest_points)
-        )
-
-    nearest_exchange = list(idx.nearest(
-            Point(origin_point['geometry']['coordinates']).bounds,
-            1, objects='raw'))[0]
-
-    exchange_id = nearest_exchange['properties']['id']
-
-    for exchange_area in areas:
-        if exchange_area['properties']['id'] == exchange_id:
-            return nearest_exchange, exchange_area
-
-
 def return_object_coordinates(object):
 
     if object['geometry']['type'] == 'Polygon':
@@ -596,125 +578,6 @@ def return_object_coordinates(object):
         print('non conforming geometry type {}'.format(object['geometry']['type']))
 
     return x, y
-
-
-def generate_shortest_path(origin_points, dest_points, areas):
-    """
-    Calculate distance between each site (origin_points) and the
-    nearest exchange (dest_points).
-
-    """
-    processed_sites = []
-    links = []
-
-    idx = index.Index(
-        (i, Point(dest_point['geometry']['coordinates']).bounds, dest_point)
-        for i, dest_point in enumerate(dest_points)
-        )
-
-    for site in origin_points:
-
-        exchange = list(idx.nearest(
-            Point(site['geometry']['coordinates']).bounds,
-            1, objects='raw'))[0]
-
-        exchange_id = exchange['properties']['id']
-
-        for exchange_polygon in areas:
-            if exchange_polygon['properties']['id'] == exchange_id:
-                exchange_area = exchange_polygon
-
-        ox.config(log_file=False, log_console=False, use_cache=True)
-
-        projUTM = Proj(init='epsg:27700')
-        projWGS84 = Proj(init='epsg:4326')
-
-        east, north = transform(
-            projUTM, projWGS84, shape(exchange_area['geometry']).bounds[2],
-            shape(exchange_area['geometry']).bounds[3]
-            )
-
-        west, south = transform(
-            projUTM, projWGS84, shape(exchange_area['geometry']).bounds[0],
-            shape(exchange_area['geometry']).bounds[1]
-            )
-
-        G = ox.graph_from_bbox(
-            north, south, east, west, network_type='all',
-            truncate_by_edge=True
-            )
-
-        origin_x, origin_y = return_object_coordinates(site)
-        dest_x, dest_y = return_object_coordinates(exchange)
-
-        # Find shortest path between the two
-        point1_x, point1_y = transform(projUTM, projWGS84, origin_x, origin_y)
-        point2_x, point2_y = transform(projUTM, projWGS84, dest_x, dest_y)
-
-        # Find shortest path between the two
-        point1 = (point1_y, point1_x)
-        point2 = (point2_y, point2_x)
-
-        # TODO improve by finding nearest edge,
-        # routing to/from node at either end
-        origin_node = ox.get_nearest_node(G, point1)
-        destination_node = ox.get_nearest_node(G, point2)
-
-        try:
-            if origin_node != destination_node:
-                route = nx.shortest_path(
-                    G, origin_node, destination_node, weight='length'
-                    )
-
-                # Retrieve route nodes and lookup geographical location
-                routeline = []
-                routeline.append((origin_x, origin_y))
-                for node in route:
-                    routeline.append((
-                        transform(projWGS84, projUTM,
-                        G.nodes[node]['x'], G.nodes[node]['y'])
-                        ))
-                routeline.append((dest_x, dest_y))
-                line = routeline
-            else:
-                line = [(origin_x, origin_y), (dest_x, dest_y)]
-        except nx.exception.NetworkXNoPath:
-            line = [(origin_x, origin_y), (dest_x, dest_y)]
-
-        # Map to line
-        processed_sites.append({
-            'type': 'Feature',
-            'geometry': site['geometry'],
-            'properties':{
-                'id': site['properties']['id'],
-                'Antennaht': site['properties']['Antennaht'],
-                'Transtype': site['properties']['Transtype'],
-                'Freqband': site['properties']['Freqband'],
-                'Anttype': site['properties']['Anttype'],
-                'Powerdbw': site['properties']['Powerdbw'],
-                'Maxpwrdbw': site['properties']['Maxpwrdbw'],
-                'Maxpwrdbm': site['properties']['Maxpwrdbm'],
-                'lte_4G': site['properties']['lte_4G'],
-                'exchange': exchange['properties']['id'],
-                'backhaul_length_m': LineString(line).length
-                }
-        })
-
-        # Map to line
-        links.append({
-            'type': "Feature",
-            'geometry': {
-                "type": "LineString",
-                "coordinates": line
-            },
-            'properties': {
-                "site": site['properties']['id'],
-                "exchange": exchange['properties']['id'],
-                "length": LineString(line).length
-            }
-        })
-
-    return links, processed_sites
 
 
 def generate_link_straight_line(origin_points, dest_points):
@@ -931,11 +794,6 @@ if __name__ == "__main__":
 
     print('Reading exchange areas')
     exchange_areas = read_exchange_areas()
-
-    # print('Generating shortest path link')
-    # backhaul_links, processed_sites = generate_shortest_path(
-    #     processed_sites, exchanges, exchange_areas
-    #     )
 
     print('Generating straight line distance from each site to the nearest exchange')
     processed_sites, backhaul_links = generate_link_straight_line(processed_sites, exchanges)
