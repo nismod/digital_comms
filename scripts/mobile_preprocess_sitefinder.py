@@ -98,10 +98,10 @@ def process_asset_data(data):
             if asset['buffer'].intersects(other_asset['buffer']):
                 touching_assets.append(other_asset)
                 assets_seen.add(other_asset['properties']['Opref'])
-        
+
         dissolved_shape = cascaded_union([a['buffer'] for a in touching_assets])
         final_centroid = dissolved_shape.centroid
-        
+
         output.append({
             'type': "Feature",
             'geometry': {
@@ -120,6 +120,18 @@ def process_asset_data(data):
         })
 
     return output
+
+
+def run_sitefinder_preprocessing():
+
+    folder = os.path.join(BASE_PATH,'raw','b_mobile_model','sitefinder')
+
+    asset_data = import_sitefinder_data(os.path.join(folder, 'sitefinder.csv'))[:10]
+
+    points = process_asset_data(asset_data)
+
+    return points
+
 
 def write_shapefile(data, filename):
 
@@ -150,15 +162,16 @@ def write_shapefile(data, filename):
         for feature in data:
             sink.write(feature)
 
-def csv_writer(data, filename):
+
+def convert_data_to_list(data):
     """
-    Write data to a CSV file path
+    Take geojson format and convert to list of dicts.
 
     """
-    #process_data
-    data_for_writing = []
+    output = []
+
     for asset in data:
-        data_for_writing.append({
+        output.append({
             'longitude': asset['geometry']['coordinates'][0],
             'latitude': asset['geometry']['coordinates'][1],
             'Antennaht': asset['properties']['Antennaht'],
@@ -170,9 +183,17 @@ def csv_writer(data, filename):
             'Maxpwrdbm':  asset['properties']['Maxpwrdbm'],
         })
 
+    return output
+
+
+def csv_writer(data, filename):
+    """
+    Write data to a CSV file path
+
+    """
     #get fieldnames
     fieldnames = []
-    for name, value in data_for_writing[0].items():
+    for name, value in data[0].items():
         fieldnames.append(name)
 
     #create path
@@ -183,22 +204,24 @@ def csv_writer(data, filename):
     with open(os.path.join(directory, filename), 'w') as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
         writer.writeheader()
-        writer.writerows(data_for_writing)
+        writer.writerows(data)
 
 if __name__ == "__main__":
 
-    #import desired assets
-    asset_data = import_sitefinder_data(
-        os.path.join(
-            BASE_PATH,'raw','b_mobile_model','sitefinder','sitefinder'+'.csv'
-            )
-        )
+    #specify folder
+    folder = os.path.join(BASE_PATH,'raw','b_mobile_model','sitefinder')
+
+    #import asset data
+    asset_data = import_sitefinder_data(os.path.join(folder, 'sitefinder.csv'))
 
     #process points using 50m buffer
-    points = process_asset_data(asset_data)#[:1000]
+    points = process_asset_data(asset_data)[:10]
 
     # #write shapefile
     # write_shapefile(points, 'sitefinder_processed_test.shp')
+
+    #convert geojson to list
+    data_to_write = convert_data_to_list
 
     #write csv
     csv_writer(points, 'sitefinder_processed.csv')
