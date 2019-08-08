@@ -491,13 +491,6 @@ def process_asset_data(data):
             },
             'properties':{
                 'id': asset['properties']['id'],
-                # 'Antennaht': find_average('Antennaht', touching_assets),
-                # 'Transtype': [a['properties']['Transtype'] for a in touching_assets],
-                # 'Freqband': [a['properties']['Freqband'] for a in touching_assets],
-                # 'Anttype': [a['properties']['Anttype'] for a in touching_assets],
-                # 'Powerdbw': find_average('Powerdbw', touching_assets),
-                # 'Maxpwrdbw': find_average('Maxpwrdbw', touching_assets),
-                # 'Maxpwrdbm': find_average('Maxpwrdbm', touching_assets),
             }
         })
 
@@ -525,13 +518,6 @@ def add_coverage_to_sites(sitefinder_data, postcode_sectors):
                     'properties':{
                         'pcd_sector': postcode_sector['properties']['pcd_sector'],
                         'id': n.object['properties']['id'],
-                        # 'Antennaht': n.object['properties']['Antennaht'],
-                        # 'Transtype': n.object['properties']['Transtype'],
-                        # 'Freqband': n.object['properties']['Freqband'],
-                        # 'Anttype': n.object['properties']['Anttype'],
-                        # 'Powerdbw': n.object['properties']['Powerdbw'],
-                        # 'Maxpwrdbw': n.object['properties']['Maxpwrdbw'],
-                        # 'Maxpwrdbm': n.object['properties']['Maxpwrdbm'],
                         'lte_4G': postcode_sector['properties']['lte']
                         }
                     })
@@ -551,7 +537,6 @@ def read_exchanges():
     with open(path, 'r') as source:
         reader = csv.DictReader(source)
         for line in reader:
-            # if line['OLO'] == 'CLMON':
             yield {
                 'type': "Feature",
                 'geometry': {
@@ -577,7 +562,6 @@ def read_exchange_areas():
 
     with fiona.open(path, 'r') as source:
         for area in source:
-            #if area['properties']['id'].startswith('exchange_CLMON'):
             yield area
 
 
@@ -598,6 +582,7 @@ def select_routing_points(origin_point, dest_points, areas):
         if exchange_area['properties']['id'] == exchange_id:
             return nearest_exchange, exchange_area
 
+
 def return_object_coordinates(object):
 
     if object['geometry']['type'] == 'Polygon':
@@ -611,6 +596,7 @@ def return_object_coordinates(object):
         print('non conforming geometry type {}'.format(object['geometry']['type']))
 
     return x, y
+
 
 def generate_shortest_path(origin_points, dest_points, areas):
     """
@@ -730,6 +716,7 @@ def generate_shortest_path(origin_points, dest_points, areas):
 
     return links, processed_sites
 
+
 def generate_link_straight_line(origin_points, dest_points):
 
     idx = index.Index(
@@ -762,13 +749,6 @@ def generate_link_straight_line(origin_points, dest_points):
                 'properties':{
                     'pcd_sector': origin_point['properties']['pcd_sector'],
                     'id': origin_point['properties']['id'],
-                    # 'Antennaht': origin_point['properties']['Antennaht'],
-                    # 'Transtype': origin_point['properties']['Transtype'],
-                    # 'Freqband': origin_point['properties']['Freqband'],
-                    # 'Anttype': origin_point['properties']['Anttype'],
-                    # 'Powerdbw': origin_point['properties']['Powerdbw'],
-                    # 'Maxpwrdbw': origin_point['properties']['Maxpwrdbw'],
-                    # 'Maxpwrdbm': origin_point['properties']['Maxpwrdbm'],
                     'lte_4G': origin_point['properties']['lte_4G'],
                     'exchange': exchange['properties']['id'],
                     'backhaul_length_m': geom.length * 1.60934
@@ -848,15 +828,6 @@ def csv_writer_sites(data, filename):
         data_for_writing.append({
             'pcd_sector': asset['properties']['pcd_sector'],
             'id': asset['properties']['id'],
-            # 'longitude': asset['geometry']['coordinates'][0],
-            # 'latitude': asset['geometry']['coordinates'][1],
-            # 'Antennaht': asset['properties']['Antennaht'],
-            # 'Transtype': asset['properties']['Transtype'],
-            # 'Freqband': asset['properties']['Freqband'],
-            # 'Anttype': asset['properties']['Anttype'],
-            # 'Powerdbw':  asset['properties']['Powerdbw'],
-            # 'Maxpwrdbw':  asset['properties']['Maxpwrdbw'],
-            # 'Maxpwrdbm':  asset['properties']['Maxpwrdbm'],
             'lte_4G':  asset['properties']['lte_4G'],
             'exchange':  asset['properties']['exchange'],
             'backhaul_length_m':  asset['properties']['backhaul_length_m'],
