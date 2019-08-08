@@ -1,6 +1,8 @@
-"""Model runner to use in place of smif for standalone modelruns
+"""
+Model runner to use in place of smif for standalone modelruns
 - run over multiple years
 - make rule-based intervention decisions at each timestep
+
 """
 import configparser
 import csv
@@ -19,9 +21,7 @@ CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
 BASE_PATH = CONFIG['file_locations']['base_path']
 
-SYSTEM_INPUT_PATH = os.path.join(
-    BASE_PATH, 'raw', 'b_mobile_model','mobile_model_1.0'
-    )
+SYSTEM_INPUT_PATH = os.path.join(BASE_PATH, 'raw', 'b_mobile_model','mobile_model_1.0')
 INTERMEDIATE_PATH = os.path.join(BASE_PATH, 'intermediate')
 SHAPES_INPUT_PATH = os.path.join(BASE_PATH, 'raw', 'd_shapes')
 SYSTEM_OUTPUT_PATH = os.path.join(BASE_PATH, '..','results')

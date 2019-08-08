@@ -6,10 +6,10 @@ from pprint import pprint
 
 class NetworkManager(object):
     """
-    
+
     Model controller class.
-    
-    Represents postcode sectors nested in local area districts, 
+
+    Represents postcode sectors nested in local area districts,
     with all affiliated assets, capacities and clutter types.
 
     Parameters
@@ -31,7 +31,7 @@ class NetworkManager(object):
         * area: :obj:`float`
             Areas size in square kilometers (km^2)
         * user_throughput: :obj:`int`
-            Per user monthly data demand in gigabytes (GB) 
+            Per user monthly data demand in gigabytes (GB)
     assets: :obj:`list` of :obj:`dict`
         List of assets
         * pcd_sector: :obj:`str`
@@ -47,12 +47,12 @@ class NetworkManager(object):
         * build_date: :obj:`int`
             Build year of the asset
     capacity_lookup_table: dict
-        Dictionary that represents the clutter/asset type, spectrum 
-        frequency and channel bandwidth, and the consequential 
+        Dictionary that represents the clutter/asset type, spectrum
+        frequency and channel bandwidth, and the consequential
         cellular capacity provided for different asset densities.
         * key: :obj:`tuple`
             * 0: :obj:`str`
-                Area type ('urban', 'suburban' or 'rural') or asset 
+                Area type ('urban', 'suburban' or 'rural') or asset
                 type ('small_cells')
             * 1: :obj:`str`
                 Frequency of the asset configuration (800, 2600, ..)
@@ -62,11 +62,11 @@ class NetworkManager(object):
             * 0: :obj:`int`
                 Cellular asset density per square kilometer (sites per km^2)
             * 1: :obj:`int`
-                Average Radio Access Network capacity in Mbps per square 
+                Average Radio Access Network capacity in Mbps per square
                 kilometer (Mbps/km^2)
     clutter_lookup: list of tuples
-        Each element represents the settlement definitions for 
-        urban, suburban and rural by population density in square 
+        Each element represents the settlement definitions for
+        urban, suburban and rural by population density in square
         kilometers (persons per km^2)
         * 0: :obj:`int`
             Population density in persons per km^2.
@@ -74,11 +74,11 @@ class NetworkManager(object):
             Settlement type (rban, suburban and rural)
     simulation_parameters: dict
         Contains all simulation parameters, set in the run script.
-        * market_share: :obj: 'int' 
+        * market_share: :obj: 'int'
             Percentage market share of the modelled hypothetical operator.
-        * annual_budget: :obj: 'int' 
+        * annual_budget: :obj: 'int'
             Annual budget to spend.
-        * service_obligation_capacity: :obj: 'int' 
+        * service_obligation_capacity: :obj: 'int'
             Required service obligation.
         * busy_hour_traffic_percentage: :obj: 'int'
             Percentage of daily traffic taking place in the busy hour.
@@ -88,9 +88,9 @@ class NetworkManager(object):
             The penetration of users with smartphone and data access.
 
     """
-    def __init__(self, lads, pcd_sectors, assets, capacity_lookup_table, 
+    def __init__(self, lads, pcd_sectors, assets, capacity_lookup_table,
         clutter_lookup, simulation_parameters):
-        
+
         self.lads = {}
 
         self.postcode_sectors = {}
@@ -104,12 +104,12 @@ class NetworkManager(object):
             assets_by_pcd[asset['pcd_sector']].append(asset)
 
         for pcd_sector_data in pcd_sectors:
-            
+
             try:
                 lad_id = pcd_sector_data["lad_id"]
                 pcd_sector_id = pcd_sector_data["id"]
                 assets = assets_by_pcd[pcd_sector_id]
-                pcd_sector = PostcodeSector(pcd_sector_data, assets, 
+                pcd_sector = PostcodeSector(pcd_sector_data, assets,
                 capacity_lookup_table, clutter_lookup, simulation_parameters)
 
                 self.postcode_sectors[pcd_sector_id] = pcd_sector
@@ -137,11 +137,11 @@ class LAD(object):
             Name of the LAD
     simulation_parameters: dict
         Contains all simulation parameters, set in the run script.
-        * market_share: :obj: 'int' 
+        * market_share: :obj: 'int'
             Percentage market share of the modelled hypothetical operator.
-        * annual_budget: :obj: 'int' 
+        * annual_budget: :obj: 'int'
             Annual budget to spend.
-        * service_obligation_capacity: :obj: 'int' 
+        * service_obligation_capacity: :obj: 'int'
             Required service obligation.
         * busy_hour_traffic_percentage: :obj: 'int'
             Percentage of daily traffic taking place in the busy hour.
@@ -149,7 +149,7 @@ class LAD(object):
             The threshold we wish to measure the served population against.
         * penetration: :obj: 'int'
             The penetration of users with smartphone and data access.
-            
+
     """
     def __init__(self, data, simulation_parameters):
         self.id = data["id"]
@@ -194,6 +194,7 @@ class LAD(object):
                 system[tech] += cells
         return system
 
+
     def capacity(self):
         """Return the mean capacity from all nested postcode sectors
         """
@@ -204,6 +205,7 @@ class LAD(object):
             pcd_sector.capacity
             for pcd_sector in self._pcd_sectors.values()])
         return summed_capacity / len(self._pcd_sectors)
+
 
     def demand(self):
         """Return the mean capacity demand from all nested postcode sectors
@@ -220,6 +222,7 @@ class LAD(object):
             for pcd_sector in self._pcd_sectors.values()
         )
         return summed_demand / summed_area
+
 
     def coverage(self, simulation_parameters):
         """Return proportion of population with capacity coverage over a threshold
@@ -242,7 +245,7 @@ class LAD(object):
 class PostcodeSector(object):
     """Represents a pcd_sector to be modelled
     """
-    def __init__(self, data, assets, capacity_lookup_table, 
+    def __init__(self, data, assets, capacity_lookup_table,
         clutter_lookup, simulation_parameters):
         self.id = data["id"]
         self.lad_id = data["lad_id"]
@@ -252,7 +255,7 @@ class PostcodeSector(object):
         self.user_throughput = data["user_throughput"]
         self.user_demand = self._calculate_user_demand(
             self.user_throughput, simulation_parameters)
-        
+
         self._capacity_lookup_table = capacity_lookup_table
         self._clutter_lookup = clutter_lookup
 
@@ -261,11 +264,11 @@ class PostcodeSector(object):
             self.population_density
         )
         self.busy_hour_traffic = simulation_parameters['busy_hour_traffic_percentage']
-        self.penetration = simulation_parameters['penetration'] 
+        self.penetration = simulation_parameters['penetration']
         self.market_share = simulation_parameters['market_share']
         self.assets = assets
         self.capacity = (
-            self._macrocell_site_capacity(simulation_parameters) + 
+            self._macrocell_site_capacity(simulation_parameters) +
             self._small_cell_capacity(simulation_parameters)
         )
 
@@ -287,9 +290,9 @@ class PostcodeSector(object):
         """
         busy_hour_traffic = simulation_parameters['busy_hour_traffic_percentage'] / 100
 
-        demand = user_throughput * 1024 * 8 * busy_hour_traffic / 30 / 3600 
+        demand = user_throughput * 1024 * 8 * busy_hour_traffic / 30 / 3600
 
-        return demand 
+        return demand
 
 
     def threshold_demand(self, threshold):
@@ -320,9 +323,9 @@ class PostcodeSector(object):
                 * 0.8 penetration
                 / 10 km^2 area
             = ~0.16 Mbps/km^2 area capacity demand
-        
+
         """
-        users = self.population * (self.penetration / 100) * self.market_share 
+        users = self.population * (self.penetration / 100) * self.market_share
         user_throughput = users * self.user_demand
         capacity_per_kmsq = user_throughput / self.area
         return capacity_per_kmsq
@@ -331,14 +334,14 @@ class PostcodeSector(object):
     def population_density(self):
         """
         Calculate population density for a specific population and area.
-        
+
         """
         return self.population / self.area
 
     def _macrocell_site_capacity(self, simulation_parameters):
         """
-        Find the macrocellular Radio Access Network capacity given the 
-        area assets and deployed frequency bands.  
+        Find the macrocellular Radio Access Network capacity given the
+        area assets and deployed frequency bands.
 
         """
         capacity = 0
@@ -349,10 +352,10 @@ class PostcodeSector(object):
                 for asset_frequency in asset['frequency']:
                     if asset_frequency == frequency:
                         num_sites += 1
-            
+
             site_density = float(num_sites) / self.area
-            
-            bandwidth = find_frequency_bandwidth(frequency, 
+
+            bandwidth = find_frequency_bandwidth(frequency,
                 simulation_parameters)
 
             tech_capacity = lookup_capacity(
@@ -367,8 +370,8 @@ class PostcodeSector(object):
 
     def _small_cell_capacity(self, simulation_parameters):
         """
-        Find the small cell Radio Access Network capacity given the 
-        area assets and deployed frequency bands.  
+        Find the small cell Radio Access Network capacity given the
+        area assets and deployed frequency bands.
 
         """
         num_small_cells = len([
@@ -397,14 +400,14 @@ class PostcodeSector(object):
 
 def find_frequency_bandwidth(frequency, simulation_parameters):
     """
-    Finds the correct bandwidth for a specific frequency from the 
+    Finds the correct bandwidth for a specific frequency from the
     simulation parameters.
 
     """
     simulation_parameter = 'channel_bandwidth_{}'.format(frequency)
 
     if simulation_parameter not in simulation_parameters.keys():
-        print('{} not specified in simulation_parameters'.format(frequency))            
+        print('{} not specified in simulation_parameters'.format(frequency))
 
     bandwidth = simulation_parameters[simulation_parameter]
 
