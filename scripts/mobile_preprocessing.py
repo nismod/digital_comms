@@ -3,19 +3,14 @@ import sys
 import configparser
 import csv
 import fiona
+import time
 
-from shapely.geometry import shape, Point, LineString, Polygon, MultiPolygon, mapping, MultiPoint
-from shapely.ops import unary_union, cascaded_union
-from shapely.wkt import loads
-from shapely.prepared import prep
-from pyproj import Proj, transform
+from shapely.geometry import shape, Point, LineString, mapping
+from shapely.ops import  cascaded_union
 
 from rtree import index
-import tqdm as tqdm
 
 from collections import OrderedDict
-import osmnx as ox
-import networkx as nx
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
@@ -68,7 +63,6 @@ def lad_lut(lads):
 
     """
     for lad in lads:
-        #if lad['properties']['name'].startswith('E07000191'):
         yield lad['properties']['name']
 
 
@@ -100,7 +94,7 @@ def read_postcode_sectors(path):
 
     """
     with fiona.open(path, 'r') as pcd_sector_shapes:
-        return [pcd for pcd in pcd_sector_shapes]# if pcd['properties']['postcode'].startswith('CB')]
+        return [pcd for pcd in pcd_sector_shapes]
 
 
 def add_lad_to_postcode_sector(postcode_sectors, lads):
@@ -261,7 +255,7 @@ def calculate_lad_population(postcode_sectors):
 
 def get_forecast(filename):
 
-    folder = os.path.join(DATA_RAW_INPUTS, 'arc_scenarios')
+    folder = os.path.join(DATA_RAW_INPUTS, 'population_scenarios')
 
     with open(os.path.join(folder, filename), 'r') as source:
         reader = csv.DictReader(source)
@@ -271,6 +265,7 @@ def get_forecast(filename):
                 'lad': line['lad_uk_2016'],
                 'population': line['population'],
             }
+
 
 def disaggregate(forecast, postcode_sectors):
 
@@ -299,7 +294,7 @@ def disaggregate(forecast, postcode_sectors):
     return output
 
 
-def generate_scenario_variants(postcode_sectors):
+def generate_scenario_variants(postcode_sectors, directory):
         """
         Function to disaggregate LAD forecasts to postcode level.
 
@@ -328,7 +323,7 @@ def generate_scenario_variants(postcode_sectors):
             filename = os.path.join('pcd_' + scenario_file)
 
             print('writing {}'.format(filename))
-            csv_writer_forecasts(disaggregated_forecast, filename)
+            csv_writer(disaggregated_forecast, directory, filename)
 
 
 def allocate_4G_coverage(postcode_sectors, lad_lut):
@@ -566,7 +561,10 @@ def read_exchange_areas():
 
 
 def return_object_coordinates(object):
+    """
+    Function for returning the coordinates of a type of object.
 
+    """
     if object['geometry']['type'] == 'Polygon':
         origin_geom = object['representative_point']
         x = origin_geom.x
@@ -581,7 +579,10 @@ def return_object_coordinates(object):
 
 
 def generate_link_straight_line(origin_points, dest_points):
+    """
+    Calculate distance between two points.
 
+    """
     idx = index.Index(
         (i, Point(dest_point['geometry']['coordinates']).bounds, dest_point)
         for i, dest_point in enumerate(dest_points)
@@ -601,7 +602,7 @@ def generate_link_straight_line(origin_points, dest_points):
 
             dest_x, dest_y = return_object_coordinates(exchange)
 
-            # Get length
+            # Get lengthFunction for returning the coordinates of an object given the specific type.
             geom = LineString([
                 (origin_x, origin_y), (dest_x, dest_y)
                 ])
@@ -632,15 +633,41 @@ def generate_link_straight_line(origin_points, dest_points):
             print('- Problem with straight line link for:')
             print(origin_point['properties'])
 
-    return processed_sites, links
+    processed_sites_for_writing = []
+    for asset in processed_sites:
+        processed_sites_for_writing.append({
+            'pcd_sector': asset['properties']['pcd_sector'],
+            'id': asset['properties']['id'],
+            'lte_4G':  asset['properties']['lte_4G'],
+            'exchange':  asset['properties']['exchange'],
+            'backhaul_length_m':  asset['properties']['backhaul_length_m'],
+        })
+
+    return processed_sites_for_writing, links
 
 
-def csv_writer_forecasts(data, filename):
+def convert_postcode_sectors_to_list(data):
+
+    data_for_writing = []
+    for datum in data:
+        data_for_writing.append({
+            'pcd_sector': datum['properties']['pcd_sector'],
+            'lad': datum['properties']['lad'],
+            'population': datum['properties']['population'],
+            'area_km2': datum['properties']['area_km2'],
+            'pop_density_km2': datum['properties']['pop_density_km2'],
+            'lte_4G': datum['properties']['lte'],
+        })
+
+    return data_for_writing
+
+
+def csv_writer(data, directory, filename):
     """
     Write data to a CSV file path
+
     """
     # Create path
-    directory = os.path.join(DATA_INTERMEDIATE, 'arc_scenarios')
     if not os.path.exists(directory):
         os.makedirs(directory)
 
@@ -654,70 +681,32 @@ def csv_writer_forecasts(data, filename):
         writer.writerows(data)
 
 
-def csv_writer_sites(data, filename):
-    """
-    Write data to a CSV file path
+# def csv_writer(data, directory, filename):
+#     """
+#     Write data to a CSV file path
 
-    """
-    data_for_writing = []
-    for asset in data:
-        data_for_writing.append({
-            'pcd_sector': asset['properties']['pcd_sector'],
-            'id': asset['properties']['id'],
-            'lte_4G':  asset['properties']['lte_4G'],
-            'exchange':  asset['properties']['exchange'],
-            'backhaul_length_m':  asset['properties']['backhaul_length_m'],
-        })
+#     """
+#     #get fieldnames
+#     fieldnames = []
+#     for name, value in data_for_writing[0].items():
+#         fieldnames.append(name)
 
-    #get fieldnames
-    fieldnames = []
-    for name, value in data_for_writing[0].items():
-        fieldnames.append(name)
+#     #create path
+#     if not os.path.exists(directory):
+#         os.makedirs(directory)
 
-    #create path
-    directory = os.path.join(BASE_PATH, 'processed')
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-    with open(os.path.join(directory, filename), 'w') as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
-        writer.writeheader()
-        writer.writerows(data_for_writing)
-
-
-def csv_writer_postcode_sectors(data, filename):
-    """
-    Write data to a CSV file path
-
-    """
-    data_for_writing = []
-    for datum in data:
-        data_for_writing.append({
-            'pcd_sector': datum['properties']['pcd_sector'],
-            'lad': datum['properties']['lad'],
-            'population': datum['properties']['population'],
-            'area_km2': datum['properties']['area_km2'],
-            'pop_density_km2': datum['properties']['pop_density_km2'],
-            'lte_4G': datum['properties']['lte'],
-        })
-
-    #get fieldnames
-    fieldnames = []
-    for name, value in data_for_writing[0].items():
-        fieldnames.append(name)
-
-    #create path
-    directory = os.path.join(BASE_PATH, 'processed')
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-    with open(os.path.join(directory, filename), 'w') as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
-        writer.writeheader()
-        writer.writerows(data_for_writing)
+#     with open(os.path.join(directory, filename), 'w') as csv_file:
+#         writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
+#         writer.writeheader()
+#         writer.writerows(data_for_writing)
 
 
 if __name__ == "__main__":
+
+    start = time.time()
+
+    directory = os.path.join(DATA_INTERMEDIATE, 'mobile_model_inputs')
+    print('Output directory will be {}'.format(directory))
 
     print('Loading local authority district shapes')
     lads = read_lads()
@@ -726,9 +715,7 @@ if __name__ == "__main__":
     lad_lut = lad_lut(lads)
 
     print('Loading postcode sector shapes')
-    path = os.path.join(
-        DATA_RAW_SHAPES, 'datashare_pcd_sectors', 'PostalSector.shp'
-        )
+    path = os.path.join(DATA_RAW_SHAPES, 'datashare_pcd_sectors', 'PostalSector.shp')
     postcode_sectors = read_postcode_sectors(path)
 
     print('Adding lad IDs to postcode sectors... might take a few minutes...')
@@ -744,13 +731,10 @@ if __name__ == "__main__":
     postcode_sectors = calculate_lad_population(postcode_sectors)
 
     print('Generating scenario variants')
-    generate_scenario_variants(postcode_sectors)
+    generate_scenario_variants(postcode_sectors, directory)
 
     print('Disaggregate 4G coverage to postcode sectors')
-    postcode_sectors = allocate_4G_coverage(
-        postcode_sectors, lad_lut
-        )
-    print('postcode_sectors length is {}'.format(len(postcode_sectors)))
+    postcode_sectors = allocate_4G_coverage(postcode_sectors, lad_lut)
 
     print('Importing sitefinder data')
     folder = os.path.join(BASE_PATH,'raw','b_mobile_model','sitefinder')
@@ -771,8 +755,22 @@ if __name__ == "__main__":
     print('Generating straight line distance from each site to the nearest exchange')
     processed_sites, backhaul_links = generate_link_straight_line(processed_sites, exchanges)
 
+    print('Convert geojson postcode sectors to list of dicts')
+    postcode_sectors = convert_postcode_sectors_to_list(postcode_sectors)
+
+    print('Specifying clutter geotypes')
+    geotypes = [
+        {'geotype': 'urban', 'population_density': 7959},
+        {'geotype': 'suburban', 'population_density': 782},
+        {'geotype': 'rural', 'population_density': 0},
+    ]
+    csv_writer(geotypes, directory, 'lookup_table_geotype.csv')
+
     print('Writing processed sites to .csv')
-    csv_writer_sites(processed_sites, 'final_processed_sites.csv')
+    csv_writer(processed_sites, directory, 'final_processed_sites.csv')
 
     print('Writing postcode sectors to .csv')
-    csv_writer_postcode_sectors(postcode_sectors, '_processed_postcode_sectors.csv')
+    csv_writer(postcode_sectors, directory, '_processed_postcode_sectors.csv')
+
+    end = time.time()
+    print('time taken: {} minutes'.format(round((end - start) / 60,2)))
