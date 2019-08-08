@@ -383,38 +383,125 @@ def get_postcode_sectors_in_lad(postcode_sectors, lad_id):
                 yield postcode_sector
 
 
-def import_sitefinder_data():
+def import_sitefinder_data(path):
     """
-    Import sites dataset.
+    Import sitefinder data, selecting desired asset types.
+        - Select sites belonging to main operators:
+            - Includes 'O2', 'Vodafone', BT EE (as 'Orange'/'T-Mobile') and 'Three'
+            - Excludes 'Airwave' and 'Network Rail'
+        - Select relevant cells:
+            - Includes 'Macro', 'SECTOR', 'Sectored' and 'Directional'
+            - Excludes 'micro', 'microcell', 'omni' or 'pico' antenna types.
 
     """
-    path = os.path.join(
-        DATA_INTERMEDIATE, 'sitefinder', 'sitefinder_processed.csv'
-        )
+    asset_data = []
 
     site_id = 0
 
-    with open(path, 'r') as source:
-        reader = csv.DictReader(source)
+    with open(os.path.join(path), 'r') as system_file:
+        reader = csv.DictReader(system_file)
+        next(reader, None)
         for line in reader:
-            yield {
-                'type': 'Feature',
-                'geometry':{
-                    'type': 'Point',
-                    'coordinates': [float(line['longitude']), float(line['latitude'])]
-                },
-                'properties':{
-                    'id': 'site_' + str(site_id),
-                    'Antennaht': line['Antennaht'],
-                    'Transtype': line['Transtype'],
-                    'Freqband': line['Freqband'],
-                    'Anttype': line['Anttype'],
-                    'Powerdbw': line['Powerdbw'],
-                    'Maxpwrdbw': line['Maxpwrdbw'],
-                    'Maxpwrdbm': line['Maxpwrdbm'],
-                }
-            }
+            #if line['Operator'] != 'Airwave' and line['Operator'] != 'Network Rail':
+            if line['Operator'] == 'O2' or line['Operator'] == 'Vodafone':
+                # if line['Anttype'] == 'MACRO' or \
+                #     line['Anttype'] == 'SECTOR' or \
+                #     line['Anttype'] == 'Sectored' or \
+                #     line['Anttype'] == 'Directional':
+                asset_data.append({
+                    'type': "Feature",
+                    'geometry': {
+                        "type": "Point",
+                        "coordinates": [float(line['X']), float(line['Y'])]
+                    },
+                    'properties':{
+                        'id': 'site_' + str(site_id),
+                        'Operator': line['Operator'],
+                        'Opref': line['Opref'],
+                        'Sitengr': line['Sitengr'],
+                        'Antennaht': line['Antennaht'],
+                        'Transtype': line['Transtype'],
+                        'Freqband': line['Freqband'],
+                        'Anttype': line['Anttype'],
+                        'Powerdbw': line['Powerdbw'],
+                        'Maxpwrdbw': line['Maxpwrdbw'],
+                        'Maxpwrdbm': line['Maxpwrdbm'],
+                        'Sitelat': float(line['Sitelat']),
+                        'Sitelng': float(line['Sitelng']),
+                    }
+                })
+
             site_id += 1
+
+        else:
+            pass
+
+    return asset_data
+
+
+def find_average(my_property, touching_assets):
+
+    numerator = sum([float(a['properties'][my_property]) for a in touching_assets
+        if str(a['properties'][my_property]).isdigit()])
+    denominator = len([a['properties'][my_property] for a in touching_assets
+        if str(a['properties'][my_property]).isdigit()])
+
+    try:
+        output = numerator / denominator
+    except ZeroDivisionError:
+        output = numerator
+
+    return output
+
+
+def process_asset_data(data):
+    """
+    Add buffer to each site, dissolve overlaps and take centroid.
+
+    """
+    buffered_assets = []
+
+    for asset in data:
+        asset_geom = shape(asset['geometry'])
+        buffered_geom = asset_geom.buffer(50)
+
+        asset['buffer'] = buffered_geom
+        buffered_assets.append(asset)
+
+    output = []
+    assets_seen = set()
+
+    for asset in buffered_assets:
+        if asset['properties']['Opref'] in assets_seen:
+            continue
+        assets_seen.add(asset['properties']['Opref'])
+        touching_assets = []
+        for other_asset in buffered_assets:
+            if asset['buffer'].intersects(other_asset['buffer']):
+                touching_assets.append(other_asset)
+                assets_seen.add(other_asset['properties']['Opref'])
+
+        dissolved_shape = cascaded_union([a['buffer'] for a in touching_assets])
+        final_centroid = dissolved_shape.centroid
+        output.append({
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [final_centroid.coords[0][0], final_centroid.coords[0][1]],
+            },
+            'properties':{
+                'id': asset['properties']['id'],
+                # 'Antennaht': find_average('Antennaht', touching_assets),
+                # 'Transtype': [a['properties']['Transtype'] for a in touching_assets],
+                # 'Freqband': [a['properties']['Freqband'] for a in touching_assets],
+                # 'Anttype': [a['properties']['Anttype'] for a in touching_assets],
+                # 'Powerdbw': find_average('Powerdbw', touching_assets),
+                # 'Maxpwrdbw': find_average('Maxpwrdbw', touching_assets),
+                # 'Maxpwrdbm': find_average('Maxpwrdbm', touching_assets),
+            }
+        })
+
+    return output
 
 
 def add_coverage_to_sites(sitefinder_data, postcode_sectors):
@@ -438,13 +525,13 @@ def add_coverage_to_sites(sitefinder_data, postcode_sectors):
                     'properties':{
                         'pcd_sector': postcode_sector['properties']['pcd_sector'],
                         'id': n.object['properties']['id'],
-                        'Antennaht': n.object['properties']['Antennaht'],
-                        'Transtype': n.object['properties']['Transtype'],
-                        'Freqband': n.object['properties']['Freqband'],
-                        'Anttype': n.object['properties']['Anttype'],
-                        'Powerdbw': n.object['properties']['Powerdbw'],
-                        'Maxpwrdbw': n.object['properties']['Maxpwrdbw'],
-                        'Maxpwrdbm': n.object['properties']['Maxpwrdbm'],
+                        # 'Antennaht': n.object['properties']['Antennaht'],
+                        # 'Transtype': n.object['properties']['Transtype'],
+                        # 'Freqband': n.object['properties']['Freqband'],
+                        # 'Anttype': n.object['properties']['Anttype'],
+                        # 'Powerdbw': n.object['properties']['Powerdbw'],
+                        # 'Maxpwrdbw': n.object['properties']['Maxpwrdbw'],
+                        # 'Maxpwrdbm': n.object['properties']['Maxpwrdbm'],
                         'lte_4G': postcode_sector['properties']['lte']
                         }
                     })
@@ -675,13 +762,13 @@ def generate_link_straight_line(origin_points, dest_points):
                 'properties':{
                     'pcd_sector': origin_point['properties']['pcd_sector'],
                     'id': origin_point['properties']['id'],
-                    'Antennaht': origin_point['properties']['Antennaht'],
-                    'Transtype': origin_point['properties']['Transtype'],
-                    'Freqband': origin_point['properties']['Freqband'],
-                    'Anttype': origin_point['properties']['Anttype'],
-                    'Powerdbw': origin_point['properties']['Powerdbw'],
-                    'Maxpwrdbw': origin_point['properties']['Maxpwrdbw'],
-                    'Maxpwrdbm': origin_point['properties']['Maxpwrdbm'],
+                    # 'Antennaht': origin_point['properties']['Antennaht'],
+                    # 'Transtype': origin_point['properties']['Transtype'],
+                    # 'Freqband': origin_point['properties']['Freqband'],
+                    # 'Anttype': origin_point['properties']['Anttype'],
+                    # 'Powerdbw': origin_point['properties']['Powerdbw'],
+                    # 'Maxpwrdbw': origin_point['properties']['Maxpwrdbw'],
+                    # 'Maxpwrdbm': origin_point['properties']['Maxpwrdbm'],
                     'lte_4G': origin_point['properties']['lte_4G'],
                     'exchange': exchange['properties']['id'],
                     'backhaul_length_m': geom.length * 1.60934
@@ -761,15 +848,15 @@ def csv_writer_sites(data, filename):
         data_for_writing.append({
             'pcd_sector': asset['properties']['pcd_sector'],
             'id': asset['properties']['id'],
-            'longitude': asset['geometry']['coordinates'][0],
-            'latitude': asset['geometry']['coordinates'][1],
-            'Antennaht': asset['properties']['Antennaht'],
-            'Transtype': asset['properties']['Transtype'],
-            'Freqband': asset['properties']['Freqband'],
-            'Anttype': asset['properties']['Anttype'],
-            'Powerdbw':  asset['properties']['Powerdbw'],
-            'Maxpwrdbw':  asset['properties']['Maxpwrdbw'],
-            'Maxpwrdbm':  asset['properties']['Maxpwrdbm'],
+            # 'longitude': asset['geometry']['coordinates'][0],
+            # 'latitude': asset['geometry']['coordinates'][1],
+            # 'Antennaht': asset['properties']['Antennaht'],
+            # 'Transtype': asset['properties']['Transtype'],
+            # 'Freqband': asset['properties']['Freqband'],
+            # 'Anttype': asset['properties']['Anttype'],
+            # 'Powerdbw':  asset['properties']['Powerdbw'],
+            # 'Maxpwrdbw':  asset['properties']['Maxpwrdbw'],
+            # 'Maxpwrdbm':  asset['properties']['Maxpwrdbm'],
             'lte_4G':  asset['properties']['lte_4G'],
             'exchange':  asset['properties']['exchange'],
             'backhaul_length_m':  asset['properties']['backhaul_length_m'],
@@ -859,7 +946,11 @@ if __name__ == "__main__":
     print('postcode_sectors length is {}'.format(len(postcode_sectors)))
 
     print('Importing sitefinder data')
-    sitefinder_data = import_sitefinder_data()
+    folder = os.path.join(BASE_PATH,'raw','b_mobile_model','sitefinder')
+    sitefinder_data = import_sitefinder_data(os.path.join(folder, 'sitefinder.csv'))
+
+    print('Preprocessing sitefinder data with 50m buffer')
+    sitefinder_data = process_asset_data(sitefinder_data)
 
     print('Allocate 4G coverage to sites from postcode sectors')
     processed_sites = add_coverage_to_sites(sitefinder_data, postcode_sectors)
