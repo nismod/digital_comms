@@ -635,33 +635,6 @@ def generate_link_straight_line(origin_points, dest_points):
     return processed_sites, links
 
 
-def write_shapefile(data, folder_name, filename):
-
-    # Translate props to Fiona sink schema
-    prop_schema = []
-    for name, value in data[0]['properties'].items():
-        fiona_prop_type = next((fiona_type for fiona_type, python_type in
-        fiona.FIELD_TYPES_MAP.items() if python_type == type(value)), None)
-        prop_schema.append((name, fiona_prop_type))
-
-    sink_driver = 'ESRI Shapefile'
-    sink_crs = {'init': 'epsg:27700'}
-    sink_schema = {
-        'geometry': data[0]['geometry']['type'],
-        'properties': OrderedDict(prop_schema)
-    }
-
-    # Create path
-    directory = os.path.join(DATA_INTERMEDIATE, folder_name)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-    print(os.path.join(directory, filename))
-    # Write all elements to output file
-    with fiona.open(os.path.join(directory, filename), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
-        [sink.write(feature) for feature in data]
-
-
 def csv_writer_forecasts(data, filename):
     """
     Write data to a CSV file path
@@ -803,13 +776,3 @@ if __name__ == "__main__":
 
     print('Writing postcode sectors to .csv')
     csv_writer_postcode_sectors(postcode_sectors, '_processed_postcode_sectors.csv')
-
-    # write_shapefile(
-    #     postcode_sectors, 'postcode_sectors', '_processed_postcode_sectors.shp'
-    #     )
-    # write_shapefile(
-    #     processed_sites, 'sitefinder', 'final_processed_sites.shp'
-    #     )
-    # write_shapefile(
-    #     backhaul_links, 'sitefinder', 'backhaul_routes.shp'
-    #     )
