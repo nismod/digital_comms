@@ -167,7 +167,7 @@ def decide_interventions(strategy, budget, service_obligation_capacity,
 def meet_service_obligation(budget, available_interventions, timestep,
                             service_obligation_capacity, system, simulation_parameters):
     areas = _suggest_target_postcodes(system, service_obligation_capacity)
-    return _suggest_interventions(budget, available_interventions, 
+    return _suggest_interventions(budget, available_interventions,
         areas, timestep, simulation_parameters, service_obligation_capacity)
 
 
@@ -338,7 +338,7 @@ def _area_satisfied(area, built_interventions, threshold, simulation_parameters)
         "id": area.id,
         "lad_id": area.lad_id,
         "population": area.population,
-        "area": area.area,
+        "area_km2": area.area,
         "user_throughput": area.user_throughput,
     }
     assets = area.assets + built_interventions
