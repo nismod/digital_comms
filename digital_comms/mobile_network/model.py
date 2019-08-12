@@ -336,11 +336,11 @@ class PostcodeSector(object):
 
         """
         users = self.population * (self.penetration / 100) * self.market_share
-        print(users, self.population, self.penetration, 100, self.market_share)
+
         user_throughput = users * self.user_demand
-        print(user_throughput, users, self.user_demand)
+
         capacity_per_kmsq = user_throughput / self.area
-        print(capacity_per_kmsq, user_throughput, self.area)
+
         return capacity_per_kmsq
 
 
