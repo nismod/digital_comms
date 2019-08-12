@@ -3,19 +3,14 @@ import sys
 import configparser
 import csv
 import fiona
+import time
 
-from shapely.geometry import shape, Point, LineString, Polygon, MultiPolygon, mapping, MultiPoint
-from shapely.ops import unary_union, cascaded_union
-from shapely.wkt import loads
-from shapely.prepared import prep
-from pyproj import Proj, transform
+from shapely.geometry import shape, Point, LineString, mapping
+from shapely.ops import  cascaded_union
 
 from rtree import index
-import tqdm as tqdm
 
 from collections import OrderedDict
-import osmnx as ox
-import networkx as nx
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'script_config.ini'))
@@ -68,7 +63,6 @@ def lad_lut(lads):
 
     """
     for lad in lads:
-        #if lad['properties']['name'].startswith('E07000191'):
         yield lad['properties']['name']
 
 
@@ -100,7 +94,7 @@ def read_postcode_sectors(path):
 
     """
     with fiona.open(path, 'r') as pcd_sector_shapes:
-        return [pcd for pcd in pcd_sector_shapes]# if pcd['properties']['postcode'].startswith('CB')]
+        return [pcd for pcd in pcd_sector_shapes]
 
 
 def add_lad_to_postcode_sector(postcode_sectors, lads):
@@ -118,7 +112,6 @@ def add_lad_to_postcode_sector(postcode_sectors, lads):
     for postcode_sector in postcode_sectors:
         for n in idx.intersection(
             (shape(postcode_sector['geometry']).bounds), objects=True):
-            print('processing {}'.format(n.object['properties']['name']))
             postcode_sector_centroid = shape(postcode_sector['geometry']).centroid
             postcode_sector_shape = shape(postcode_sector['geometry'])
             lad_shape = shape(n.object['geometry'])
@@ -160,51 +153,177 @@ def load_coverage_data(lad_id):
                     '4G_geo_out_4': line['4G_geo_out_4'],
                 }
 
-def add_geotype_information(postcode_sectors, load_geotype_lut):
+def load_in_weights():
+    """
+    Load in postcode sector population to use as weights.
 
+    """
+    path = os.path.join(
+        DATA_RAW_INPUTS, 'mobile_model_1.0',
+        'scenario_data', 'population_baseline_pcd.csv'
+        )
+
+    population_data = []
+
+    with open(path, 'r') as source:
+        reader = csv.reader(source)
+        for line in reader:
+            if int(line[0]) == 2015:
+                population_data.append({
+                    'postcode_sector': line[1],
+                    'population': int(line[2]),
+                })
+
+    return population_data
+
+
+def add_weights_to_postcode_sector(postcode_sectors, weights):
+    """
+    Add weights to postcode sector
+
+    """
     output = []
 
     for postcode_sector in postcode_sectors:
-        lad_id = postcode_sector['properties']['lad']
-        # if lad_id.startswith('E07000008'):
-        for geotype_lut in load_geotype_lut(lad_id):
-            if postcode_sector['properties']['postcode'] == geotype_lut['postcode_sector']:
-                try:
-                    output.append({
-                        'type': postcode_sector['type'],
-                        'geometry': postcode_sector['geometry'],
-                        'properties': {
-                            'postcode': postcode_sector['properties']['postcode'],
-                            'lad': postcode_sector['properties']['lad'],
-                            'area': float(postcode_sector['properties']['area']),
-                            'premises': int(geotype_lut['total_premises']),
-                            'premises_density': int(geotype_lut['total_premises']) /
-                                float(postcode_sector['properties']['area']),
-                        }
-                    })
+        pcd_id = postcode_sector['properties']['postcode'].replace(' ', '')
+        for weight in weights:
+            weight_id = weight['postcode_sector'].replace(' ', '')
+            if pcd_id == weight_id:
+                output.append({
+                    'type': postcode_sector['type'],
+                    'geometry': postcode_sector['geometry'],
+                    'properties': {
+                        'pcd_sector': pcd_id,
+                        'lad': postcode_sector['properties']['lad'],
+                        'population_weight': weight['population'],
+                        'area_km2': (postcode_sector['properties']['area'] / 1e6),
+                    }
+                })
 
-                except:
-                    output.append({
-                        'type': postcode_sector['type'],
-                        'geometry': postcode_sector['geometry'],
-                        'properties': {
-                            'postcode': postcode_sector['properties']['postcode'],
-                            'lad': postcode_sector['properties']['lad'],
-                            'area': float(postcode_sector['properties']['area']),
-                            'premises': 'unknown',
-                            'premises_density': 'unknown',
-                        }
-                    })
 
     return output
 
 
-def get_postcode_sectors_in_lad(postcode_sectors, lad_id):
+def calculate_lad_population(postcode_sectors):
 
-    for postcode_sector in postcode_sectors:
-        if postcode_sector['properties']['lad'] == lad_id:
-            if isinstance(postcode_sector['properties']['premises_density'], float):
-                yield postcode_sector
+    lad_ids = set()
+
+    for pcd_sector in postcode_sectors:
+        lad_ids.add(pcd_sector['properties']['lad'])
+
+    lad_population = []
+
+    for lad_id in lad_ids:
+        population = 0
+        for pcd_sector in postcode_sectors:
+            if pcd_sector['properties']['lad'] == lad_id:
+                population += pcd_sector['properties']['population_weight']
+        lad_population.append({
+            'lad': lad_id,
+            'population': population,
+        })
+
+    output = []
+
+    for pcd_sector in postcode_sectors:
+        for lad in lad_population:
+            if pcd_sector['properties']['lad'] == lad['lad']:
+
+                weight = (
+                    pcd_sector['properties']['population_weight'] /
+                    lad['population']
+                )
+
+                output.append({
+                    'type': pcd_sector['type'],
+                    'geometry': pcd_sector['geometry'],
+                    'properties': {
+                        'pcd_sector': pcd_sector['properties']['pcd_sector'],
+                        'lad': pcd_sector['properties']['lad'],
+                        'population': lad['population'] * weight,
+                        'weight': weight,
+                        'area_km2': pcd_sector['properties']['area_km2'],
+                        'pop_density_km2': (
+                            weight /
+                            (pcd_sector['properties']['area_km2'] / 1e6)
+                            ),
+                    },
+                })
+
+    return output
+
+
+def get_forecast(filename):
+
+    folder = os.path.join(DATA_RAW_INPUTS, 'population_scenarios')
+
+    with open(os.path.join(folder, filename), 'r') as source:
+        reader = csv.DictReader(source)
+        for line in reader:
+            yield {
+                'year': line['timestep'],
+                'lad': line['lad_uk_2016'],
+                'population': line['population'],
+            }
+
+
+def disaggregate(forecast, postcode_sectors):
+
+    output = []
+
+    seen_lads = set()
+
+    for line in forecast:
+        forecast_lad_id = line['lad']
+        for postcode_sector in postcode_sectors:
+            pcd_sector_lad_id = postcode_sector['properties']['lad']
+            if forecast_lad_id == pcd_sector_lad_id:
+                # print(postcode_sector)
+                seen_lads.add(line['lad'])
+                seen_lads.add(postcode_sector['properties']['lad'])
+                output.append({
+                    'year': line['year'],
+                    'lad': line['lad'],
+                    'pcd_sector': postcode_sector['properties']['pcd_sector'],
+                    'population': int(
+                        float(line['population']) *
+                        float(postcode_sector['properties']['weight'])
+                        )
+                })
+
+    return output
+
+
+def generate_scenario_variants(postcode_sectors, directory):
+        """
+        Function to disaggregate LAD forecasts to postcode level.
+
+        """
+        print('Checking total GB population')
+        population = 0
+        for postcode_sector in postcode_sectors:
+            population += postcode_sector['properties']['population']
+        print('Total GB population is {}'.format(population))
+
+        files = [
+            'arc_population__baseline.csv',
+            'arc_population__0-unplanned.csv',
+            'arc_population__1-new-cities.csv',
+            'arc_population__2-expansion.csv',
+        ]
+
+        print('loaded luts')
+        for scenario_file in files:
+
+            print('running {}'.format(scenario_file))
+            forecast = get_forecast(scenario_file)
+
+            disaggregated_forecast = disaggregate(forecast, postcode_sectors)
+
+            filename = os.path.join('pcd_' + scenario_file)
+
+            print('writing {}'.format(filename))
+            csv_writer(disaggregated_forecast, directory, filename)
 
 
 def allocate_4G_coverage(postcode_sectors, lad_lut):
@@ -215,7 +334,7 @@ def allocate_4G_coverage(postcode_sectors, lad_lut):
 
         sectors_in_lad = get_postcode_sectors_in_lad(postcode_sectors, lad_id)
 
-        total_area = sum([s['properties']['area'] for s in \
+        total_area = sum([s['properties']['area_km2'] for s in \
             get_postcode_sectors_in_lad(postcode_sectors, lad_id)])
 
         coverage_data = load_coverage_data(lad_id)
@@ -225,14 +344,14 @@ def allocate_4G_coverage(postcode_sectors, lad_lut):
         covered_area = total_area * (coverage_amount/100)
 
         ranked_postcode_sectors = sorted(
-            sectors_in_lad, key=lambda x: x['properties']['premises_density'], reverse=True
+            sectors_in_lad, key=lambda x: x['properties']['pop_density_km2'], reverse=True
             )
 
         area_allocated = 0
 
         for sector in ranked_postcode_sectors:
 
-            area = sector['properties']['area']
+            area = sector['properties']['area_km2']
             total = area + area_allocated
 
             if total < covered_area:
@@ -251,38 +370,126 @@ def allocate_4G_coverage(postcode_sectors, lad_lut):
     return output
 
 
-def import_sitefinder_data():
+def get_postcode_sectors_in_lad(postcode_sectors, lad_id):
+
+    for postcode_sector in postcode_sectors:
+        if postcode_sector['properties']['lad'] == lad_id:
+            if isinstance(postcode_sector['properties']['pop_density_km2'], float):
+                yield postcode_sector
+
+
+def import_sitefinder_data(path):
     """
-    Import sites dataset.
+    Import sitefinder data, selecting desired asset types.
+        - Select sites belonging to main operators:
+            - Includes 'O2', 'Vodafone', BT EE (as 'Orange'/'T-Mobile') and 'Three'
+            - Excludes 'Airwave' and 'Network Rail'
+        - Select relevant cells:
+            - Includes 'Macro', 'SECTOR', 'Sectored' and 'Directional'
+            - Excludes 'micro', 'microcell', 'omni' or 'pico' antenna types.
 
     """
-    path = os.path.join(
-        DATA_INTERMEDIATE, 'sitefinder', 'sitefinder_processed.csv'
-        )
+    asset_data = []
 
     site_id = 0
 
-    with open(path, 'r') as source:
-        reader = csv.DictReader(source)
+    with open(os.path.join(path), 'r') as system_file:
+        reader = csv.DictReader(system_file)
+        next(reader, None)
         for line in reader:
-            yield {
-                'type': 'Feature',
-                'geometry':{
-                    'type': 'Point',
-                    'coordinates': [float(line['longitude']), float(line['latitude'])]
-                },
-                'properties':{
-                    'id': 'site_' + str(site_id),
-                    'Antennaht': line['Antennaht'],
-                    'Transtype': line['Transtype'],
-                    'Freqband': line['Freqband'],
-                    'Anttype': line['Anttype'],
-                    'Powerdbw': line['Powerdbw'],
-                    'Maxpwrdbw': line['Maxpwrdbw'],
-                    'Maxpwrdbm': line['Maxpwrdbm'],
-                }
-            }
+            #if line['Operator'] != 'Airwave' and line['Operator'] != 'Network Rail':
+            if line['Operator'] == 'O2' or line['Operator'] == 'Vodafone':
+                # if line['Anttype'] == 'MACRO' or \
+                #     line['Anttype'] == 'SECTOR' or \
+                #     line['Anttype'] == 'Sectored' or \
+                #     line['Anttype'] == 'Directional':
+                asset_data.append({
+                    'type': "Feature",
+                    'geometry': {
+                        "type": "Point",
+                        "coordinates": [float(line['X']), float(line['Y'])]
+                    },
+                    'properties':{
+                        'id': 'site_' + str(site_id),
+                        'Operator': line['Operator'],
+                        'Opref': line['Opref'],
+                        'Sitengr': line['Sitengr'],
+                        'Antennaht': line['Antennaht'],
+                        'Transtype': line['Transtype'],
+                        'Freqband': line['Freqband'],
+                        'Anttype': line['Anttype'],
+                        'Powerdbw': line['Powerdbw'],
+                        'Maxpwrdbw': line['Maxpwrdbw'],
+                        'Maxpwrdbm': line['Maxpwrdbm'],
+                        'Sitelat': float(line['Sitelat']),
+                        'Sitelng': float(line['Sitelng']),
+                    }
+                })
+
             site_id += 1
+
+        else:
+            pass
+
+    return asset_data
+
+
+def find_average(my_property, touching_assets):
+
+    numerator = sum([float(a['properties'][my_property]) for a in touching_assets
+        if str(a['properties'][my_property]).isdigit()])
+    denominator = len([a['properties'][my_property] for a in touching_assets
+        if str(a['properties'][my_property]).isdigit()])
+
+    try:
+        output = numerator / denominator
+    except ZeroDivisionError:
+        output = numerator
+
+    return output
+
+
+def process_asset_data(data):
+    """
+    Add buffer to each site, dissolve overlaps and take centroid.
+
+    """
+    buffered_assets = []
+
+    for asset in data:
+        asset_geom = shape(asset['geometry'])
+        buffered_geom = asset_geom.buffer(50)
+
+        asset['buffer'] = buffered_geom
+        buffered_assets.append(asset)
+
+    output = []
+    assets_seen = set()
+
+    for asset in buffered_assets:
+        if asset['properties']['Opref'] in assets_seen:
+            continue
+        assets_seen.add(asset['properties']['Opref'])
+        touching_assets = []
+        for other_asset in buffered_assets:
+            if asset['buffer'].intersects(other_asset['buffer']):
+                touching_assets.append(other_asset)
+                assets_seen.add(other_asset['properties']['Opref'])
+
+        dissolved_shape = cascaded_union([a['buffer'] for a in touching_assets])
+        final_centroid = dissolved_shape.centroid
+        output.append({
+            'type': "Feature",
+            'geometry': {
+                "type": "Point",
+                "coordinates": [final_centroid.coords[0][0], final_centroid.coords[0][1]],
+            },
+            'properties':{
+                'id': asset['properties']['id'],
+            }
+        })
+
+    return output
 
 
 def add_coverage_to_sites(sitefinder_data, postcode_sectors):
@@ -304,15 +511,8 @@ def add_coverage_to_sites(sitefinder_data, postcode_sectors):
                     'type': 'Feature',
                     'geometry': n.object['geometry'],
                     'properties':{
-                        'pcd_sector': postcode_sector['properties']['postcode'],
+                        'pcd_sector': postcode_sector['properties']['pcd_sector'],
                         'id': n.object['properties']['id'],
-                        'Antennaht': n.object['properties']['Antennaht'],
-                        'Transtype': n.object['properties']['Transtype'],
-                        'Freqband': n.object['properties']['Freqband'],
-                        'Anttype': n.object['properties']['Anttype'],
-                        'Powerdbw': n.object['properties']['Powerdbw'],
-                        'Maxpwrdbw': n.object['properties']['Maxpwrdbw'],
-                        'Maxpwrdbm': n.object['properties']['Maxpwrdbm'],
                         'lte_4G': postcode_sector['properties']['lte']
                         }
                     })
@@ -332,7 +532,6 @@ def read_exchanges():
     with open(path, 'r') as source:
         reader = csv.DictReader(source)
         for line in reader:
-            # if line['OLO'] == 'CLMON':
             yield {
                 'type': "Feature",
                 'geometry': {
@@ -358,29 +557,14 @@ def read_exchange_areas():
 
     with fiona.open(path, 'r') as source:
         for area in source:
-            #if area['properties']['id'].startswith('exchange_CLMON'):
             yield area
 
 
-def select_routing_points(origin_point, dest_points, areas):
-
-    idx = index.Index(
-        (i, Point(dest_point['geometry']['coordinates']).bounds, dest_point)
-        for i, dest_point in enumerate(dest_points)
-        )
-
-    nearest_exchange = list(idx.nearest(
-            Point(origin_point['geometry']['coordinates']).bounds,
-            1, objects='raw'))[0]
-
-    exchange_id = nearest_exchange['properties']['id']
-
-    for exchange_area in areas:
-        if exchange_area['properties']['id'] == exchange_id:
-            return nearest_exchange, exchange_area
-
 def return_object_coordinates(object):
+    """
+    Function for returning the coordinates of a type of object.
 
+    """
     if object['geometry']['type'] == 'Polygon':
         origin_geom = object['representative_point']
         x = origin_geom.x
@@ -393,126 +577,12 @@ def return_object_coordinates(object):
 
     return x, y
 
-def generate_shortest_path(origin_points, dest_points, areas):
-    """
-    Calculate distance between each site (origin_points) and the
-    nearest exchange (dest_points).
-
-    """
-    processed_sites = []
-    links = []
-
-    idx = index.Index(
-        (i, Point(dest_point['geometry']['coordinates']).bounds, dest_point)
-        for i, dest_point in enumerate(dest_points)
-        )
-
-    for site in origin_points:
-
-        exchange = list(idx.nearest(
-            Point(site['geometry']['coordinates']).bounds,
-            1, objects='raw'))[0]
-
-        exchange_id = exchange['properties']['id']
-
-        for exchange_polygon in areas:
-            if exchange_polygon['properties']['id'] == exchange_id:
-                exchange_area = exchange_polygon
-
-        ox.config(log_file=False, log_console=False, use_cache=True)
-
-        projUTM = Proj(init='epsg:27700')
-        projWGS84 = Proj(init='epsg:4326')
-
-        east, north = transform(
-            projUTM, projWGS84, shape(exchange_area['geometry']).bounds[2],
-            shape(exchange_area['geometry']).bounds[3]
-            )
-
-        west, south = transform(
-            projUTM, projWGS84, shape(exchange_area['geometry']).bounds[0],
-            shape(exchange_area['geometry']).bounds[1]
-            )
-
-        G = ox.graph_from_bbox(
-            north, south, east, west, network_type='all',
-            truncate_by_edge=True
-            )
-
-        origin_x, origin_y = return_object_coordinates(site)
-        dest_x, dest_y = return_object_coordinates(exchange)
-
-        # Find shortest path between the two
-        point1_x, point1_y = transform(projUTM, projWGS84, origin_x, origin_y)
-        point2_x, point2_y = transform(projUTM, projWGS84, dest_x, dest_y)
-
-        # Find shortest path between the two
-        point1 = (point1_y, point1_x)
-        point2 = (point2_y, point2_x)
-
-        # TODO improve by finding nearest edge,
-        # routing to/from node at either end
-        origin_node = ox.get_nearest_node(G, point1)
-        destination_node = ox.get_nearest_node(G, point2)
-
-        try:
-            if origin_node != destination_node:
-                route = nx.shortest_path(
-                    G, origin_node, destination_node, weight='length'
-                    )
-
-                # Retrieve route nodes and lookup geographical location
-                routeline = []
-                routeline.append((origin_x, origin_y))
-                for node in route:
-                    routeline.append((
-                        transform(projWGS84, projUTM,
-                        G.nodes[node]['x'], G.nodes[node]['y'])
-                        ))
-                routeline.append((dest_x, dest_y))
-                line = routeline
-            else:
-                line = [(origin_x, origin_y), (dest_x, dest_y)]
-        except nx.exception.NetworkXNoPath:
-            line = [(origin_x, origin_y), (dest_x, dest_y)]
-
-        # Map to line
-        processed_sites.append({
-            'type': 'Feature',
-            'geometry': site['geometry'],
-            'properties':{
-                'id': site['properties']['id'],
-                'Antennaht': site['properties']['Antennaht'],
-                'Transtype': site['properties']['Transtype'],
-                'Freqband': site['properties']['Freqband'],
-                'Anttype': site['properties']['Anttype'],
-                'Powerdbw': site['properties']['Powerdbw'],
-                'Maxpwrdbw': site['properties']['Maxpwrdbw'],
-                'Maxpwrdbm': site['properties']['Maxpwrdbm'],
-                'lte_4G': site['properties']['lte_4G'],
-                'exchange': exchange['properties']['id'],
-                'backhaul_length_m': LineString(line).length
-                }
-        })
-
-        # Map to line
-        links.append({
-            'type': "Feature",
-            'geometry': {
-                "type": "LineString",
-                "coordinates": line
-            },
-            'properties': {
-                "site": site['properties']['id'],
-                "exchange": exchange['properties']['id'],
-                "length": LineString(line).length
-            }
-        })
-
-    return links, processed_sites
 
 def generate_link_straight_line(origin_points, dest_points):
+    """
+    Calculate distance between two points.
 
+    """
     idx = index.Index(
         (i, Point(dest_point['geometry']['coordinates']).bounds, dest_point)
         for i, dest_point in enumerate(dest_points)
@@ -532,7 +602,7 @@ def generate_link_straight_line(origin_points, dest_points):
 
             dest_x, dest_y = return_object_coordinates(exchange)
 
-            # Get length
+            # Get lengthFunction for returning the coordinates of an object given the specific type.
             geom = LineString([
                 (origin_x, origin_y), (dest_x, dest_y)
                 ])
@@ -543,13 +613,6 @@ def generate_link_straight_line(origin_points, dest_points):
                 'properties':{
                     'pcd_sector': origin_point['properties']['pcd_sector'],
                     'id': origin_point['properties']['id'],
-                    'Antennaht': origin_point['properties']['Antennaht'],
-                    'Transtype': origin_point['properties']['Transtype'],
-                    'Freqband': origin_point['properties']['Freqband'],
-                    'Anttype': origin_point['properties']['Anttype'],
-                    'Powerdbw': origin_point['properties']['Powerdbw'],
-                    'Maxpwrdbw': origin_point['properties']['Maxpwrdbw'],
-                    'Maxpwrdbm': origin_point['properties']['Maxpwrdbm'],
                     'lte_4G': origin_point['properties']['lte_4G'],
                     'exchange': exchange['properties']['id'],
                     'backhaul_length_m': geom.length * 1.60934
@@ -570,106 +633,80 @@ def generate_link_straight_line(origin_points, dest_points):
             print('- Problem with straight line link for:')
             print(origin_point['properties'])
 
-    return processed_sites, links
-
-
-def write_shapefile(data, folder_name, filename):
-
-    # Translate props to Fiona sink schema
-    prop_schema = []
-    for name, value in data[0]['properties'].items():
-        fiona_prop_type = next((fiona_type for fiona_type, python_type in
-        fiona.FIELD_TYPES_MAP.items() if python_type == type(value)), None)
-        prop_schema.append((name, fiona_prop_type))
-
-    sink_driver = 'ESRI Shapefile'
-    sink_crs = {'init': 'epsg:27700'}
-    sink_schema = {
-        'geometry': data[0]['geometry']['type'],
-        'properties': OrderedDict(prop_schema)
-    }
-
-    # Create path
-    directory = os.path.join(DATA_INTERMEDIATE, folder_name)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-    print(os.path.join(directory, filename))
-    # Write all elements to output file
-    with fiona.open(os.path.join(directory, filename), 'w', driver=sink_driver, crs=sink_crs, schema=sink_schema) as sink:
-        [sink.write(feature) for feature in data]
-
-
-def csv_writer_sites(data, filename):
-    """
-    Write data to a CSV file path
-
-    """
-    data_for_writing = []
-    for asset in data:
-        data_for_writing.append({
+    processed_sites_for_writing = []
+    for asset in processed_sites:
+        processed_sites_for_writing.append({
             'pcd_sector': asset['properties']['pcd_sector'],
             'id': asset['properties']['id'],
-            'longitude': asset['geometry']['coordinates'][0],
-            'latitude': asset['geometry']['coordinates'][1],
-            'Antennaht': asset['properties']['Antennaht'],
-            'Transtype': asset['properties']['Transtype'],
-            'Freqband': asset['properties']['Freqband'],
-            'Anttype': asset['properties']['Anttype'],
-            'Powerdbw':  asset['properties']['Powerdbw'],
-            'Maxpwrdbw':  asset['properties']['Maxpwrdbw'],
-            'Maxpwrdbm':  asset['properties']['Maxpwrdbm'],
             'lte_4G':  asset['properties']['lte_4G'],
             'exchange':  asset['properties']['exchange'],
             'backhaul_length_m':  asset['properties']['backhaul_length_m'],
         })
 
-    #get fieldnames
-    fieldnames = []
-    for name, value in data_for_writing[0].items():
-        fieldnames.append(name)
-
-    #create path
-    directory = os.path.join(BASE_PATH, 'processed')
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-    with open(os.path.join(directory, filename), 'w') as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
-        writer.writeheader()
-        writer.writerows(data_for_writing)
+    return processed_sites_for_writing, links
 
 
-def csv_writer_postcode_sectors(data, filename):
+def convert_postcode_sectors_to_list(data):
+
+    data_for_writing = []
+    for datum in data:
+        data_for_writing.append({
+            'pcd_sector': datum['properties']['pcd_sector'],
+            'lad': datum['properties']['lad'],
+            'population': datum['properties']['population'],
+            'area_km2': datum['properties']['area_km2'],
+            'pop_density_km2': datum['properties']['pop_density_km2'],
+            'lte_4G': datum['properties']['lte'],
+        })
+
+    return data_for_writing
+
+
+def csv_writer(data, directory, filename):
     """
     Write data to a CSV file path
 
     """
-    data_for_writing = []
-    for asset in data:
-        data_for_writing.append({
-            'postcode': asset['properties']['postcode'],
-            'lad': asset['properties']['lad'],
-            'area': asset['properties']['area'],
-        })
-
-    #get fieldnames
-    fieldnames = []
-    for name, value in data_for_writing[0].items():
-        fieldnames.append(name)
-
-    #create path
-    directory = os.path.join(BASE_PATH, 'processed')
+    # Create path
     if not os.path.exists(directory):
         os.makedirs(directory)
+
+    fieldnames = []
+    for name, value in data[0].items():
+        fieldnames.append(name)
 
     with open(os.path.join(directory, filename), 'w') as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
         writer.writeheader()
-        writer.writerows(data_for_writing)
+        writer.writerows(data)
+
+
+# def csv_writer(data, directory, filename):
+#     """
+#     Write data to a CSV file path
+
+#     """
+#     #get fieldnames
+#     fieldnames = []
+#     for name, value in data_for_writing[0].items():
+#         fieldnames.append(name)
+
+#     #create path
+#     if not os.path.exists(directory):
+#         os.makedirs(directory)
+
+#     with open(os.path.join(directory, filename), 'w') as csv_file:
+#         writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
+#         writer.writeheader()
+#         writer.writerows(data_for_writing)
 
 
 if __name__ == "__main__":
+
+    start = time.time()
+
+    directory = os.path.join(DATA_INTERMEDIATE, 'mobile_model_inputs')
+    print('Output directory will be {}'.format(directory))
 
     print('Loading local authority district shapes')
     lads = read_lads()
@@ -677,32 +714,34 @@ if __name__ == "__main__":
     print('Loading lad lookup')
     lad_lut = lad_lut(lads)
 
-    ####ADD LAD TO 'processed_postcode_sectors.shp'
-
     print('Loading postcode sector shapes')
-    path = os.path.join(
-        DATA_RAW_SHAPES, 'datashare_pcd_sectors', 'PostalSector.shp'
-        )
+    path = os.path.join(DATA_RAW_SHAPES, 'datashare_pcd_sectors', 'PostalSector.shp')
     postcode_sectors = read_postcode_sectors(path)
 
-    print('Adding lad IDs to postcode sectors')
+    print('Adding lad IDs to postcode sectors... might take a few minutes...')
     postcode_sectors = add_lad_to_postcode_sector(postcode_sectors, lads)
 
-    ####DISAGGREGATE 4G LTE COVERAGE TO 'lte_coverage.shp'
+    print('Loading in population weights' )
+    weights = load_in_weights()
 
-    print('Allocate geotype info to postcode sectors')
-    postcode_sectors = add_geotype_information(postcode_sectors, load_geotype_lut)
+    print('Adding weights to postcode sectors')
+    postcode_sectors = add_weights_to_postcode_sector(postcode_sectors, weights)
+
+    print('Calculating lad population weight for each postcode sector')
+    postcode_sectors = calculate_lad_population(postcode_sectors)
+
+    print('Generating scenario variants')
+    generate_scenario_variants(postcode_sectors, directory)
 
     print('Disaggregate 4G coverage to postcode sectors')
-    postcode_sectors = allocate_4G_coverage(
-        postcode_sectors, lad_lut
-        )
-    print('postcode_sectors length is {}'.format(len(postcode_sectors)))
-
-    ####ADD 4G LTE COVERAGE TO SITES AND WRITE TO 'processed_sites.shp'
+    postcode_sectors = allocate_4G_coverage(postcode_sectors, lad_lut)
 
     print('Importing sitefinder data')
-    sitefinder_data = import_sitefinder_data()
+    folder = os.path.join(BASE_PATH,'raw','b_mobile_model','sitefinder')
+    sitefinder_data = import_sitefinder_data(os.path.join(folder, 'sitefinder.csv'))
+
+    print('Preprocessing sitefinder data with 50m buffer')
+    sitefinder_data = process_asset_data(sitefinder_data)
 
     print('Allocate 4G coverage to sites from postcode sectors')
     processed_sites = add_coverage_to_sites(sitefinder_data, postcode_sectors)
@@ -713,24 +752,25 @@ if __name__ == "__main__":
     print('Reading exchange areas')
     exchange_areas = read_exchange_areas()
 
-    # print('Generating shortest path link')
-    # backhaul_links, processed_sites = generate_shortest_path(
-    #     processed_sites, exchanges, exchange_areas
-    #     )
-
+    print('Generating straight line distance from each site to the nearest exchange')
     processed_sites, backhaul_links = generate_link_straight_line(processed_sites, exchanges)
 
-    ### WRITE ALL OUTPUTS ###
-    csv_writer_sites(processed_sites, 'final_processed_sites.csv')
+    print('Convert geojson postcode sectors to list of dicts')
+    postcode_sectors = convert_postcode_sectors_to_list(postcode_sectors)
 
-    csv_writer_postcode_sectors(postcode_sectors, '_processed_postcode_sectors.csv')
+    print('Specifying clutter geotypes')
+    geotypes = [
+        {'geotype': 'urban', 'population_density': 7959},
+        {'geotype': 'suburban', 'population_density': 782},
+        {'geotype': 'rural', 'population_density': 0},
+    ]
+    csv_writer(geotypes, directory, 'lookup_table_geotype.csv')
 
-    # write_shapefile(
-    #     postcode_sectors, 'postcode_sectors', '_processed_postcode_sectors.shp'
-    #     )
-    # write_shapefile(
-    #     processed_sites, 'sitefinder', 'final_processed_sites.shp'
-    #     )
-    # write_shapefile(
-    #     backhaul_links, 'sitefinder', 'backhaul_routes.shp'
-    #     )
+    print('Writing processed sites to .csv')
+    csv_writer(processed_sites, directory, 'final_processed_sites.csv')
+
+    print('Writing postcode sectors to .csv')
+    csv_writer(postcode_sectors, directory, '_processed_postcode_sectors.csv')
+
+    end = time.time()
+    print('time taken: {} minutes'.format(round((end - start) / 60,2)))

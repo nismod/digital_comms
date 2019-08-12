@@ -9,8 +9,12 @@ def calculate_costs(data, discount_rate, start_timestep, current_timestep):
     ----------
     data : list of dicts
         Contains a list of assets
-    timestep : int
+    discount_rate : float
+        Annual financial discount rate to account for the time value of money
+    start_timestep : int
         The timestep relative to the initial starting point
+    current_timestep : int
+        The timestep relative to the current point
 
     Returns
     -------
@@ -21,7 +25,7 @@ def calculate_costs(data, discount_rate, start_timestep, current_timestep):
     output = []
 
     for datum in data:
-
+ 
         output_datum = {}
 
         cost = datum['capex']
