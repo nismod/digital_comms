@@ -8,7 +8,6 @@ from shapely.geometry import Point, LineString, shape, mapping
 import os
 from collections import OrderedDict
 from digital_comms.mobile_network.model import NetworkManager
-from digital_comms.mobile_network.system_simulator import SimulationManager
 
 @pytest.fixture
 def rootdir():
@@ -93,14 +92,14 @@ def setup_pcd_sector():
             "id": "CB11",
             "lad_id": 1,
             "population": 500,
-            "area": 2,
+            "area_km2": 2,
             "user_throughput": 2,
         },
         {
             "id": "CB12",
             "lad_id": 1,
             "population": 200,
-            "area": 2,
+            "area_km2": 2,
             "user_throughput": 2,
         }
     ]
@@ -267,31 +266,31 @@ def setup_site_sectors():
 @fixture(scope='function')
 def setup_capacity_lookup():
     return {
-        ("urban", "700", "10", '30'): [
+        ("urban", "700", "10"): [
             (0, 0),
             (1, 2),
         ],
-        ("urban", "800", "10", '30'): [
+        ("urban", "800", "10"): [
             (0, 0),
             (1, 2),
         ],
-        ("urban", "2600", "10", '30'): [
+        ("urban", "2600", "10"): [
             (0, 0),
             (3, 5),
         ],
-        ("urban", "3500", "80", '30'): [
+        ("urban", "3500", "80"): [
             (0, 0),
             (3, 5),
         ],
-        ('small_cells', '3700', '25', '30'): [
+        ('small_cells', '3700', '25'): [
             (0, 0),
             (3, 10),
         ],
-        ("rural", "700", "10", '30'): [
+        ("rural", "700", "10"): [
             (0, 0),
             (1, 2),
         ],
-        ("rural", "800", "10", '30'): [
+        ("rural", "800", "10"): [
             (0, 0),
             (0.25, 0.5),
             (0.5, 1),
@@ -299,60 +298,23 @@ def setup_capacity_lookup():
             (1, 2),
             (2, 4),
         ],
-        ("rural", "2600", "10", '30'): [
+        ("rural", "2600", "10"): [
             (0, 0),
+            (1, 2),
             (2, 4),
             (3, 5),
         ],
-        ("rural", "3500", "80", '30'): [
+        ("rural", "3500", "40"): [
             (0, 0),
             (3, 5),
         ],
-        ("rural", "1800", "10", '30'): [
+        ("rural", "1800", "10"): [
             (0, 0),
             (0, 0),
         ],
-        ("urban", "700", "10", '40'): [
+        ("urban", "700", "10"): [
             (0, 0),
             (2, 4),
-        ],
-        ("urban", "800", "10", '40'): [
-            (0, 0),
-            (2, 4),
-        ],
-        ("urban", "2600", "10", '40'): [
-            (0, 0),
-            (6, 10),
-        ],
-        ("urban", "3500", "80", '40'): [
-            (0, 0),
-            (6, 10),
-        ],
-        ('small_cells', '3700', '25', 'small_cells'): [
-            (0, 0),
-            (2, 10),
-            (4, 20),
-            (5, 25),
-        ],
-        ("rural", "700", "10", '40'): [
-            (0, 0),
-            (2, 4),
-        ],
-        ("rural", "800", "10", '40'): [
-            (0, 0),
-            (2, 4),
-        ],
-        ("rural", "2600", "10", '40'): [
-            (0, 0),
-            (6, 10),
-        ],
-        ("rural", "3500", "80", '40'): [
-            (0, 0),
-            (6, 10),
-        ],
-        ("rural", "1800", "10", '40'): [
-            (0, 0),
-            (0, 0),
         ],
     }
 
@@ -1193,21 +1155,20 @@ def setup_single_receiver():
 @pytest.fixture
 def setup_simulation_parameters():
     return {
-    'iterations': 100,
-    'seed_value': 42,
-    'tx_baseline_height': 30,
-    'tx_upper_height': 40,
-    'tx_power': 40,
-    'tx_gain': 16,
-    'tx_losses': 1,
-    'rx_gain': 4,
-    'rx_losses': 4,
-    'rx_misc_losses': 4,
-    'rx_height': 1.5,
-    'network_load': 50,
-    'percentile': 95,
-    'desired_transmitter_density': 10,
-    'sectorisation': 3,
+        'market_share': 0.25,
+        'annual_budget': 500000000,
+        'service_obligation_capacity': 0,
+        'busy_hour_traffic_percentage': 15,
+        'coverage_threshold': 2,
+        'penetration': 80,
+        'channel_bandwidth_700': '10',
+        'channel_bandwidth_800': '10',
+        'channel_bandwidth_1800': '10',
+        'channel_bandwidth_2600': '10',
+        'channel_bandwidth_3500': '40',
+        'macro_sectors': 3,
+        'small_cell_sectors': 1,
+        'mast_height': 30,
     }
 
 
