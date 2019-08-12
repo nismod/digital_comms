@@ -222,6 +222,7 @@ class LAD(object):
             pcd_sector.area
             for pcd_sector in self._pcd_sectors.values()
         )
+
         return summed_demand / summed_area
 
 
@@ -335,7 +336,9 @@ class PostcodeSector(object):
 
         """
         users = self.population * (self.penetration / 100) * self.market_share
+
         user_throughput = users * self.user_demand
+
         capacity_per_kmsq = user_throughput / self.area
 
         return capacity_per_kmsq
@@ -377,8 +380,9 @@ class PostcodeSector(object):
                 frequency,
                 bandwidth,
                 site_density)
+            
             capacity += tech_capacity
-
+            print(capacity)
         return capacity
 
 

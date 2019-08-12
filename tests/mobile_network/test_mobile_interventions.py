@@ -1,95 +1,87 @@
-# """
-# Test Mobile Network interventions.py
-# 11th May 2019
-# Written by Edward J. Oughton
+"""
+Test Mobile Network interventions.py
+11th May 2019
+Written by Edward J. Oughton
 
-# """
-# import pytest
-# from digital_comms.mobile_network.interventions import(
-#     decide_interventions,
-#     _area_satisfied,
-#     )
-# from digital_comms.mobile_network.model import (
-#     NetworkManager, PostcodeSector
-#     )
-
-
-# @pytest.fixture
-# def basic_system(setup_lad, setup_pcd_sector, setup_assets,
-#             setup_capacity_lookup,
-#             setup_clutter_lookup,
-#             setup_service_obligation_capacity,
-#             setup_traffic, setup_market_share, setup_mast_height):
-
-#     system = NetworkManager(setup_lad, setup_pcd_sector, setup_assets,
-#         setup_capacity_lookup, setup_clutter_lookup,
-#         setup_service_obligation_capacity,
-#         setup_traffic, setup_market_share, setup_mast_height)
-
-#     return system
+"""
+import pytest
+from digital_comms.mobile_network.interventions import(
+    decide_interventions,
+    _area_satisfied,
+    )
+from digital_comms.mobile_network.model import (
+    NetworkManager, PostcodeSector
+    )
 
 
-# @pytest.fixture
-# def non_4g_system(setup_lad, setup_pcd_sector, setup_non_4g_assets,
-#     setup_capacity_lookup, setup_clutter_lookup,
-#     setup_service_obligation_capacity, setup_traffic, setup_market_share,
-#     setup_mast_height):
+@pytest.fixture
+def basic_system(setup_lad, setup_pcd_sector, setup_assets,
+    setup_capacity_lookup, setup_clutter_lookup,
+    setup_simulation_parameters):
 
-#     system = NetworkManager(setup_lad, setup_pcd_sector, setup_non_4g_assets,
-#         setup_capacity_lookup, setup_clutter_lookup,
-#         setup_service_obligation_capacity,
-#         setup_traffic, setup_market_share, setup_mast_height)
+    system = NetworkManager(setup_lad, setup_pcd_sector,
+        setup_assets, setup_capacity_lookup, setup_clutter_lookup,
+        setup_simulation_parameters)
 
-#     return system
+    return system
 
 
-# @pytest.fixture
-# def mixed_system(setup_lad, setup_pcd_sector, setup_mixed_assets,
-#     setup_capacity_lookup, setup_clutter_lookup,
-#     setup_service_obligation_capacity, setup_traffic, setup_market_share,
-#     setup_mast_height):
+@pytest.fixture
+def non_4g_system(setup_lad, setup_pcd_sector, setup_non_4g_assets,
+    setup_capacity_lookup, setup_clutter_lookup,
+    setup_simulation_parameters):
 
-#     system = NetworkManager(setup_lad, setup_pcd_sector, setup_mixed_assets,
-#         setup_capacity_lookup, setup_clutter_lookup,
-#         setup_service_obligation_capacity,
-#         setup_traffic, setup_market_share, setup_mast_height)
+    system = NetworkManager(setup_lad, setup_pcd_sector,
+        setup_non_4g_assets, setup_capacity_lookup,
+        setup_clutter_lookup, setup_simulation_parameters)
 
-#     return system
+    return system
 
 
-# def test_decide_interventions(non_4g_system, basic_system,
-#     mixed_system, setup_traffic, setup_market_share):
+@pytest.fixture
+def mixed_system(setup_lad, setup_pcd_sector, setup_mixed_assets,
+    setup_capacity_lookup, setup_clutter_lookup,
+    setup_simulation_parameters):
 
-#     actual_result = decide_interventions(
-#         'minimal', 250000, 0,
-#         mixed_system, 2020, 0.15, 0.25, 30
-#     )
+    system = NetworkManager(setup_lad, setup_pcd_sector, setup_mixed_assets,
+        setup_capacity_lookup, setup_clutter_lookup,
+        setup_simulation_parameters)
 
-#     assert actual_result == ([], 250000)
-
-#     actual_result = decide_interventions(
-#         'upgrade-to-lte', 284892, 2,
-#         non_4g_system, 2020, 0.15, 0.25, 30
-#     )
-
-#     assert len(actual_result[0]) == 2
-#     assert actual_result[1] == 0
-
-#     actual_result = decide_interventions(
-#         'upgrade-to-lte', 250000, 2,
-#         mixed_system, 2020, 0.15, 0.25, 30
-#     )
-
-#     assert actual_result == ([], 250000)
+    return system
 
 
-#     actual_result = decide_interventions(
-#         'macrocell-700-3500', 101834, 2,
-#         mixed_system, 2020, 0.15, 0.25, 30
-#     )
+def test_decide_interventions(non_4g_system, basic_system,
+    mixed_system, setup_simulation_parameters):
 
-#     assert len(actual_result[0]) == 2
-#     assert actual_result[1] == 0
+    actual_result = decide_interventions(
+        'minimal', 250000, 0,
+        mixed_system, 2020, setup_simulation_parameters
+    )
+
+    assert actual_result == ([], 250000, [])
+
+    # actual_result = decide_interventions(
+    #     'upgrade_to_lte', 142446, 2,
+    #     non_4g_system, 2020, setup_simulation_parameters
+    # )
+    
+    # assert len(actual_result[0]) == 2
+    # assert actual_result[1] == 0
+
+    actual_result = decide_interventions(
+        'upgrade_to_lte', 142446, 2,
+        mixed_system, 2020, setup_simulation_parameters
+    )
+
+    assert actual_result == ([], 142446, [])
+    print('-------')
+    actual_result = decide_interventions(
+        'macrocell', 200000, 2,
+        mixed_system, 2020, setup_simulation_parameters
+    )
+
+    assert len(actual_result[0]) == 2
+    assert actual_result[1] == 0
 
 #     actual_result = decide_interventions(
 #         'macrocell-700', 50917, 2,
