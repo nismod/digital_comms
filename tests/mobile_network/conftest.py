@@ -1157,7 +1157,7 @@ def setup_simulation_parameters():
     return {
         'market_share': 0.25,
         'annual_budget': 500000000,
-        'service_obligation_capacity': 0,
+        'service_obligation_capacity': 100,
         'busy_hour_traffic_percentage': 15,
         'coverage_threshold': 2,
         'penetration': 80,

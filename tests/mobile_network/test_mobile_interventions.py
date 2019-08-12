@@ -60,28 +60,28 @@ def test_decide_interventions(non_4g_system, basic_system,
 
     assert actual_result == ([], 250000, [])
 
-    actual_result = decide_interventions(
-        'upgrade-to-lte', 142446, 2,
-        non_4g_system, 2020, setup_simulation_parameters
-    )
-    print(actual_result)
-    assert len(actual_result[0]) == 2
-    # assert actual_result[1] == 0
-
     # actual_result = decide_interventions(
-    #     'upgrade-to-lte', 142446, 2,
-    #     mixed_system, 2020, setup_simulation_parameters
+    #     'upgrade_to_lte', 142446, 2,
+    #     non_4g_system, 2020, setup_simulation_parameters
     # )
-
-    # assert actual_result == ([], 142446, [])
-
-    # actual_result = decide_interventions(
-    #     'macrocell-700-3500', 101834, 2,
-    #     mixed_system, 2020, setup_simulation_parameters
-    # )
-
+    
     # assert len(actual_result[0]) == 2
     # assert actual_result[1] == 0
+
+    actual_result = decide_interventions(
+        'upgrade_to_lte', 142446, 2,
+        mixed_system, 2020, setup_simulation_parameters
+    )
+
+    assert actual_result == ([], 142446, [])
+    print('-------')
+    actual_result = decide_interventions(
+        'macrocell', 200000, 2,
+        mixed_system, 2020, setup_simulation_parameters
+    )
+
+    assert len(actual_result[0]) == 2
+    assert actual_result[1] == 0
 
 #     actual_result = decide_interventions(
 #         'macrocell-700', 50917, 2,
