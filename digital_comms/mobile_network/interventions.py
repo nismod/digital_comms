@@ -106,7 +106,7 @@ AVAILABLE_STRATEGY_INTERVENTIONS = {
     # Capacity will be the sum of 800 and 2600 MHz
     'minimal': (),
 
-    'upgrade_to_lte': ('upgrade_to_lte'),
+    'install_4g': ('upgrade_to_lte'),
 
     # Intervention Strategy 2
     # Integrate 700 and 3500 MHz on to the macrocellular layer
