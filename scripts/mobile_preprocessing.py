@@ -20,9 +20,7 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 # setup file locations and data files
 #####################################
 
-DATA_RAW_INPUTS = os.path.join(BASE_PATH, 'raw', 'b_mobile_model')
-DATA_FIXED_INPUTS = os.path.join(BASE_PATH, 'raw', 'a_fixed_model')
-DATA_RAW_SHAPES = os.path.join(BASE_PATH, 'raw', 'd_shapes')
+DATA_RAW = os.path.join(BASE_PATH, '..', 'data_raw', 'b_mobile_model')
 DATA_INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 
 #####################################
@@ -35,11 +33,11 @@ def read_lads():
 
     """
     lad_shapes = os.path.join(
-        DATA_RAW_SHAPES, 'lad_uk_2016-12', 'lad_uk_2016-12.shp'
+        DATA_RAW, 'shapes', 'lad_uk_2016-12.shp'
         )
 
     with fiona.open(lad_shapes, 'r') as lad_shape:
-        return [lad for lad in lad_shape if #lad['properties']['name'].startswith('E07000191')]
+        return [lad for lad in lad_shape if
         not lad['properties']['name'].startswith((
             'E06000053',
             'S12000027',
@@ -65,28 +63,6 @@ def lad_lut(lads):
     for lad in lads:
         yield lad['properties']['name']
 
-
-def load_geotype_lut(lad_id):
-
-    directory = os.path.join(
-        DATA_INTERMEDIATE, 'mobile_geotype_lut', lad_id
-    )
-
-    path = os.path.join(directory, lad_id + '.csv')
-
-    with open(path, 'r') as source:
-        reader = csv.DictReader(source)
-        for line in reader:
-            total_premises = (
-                int(float(line['residential_count'])) +
-                int(float(line['non_residential_count']))
-                )
-            yield {
-                'postcode_sector': line['postcode_sector'],
-                'total_premises': total_premises,
-                'area_km2': float(line['area']),
-                'premises_density_km2': total_premises / float(line['area']),
-            }
 
 def read_postcode_sectors(path):
     """
@@ -136,7 +112,7 @@ def load_coverage_data(lad_id):
 
     """
     path = os.path.join(
-        DATA_RAW_INPUTS, 'ofcom_2018', '201809_mobile_laua_r02.csv'
+        DATA_RAW, 'ofcom_2018', '201809_mobile_laua_r02.csv'
         )
 
     with open(path, 'r') as source:
@@ -159,8 +135,7 @@ def load_in_weights():
 
     """
     path = os.path.join(
-        DATA_RAW_INPUTS, 'mobile_model_1.0',
-        'scenario_data', 'population_baseline_pcd.csv'
+        DATA_RAW, 'scenario_data', 'population_baseline_pcd.csv'
         )
 
     population_data = []
@@ -205,7 +180,9 @@ def add_weights_to_postcode_sector(postcode_sectors, weights):
 
 
 def calculate_lad_population(postcode_sectors):
+    """
 
+    """
     lad_ids = set()
 
     for pcd_sector in postcode_sectors:
@@ -254,8 +231,10 @@ def calculate_lad_population(postcode_sectors):
 
 
 def get_forecast(filename):
+    """
 
-    folder = os.path.join(DATA_RAW_INPUTS, 'population_scenarios')
+    """
+    folder = os.path.join(DATA_RAW, 'population_scenarios')
 
     with open(os.path.join(folder, filename), 'r') as source:
         reader = csv.DictReader(source)
@@ -268,7 +247,9 @@ def get_forecast(filename):
 
 
 def disaggregate(forecast, postcode_sectors):
+    """
 
+    """
     output = []
 
     seen_lads = set()
@@ -526,7 +507,7 @@ def read_exchanges():
 
     """
     path = os.path.join(
-        DATA_FIXED_INPUTS, 'layer_2_exchanges', 'final_exchange_pcds.csv'
+        DATA_RAW, 'exchanges', 'final_exchange_pcds.csv'
         )
 
     with open(path, 'r') as source:
@@ -552,7 +533,7 @@ def read_exchange_areas():
 
     """
     path = os.path.join(
-        DATA_RAW_SHAPES, 'all_exchange_areas', '_exchange_areas_fixed.shp'
+        DATA_RAW, 'exchanges', '_exchange_areas_fixed.shp'
         )
 
     with fiona.open(path, 'r') as source:
@@ -602,7 +583,8 @@ def generate_link_straight_line(origin_points, dest_points):
 
             dest_x, dest_y = return_object_coordinates(exchange)
 
-            # Get lengthFunction for returning the coordinates of an object given the specific type.
+            # Get lengthFunction for returning the coordinates of
+            # an object given the specific type.
             geom = LineString([
                 (origin_x, origin_y), (dest_x, dest_y)
                 ])
@@ -681,26 +663,6 @@ def csv_writer(data, directory, filename):
         writer.writerows(data)
 
 
-# def csv_writer(data, directory, filename):
-#     """
-#     Write data to a CSV file path
-
-#     """
-#     #get fieldnames
-#     fieldnames = []
-#     for name, value in data_for_writing[0].items():
-#         fieldnames.append(name)
-
-#     #create path
-#     if not os.path.exists(directory):
-#         os.makedirs(directory)
-
-#     with open(os.path.join(directory, filename), 'w') as csv_file:
-#         writer = csv.DictWriter(csv_file, fieldnames, lineterminator = '\n')
-#         writer.writeheader()
-#         writer.writerows(data_for_writing)
-
-
 if __name__ == "__main__":
 
     start = time.time()
@@ -715,7 +677,7 @@ if __name__ == "__main__":
     lad_lut = lad_lut(lads)
 
     print('Loading postcode sector shapes')
-    path = os.path.join(DATA_RAW_SHAPES, 'datashare_pcd_sectors', 'PostalSector.shp')
+    path = os.path.join(DATA_RAW, 'shapes', 'PostalSector.shp')
     postcode_sectors = read_postcode_sectors(path)
 
     print('Adding lad IDs to postcode sectors... might take a few minutes...')
@@ -737,7 +699,7 @@ if __name__ == "__main__":
     postcode_sectors = allocate_4G_coverage(postcode_sectors, lad_lut)
 
     print('Importing sitefinder data')
-    folder = os.path.join(BASE_PATH,'raw','b_mobile_model','sitefinder')
+    folder = os.path.join(DATA_RAW, 'sitefinder')
     sitefinder_data = import_sitefinder_data(os.path.join(folder, 'sitefinder.csv'))
 
     print('Preprocessing sitefinder data with 50m buffer')

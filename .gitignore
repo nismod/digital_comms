@@ -53,6 +53,7 @@ MANIFEST
 
 # Data
 data/*
+data_raw/*
 results/*
 vis/*
 scripts/script_config.ini
