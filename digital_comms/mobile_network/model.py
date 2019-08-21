@@ -380,7 +380,7 @@ class PostcodeSector(object):
                 frequency,
                 bandwidth,
                 site_density)
-            
+
             capacity += tech_capacity
             print(capacity)
         return capacity

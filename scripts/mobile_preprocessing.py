@@ -639,9 +639,90 @@ def convert_postcode_sectors_to_list(data):
             'area_km2': datum['properties']['area_km2'],
             'pop_density_km2': datum['properties']['pop_density_km2'],
             'lte_4G': datum['properties']['lte'],
+
         })
 
     return data_for_writing
+
+
+def convert_assets_for_nismod2(data):
+
+    output = []
+
+    asset_id = 0
+    for asset in data:
+        lte_4G = asset['lte_4G']
+        if lte_4G == 1:
+            output.append(
+                {
+                    'name': 'macro_cell_{}_{}_{}_{}'.format(
+                        '800', '4G', asset['name'], asset_id),
+                    'build_year': 2015,
+                    'frequency': '800',
+                    'technology': '4G',
+                    'type': 'macrocell_site',
+                    'id': asset['id'].replace(' ', ''),
+                    'technical_lifetime_value': 10,
+                    'technical_lifetime_units': 'years',
+                    'capex': 50917,
+                    'opex': 2000,
+                }
+            )
+            asset_id += 1
+
+            output.append(
+                {
+                    'name': 'macro_cell_{}_{}_{}_{}'.format(
+                        '2600', '4G', asset['name'], asset_id),
+                    'build_year': 2015,
+                    'frequency': '2600',
+                    'technology': '4G',
+                    'type': 'macrocell_site',
+                    'id': asset['id'],
+                    'technical_lifetime_value': 10,
+                    'technical_lifetime_units': 'years',
+                    'capex': 50917,
+                    'opex': 2000,
+                }
+            )
+            asset_id += 1
+
+        elif lte_4G == 0:
+            output.append(
+                {
+                    'name': 'macro_cell_{}_{}_{}_{}'.format(
+                        None, None, asset['name'], asset_id),
+                    'build_year': 2015,
+                    'frequency': '800',
+                    'technology': None,
+                    'type': 'macrocell_site',
+                    'id': asset['id'],
+                    'technical_lifetime_value': 10,
+                    'technical_lifetime_units': 'years',
+                    'capex': 50917,
+                    'opex': 2000,
+                }
+            )
+            asset_id += 1
+
+            output.append(
+                {
+                    'name': 'macro_cell_{}_{}_{}_{}'.format(
+                        None, None, asset['name'], asset_id),
+                    'build_year': 2015,
+                    'frequency': '800',
+                    'technology': None,
+                    'type': 'macrocell_site',
+                    'id': asset['id'],
+                    'technical_lifetime_value': 10,
+                    'technical_lifetime_units': 'years',
+                    'capex': 50917,
+                    'opex': 2000,
+                }
+            )
+            asset_id += 1
+
+    return output
 
 
 def csv_writer(data, directory, filename):
@@ -681,7 +762,7 @@ if __name__ == "__main__":
     postcode_sectors = read_postcode_sectors(path)
 
     print('Adding lad IDs to postcode sectors... might take a few minutes...')
-    postcode_sectors = add_lad_to_postcode_sector(postcode_sectors[:1000], lads)
+    postcode_sectors = add_lad_to_postcode_sector(postcode_sectors[:200], lads)
 
     print('Loading in population weights' )
     weights = load_in_weights()
@@ -703,7 +784,7 @@ if __name__ == "__main__":
     sitefinder_data = import_sitefinder_data(os.path.join(folder, 'sitefinder.csv'))
 
     print('Preprocessing sitefinder data with 50m buffer')
-    sitefinder_data = process_asset_data(sitefinder_data[:10000])
+    sitefinder_data = process_asset_data(sitefinder_data[:1000])
 
     print('Allocate 4G coverage to sites from postcode sectors')
     processed_sites = add_coverage_to_sites(sitefinder_data, postcode_sectors)
@@ -734,9 +815,12 @@ if __name__ == "__main__":
     print('Writing processed sites to .csv')
     csv_writer(processed_sites, directory, 'final_processed_sites.csv')
 
+    print('Convert assets for nismod2')
+    nismod2_assets = convert_assets_for_nismod2(processed_sites)
+
     print('Writing digital_initial to .csv')
     nismod2_directory = os.path.join(DATA_INTERMEDIATE, 'nismod2_inputs')
-    csv_writer(processed_sites, nismod2_directory, 'digital_initial_conditions.csv')
+    csv_writer(nismod2_assets, nismod2_directory, 'digital_initial_conditions.csv')
 
     end = time.time()
     print('time taken: {} minutes'.format(round((end - start) / 60,2)))
