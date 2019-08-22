@@ -19,19 +19,30 @@ BASE_PATH = CONFIG['file_locations']['base_path']
 RAW = os.path.join(BASE_PATH, 'raw', 'b_mobile_model','mobile_model_1.0')
 INTERMEDIATE = os.path.join(BASE_PATH, 'intermediate')
 
+
+def load_initial_conditions():
+
+    path = os.path.join(INTERMEDIATE, 'nismod2_inputs', 'digital_initial_conditions.csv')
+
+    with open(path, 'r') as source:
+        reader = csv.DictReader(source)
+        return [asset for asset in reader]
+
+
 def load_postcode_sectors(geotype_lookup):
     """
     Load in postcode sector information.
 
     """
     pcd_sectors = []
-    PCD_SECTOR_FILENAME = os.path.join(INTERMEDIATE, '_processed_postcode_sectors.csv')
+    PCD_SECTOR_FILENAME = os.path.join(INTERMEDIATE, 'mobile_model_inputs',
+        '_processed_postcode_sectors.csv')
 
     with open(PCD_SECTOR_FILENAME, 'r') as source:
         reader = csv.DictReader(source)
         for pcd_sector in reader:
             pcd_sectors.append({
-                "id": pcd_sector['pcd_sector'].replace(" ", ""),
+                "id": pcd_sector['id'].replace(" ", ""),
                 "lad_id": pcd_sector['lad'],
                 "pop_density_km2": float(pcd_sector['pop_density_km2']),
                 'lte_4G': pcd_sector['lte_4G'],
@@ -149,9 +160,9 @@ def roundup(number):
     return round(number + 0.5)
 
 
-def generate_assets(postcode_sectors, capacity_lookup):
+def generate_assets(postcode_sectors, capacity_lookup, initial_conditions):
 
-    all_possible_assets = []
+    all_possible_assets = initial_conditions
 
     for pcd_sector in postcode_sectors:
 
@@ -163,13 +174,15 @@ def generate_assets(postcode_sectors, capacity_lookup):
             #add 800 to site
             all_possible_assets.append(
                 {
-                    'id': 'macro_cell_{}_{}_{}_{}'.format(
-                        '800', pcd_sector['id'], asset_id, pcd_sector['geotype']),
+                    'name': 'macro_cell_{}_{}_{}_{}_{}'.format(
+                        '800', '4G', pcd_sector['id'], asset_id, pcd_sector['geotype']),
+                    'build_year': None,
                     'frequency': '800',
                     'technology': '4G',
                     'type': 'macrocell_site',
-                    'pcd_sector': pcd_sector['id'].replace(' ', ''),
-                    'technical_lifetime': '10',
+                    'id': pcd_sector['id'].replace(' ', ''),
+                    'technical_lifetime_value': 10,
+                    'technical_lifetime_units': 'years',
                     'capex': 50917,
                     'opex': 2000,
                 }
@@ -178,13 +191,15 @@ def generate_assets(postcode_sectors, capacity_lookup):
             #add 1800 to site
             all_possible_assets.append(
                 {
-                    'id': 'macro_cell_{}_{}_{}_{}'.format(
-                        '1800', pcd_sector['id'], asset_id, pcd_sector['geotype']),
+                    'name': 'macro_cell_{}_{}_{}_{}_{}'.format(
+                        '1800', '4G', pcd_sector['id'], asset_id, pcd_sector['geotype']),
+                    'build_year': None,
                     'frequency': '1800',
                     'technology': '4G',
                     'type': 'macrocell_site',
-                    'pcd_sector': pcd_sector['id'].replace(' ', ''),
-                    'technical_lifetime': '10',
+                    'id': pcd_sector['id'].replace(' ', ''),
+                    'technical_lifetime_value': 10,
+                    'technical_lifetime_units': 'years',
                     'capex': 50917,
                     'opex': 2000,
                 }
@@ -193,13 +208,15 @@ def generate_assets(postcode_sectors, capacity_lookup):
             #add 2600 to site
             all_possible_assets.append(
                 {
-                    'id': 'macro_cell_{}_{}_{}_{}'.format(
-                        '2600', pcd_sector['id'], asset_id, pcd_sector['geotype']),
+                    'name': 'macro_cell_{}_{}_{}_{}_{}'.format(
+                        '2600', '4G', pcd_sector['id'], asset_id, pcd_sector['geotype']),
+                    'build_year': None,
                     'frequency': '2600',
                     'technology': '4G',
                     'type': 'macrocell_site',
-                    'pcd_sector': pcd_sector['id'].replace(' ', ''),
-                    'technical_lifetime': '10',
+                    'id': pcd_sector['id'].replace(' ', ''),
+                    'technical_lifetime_value': 10,
+                    'technical_lifetime_units': 'years',
                     'capex': 50917,
                     'opex': 2000,
                 }
@@ -208,13 +225,15 @@ def generate_assets(postcode_sectors, capacity_lookup):
             #add 700 to site
             all_possible_assets.append(
                 {
-                    'id': 'macro_cell_{}_{}_{}_{}'.format(
-                        '700', pcd_sector['id'], asset_id, pcd_sector['geotype']),
+                    'name': 'macro_cell_{}_{}_{}_{}_{}'.format(
+                        '700', '5G', pcd_sector['id'], asset_id, pcd_sector['geotype']),
+                    'build_year': None,
                     'frequency': '700',
                     'technology': '5G',
                     'type': 'macrocell_site',
-                    'pcd_sector': pcd_sector['id'].replace(' ', ''),
-                    'technical_lifetime': '10',
+                    'id': pcd_sector['id'].replace(' ', ''),
+                    'technical_lifetime_value': 10,
+                    'technical_lifetime_units': 'years',
                     'capex': 50917,
                     'opex': 2000,
                 }
@@ -223,13 +242,15 @@ def generate_assets(postcode_sectors, capacity_lookup):
             #add 3500 to site
             all_possible_assets.append(
                 {
-                    'id': 'macro_cell_{}_{}_{}_{}'.format(
-                        '3500', pcd_sector['id'], asset_id, pcd_sector['geotype']),
+                    'name': 'macro_cell_{}_{}_{}_{}_{}'.format(
+                        '3500', '5G', pcd_sector['id'], asset_id, pcd_sector['geotype']),
+                    'build_year': None,
                     'frequency': '3500',
                     'technology': '5G',
                     'type': 'macrocell_site',
-                    'pcd_sector': pcd_sector['id'].replace(' ', ''),
-                    'technical_lifetime': '10',
+                    'id': pcd_sector['id'].replace(' ', ''),
+                    'technical_lifetime_value': 10,
+                    'technical_lifetime_units': 'years',
                     'capex': 50917,
                     'opex': 2000,
                 }
@@ -238,13 +259,15 @@ def generate_assets(postcode_sectors, capacity_lookup):
             #build 4G site
             all_possible_assets.append(
                 {
-                    'id': 'macro_cell_{}_{}_{}_{}'.format(
-                        'new', pcd_sector['id'], asset_id, pcd_sector['geotype']),
+                    'name': 'macro_cell_{}_{}_{}_{}_{}'.format(
+                        'new', '4G', pcd_sector['id'], asset_id, pcd_sector['geotype']),
+                    'build_year': None,
                     'frequency': ['800', '1800', '2600'],
                     'technology': '4G',
                     'type': 'macrocell_site',
-                    'pcd_sector': pcd_sector['id'].replace(' ', ''),
-                    'technical_lifetime': '10',
+                    'id': pcd_sector['id'].replace(' ', ''),
+                    'technical_lifetime_value': 10,
+                    'technical_lifetime_units': 'years',
                     'capex': 142446,
                     'opex': 10000,
                 }
@@ -253,13 +276,15 @@ def generate_assets(postcode_sectors, capacity_lookup):
             #build 5G site
             all_possible_assets.append(
                 {
-                    'id': 'macro_cell_{}_{}_{}_{}'.format(
-                        'new', pcd_sector['id'], asset_id, pcd_sector['geotype']),
+                    'name': 'macro_cell_{}_{}_{}_{}_{}'.format(
+                        'new', '5G', pcd_sector['id'], asset_id, pcd_sector['geotype']),
+                    'build_year': None,
                     'frequency': ['700', '800', '1800', '2600', '3500'],
                     'technology': '5G',
                     'type': 'macrocell_site',
-                    'pcd_sector': pcd_sector['id'].replace(' ', ''),
-                    'technical_lifetime': '10',
+                    'id': pcd_sector['id'].replace(' ', ''),
+                    'technical_lifetime_value': 10,
+                    'technical_lifetime_units': 'years',
                     'capex': 142446,
                     'opex': 10000,
                 }
@@ -279,27 +304,28 @@ def generate_assets(postcode_sectors, capacity_lookup):
                 #build small cell
                 all_possible_assets.append(
                     {
-                        'id': 'small_cell_{}_{}_{}_{}'.format(
-                            '3700', pcd_sector['id'], asset_id, pcd_sector['geotype']),
+                        'name': 'small_cell_{}_{}_{}_{}_{}'.format(
+                            '3700', '5G', pcd_sector['id'], asset_id, pcd_sector['geotype']),
+                        'build_year': None,
                         'frequency': '3700',
                         'technology': '5G',
                         'type': 'small_cell',
-                        'pcd_sector': pcd_sector['id'],
+                        'id': pcd_sector['id'],
                         'capex': 12000,
                         'opex': 1000,
-                        'technical_lifetime': 5,
+                        'technical_lifetime_value': 5,
+                        'technical_lifetime_units': 'years',
                     }
                 )
 
     return all_possible_assets
 
 
-def csv_writer(data, filename):
+def csv_writer(data, directory, filename):
     """
     Write data to a CSV file path
     """
     # Create path
-    directory = os.path.join(INTERMEDIATE, 'nismod2_interventions')
     if not os.path.exists(directory):
         os.makedirs(directory)
 
@@ -323,6 +349,9 @@ if __name__ == '__main__':
         (0, 'rural'),
     ]
 
+    print('Loading assets from digital_initial_conditions.csv')
+    initial_conditions = load_initial_conditions()
+
     print('Loading postcode sectors')
     postcode_sectors = load_postcode_sectors(geotypes)
 
@@ -330,10 +359,11 @@ if __name__ == '__main__':
     capacity_lookup = load_capacity_lookup_table(geotypes)
 
     print('Generating assets')
-    assets = generate_assets(postcode_sectors, capacity_lookup)
+    assets = generate_assets(postcode_sectors, capacity_lookup, initial_conditions)
 
     print('Writing assets to .csv')
-    csv_writer(assets, 'digital_interventions.csv')
+    directory = os.path.join(INTERMEDIATE, 'nismod2_inputs')
+    csv_writer(assets, directory, 'digital_interventions.csv')
 
     end = time.time()
     print('time taken: {} minutes'.format(round((end - start) / 60,2)))

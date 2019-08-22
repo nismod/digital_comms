@@ -473,12 +473,9 @@ def test_ranking_using_rollout_costs(small_system_40):
 
 def test_ranking_using_an_unknown(small_system_40):
 
-    with pytest.raises(ValueError) as ex:
+    with pytest.raises(ValueError, match='Did not recognise ranking preference variable'):
         get_all_assets_ranked(small_system_40._exchanges, 'unknown', 'exchange', 'fttp', False)
 
-    msg = 'Did not recognise ranking preference variable'
-
-    assert msg in str(ex)
 
 def test_fttp_s1(small_system_40):
 
@@ -586,7 +583,7 @@ def test_fttp_s2_from_exchange(small_system_40):
     fttp_s2_built_interventions = decide_interventions(
         small_system_40._exchanges, year, technology, policy, annual_budget, adoption_cap,
         subsidy, telco_match_funding, service_obligation_capacity, 'exchange')
-    print(fttp_s2_built_interventions)
+
     assert fttp_s2_built_interventions == fttp_s2_expected_built_interventions
 
 def test_fttp_s3(small_system_40):
@@ -626,14 +623,11 @@ def test_fttp_s3(small_system_40):
 
     assert fttp_s3_built_interventions == fttp_s3_expected_built_interventions
 
-    with pytest.raises(ValueError) as ex:
+    with pytest.raises(ValueError, match='Did not recognise stipulated policy'):
         decide_interventions(
-        small_system_40._exchanges, year, technology, 'unknown_policy', annual_budget, adoption_cap,
-        subsidy, telco_match_funding, service_obligation_capacity, 'exchange')
+        small_system_40._exchanges, year, technology, 'unknown_policy', annual_budget,
+        adoption_cap,subsidy, telco_match_funding, service_obligation_capacity, 'exchange')
 
-    msg = 'Did not recognise stipulated policy'
-
-    assert msg in str(ex)
 
 def test_fttdp_s1_from_exchange(small_system_40):
 
