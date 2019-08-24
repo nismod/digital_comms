@@ -94,19 +94,20 @@ class NetworkManager():
                 'fttdp': exchange.fttdp,
                 'fttc': exchange.fttc,
                 # 'docsis3': exchange.docsis3,
-                # 'adsl': exchange.adsl,
+                'adsl': exchange.adsl,
                 'premises': exchange.total_prems,
             })
+
         output = []
 
         for item in coverage_results:
             output.append({
                 'id': item['id'],
                 'percentage_of_premises_with_fttp': _calculate_percentage(item['fttp'], item['premises']),
-                'percentage_of_premises_with_fttdp': _calculate_percentage(item['fttp'], item['premises']),
-                'percentage_of_premises_with_fttc': _calculate_percentage(item['fttp'], item['premises']),
+                'percentage_of_premises_with_fttdp': _calculate_percentage(item['fttdp'], item['premises']),
+                'percentage_of_premises_with_fttc': _calculate_percentage(item['fttc'], item['premises']),
                 # 'percentage_of_premises_with_docsis3': _calculate_percentage(aggregate_fttp, aggregate_premises)
-                # 'percentage_of_premises_with_adsl': _calculate_percentage(aggregate_fttp, aggregate_premises)
+                'percentage_of_premises_with_adsl': _calculate_percentage(item['adsl'], item['premises']),
                 'sum_of_premises': item['premises']
             })
 
@@ -117,7 +118,7 @@ class NetworkManager():
         """
         define capacity
         """
-        technologies = ['fttp', 'fttdp', 'fttc']#, 'docsis3', 'adsl']
+        technologies = ['fttp', 'fttdp', 'fttc', 'adsl'] #'docsis3',
 
         capacity_results = []
 
@@ -204,25 +205,31 @@ class Exchange():
     def __init__(self, data, simulation_parameters):
 
         self.id = data["exchange_id"]
-        self._dwellings = data['exchange_dwellings']
         self.lad = data["lad_id"]
         self.area = data['exchange_area']
 
-        self.fttp = int(data["fttp_availability"])
-        self.fttdp = int(data["ufbb_availability"])
-        self.fttc = int(data["sfbb_availability"])
+        self.fttp = _determine_technology(data, 'fttp')
+        self.fttdp = 0
+        self.fttc = _determine_technology(data, 'fttc')
+        self.adsl = _determine_technology(data, 'adsl')
         self.total_prems = int(data['exchange_dwellings'])
 
         self.fttp_unserved = self.fttp / self.area
         self.fttdp_unserved = self.fttdp / self.area
         self.fttc_unserved = self.fttc / self.area
 
-        self.rollout_costs = {
+        self.rollout_costs = self._calculate_roll_out_costs()
+
+
+    def _calculate_roll_out_costs(self):
+
+        costs = {
             'fttp': 100000,
             'fttdp': 50000,
             'fttc': 25000,
         }
 
+        return costs
 
     def upgrade(self, action):
         """
@@ -239,18 +246,19 @@ class Exchange():
 
         """
         if action in ('fttp'):
-            self._fttp = self.total_prems
-            self._fttdp = 0
-            self._fttc = 0
+            self.fttp = self.total_prems
+            self.fttdp = 0
+            self.gfast = 0
+            self.fttc = 0
             # self._docsis3 = 0
-            self._adsl = 0
+            self.adsl = 0
 
         elif action in ('fttdp'):
-            self._fttp = 0
-            self._fttdp = self.total_prems
-            self._fttc = 0
+            self.fttdp = self.total_prems - self.fttp
+            self.gfast = 0
+            self.fttc = 0
             # self._docsis3 = 0
-            self._adsl = 0
+            self.adsl = 0
 
 
     def connection_capacity(self, technology):
@@ -258,9 +266,22 @@ class Exchange():
         return capacity
 
 
-    def __repr__(self):
-        return "<Exchange id:{}>".format(self.id)
+def _determine_technology(data, tech):
 
+    if tech == 'fttp':
+        quantity = int(data['fttp_availability'])
+    # if tech == 'fttdp':
+    #     quantity = data['fttdp_availability'] - data['fttp_availability']
+    # if tech == 'gfast':
+    #     quantity = data['gfast_availability'] - data['fttp_availability']
+    if tech == 'fttc':
+        quantity = data['fttc_availability'] - data['fttp_availability']
+    if tech == 'adsl':
+        quantity = 100 - int(data['fttc_availability']) #+ int(data['fttp_availability'])
+    if quantity < 0:
+        quantity = 0
+
+    return quantity
 
 def _calculate_percentage(numerator, denominator):
 
@@ -283,7 +304,7 @@ def _generic_connection_capacity(technology):
         connection_capacity = 80
     # elif technology == 'docsis3':
     #     connection_capacity = 150
-    else:
+    elif technology == 'adsl':
         connection_capacity = 24
 
     return connection_capacity
