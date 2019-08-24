@@ -93,8 +93,8 @@ def read_existing_coverage(path, lads):
                 'lad': line['laua'],
                 'lad_name': line['laua_name'],
                 'premises': line['All Premises'],
-                'sfbb_availability': line['SFBB availability (% premises)'],
-                'ufbb_availability': line['UFBB availability (% premises)'],
+                'fttc_availability': line['SFBB availability (% premises)'],
+                'gfast_availability': line['UFBB availability (% premises)'],
                 'fttp_availability': line['Full Fibre availability (% premises)'],
             })
 
@@ -112,8 +112,8 @@ def read_existing_coverage(path, lads):
                     'name': lad['name'],
                     'area': lad['area'],
                     'ofcom_premises': datum['premises'],
-                    'sfbb_availability': datum['sfbb_availability'],
-                    'ufbb_availability': datum['ufbb_availability'],
+                    'fttc_availability': datum['fttc_availability'],
+                    'gfast_availability': datum['gfast_availability'],
                     'fttp_availability': datum['fttp_availability'],
                 })
 
@@ -149,19 +149,19 @@ def dwelling_density_by_lad(lads, dwellings, year):
                     #     int(dwelling_datum['dwellings']) -
                     #     int(lad['ofcom_premises'])
                     # ),
-                    'sfbb_availability': (
+                    'fttc_availability': (
                         int(dwelling_datum['dwellings']) *
-                        float(lad['sfbb_availability']) / 100
+                        float(lad['fttc_availability']) / 100
                     ),
-                    'ufbb_availability': (
+                    'gfast_availability': (
                         int(dwelling_datum['dwellings']) *
-                        float(lad['ufbb_availability']) / 100
+                        float(lad['gfast_availability']) / 100
                     ),
+                    'fttdp_availability': 0,
                     'fttp_availability': (
                         int(dwelling_datum['dwellings']) *
                         float(lad['fttp_availability']) / 100
                     ),
-
                 })
 
     return output
@@ -188,7 +188,6 @@ def read_exchange_areas(path):
 def estimate_dwelling_density(exchanges, lads):
 
     output = []
-    exchange_to_lad_lut = []
 
     for lad in lads:
         #{'id': 'E07000156', 'name': 'Wellingborough', 'area': 163.0,
@@ -215,20 +214,13 @@ def estimate_dwelling_density(exchanges, lads):
                 'exchange_dwellings_density_km2': (
                     exchange_area / lad_area * int(lad['dwellings'] / exchange['area'])
                 ),
-                'sfbb_availability': exchange_area / lad_area * int(lad['sfbb_availability']),
-                'ufbb_availability': exchange_area / lad_area * int(lad['ufbb_availability']),
                 'fttp_availability': exchange_area / lad_area * int(lad['fttp_availability']),
+                'fttdp_availability': exchange_area / lad_area * int(lad['fttdp_availability']),
+                'gfast_availability': exchange_area / lad_area * int(lad['gfast_availability']),
+                'fttc_availability': exchange_area / lad_area * int(lad['fttc_availability']),
             })
 
-            exchange_to_lad_lut.append({
-                'exchange_id': exchange['id'],
-                'exchange_area': exchange['area'],
-                'proportion_of_lad_area': exchange_area / lad_area,
-                'lad_id': lad['id'],
-                'lad_name': lad['name'],
-            })
-
-    return output, exchange_to_lad_lut
+    return output
 
 
 def write_decisions(decisions, path, year, technology, policy):
@@ -515,7 +507,8 @@ if __name__ == "__main__":
 
             lads = dwelling_density_by_lad(lads, dwellings, year)
 
-            exchanges, exchange_to_lad_lut = estimate_dwelling_density(exchanges, lads)
+            #THIS DOES NOT CORRECTLY ALLOCATE - NEED TO GENERATE EX TO LAD LUT
+            exchanges = estimate_dwelling_density(exchanges, lads)
 
             # Simulate first year
             if year == BASE_YEAR:
