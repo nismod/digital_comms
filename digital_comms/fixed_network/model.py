@@ -118,14 +118,14 @@ class NetworkManager():
         """
 
         Define capacity
-        
+
         """
         technologies = ['fttp', 'fttdp', 'fttc', 'adsl'] #'docsis3',
 
         capacity_results = []
 
         for asset in self._exchanges:
-            
+
             capacity_by_technology = []
 
             fttp_availability = getattr(asset, 'fttp')
@@ -134,13 +134,13 @@ class NetworkManager():
             adsl_availability = getattr(asset, 'adsl') - getattr(asset, 'fttc')
 
             total_prems = getattr(asset, 'total_prems')
-            
+
             prems_with_fttp = _get_prems_with_tech(fttp_availability, total_prems)
             cumulative_premises = prems_with_fttp
 
             if cumulative_premises <= total_prems:
                 capacity_by_technology.append(
-                    prems_with_fttp * 
+                    prems_with_fttp *
                     _generic_connection_capacity('fttp')
                 )
 
@@ -149,7 +149,7 @@ class NetworkManager():
 
             if cumulative_premises <= total_prems:
                 capacity_by_technology.append(
-                    prems_with_fttdp * 
+                    prems_with_fttdp *
                     _generic_connection_capacity('fttdp')
                 )
 
@@ -158,7 +158,7 @@ class NetworkManager():
 
             if cumulative_premises <= total_prems:
                 capacity_by_technology.append(
-                    prems_with_fttc * 
+                    prems_with_fttc *
                     _generic_connection_capacity('fttc')
                 )
             # prems_with_adsl = _get_prems_with_tech(adsl_availability, total_prems)
@@ -169,13 +169,16 @@ class NetworkManager():
             # if cumulative_premises < total_prems:
             #     print('here2')
                 capacity_by_technology.append(
-                    (total_prems - cumulative_premises) * 
+                    (total_prems - cumulative_premises) *
                     _generic_connection_capacity('adsl')
                 )
-                
+
             summed_capacity = sum(capacity_by_technology)
 
-            average_capacity = round(summed_capacity / total_prems)
+            if summed_capacity > 0 or total_prems > 0:
+                average_capacity = round(summed_capacity / total_prems)
+            else:
+                average_capacity = 0
 
             capacity_results.append({
                 'id': asset.id,
@@ -282,9 +285,9 @@ def _determine_technology(data, tech):
 
 
 def _get_prems_with_tech(tech_availability_percentage, total_prems):
-    
+
     if tech_availability_percentage > 0:
-        result = (tech_availability_percentage / 100) * total_prems 
+        result = (tech_availability_percentage / 100) * total_prems
     else:
         result = 0
 
