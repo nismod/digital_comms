@@ -120,8 +120,6 @@ class NetworkManager():
         Define capacity
 
         """
-        technologies = ['fttp', 'fttdp', 'fttc', 'adsl'] #'docsis3',
-
         capacity_results = []
 
         for asset in self._exchanges:
@@ -131,7 +129,6 @@ class NetworkManager():
             fttp_availability = getattr(asset, 'fttp')
             fttdp_availability = getattr(asset, 'fttdp') - getattr(asset, 'fttp')
             fttc_availability = getattr(asset, 'fttc') - getattr(asset, 'fttdp')
-            adsl_availability = getattr(asset, 'adsl') - getattr(asset, 'fttc')
 
             total_prems = getattr(asset, 'total_prems')
 
@@ -161,13 +158,6 @@ class NetworkManager():
                     prems_with_fttc *
                     _generic_connection_capacity('fttc')
                 )
-            # prems_with_adsl = _get_prems_with_tech(adsl_availability, total_prems)
-            # cumulative_premises += prems_with_adsl
-            #     print('here')
-            #     # print(prems_with_fttc)
-            #     print(cumulative_premises)
-            # if cumulative_premises < total_prems:
-            #     print('here2')
                 capacity_by_technology.append(
                     (total_prems - cumulative_premises) *
                     _generic_connection_capacity('adsl')
@@ -203,12 +193,21 @@ class Exchange():
     parameters : dict
         Contains all parameters from 'digital_comms.yml'.
 
+    self.fttp = raw number of unserved premises
+    self.fttdp = raw number of unserved premises
+    self.fttc = raw number of unserved premises
+    self.adsl = raw number of unserved premises
+
+    self.fttp_unserved = number of unserved premises per km^2
+    self.fttdp_unserved = number of unserved premises per km^2
+    self.fttc_unserved = number of unserved premises per km^2
+
     """
     def __init__(self, data, simulation_parameters):
 
         self.id = data["exchange_id"]
         self.lad = data["lad_id"]
-        self.area = data['exchange_area']
+        self.area = data['area']
 
         self.fttp = _determine_technology(data, 'fttp')
         self.fttdp = _determine_technology(data, 'fttdp')
@@ -263,21 +262,16 @@ class Exchange():
             self.adsl = 100
 
 
-    # def connection_capacity(self, technology):
-    #     capacity = _generic_connection_capacity(technology)
-    #     return capacity
-
-
 def _determine_technology(data, tech):
 
     if tech == 'fttp':
-        quantity = int(data['fttp_availability'])
+        quantity = (int(data['fttp_availability']) / 100) * int(data['exchange_dwellings'])
     if tech == 'fttdp':
-        quantity = data['fttdp_availability'] #- data['fttp_availability']
+        quantity = (int(data['fttdp_availability']) / 100) * int(data['exchange_dwellings'])
     if tech == 'fttc':
-        quantity = data['fttc_availability'] #- data['fttp_availability']
+        quantity = (int(data['fttc_availability']) / 100) * int(data['exchange_dwellings'])
     if tech == 'adsl':
-        quantity = int(data['adsl_availability']) #+ int(data['fttp_availability'])
+        quantity = (int(data['adsl_availability']) / 100) * int(data['exchange_dwellings'])
     if quantity < 0:
         quantity = 0
 

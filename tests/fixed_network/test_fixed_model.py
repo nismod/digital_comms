@@ -16,12 +16,13 @@ def parameters():
         'market_match_funding': 1e7,
     }
 
+
 @pytest.fixture
 def base_system(parameters):
 
     assets = [{
         'exchange_id': 'exchange_EACAM',
-        'exchange_area': 10,
+        'area': 10,
         'lad_id': 'ABC',
         'fttp_availability': 10,
         'fttdp_availability': 10,
@@ -35,47 +36,7 @@ def base_system(parameters):
     return system
 
 
-# @pytest.fixture
-# def full_fttdp_system(parameters):
-
-#     assets = [{
-#         'exchange_id': 'exchange_EACAM',
-#         'exchange_area': 10,
-#         'lad_id': 'ABC',
-#         'fttp_availability': 10,
-#         'fttdp_availability': 100,
-#         'fttc_availability': 90,
-#         'adsl_availability': 100,
-#         'exchange_dwellings': 100,
-#     }]
-
-#     system = NetworkManager(assets, parameters)
-
-#     return system
-
-
-# @pytest.fixture
-# def full_fttp_system(parameters):
-
-#     assets = [{
-#         'exchange_id': 'exchange_EACAM',
-#         'exchange_area': 10,
-#         'lad_id': 'ABC',
-#         'fttp_availability': 100,
-#         'fttdp_availability': 100,
-#         'fttc_availability': 100,
-#         'adsl_availability': 100,
-#         'exchange_dwellings': 100,
-#     }]
-
-#     system = NetworkManager(assets, parameters)
-
-#     return system
-
-
 class TestUpgradeExchange:
-    """
-    """
 
     def test_compute_exchange(self, base_system):
 
@@ -184,7 +145,7 @@ def test_capacity(base_system):
     }]
 
     actual_capacity = base_system.capacity()
-    # print(actual_capacity)
+
     assert expected_capacity == actual_capacity
 
     expected_capacity = [{
@@ -259,6 +220,3 @@ def test_generic_connection_capacity():
     actual_result = _generic_connection_capacity('adsl')
 
     assert actual_result == 24
-
-
-
