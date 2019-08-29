@@ -465,9 +465,9 @@ if __name__ == "__main__":
     exchanges = read_exchange_areas(path)
 
     for scenario, technology, policy in [
-        # ('baseline', 'fttdp', 'market_insideout'),
+        ('baseline', 'fttdp', 'market_insideout'),
         # ('baseline', 'fttdp', 'subsidy_rural'),
-        ('baseline', 'fttdp', 'subsidy_outsidein'),
+        # ('baseline', 'fttdp', 'subsidy_outsidein'),
         # ('baseline', 'fttp', 'market_insideout'),
         # ('baseline', 'fttp', 'subsidy_rural'),
         # ('baseline', 'fttp', 'subsidy_outsidein'),
