@@ -116,72 +116,64 @@ class NetworkManager():
 
     def capacity(self):
         """
-        define capacity
-        """
-        technologies = ['fttp', 'fttdp', 'fttc', 'adsl'] #'docsis3',
 
+        Define capacity
+
+        """
         capacity_results = []
 
         for asset in self._exchanges:
+
             capacity_by_technology = []
+
+            fttp_availability = getattr(asset, 'fttp')
+            fttdp_availability = getattr(asset, 'fttdp') - getattr(asset, 'fttp')
+            fttc_availability = getattr(asset, 'fttc') - getattr(asset, 'fttdp')
+
             total_prems = getattr(asset, 'total_prems')
 
-            if asset.fttp == total_prems:
-                if asset.fttp > 0:
-                #so expect 20 prems at 1000 each = 1000 mean
-                    average_capacity = (
-                        asset.fttp * asset.connection_capacity('fttp')
-                        / asset.total_prems
-                    )
-                else:
-                    average_capacity = 0
-            elif asset.fttdp == total_prems:
-                #so expect 20 prems at 300 each = 300 mean
-                if asset.fttp == 0:
-                    average_capacity = (
-                        asset.fttdp * asset.connection_capacity('fttdp')
-                        / asset.total_prems
-                    )
-                else:
-                #so expect 10 prems at 300 each and 10 at 1000 = 650 mean
-                    new_fttdp = asset.fttp - asset.fttdp
-                    average_capacity = (
-                        ((asset.fttp * asset.connection_capacity('fttp')) +
-                        (new_fttdp * asset.connection_capacity('fttdp'))) /
-                        asset.total_prems
-                    )
+            prems_with_fttp = _get_prems_with_tech(fttp_availability, total_prems)
+            cumulative_premises = prems_with_fttp
+
+            if cumulative_premises <= total_prems:
+                capacity_by_technology.append(
+                    prems_with_fttp *
+                    _generic_connection_capacity('fttp')
+                )
+
+            prems_with_fttdp = _get_prems_with_tech(fttdp_availability, total_prems)
+            cumulative_premises += prems_with_fttdp
+
+            if cumulative_premises <= total_prems:
+                capacity_by_technology.append(
+                    prems_with_fttdp *
+                    _generic_connection_capacity('fttdp')
+                )
+
+            prems_with_fttc = _get_prems_with_tech(fttc_availability, total_prems)
+            cumulative_premises += prems_with_fttc
+
+            if cumulative_premises <= total_prems:
+                capacity_by_technology.append(
+                    prems_with_fttc *
+                    _generic_connection_capacity('fttc')
+                )
+                capacity_by_technology.append(
+                    (total_prems - cumulative_premises) *
+                    _generic_connection_capacity('adsl')
+                )
+
+            summed_capacity = sum(capacity_by_technology)
+
+            if summed_capacity > 0 or total_prems > 0:
+                average_capacity = round(summed_capacity / total_prems)
             else:
-                for technology in technologies:
-                    number_of_premises_with_technology = getattr(asset, technology)
-                    if technology == 'adsl':
-                        fttp = getattr(asset, 'fttp')
-                        fttdp = getattr(asset, 'fttdp')
-                        fttc = getattr(asset, 'fttc')
-                        # docsis3 = getattr(asset, 'docsis3')
+                average_capacity = 0
 
-                        number_of_premises_with_technology = total_prems - (
-                            fttp + fttdp + fttc #+ docsis3
-                        )
-
-                        if number_of_premises_with_technology < 0:
-                            number_of_premises_with_technology == 0
-                        else:
-                            pass
-
-                    technology_capacity = asset.connection_capacity(technology)
-                    capacity = technology_capacity * number_of_premises_with_technology
-                    capacity_by_technology.append(capacity)
-
-                summed_capacity = sum(capacity_by_technology)
-
-                number_of_connections = asset.total_prems
-
-                average_capacity = round(summed_capacity / number_of_connections)
-
-                capacity_results.append({
-                    'id': asset.id,
-                    'average_capacity': average_capacity,
-                })
+            capacity_results.append({
+                'id': asset.id,
+                'average_capacity': average_capacity,
+            })
 
         return capacity_results
 
@@ -201,22 +193,32 @@ class Exchange():
     parameters : dict
         Contains all parameters from 'digital_comms.yml'.
 
+    self.fttp = raw number of unserved premises
+    self.fttdp = raw number of unserved premises
+    self.fttc = raw number of unserved premises
+    self.adsl = raw number of unserved premises
+
+    self.fttp_unserved = number of unserved premises per km^2
+    self.fttdp_unserved = number of unserved premises per km^2
+    self.fttc_unserved = number of unserved premises per km^2
+
     """
     def __init__(self, data, simulation_parameters):
 
         self.id = data["exchange_id"]
         self.lad = data["lad_id"]
-        self.area = data['exchange_area']
+        self.area = data['area']
 
         self.fttp = _determine_technology(data, 'fttp')
-        self.fttdp = 0
+        self.fttdp = _determine_technology(data, 'fttdp')
         self.fttc = _determine_technology(data, 'fttc')
         self.adsl = _determine_technology(data, 'adsl')
+
         self.total_prems = int(data['exchange_dwellings'])
 
-        self.fttp_unserved = self.fttp / self.area
-        self.fttdp_unserved = self.fttdp / self.area
-        self.fttc_unserved = self.fttc / self.area
+        self.fttp_unserved = (100 - self.fttp) / self.area
+        self.fttdp_unserved = (100 - self.fttdp) / self.area
+        self.fttc_unserved = (100 - self.fttc) / self.area
 
         self.rollout_costs = self._calculate_roll_out_costs()
 
@@ -247,41 +249,44 @@ class Exchange():
         """
         if action in ('fttp'):
             self.fttp = self.total_prems
-            self.fttdp = 0
-            self.gfast = 0
-            self.fttc = 0
+            self.fttdp = 100
+            self.fttc = 100
             # self._docsis3 = 0
-            self.adsl = 0
+            self.adsl = 100
 
         elif action in ('fttdp'):
-            self.fttdp = self.total_prems - self.fttp
-            self.gfast = 0
-            self.fttc = 0
+            self.fttp = self.fttp
+            self.fttdp = self.total_prems
+            self.fttc = 100
             # self._docsis3 = 0
-            self.adsl = 0
-
-
-    def connection_capacity(self, technology):
-        capacity = _generic_connection_capacity(technology)
-        return capacity
+            self.adsl = 100
 
 
 def _determine_technology(data, tech):
 
     if tech == 'fttp':
-        quantity = int(data['fttp_availability'])
-    # if tech == 'fttdp':
-    #     quantity = data['fttdp_availability'] - data['fttp_availability']
-    # if tech == 'gfast':
-    #     quantity = data['gfast_availability'] - data['fttp_availability']
+        quantity = (int(data['fttp_availability']) / 100) * int(data['exchange_dwellings'])
+    if tech == 'fttdp':
+        quantity = (int(data['fttdp_availability']) / 100) * int(data['exchange_dwellings'])
     if tech == 'fttc':
-        quantity = data['fttc_availability'] - data['fttp_availability']
+        quantity = (int(data['fttc_availability']) / 100) * int(data['exchange_dwellings'])
     if tech == 'adsl':
-        quantity = 100 - int(data['fttc_availability']) #+ int(data['fttp_availability'])
+        quantity = (int(data['adsl_availability']) / 100) * int(data['exchange_dwellings'])
     if quantity < 0:
         quantity = 0
 
     return quantity
+
+
+def _get_prems_with_tech(tech_availability_percentage, total_prems):
+
+    if tech_availability_percentage > 0:
+        result = (tech_availability_percentage / 100) * total_prems
+    else:
+        result = 0
+
+    return result
+
 
 def _calculate_percentage(numerator, denominator):
 

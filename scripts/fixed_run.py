@@ -93,9 +93,10 @@ def read_existing_coverage(path, lads):
                 'lad': line['laua'],
                 'lad_name': line['laua_name'],
                 'premises': line['All Premises'],
-                'fttc_availability': line['SFBB availability (% premises)'],
-                'gfast_availability': line['UFBB availability (% premises)'],
                 'fttp_availability': line['Full Fibre availability (% premises)'],
+                # 'gfast_availability': line['UFBB availability (% premises)'],
+                'fttc_availability': line['SFBB availability (% premises)'],
+                'adsl_availability': 100,
             })
 
     output = []
@@ -112,9 +113,10 @@ def read_existing_coverage(path, lads):
                     'name': lad['name'],
                     'area': lad['area'],
                     'ofcom_premises': datum['premises'],
-                    'fttc_availability': datum['fttc_availability'],
-                    'gfast_availability': datum['gfast_availability'],
                     'fttp_availability': datum['fttp_availability'],
+                    'fttc_availability': datum['fttc_availability'],
+                    'adsl_availability': datum['adsl_availability'],
+
                 })
 
     return output
@@ -131,7 +133,9 @@ def dwelling_density_by_lad(lads, dwellings, year):
     output = []
 
     for lad in lads:
-        #{'id': 'S12000039', 'name': 'West Dunbartonshire', 'area': 182.8}
+        # {'id': 'E07000181', 'name': 'West Oxfordshire', 'area': 714.4, 'timestep': 2015,
+        # 'dwellings': 46800, 'premises_density_km2': 65.5, 'fttp_availability': 4492.8,
+        # 'fttdp_availability': 0, 'fttc_availability': 23072.4, 'adsl_availability': 46800.0}
         for dwelling_datum in dwelling_data:
             #{'timestep': '2015', 'dwellings': '61070', 'lad16nm': 'Cherwell',
             # 'lad_uk_2016': 'E07000177'}
@@ -145,22 +149,18 @@ def dwelling_density_by_lad(lads, dwellings, year):
                     'premises_density_km2': (
                         round(int(dwelling_datum['dwellings']) / float(lad['area']), 1)
                     ),
-                    # 'premises accuracy': (
-                    #     int(dwelling_datum['dwellings']) -
-                    #     int(lad['ofcom_premises'])
-                    # ),
+                    'fttp_availability': (
+                        int(dwelling_datum['dwellings']) *
+                        float(lad['fttp_availability']) / 100
+                    ),
+                    'fttdp_availability': 0,
                     'fttc_availability': (
                         int(dwelling_datum['dwellings']) *
                         float(lad['fttc_availability']) / 100
                     ),
-                    'gfast_availability': (
+                    'adsl_availability': (
                         int(dwelling_datum['dwellings']) *
-                        float(lad['gfast_availability']) / 100
-                    ),
-                    'fttdp_availability': 0,
-                    'fttp_availability': (
-                        int(dwelling_datum['dwellings']) *
-                        float(lad['fttp_availability']) / 100
+                        float(lad['adsl_availability']) / 100
                     ),
                 })
 
@@ -216,8 +216,8 @@ def estimate_dwelling_density(exchanges, lads):
                 ),
                 'fttp_availability': exchange_area / lad_area * int(lad['fttp_availability']),
                 'fttdp_availability': exchange_area / lad_area * int(lad['fttdp_availability']),
-                'gfast_availability': exchange_area / lad_area * int(lad['gfast_availability']),
                 'fttc_availability': exchange_area / lad_area * int(lad['fttc_availability']),
+                'adsl_availability': exchange_area / lad_area * int(lad['adsl_availability']),
             })
 
     return output
@@ -465,9 +465,9 @@ if __name__ == "__main__":
     exchanges = read_exchange_areas(path)
 
     for scenario, technology, policy in [
-        # ('baseline', 'fttdp', 'market_insideout'),
+        ('baseline', 'fttdp', 'market_insideout'),
         # ('baseline', 'fttdp', 'subsidy_rural'),
-        ('baseline', 'fttdp', 'subsidy_outsidein'),
+        # ('baseline', 'fttdp', 'subsidy_outsidein'),
         # ('baseline', 'fttp', 'market_insideout'),
         # ('baseline', 'fttp', 'subsidy_rural'),
         # ('baseline', 'fttp', 'subsidy_outsidein'),
@@ -515,7 +515,7 @@ if __name__ == "__main__":
                 system = NetworkManager(exchanges, parameters)
 
             # actually decide which interventions to build
-            built_interventions = decide_interventions(system, year, technology, policy, parameters)
+            built_interventions = decide_interventions(system, technology, policy, parameters)
 
             # give the interventions to the system model
             system.upgrade(built_interventions)

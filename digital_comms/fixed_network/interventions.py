@@ -28,7 +28,6 @@ def get_all_assets_ranked(system, technology, roll_out, percentile):
     """
     if roll_out == 'insideout':
         handle = '{}_unserved'.format(technology)
-
         all_assets = sorted(
             (exchange for exchange in system._exchanges \
             if getattr(exchange, technology) != exchange.total_prems),
@@ -36,7 +35,6 @@ def get_all_assets_ranked(system, technology, roll_out, percentile):
 
     elif roll_out == 'rural':
         handle = '{}_unserved'.format(technology)
-
         all_assets = sorted(
             (exchange for exchange in system._exchanges \
             if getattr(exchange, technology) != exchange.total_prems),
@@ -60,7 +58,7 @@ def get_all_assets_ranked(system, technology, roll_out, percentile):
     return assets
 
 
-def decide_interventions(system, year, technology, policy, parameters):
+def decide_interventions(system, technology, policy, parameters):
     """
     ???
 
@@ -82,7 +80,7 @@ def decide_interventions(system, year, technology, policy, parameters):
 
         for asset in assets:
             if asset.id not in upgraded_ids:
-                if asset.rollout_costs[technology] < annual_budget:
+                if asset.rollout_costs[technology] <= annual_budget:
                     annual_budget -= asset.rollout_costs[technology]
                     built_interventions.append(
                         (
@@ -102,11 +100,11 @@ def decide_interventions(system, year, technology, policy, parameters):
 
         capital_investment_type = 'private'
 
-        assets = get_all_assets_ranked(system, technology, roll_out, 100)
+        assets = get_all_assets_ranked(system, technology, roll_out, 0)
 
         for asset in assets:
             if asset.id not in upgraded_ids:
-                if asset.rollout_costs[technology] < annual_budget:
+                if asset.rollout_costs[technology] <= annual_budget:
                     annual_budget -= asset.rollout_costs[technology]
                     built_interventions.append(
                         (
@@ -142,7 +140,7 @@ def decide_interventions(system, year, technology, policy, parameters):
 
                 total_upgrade_cost = asset.rollout_costs[technology]
 
-                if total_upgrade_cost < total_private_investment:
+                if total_upgrade_cost <= total_private_investment:
                     total_subsidy = 0
                 else:
                     total_subsidy = round(total_upgrade_cost - total_private_investment)
