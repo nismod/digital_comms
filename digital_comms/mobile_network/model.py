@@ -155,14 +155,17 @@ class LAD(object):
         self.name = data["name"]
         self._pcd_sectors = {}
 
+
     def __repr__(self):
         return "<LAD id:{} name:{}>".format(self.id, self.name)
+
 
     @property
     def population(self):
         return sum([
             pcd_sector.population
             for pcd_sector in self._pcd_sectors.values()])
+
 
     @property
     def population_density(self):
@@ -174,26 +177,9 @@ class LAD(object):
         else:
             return self.population / total_area
 
+
     def add_pcd_sector(self, pcd_sector):
         self._pcd_sectors[pcd_sector.id] = pcd_sector
-
-
-    def add_asset(self, asset):
-        pcd_sector_id = asset.pcd_sector
-        self._pcd_sectors[pcd_sector_id].add_asset(asset)
-
-
-    def system(self):
-        system = {}
-        for pcd_sector in self._pcd_sectors.values():
-            pcd_system = pcd_sector.system()
-            for tech, cells in pcd_system.items():
-                # check tech is in system
-                if tech not in system:
-                    system[tech] = 0
-                # add number of cells to tech in area
-                system[tech] += cells
-        return system
 
 
     def capacity(self):
@@ -301,27 +287,6 @@ class PostcodeSector(object):
         return demand
 
 
-    def threshold_demand(self, threshold):
-        """Calculate capacity required to meet a service obligation.
-
-        Effectively calculating Mb/s/km^2 from Mb/s/user
-
-        E.g.
-            100 people in this area
-            * 0.8 penetration proportion
-            * 0.3 market share
-            * 2 Mb/s/person service obligation
-            / 10 km^2 area
-            = ~4.8 Mbps/km^2
-
-        """
-        threshold_demand = (
-            self.population * (self.penetration / 100) * threshold / self.area
-        )
-
-        return threshold_demand
-
-
     @property
     def demand(self):
         """
@@ -410,10 +375,10 @@ class PostcodeSector(object):
         return capacity
 
 
-    @property
-    def capacity_margin(self):
-        capacity_margin = self.capacity - self.demand
-        return capacity_margin
+    # @property
+    # def capacity_margin(self):
+    #     capacity_margin = self.capacity - self.demand
+    #     return capacity_margin
 
 
 def find_frequency_bandwidth(frequency, simulation_parameters):
@@ -425,7 +390,7 @@ def find_frequency_bandwidth(frequency, simulation_parameters):
     simulation_parameter = 'channel_bandwidth_{}'.format(frequency)
 
     if simulation_parameter not in simulation_parameters.keys():
-        print('{} not specified in simulation_parameters'.format(frequency))
+        KeyError('{} not specified in simulation_parameters'.format(frequency))
 
     bandwidth = simulation_parameters[simulation_parameter]
 
@@ -500,69 +465,3 @@ def interpolate(x0, y0, x1, y1, x):
     """
     y = (y0 * (x1 - x) + y1 * (x - x0)) / (x1 - x0)
     return y
-
-# __name__ == '__main__' means that the module is bring run in standalone by the user
-if __name__ == '__main__':
-    LADS = [
-        {
-            "id": 1,
-            "name": "Cambridge",
-        }
-    ]
-    PCD_SECTORS = [
-        {
-            "id": "CB11",
-            "lad_id": 1,
-            "population": 500,
-            "area": 2,
-            "user_throughput": 2
-        },
-        {
-            "id": "CB12",
-            "lad_id": 1,
-            "population": 200,
-            "area": 2,
-            "user_throughput": 2
-        }
-    ]
-    ASSETS = [
-        {
-            "pcd_sector": "CB11",
-            "site_ngr": 100,
-            "technology": "LTE",
-            "frequency": "800",
-            "bandwidth": "2x10MHz",
-            "build_date": 2017
-        },
-        {
-            "pcd_sector": "CB12",
-            "site_ngr": 200,
-            "technology": "LTE",
-            "frequency": "2600",
-            "bandwidth": "2x10MHz",
-            "build_date": 2017
-        }
-    ]
-
-    CAPACITY_LOOKUP = {
-        ("Urban", "800", "2x10MHz"): [
-            (0, 1),
-            (1, 2),
-        ],
-        ("Urban", "2600", "2x10MHz"): [
-            (0, 3),
-            (3, 5),
-        ]
-    }
-
-    CLUTTER_LOOKUP = [
-        (5, "Urban")
-    ]
-
-    MANAGER = NetworkManager(LADS, PCD_SECTORS, ASSETS, CAPACITY_LOOKUP, CLUTTER_LOOKUP)
-    pprint(MANAGER.results())
-
-    for lad in MANAGER.lads.values():
-        pprint(lad)
-        for pcd in lad._pcd_sectors.values():
-            print(" ", pcd, "capacity:{:.2f} demand:{:.2f}".format(pcd.capacity, pcd.demand))
