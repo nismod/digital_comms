@@ -9,7 +9,7 @@ import pytest
 from digital_comms.mobile_network.model import (
     NetworkManager, LAD, PostcodeSector,
     lookup_clutter_geotype, lookup_capacity,
-    interpolate
+    interpolate, find_frequency_bandwidth
     )
 
 
@@ -174,3 +174,8 @@ def test_interpolate():
     answer = interpolate(x0, y0, x1, y1, 30)
 
     assert answer == 60
+
+def test_find_frequency_bandwidth(setup_simulation_parameters):
+
+    with pytest.raises(KeyError, match='channel_bandwidth_1000'):
+        find_frequency_bandwidth(1000, setup_simulation_parameters)
