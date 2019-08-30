@@ -75,7 +75,7 @@ def load_postcode_sectors():
         reader = csv.DictReader(source)
         for pcd_sector in reader:
             pcd_sectors.append({
-                "id": pcd_sector['pcd_sector'].replace(" ", ""),
+                "id": pcd_sector['id'].replace(" ", ""),
                 "lad_id": pcd_sector['lad'],
                 "area_km2": float(pcd_sector['area_km2'])
                 })
@@ -164,8 +164,8 @@ def load_initial_system():
                 frequency = []
                 technology = ''
             initial_system.append({
-                'pcd_sector': pcd_sector['pcd_sector'].replace(' ', ''),
-                'site_ngr': pcd_sector['id'],
+                'pcd_sector': pcd_sector['id'].replace(' ', ''),
+                'site_ngr': pcd_sector['name'],
                 'build_date': 2016,
                 'technology': technology,
                 'frequency': frequency,
@@ -405,7 +405,7 @@ if __name__ == '__main__':
     #   build costs per year
     ################################################################
 
-    folder = os.path.join(BASE_PATH, '..', 'results')
+    folder = os.path.join(BASE_PATH, '..', 'results', 'mobile_outputs')
 
     BASE_YEAR = 2020
     END_YEAR = 2030
@@ -475,21 +475,21 @@ if __name__ == '__main__':
     clutter_lookup = load_clutter_geotype_lookup_table()
 
     for pop_scenario, throughput_scenario, intervention_strategy in [
-            ('low', 'low', 'minimal'),
-            ('baseline', 'baseline', 'minimal'),
-            ('high', 'high', 'minimal'),
+            # ('low', 'low', 'minimal'),
+            # ('baseline', 'baseline', 'minimal'),
+            # ('high', 'high', 'minimal'),
 
-            ('low', 'low', 'macrocell'),
-            ('baseline', 'baseline', 'macrocell'),
+            # ('low', 'low', 'macrocell'),
+            # ('baseline', 'baseline', 'macrocell'),
             ('high', 'high', 'macrocell'),
 
-            ('low', 'low', 'small_cell'),
-            ('baseline', 'baseline', 'small_cell'),
-            ('high', 'high', 'small_cell'),
+            # ('low', 'low', 'small_cell'),
+            # ('baseline', 'baseline', 'small_cell'),
+            # ('high', 'high', 'small_cell'),
 
-            ('low', 'low', 'small_cell_and_spectrum'),
-            ('baseline', 'baseline', 'small_cell_and_spectrum'),
-            ('high', 'high', 'small_cell_and_spectrum'),
+            # ('low', 'low', 'small_cell_and_spectrum'),
+            # ('baseline', 'baseline', 'small_cell_and_spectrum'),
+            # ('high', 'high', 'small_cell_and_spectrum'),
         ]:
         print("Running:", pop_scenario, throughput_scenario,
             intervention_strategy)
