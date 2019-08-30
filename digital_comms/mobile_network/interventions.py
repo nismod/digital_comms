@@ -85,7 +85,7 @@ INTERVENTIONS = {
         'assets_to_build': [
             {
                 # site_ngr not used
-                'site_ngr': 'small_cell_sites',
+                'site_ngr': 'small_cell_site',
                 'frequency': '3700',
                 'technology': '5G',
                 'type': 'small_cell',
@@ -202,7 +202,7 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, sim
             build_option = INTERVENTIONS['upgrade_to_lte']['assets_to_build']
             cost = INTERVENTIONS['upgrade_to_lte']['cost']
             for site_ngr, site_assets in assets_by_site.items():
-                if site_ngr == 'small_cell_sites':
+                if site_ngr == 'small_cell_site':
                     continue
                 if 'LTE' not in [asset['technology'] for asset in site_assets]:
                     # set both assets to this site_ngr
@@ -224,13 +224,13 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, sim
 
         # integrate_700
         if 'carrier_700' in available_interventions and timestep >= 2020:
-            # if _area_satisfied(area, area_interventions, threshold, simulation_parameters):
-            #     continue
+            if _area_satisfied(area, area_interventions, threshold, simulation_parameters):
+                continue
 
             build_option = INTERVENTIONS['carrier_700']['assets_to_build']
             cost = INTERVENTIONS['carrier_700']['cost']
             for site_ngr, site_assets in assets_by_site.items():
-                if site_ngr == 'small_cell_sites':
+                if site_ngr == 'small_cell_site':
                     continue
                 if 'LTE' in [asset['technology'] for asset in site_assets] and \
                         '700' not in [asset['frequency'] for asset in site_assets]:
@@ -253,13 +253,13 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, sim
 
         # integrate_3.5
         if 'carrier_3500' in available_interventions and timestep >= 2020:
-            # if _area_satisfied(area, area_interventions, threshold, simulation_parameters):
-            #     continue
+            if _area_satisfied(area, area_interventions, threshold, simulation_parameters):
+                continue
 
             build_option = INTERVENTIONS['carrier_3500']['assets_to_build']
             cost = INTERVENTIONS['carrier_3500']['cost']
             for site_ngr, site_assets in assets_by_site.items():
-                if site_ngr == 'small_cell_sites':
+                if site_ngr == 'small_cell_site':
                     continue
                 if 'LTE' in [asset['technology'] for asset in site_assets] and \
                         '3500' not in [asset['frequency'] for asset in site_assets]:
@@ -286,8 +286,8 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, sim
                 continue
 
             area_sq_km = area.area
-            if 'small_cell_sites' in assets_by_site:
-                current_number = len(assets_by_site['small_cell_sites'])
+            if 'small_cell_site' in assets_by_site:
+                current_number = len(assets_by_site['small_cell_site'])
             else:
                 current_number = 0
             current_density = current_number / area_sq_km
@@ -309,13 +309,6 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, sim
 
     return built_interventions, budget, spend
 
-def next_larger_value(x, vals):
-    for val in vals:
-        if val > x:
-            return val
-    else:
-        return vals[-1]
-
 
 def _suggest_target_postcodes(system, threshold=None):
     """Sort postcodes by population density (descending)
@@ -327,7 +320,7 @@ def _suggest_target_postcodes(system, threshold=None):
         considered_postcodes = [pcd for pcd in postcodes if pcd.capacity < threshold]
     else:
         considered_postcodes = [p for p in postcodes]
-    # print("Considering {} of {} postcodes".format(len(considered_postcodes), total_postcodes))
+
     return sorted(considered_postcodes, key=lambda pcd: -pcd.population_density)
 
 def _area_satisfied(area, built_interventions, threshold, simulation_parameters):
@@ -354,5 +347,5 @@ def _area_satisfied(area, built_interventions, threshold, simulation_parameters)
     )
 
     reached_capacity = test_area.capacity
-    print(reached_capacity, target_capacity)
+
     return reached_capacity >= target_capacity

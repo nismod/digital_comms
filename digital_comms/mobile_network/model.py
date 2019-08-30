@@ -382,7 +382,7 @@ class PostcodeSector(object):
                 site_density)
 
             capacity += tech_capacity
-            print(capacity)
+
         return capacity
 
 
@@ -476,7 +476,7 @@ def lookup_capacity(lookup_table, clutter_environment, frequency, bandwidth, sit
                        (clutter_environment, frequency, bandwidth))
 
     density_capacities = lookup_table[(clutter_environment, frequency, bandwidth)]
-    # print(density_capacities)
+
     lowest_density, lowest_capacity = density_capacities[0]
     if site_density < lowest_density:
         # Never fail, return zero capacity if site density is below range

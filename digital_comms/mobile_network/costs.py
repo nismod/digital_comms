@@ -1,4 +1,9 @@
-"""Cost module
+"""
+Cost module
+
+Written by Ed Oughton
+August 2019
+
 """
 
 def calculate_costs(data, discount_rate, start_timestep, current_timestep):
@@ -25,7 +30,7 @@ def calculate_costs(data, discount_rate, start_timestep, current_timestep):
     output = []
 
     for datum in data:
- 
+
         output_datum = {}
 
         cost = datum['capex']
