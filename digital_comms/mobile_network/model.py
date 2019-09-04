@@ -103,20 +103,20 @@ class NetworkManager(object):
             assets_by_pcd[asset['pcd_sector']].append(asset)
 
         for pcd_sector_data in pcd_sectors:
+            lad_id = pcd_sector_data["lad_id"]
+            pcd_sector_id = pcd_sector_data["id"]
+            assets = assets_by_pcd[pcd_sector_id]
+            pcd_sector = PostcodeSector(
+                pcd_sector_data,
+                assets,
+                capacity_lookup_table,
+                clutter_lookup,
+                simulation_parameters
+            )
+            self.postcode_sectors[pcd_sector_id] = pcd_sector
 
-            try:
-                lad_id = pcd_sector_data["lad_id"]
-                pcd_sector_id = pcd_sector_data["id"]
-                assets = assets_by_pcd[pcd_sector_id]
-                pcd_sector = PostcodeSector(pcd_sector_data, assets,
-                capacity_lookup_table, clutter_lookup, simulation_parameters)
-                self.postcode_sectors[pcd_sector_id] = pcd_sector
-
-                lad_containing_pcd_sector = self.lads[lad_id]
-                lad_containing_pcd_sector.add_pcd_sector(pcd_sector)
-            except:
-                print('could not create object for {}'.format(pcd_sector_data["id"]))
-                pass
+            lad_containing_pcd_sector = self.lads[lad_id]
+            lad_containing_pcd_sector.add_pcd_sector(pcd_sector)
 
 
 class LAD(object):
