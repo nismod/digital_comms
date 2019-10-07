@@ -40,51 +40,27 @@ along with the `conda-forge` channel which has a host of pre-built libraries and
 
 Create a conda environment, using `digital_comms` as a short reference for digital communications:
 
-    conda create --name digital_comms python=3.6
-
+    conda create --name digital_comms python=3.5
+  
 Activate it (run each time you switch projects)::
 
-    activate digital_comms
+    activate pysim5g
 
-For development purposes:
+First, install required packages including `fiona`, `shapely`, `numpy`, `rtree`, `pyproj` and `pytest`:
 
-Run this command once per machine:
+    conda install fiona shapely numpy rtree pyproj pytest
+
+For development purposes, run this command once per machine:
 
     python setup.py develop
 
-Windows users may need to additionally install `Shapely` as follows:
-
-    conda install shapely
-
-To install ccam permanently:
+To install digital_comms permanently:
 
     python setup.py install
 
-To build the documentation:
-
-    python setup.py docs
-
-Users may need to additionally install `Sphinx` as follows:
-
-    conda install sphinx
-
-And potentially recommonmark:
-
-    pip install recommonmark
-
 The run the tests:
 
-    python setup.py test
-
-To lint for consistent type usage, install `mypy` and run:
-
-    pip install mypy
-    mpyp digital_comms
-
-To lint for general python style, install `pylint` and run:
-
-    pip install pylint
-    pylint digital_comms
+    pytest
 
 
 Background and funding
