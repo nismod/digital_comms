@@ -55,7 +55,9 @@ MANIFEST
 data/*
 data_raw/*
 results/*
-vis/*
+vis/arc_5G*
+vis/digital_transport*
+vis/vis_5g/*
 scripts/script_config.ini
 cache
 
