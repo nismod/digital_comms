@@ -415,21 +415,6 @@ def import_sitefinder_data(path):
     return asset_data
 
 
-def find_average(my_property, touching_assets):
-
-    numerator = sum([float(a['properties'][my_property]) for a in touching_assets
-        if str(a['properties'][my_property]).isdigit()])
-    denominator = len([a['properties'][my_property] for a in touching_assets
-        if str(a['properties'][my_property]).isdigit()])
-
-    try:
-        output = numerator / denominator
-    except ZeroDivisionError:
-        output = numerator
-
-    return output
-
-
 def process_asset_data(data):
     """
     Add buffer to each site, dissolve overlaps and take centroid.
@@ -762,7 +747,7 @@ if __name__ == "__main__":
     postcode_sectors = read_postcode_sectors(path)
 
     print('Adding lad IDs to postcode sectors... might take a few minutes...')
-    postcode_sectors = add_lad_to_postcode_sector(postcode_sectors[:200], lads)
+    postcode_sectors = add_lad_to_postcode_sector(postcode_sectors, lads)
 
     print('Loading in population weights' )
     weights = load_in_weights()
@@ -776,51 +761,51 @@ if __name__ == "__main__":
     print('Generating scenario variants')
     generate_scenario_variants(postcode_sectors, directory)
 
-    print('Disaggregate 4G coverage to postcode sectors')
-    postcode_sectors = allocate_4G_coverage(postcode_sectors, lad_lut)
+    # print('Disaggregate 4G coverage to postcode sectors')
+    # postcode_sectors = allocate_4G_coverage(postcode_sectors, lad_lut)
 
-    print('Importing sitefinder data')
-    folder = os.path.join(DATA_RAW, 'sitefinder')
-    sitefinder_data = import_sitefinder_data(os.path.join(folder, 'sitefinder.csv'))
+    # print('Importing sitefinder data')
+    # folder = os.path.join(DATA_RAW, 'sitefinder')
+    # sitefinder_data = import_sitefinder_data(os.path.join(folder, 'sitefinder.csv'))
 
-    print('Preprocessing sitefinder data with 50m buffer')
-    sitefinder_data = process_asset_data(sitefinder_data[:1000])
+    # print('Preprocessing sitefinder data with 50m buffer')
+    # sitefinder_data = process_asset_data(sitefinder_data)
 
-    print('Allocate 4G coverage to sites from postcode sectors')
-    processed_sites = add_coverage_to_sites(sitefinder_data, postcode_sectors)
+    # print('Allocate 4G coverage to sites from postcode sectors')
+    # processed_sites = add_coverage_to_sites(sitefinder_data, postcode_sectors)
 
-    print('Reading exchanges')
-    exchanges = read_exchanges()
+    # print('Reading exchanges')
+    # exchanges = read_exchanges()
 
-    print('Reading exchange areas')
-    exchange_areas = read_exchange_areas()
+    # print('Reading exchange areas')
+    # exchange_areas = read_exchange_areas()
 
-    print('Generating straight line distance from each site to the nearest exchange')
-    processed_sites, backhaul_links = generate_link_straight_line(processed_sites, exchanges)
+    # print('Generating straight line distance from each site to the nearest exchange')
+    # processed_sites, backhaul_links = generate_link_straight_line(processed_sites, exchanges)
 
-    print('Convert geojson postcode sectors to list of dicts')
-    postcode_sectors = convert_postcode_sectors_to_list(postcode_sectors)
+    # print('Convert geojson postcode sectors to list of dicts')
+    # postcode_sectors = convert_postcode_sectors_to_list(postcode_sectors)
 
-    print('Specifying clutter geotypes')
-    geotypes = [
-        {'geotype': 'urban', 'population_density': 7959},
-        {'geotype': 'suburban', 'population_density': 782},
-        {'geotype': 'rural', 'population_density': 0},
-    ]
-    csv_writer(geotypes, directory, 'lookup_table_geotype.csv')
+    # print('Specifying clutter geotypes')
+    # geotypes = [
+    #     {'geotype': 'urban', 'population_density': 7959},
+    #     {'geotype': 'suburban', 'population_density': 782},
+    #     {'geotype': 'rural', 'population_density': 0},
+    # ]
+    # csv_writer(geotypes, directory, 'lookup_table_geotype.csv')
 
-    print('Writing postcode sectors to .csv')
-    csv_writer(postcode_sectors, directory, '_processed_postcode_sectors.csv')
+    # print('Writing postcode sectors to .csv')
+    # csv_writer(postcode_sectors, directory, '_processed_postcode_sectors.csv')
 
-    print('Writing processed sites to .csv')
-    csv_writer(processed_sites, directory, 'final_processed_sites.csv')
+    # print('Writing processed sites to .csv')
+    # csv_writer(processed_sites, directory, 'final_processed_sites.csv')
 
-    print('Convert assets for nismod2')
-    nismod2_assets = convert_assets_for_nismod2(processed_sites)
+    # # print('Convert assets for nismod2')
+    # # nismod2_assets = convert_assets_for_nismod2(processed_sites)
 
-    print('Writing digital_initial to .csv')
-    nismod2_directory = os.path.join(DATA_INTERMEDIATE, 'nismod2_inputs')
-    csv_writer(nismod2_assets, nismod2_directory, 'digital_initial_conditions.csv')
+    # # print('Writing digital_initial to .csv')
+    # # nismod2_directory = os.path.join(DATA_INTERMEDIATE, 'nismod2_inputs')
+    # # csv_writer(nismod2_assets, nismod2_directory, 'digital_initial_conditions.csv')
 
-    end = time.time()
-    print('time taken: {} minutes'.format(round((end - start) / 60,2)))
+    # end = time.time()
+    # print('time taken: {} minutes'.format(round((end - start) / 60,2)))
