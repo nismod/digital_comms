@@ -200,8 +200,8 @@ def estimate_dwelling_density(exchanges, lads):
             # exchange_area / lad_area * int(lad['dwellings']))
             output.append({
                 'exchange_id': exchange['id'],
-                'exchange_area': exchange['area'],
-                'proportion_of_lad_area': exchange_area / lad_area,
+                'area': exchange['area'],
+                # 'proportion_of_lad_area': exchange_area / lad_area,
                 'lad_id': lad['id'],
                 'lad_name': lad['name'],
                 # 'lad_area': lad['area'],

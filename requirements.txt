@@ -1,13 +1,14 @@
 # Add your requirements here:
 fiona>=1.7
 matplotlib
-networkx>=2.1
-geopandas
 Rtree>=0.8.3
 pyproj
-pysftp
-PyYAML>=5.1
-scikit-learn>=0.19.1
 shapely>=1.6
-sphinx>=1.8
-osmnx
+
+# networkx>=2.1
+# geopandas
+# sphinx>=1.8
+# osmnx
+# pysftp
+# PyYAML>=5.1
+# scikit-learn>=0.19.1

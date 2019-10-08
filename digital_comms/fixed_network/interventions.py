@@ -89,6 +89,8 @@ def decide_interventions(system, technology, policy, parameters):
                             policy,
                             capital_investment_type,
                             asset.rollout_costs[technology],
+                            0,
+                            0,
                         )
                     )
                     upgraded_ids.append(asset.id)

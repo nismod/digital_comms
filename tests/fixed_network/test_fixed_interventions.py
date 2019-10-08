@@ -118,9 +118,9 @@ def test_decide_interventions(base_system, parameters, constrained_parameters):
 
     built_intervention_ids = [i[0] for i in built_interventions]
 
-    expectated_intervention_ids = ['A', 'B', 'C', 'D']
+    expected_intervention_ids = ['A', 'B', 'C', 'D']
 
-    assert built_intervention_ids == expectated_intervention_ids
+    assert built_intervention_ids == expected_intervention_ids
 
     built_interventions = decide_interventions(
         base_system, 'fttdp', 'subsidy_rural', parameters
@@ -128,9 +128,9 @@ def test_decide_interventions(base_system, parameters, constrained_parameters):
 
     built_intervention_ids = [i[0] for i in built_interventions]
 
-    expectated_intervention_ids = ['D','C','B', 'A']
+    expected_intervention_ids = ['D','C','B', 'A']
 
-    assert built_intervention_ids == expectated_intervention_ids
+    assert built_intervention_ids == expected_intervention_ids
 
     built_interventions = decide_interventions(
         base_system, 'fttdp', 'subsidy_outsidein', parameters
@@ -138,77 +138,78 @@ def test_decide_interventions(base_system, parameters, constrained_parameters):
 
     built_intervention_ids = [i[0] for i in built_interventions]
 
-    expectated_intervention_ids = ['D', 'C', 'B', 'A']
+    expected_intervention_ids = ['D', 'C', 'B', 'A']
 
-    assert built_intervention_ids == expectated_intervention_ids
+    assert built_intervention_ids == expected_intervention_ids
 
     built_interventions = decide_interventions(
         base_system, 'fttdp', 'market_insideout', constrained_parameters
     )
 
-    expectated_interventions = [
-        ('A', 'fttdp', 'market', 'private', 50000),
-        ('B', 'fttdp', 'market', 'private', 50000)
+    #asset_id, tech, policy, capital_investment_type, total_cost, private_sector_spend, subsidy
+    expected_interventions = [
+        ('A', 'fttdp', 'market', 'private', 50000, 0, 0),
+        ('B', 'fttdp', 'market', 'private', 50000, 0, 0)
     ]
 
-    assert built_interventions == expectated_interventions
+    assert built_interventions == expected_interventions
 
     built_interventions = decide_interventions(
         base_system, 'fttp', 'market_insideout', constrained_parameters
     )
 
-    expectated_interventions = [('A', 'fttp', 'market', 'private', 100000)]
+    expected_interventions = [('A', 'fttp', 'market', 'private', 100000, 0, 0)]
 
-    assert built_interventions == expectated_interventions
+    assert built_interventions == expected_interventions
 
     built_interventions = decide_interventions(
         base_system, 'fttdp', 'subsidy_rural', constrained_parameters
     )
 
-    expectated_interventions = [
+    expected_interventions = [
         ('D', 'fttdp', 'subsidy', 'private', 50000, 50000, 0),
         ('C', 'fttdp', 'subsidy', 'private', 50000, 50000, 0),
         ('B', 'fttdp', 'subsidy', 'public_private', 50000, 8000, 42000),
         ('A', 'fttdp', 'subsidy', 'public_private', 50000, 9000, 41000)
     ]
 
-    assert built_interventions == expectated_interventions
+    assert built_interventions == expected_interventions
 
     built_interventions = decide_interventions(
         base_system, 'fttp', 'subsidy_rural', constrained_parameters
     )
 
-    expectated_interventions = [
+    expected_interventions = [
        ('D', 'fttp', 'subsidy', 'private', 100000, 100000, 0),
        ('B', 'fttp', 'subsidy', 'public_private', 100000, 8000, 92000),
        ('A', 'fttp', 'subsidy', 'public_private', 100000, 9000, 91000)
     ]
 
-    assert built_interventions == expectated_interventions
+    assert built_interventions == expected_interventions
 
 
     built_interventions = decide_interventions(
         base_system, 'fttdp', 'subsidy_outsidein', constrained_parameters
     )
 
-    expectated_interventions = [
+    expected_interventions = [
         ('D', 'fttdp', 'subsidy', 'private', 50000, 50000, 0),
         ('C', 'fttdp', 'subsidy', 'private', 50000, 50000, 0),
         ('B', 'fttdp', 'subsidy', 'public_private', 50000, 8000, 42000),
         ('A', 'fttdp', 'subsidy', 'public_private', 50000, 9000, 41000)
     ]
 
-    assert built_interventions == expectated_interventions
+    assert built_interventions == expected_interventions
 
     built_interventions = decide_interventions(
         base_system, 'fttp', 'subsidy_outsidein', constrained_parameters
     )
 
-    expectated_interventions = [
+    expected_interventions = [
         ('D', 'fttp', 'subsidy', 'private', 100000, 100000, 0),
         ('C', 'fttp', 'subsidy', 'public_private', 100000, 7000, 93000),
         ('B', 'fttp', 'subsidy', 'public_private', 100000, 8000, 92000),
         ('A', 'fttp', 'subsidy', 'public_private', 100000, 9000, 91000)
     ]
 
-    assert built_interventions == expectated_interventions
+    assert built_interventions == expected_interventions
