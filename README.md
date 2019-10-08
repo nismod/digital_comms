@@ -48,7 +48,7 @@ Activate it (run each time you switch projects)::
 
 First, install required packages including `fiona`, `shapely`, `numpy`, `rtree`, `pyproj` and `pytest`:
 
-    conda install fiona shapely numpy rtree pyproj pytest
+    conda install fiona shapely numpy rtree pyproj pytest pandas
 
 For development purposes, run this command once per machine:
 
@@ -60,7 +60,7 @@ To install digital_comms permanently:
 
 The run the tests:
 
-    pytest
+    python setup.py test
 
 
 Background and funding
