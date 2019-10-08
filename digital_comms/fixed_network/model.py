@@ -204,7 +204,6 @@ class Exchange():
 
     """
     def __init__(self, data, simulation_parameters):
-
         self.id = data["exchange_id"]
         self.lad = data["lad_id"]
         self.area = data['area']
