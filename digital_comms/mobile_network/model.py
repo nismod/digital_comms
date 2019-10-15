@@ -109,13 +109,14 @@ class NetworkManager(object):
                 pcd_sector_id = pcd_sector_data["id"]
                 assets = assets_by_pcd[pcd_sector_id]
                 pcd_sector = PostcodeSector(pcd_sector_data, assets,
-                capacity_lookup_table, clutter_lookup, simulation_parameters)
+                capacity_lookup_table, clutter_lookup, simulation_parameters, 0)
                 self.postcode_sectors[pcd_sector_id] = pcd_sector
 
                 lad_containing_pcd_sector = self.lads[lad_id]
                 lad_containing_pcd_sector.add_pcd_sector(pcd_sector)
             except:
                 print('could not create object for {}'.format(pcd_sector_data["id"]))
+                print(pcd_sector_data)
                 pass
 
 
@@ -155,7 +156,6 @@ class LAD(object):
         self.name = data["name"]
         self._pcd_sectors = {}
 
-
     def __repr__(self):
         return "<LAD id:{} name:{}>".format(self.id, self.name)
 
@@ -166,6 +166,11 @@ class LAD(object):
             pcd_sector.population
             for pcd_sector in self._pcd_sectors.values()])
 
+    @property
+    def area(self):
+        return sum([
+            pcd_sector.area
+            for pcd_sector in self._pcd_sectors.values()])
 
     @property
     def population_density(self):
@@ -236,15 +241,21 @@ class PostcodeSector(object):
     """Represents a pcd_sector to be modelled
     """
     def __init__(self, data, assets, capacity_lookup_table,
-        clutter_lookup, simulation_parameters):
+        clutter_lookup, simulation_parameters, testing):
 
         self.id = data["id"]
         self.lad_id = data["lad_id"]
         self.population = data["population"]
         self.area = data["area_km2"]
         self.user_throughput = data["user_throughput"]
+        self.penetration = simulation_parameters['penetration']
+        self.busy_hour_traffic = simulation_parameters['busy_hour_traffic_percentage']
+
+        self.market_share = simulation_parameters['market_share']
         self.user_demand = self._calculate_user_demand(
             self.user_throughput, simulation_parameters)
+
+        self.demand_density = self.demand / self.area
 
         self._capacity_lookup_table = capacity_lookup_table
         self._clutter_lookup = clutter_lookup
@@ -253,18 +264,42 @@ class PostcodeSector(object):
             self.population_density
         )
 
-        self.busy_hour_traffic = simulation_parameters['busy_hour_traffic_percentage']
-        self.penetration = simulation_parameters['penetration']
-        self.market_share = simulation_parameters['market_share']
         self.assets = assets
+
+        self.site_density_macrocells = self._calculate_site_density_macrocells()
+        self.site_density_small_cells = self._calculate_site_density_small_cells()
+
         self.capacity = (
-            self._macrocell_site_capacity(simulation_parameters) +
-            self._small_cell_capacity(simulation_parameters)
+            self._macrocell_site_capacity(simulation_parameters, testing) +
+            self.small_cell_capacity(simulation_parameters, testing)
         )
 
 
     def __repr__(self):
         return "<PostcodeSector id:{}>".format(self.id)
+
+    def _calculate_site_density_macrocells(self):
+
+        unique_sites = set()
+        for asset in self.assets:
+            if asset['type'] == 'macrocell_site':
+                unique_sites.add(asset['site_ngr'])
+
+        site_density = float(len(unique_sites)) / self.area
+
+        return site_density
+
+
+    def _calculate_site_density_small_cells(self):
+
+        small_cells = []
+        for asset in self.assets:
+            if asset['type'] == 'small_cell':
+                small_cells.append(asset)
+
+        site_density = float(len(small_cells)) / self.area
+
+        return site_density
 
 
     def _calculate_user_demand(self, user_throughput, simulation_parameters):
@@ -318,7 +353,7 @@ class PostcodeSector(object):
         return self.population / self.area
 
 
-    def _macrocell_site_capacity(self, simulation_parameters):
+    def _macrocell_site_capacity(self, simulation_parameters, testing):
         """
         Find the macrocellular Radio Access Network capacity given the
         area assets and deployed frequency bands.
@@ -326,32 +361,39 @@ class PostcodeSector(object):
         """
         capacity = 0
 
-        for frequency in ['700', '800', '1800', '2600', '3500']:
-            num_sites = 0
+        for frequency in ['700', '800', '1800', '2600', '3500', '26000']:
+            unique_sites = set()
             for asset in self.assets:
                 for asset_frequency in asset['frequency']:
 
                     if asset_frequency == frequency:
-                        num_sites += 1
+                        unique_sites.add(asset['site_ngr'])
 
-            site_density = float(num_sites) / self.area
+            site_density = float(len(unique_sites)) / self.area
 
             bandwidth = find_frequency_bandwidth(frequency,
                 simulation_parameters)
+
+            if frequency == '700' or frequency == '3500' or frequency == '26000':
+                generation = '5G'
+            else:
+                generation = '4G'
 
             tech_capacity = lookup_capacity(
                 self._capacity_lookup_table,
                 self.clutter_environment,
                 frequency,
                 bandwidth,
-                site_density)
+                generation,
+                site_density,
+                0)
 
             capacity += tech_capacity
 
         return capacity
 
 
-    def _small_cell_capacity(self, simulation_parameters):
+    def small_cell_capacity(self, simulation_parameters, testing):
         """
         Find the small cell Radio Access Network capacity given the
         area assets and deployed frequency bands.
@@ -370,15 +412,11 @@ class PostcodeSector(object):
             "small_cells",
             "3700",
             "25",
-            site_density)
+            "5G",
+            site_density,
+            testing)
 
         return capacity
-
-
-    # @property
-    # def capacity_margin(self):
-    #     capacity_margin = self.capacity - self.demand
-    #     return capacity_margin
 
 
 def find_frequency_bandwidth(frequency, simulation_parameters):
@@ -430,33 +468,32 @@ def lookup_clutter_geotype(clutter_lookup, population_density):
         return middle_geotype
 
 
-def lookup_capacity(lookup_table, clutter_environment, frequency, bandwidth, site_density):
+def lookup_capacity(lookup_table, clutter_environment, frequency, bandwidth, generation, site_density, testing):
     """
     Use lookup table to find capacity by clutter environment geotype,
     frequency, bandwidth and site density.
 
     """
-    if (clutter_environment, frequency, bandwidth) not in lookup_table:
+    if (clutter_environment, frequency, bandwidth, generation) not in lookup_table:
         raise KeyError("Combination %s not found in lookup table",
-                       (clutter_environment, frequency, bandwidth))
-
-    density_capacities = lookup_table[(clutter_environment, frequency, bandwidth)]
+                       (clutter_environment, frequency, bandwidth, generation))
+    density_capacities = lookup_table[(clutter_environment, frequency, bandwidth, generation)]
 
     lowest_density, lowest_capacity = density_capacities[0]
     if site_density < lowest_density:
-        # Never fail, return zero capacity if site density is below range
         return 0
 
     for a, b in pairwise(density_capacities):
         lower_density, lower_capacity = a
         upper_density, upper_capacity = b
         if lower_density <= site_density and site_density < upper_density:
-            # Interpolate between values
             return interpolate(lower_density, lower_capacity, upper_density, upper_capacity, site_density)
 
     # If not caught between bounds return highest capacity
     highest_density, highest_capacity = density_capacities[-1]
+
     return highest_capacity
+
 
 def interpolate(x0, y0, x1, y1, x):
     """

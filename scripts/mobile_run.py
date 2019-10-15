@@ -10,6 +10,7 @@ import itertools
 import os
 import pprint
 import glob
+import pprint
 
 import fiona
 from collections import defaultdict
@@ -89,9 +90,8 @@ def load_population_scenario_data():
 
     """
     scenario_files = {
-        scenario: os.path.join(BASE_PATH, 'raw', 'b_mobile_model',
-        'mobile_model_1.0', 'scenario_data',
-        'population_{}_pcd.csv'.format(scenario))
+        scenario: os.path.join(BASE_PATH, 'intermediate',
+        'mobile_model_inputs', 'pcd_arc_population__{}.csv'.format(scenario))
         for scenario in POPULATION_SCENARIOS
     }
 
@@ -104,12 +104,12 @@ def load_population_scenario_data():
 
     for scenario, filename in scenario_files.items():
         with open(filename, 'r') as scenario_file:
-            scenario_reader = csv.reader(scenario_file)
-            for year, pcd_sector, population in scenario_reader:
-                year = int(year)
+            scenario_reader = csv.DictReader(scenario_file)
+            for item in scenario_reader:
+                year = int(item['year'])
                 if year in TIMESTEPS:
-                    population_by_scenario_year_pcd[scenario][year][pcd_sector] = (
-                        int(population)
+                    population_by_scenario_year_pcd[scenario][year][item['id']] = (
+                        int(item['population'])
                     )
 
     return population_by_scenario_year_pcd
@@ -125,7 +125,7 @@ def load_user_throughput_scenarios():
     }
 
     THROUGHPUT_FILENAME = os.path.join(BASE_PATH, 'raw', 'b_mobile_model',
-        'mobile_model_1.0', 'scenario_data', 'monthly_data_growth_scenarios.csv'
+        'monthly_data_growth_scenarios.csv'
     )
 
     with open(THROUGHPUT_FILENAME, 'r') as throughput_file:
@@ -143,7 +143,7 @@ def load_user_throughput_scenarios():
     return user_throughput_by_scenario_year
 
 
-def load_initial_system():
+def load_initial_system(site_share):
     """
     Load in initial system of mobile sites.
 
@@ -152,6 +152,7 @@ def load_initial_system():
         'final_processed_sites.csv'
     )
 
+    pcd_sectors = set()
     initial_system = []
 
     with open(SYSTEM_FILENAME, 'r') as system_file:
@@ -163,6 +164,7 @@ def load_initial_system():
             else:
                 frequency = []
                 technology = ''
+            pcd_sectors.add(pcd_sector['id'].replace(' ', ''))
             initial_system.append({
                 'pcd_sector': pcd_sector['id'].replace(' ', ''),
                 'site_ngr': pcd_sector['name'],
@@ -174,7 +176,30 @@ def load_initial_system():
                 'opex': 20000
             })
 
-    return initial_system
+    output = []
+
+    for pcd_sector in pcd_sectors:
+        total_pcd_sectors = []
+        for item in initial_system:
+            if item['pcd_sector'] == pcd_sector:
+                total_pcd_sectors.append(item)
+        if len(total_pcd_sectors) == 0:
+            # print('no sites in sector')
+            continue
+        if len(total_pcd_sectors) == 1:
+            # print('only one site in sector')
+            output.extend(total_pcd_sectors)
+        if len(total_pcd_sectors) >= 2:
+            number_to_append = round(len(total_pcd_sectors) * (site_share/100))
+            appended_so_far = 0
+            for item in total_pcd_sectors:
+                if appended_so_far <= number_to_append:
+                    output.append(item)
+                else:
+                    pass
+                appended_so_far += 1
+
+    return output
 
 
 def load_capacity_lookup_table():
@@ -185,28 +210,30 @@ def load_capacity_lookup_table():
     PATH_LIST = glob.iglob(os.path.join(INTERMEDIATE,
         'system_simulator', '*capacity_lookup_table*.csv'), recursive=True
     )
-
+    # print([p for p in PATH_LIST])
     capacity_lookup_table = {}
 
     for path in PATH_LIST:
         with open(path, 'r') as capacity_lookup_file:
             reader = csv.DictReader(capacity_lookup_file)
             for row in reader:
-
+                if float(row["capacity_mbps_km2"]) <= 0:
+                    continue
                 environment = row["environment"].lower()
                 frequency = str(int(float(row["frequency_GHz"]) * 1e3))
                 bandwidth = str(row["bandwidth_MHz"])
+                generation = str(row["generation"])
                 density = float(row["sites_per_km2"])
                 capacity = float(row["capacity_mbps_km2"])
 
-                if (environment, frequency, bandwidth) \
+                if (environment, frequency, bandwidth, generation) \
                     not in capacity_lookup_table:
                     capacity_lookup_table[(
-                        environment, frequency, bandwidth)
+                        environment, frequency, bandwidth, generation)
                         ] = []
 
                 capacity_lookup_table[(
-                    environment, frequency, bandwidth
+                    environment, frequency, bandwidth, generation
                     )].append((
                         density, capacity
                     ))
@@ -241,7 +268,7 @@ def load_clutter_geotype_lookup_table():
 
 
 def write_lad_results(network_manager, folder, year, pop_scenario,
-    throughput_scenario, intervention_strategy, cost_by_lad):
+    throughput_scenario, intervention_strategy, cost_by_lad, lad_areas):
     """
     Write LAD results to .csv file.
 
@@ -255,31 +282,39 @@ def write_lad_results(network_manager, folder, year, pop_scenario,
         metrics_file = open(metrics_filename, 'w', newline='')
         metrics_writer = csv.writer(metrics_file)
         metrics_writer.writerow(
-            ('year', 'area_id', 'area_name', 'cost', 'demand', 'capacity',
-            'capacity_deficit', 'population', 'pop_density'))
+            ('year', 'area_id', 'area_name', 'area', 'cost', 'demand',
+            'capacity', 'capacity_deficit', 'population', 'pop_density'))
+
     else:
         metrics_file = open(metrics_filename, 'a', newline='')
         metrics_writer = csv.writer(metrics_file)
 
+    population = 0
     for lad in network_manager.lads.values():
-        area_id = lad.id
-        area_name = lad.name
-        cost = cost_by_lad[lad.id]
-        demand = lad.demand()
-        capacity = lad.capacity()
-        capacity_deficit = capacity - demand
-        pop = lad.population
-        pop_d = lad.population_density
+        if lad.id in lad_areas:
+            area_id = lad.id
+            area_name = lad.name
+            area = lad.area
+            cost = cost_by_lad[lad.id]
+            demand = lad.demand()
+            capacity = lad.capacity()
+            capacity_deficit = capacity - demand
+            pop = lad.population
+            pop_d = lad.population_density
 
-        metrics_writer.writerow(
-            (year, area_id, area_name, cost, demand, capacity,
-            capacity_deficit, pop, pop_d))
+            metrics_writer.writerow(
+                (year, area_id, area_name, area, cost, demand, capacity,
+                capacity_deficit, pop, pop_d))
+
+            population += lad.population
+
+    print('population written is {}'.format(round(population/1e6,1)))
 
     metrics_file.close()
 
 
 def write_pcd_results(network_manager, folder, year, pop_scenario,
-    throughput_scenario, intervention_strategy, cost_by_pcd):
+    throughput_scenario, intervention_strategy, cost_by_pcd, lad_areas):
     """
     Write postcode sector results to .csv file.
 
@@ -294,29 +329,40 @@ def write_pcd_results(network_manager, folder, year, pop_scenario,
         metrics_file = open(metrics_filename, 'w', newline='')
         metrics_writer = csv.writer(metrics_file)
         metrics_writer.writerow(
-            ('year', 'postcode', 'cost', 'demand', 'capacity',
-            'capacity_deficit', 'population', 'pop_density'))
+            ('year', 'postcode', 'lad_id','cost', 'demand', 'demand_density',
+            'user_demand','site_density_macrocells','site_density_small_cells',
+            'capacity','capacity_deficit', 'population', 'area', 'pop_density',
+            'clutter_env'))
     else:
         metrics_file = open(metrics_filename, 'a', newline='')
         metrics_writer = csv.writer(metrics_file)
 
     for pcd in network_manager.postcode_sectors.values():
-        demand = pcd.demand
-        capacity = pcd.capacity
-        capacity_deficit = capacity - demand
-        pop = pcd.population
-        pop_d = pcd.population_density
-        cost = cost_by_pcd[pcd.id]
+        if pcd.lad_id in lad_areas:
+            demand = pcd.demand
+            demand_density = pcd.demand_density
+            site_density_macrocells = pcd.site_density_macrocells
+            site_density_small_cells = pcd.site_density_small_cells
+            capacity = pcd.capacity
+            capacity_deficit = capacity - demand
+            population = pcd.population
+            area = pcd.area
+            pop_d = pcd.population_density
+            cost = cost_by_pcd[pcd.id]
+            user_demand = pcd.user_demand
+            clutter_env = pcd.clutter_environment
 
-        metrics_writer.writerow(
-            (year, pcd.id, cost, demand, capacity,
-            capacity_deficit, pop, pop_d))
+            metrics_writer.writerow(
+                (year, pcd.id, pcd.lad_id, cost, demand, demand_density, user_demand,
+                site_density_macrocells, site_density_small_cells, capacity,
+                capacity_deficit, population, area, pop_d, clutter_env)
+            )
 
     metrics_file.close()
 
 
 def write_decisions(decisions, folder, year, pop_scenario,
-    throughput_scenario, intervention_strategy):
+    throughput_scenario, intervention_strategy, lad_areas):
     """
     Write decisions to .csv file.
 
@@ -339,6 +385,7 @@ def write_decisions(decisions, folder, year, pop_scenario,
         decisions_writer = csv.writer(decisions_file)
 
     for intervention in decisions:
+
         pcd_sector = intervention['pcd_sector']
         site_ngr = intervention['site_ngr']
         build_date = intervention['build_date']
@@ -355,7 +402,7 @@ def write_decisions(decisions, folder, year, pop_scenario,
 
 
 def write_spend(spend, folder, year, pop_scenario,
-    throughput_scenario, intervention_strategy):
+    throughput_scenario, intervention_strategy, lad_areas):
     """
     Write asset spending results to .csv file.
 
@@ -375,8 +422,9 @@ def write_spend(spend, folder, year, pop_scenario,
         spend_writer = csv.writer(spend_file)
 
     for pcd_sector, lad, item, cost in spend:
-        spend_writer.writerow(
-            (year, pcd_sector, lad, item, cost))
+        if lad in lad_areas:
+            spend_writer.writerow(
+                (year, pcd_sector, lad, item, cost))
 
     spend_file.close()
 
@@ -386,7 +434,7 @@ def _get_suffix(pop_scenario, throughput_scenario, intervention_strategy):
     Get the filename suffix for each scenario and strategy variant.
 
     """
-    suffix = 'pop_{}_throughput_{}_strategy_{}'.format(
+    suffix = '{}_{}_{}'.format(
         pop_scenario, throughput_scenario, intervention_strategy)
 
     suffix = suffix.replace('baseline', 'base')
@@ -413,9 +461,12 @@ if __name__ == '__main__':
     TIMESTEPS = range(BASE_YEAR, END_YEAR + 1, TIMESTEP_INCREMENT)
 
     POPULATION_SCENARIOS = [
-        "high",
-        "baseline",
-        "low",
+        'baseline',
+        '0-unplanned',
+        '1-new-cities-from-dwellings',
+        '2-expansion',
+        '3-new-cities23-from-dwellings',
+        '4-expansion23',
     ]
     THROUGHPUT_SCENARIOS = [
         "high",
@@ -425,16 +476,45 @@ if __name__ == '__main__':
     INTERVENTION_STRATEGIES = [
         "minimal",
         "macrocell",
-        "macrocell_700",
-        "small_cell",
-        "small_cell_and_spectrum"
+        "small-cell",
+        "small-cell-and-spectrum"
     ]
 
-    MARKET_SHARE = 0.25
+    LAD_AREAS = [
+        'E06000031',
+        'E07000005',
+        'E07000006',
+        'E07000007',
+        'E06000032',
+        'E06000042',
+        'E06000055',
+        'E06000056',
+        'E07000004',
+        'E07000008',
+        'E07000009',
+        'E07000010',
+        'E07000011',
+        'E07000012',
+        'E07000150',
+        'E07000151',
+        'E07000152',
+        'E07000153',
+        'E07000154',
+        'E07000155',
+        'E07000156',
+        'E07000177',
+        'E07000178',
+        'E07000179',
+        'E07000180',
+        'E07000181',
+    ]
+
+    MARKET_SHARE = 0.30
     ANNUAL_BUDGET = (2 * 10 ** 9) * MARKET_SHARE
     SERVICE_OBLIGATION_CAPACITY = 0
-    BUSY_HOUR_TRAFFIC_PERCENTAGE = 15
+    BUSY_HOUR_TRAFFIC_PERCENTAGE = 20
     COVERAGE_THRESHOLD = 2
+    SITE_SHARE = 50
 
     simulation_parameters = {
         'market_share': MARKET_SHARE,
@@ -448,8 +528,9 @@ if __name__ == '__main__':
         'channel_bandwidth_1800': '10',
         'channel_bandwidth_2600': '10',
         'channel_bandwidth_3500': '40',
+        'channel_bandwidth_26000': '100',
         'macro_sectors': 3,
-        'small_cell_sectors': 1,
+        'small-cell_sectors': 1,
         'mast_height': 30,
     }
 
@@ -466,7 +547,8 @@ if __name__ == '__main__':
     user_throughput_by_scenario_year = load_user_throughput_scenarios()
 
     print('Loading initial system')
-    initial_system = load_initial_system()
+    initial_system = load_initial_system(SITE_SHARE)
+    print('loaded {} sites'.format(len(initial_system)))
 
     print('Loading lookup table')
     capacity_lookup_table = load_capacity_lookup_table()
@@ -475,26 +557,54 @@ if __name__ == '__main__':
     clutter_lookup = load_clutter_geotype_lookup_table()
 
     for pop_scenario, throughput_scenario, intervention_strategy in [
-            # ('low', 'low', 'minimal'),
-            # ('baseline', 'baseline', 'minimal'),
-            # ('high', 'high', 'minimal'),
 
-            # ('low', 'low', 'macrocell'),
-            # ('baseline', 'baseline', 'macrocell'),
-            ('high', 'high', 'macrocell'),
+            ('baseline', 'low', 'minimal'),
+            ('0-unplanned', 'low', 'minimal'),
+            ('1-new-cities-from-dwellings', 'low', 'minimal'),
+            ('2-expansion', 'low', 'minimal'),
+            ('3-new-cities23-from-dwellings', 'low', 'minimal'),
+            ('4-expansion23', 'low', 'minimal'),
 
-            # ('low', 'low', 'small_cell'),
-            # ('baseline', 'baseline', 'small_cell'),
-            # ('high', 'high', 'small_cell'),
+            ('baseline', 'baseline', 'minimal'),
+            ('0-unplanned', 'baseline', 'minimal'),
+            ('1-new-cities-from-dwellings', 'baseline', 'minimal'),
+            ('2-expansion', 'baseline', 'minimal'),
+            ('3-new-cities23-from-dwellings', 'baseline', 'minimal'),
+            ('4-expansion23', 'baseline', 'minimal'),
 
-            # ('low', 'low', 'small_cell_and_spectrum'),
-            # ('baseline', 'baseline', 'small_cell_and_spectrum'),
-            # ('high', 'high', 'small_cell_and_spectrum'),
+            ('baseline', 'high', 'minimal'),
+            ('0-unplanned', 'high', 'minimal'),
+            ('1-new-cities-from-dwellings', 'high', 'minimal'),
+            ('2-expansion', 'high', 'minimal'),
+            ('3-new-cities23-from-dwellings', 'high', 'minimal'),
+            ('4-expansion23', 'high', 'minimal'),
+
+            ('baseline', 'baseline', 'macrocell'),
+            ('0-unplanned', 'baseline', 'macrocell'),
+            ('1-new-cities-from-dwellings', 'baseline', 'macrocell'),
+            ('2-expansion', 'baseline', 'macrocell'),
+            ('3-new-cities23-from-dwellings', 'baseline', 'macrocell'),
+            ('4-expansion23', 'baseline', 'macrocell'),
+
+            ('baseline', 'baseline', 'small-cell'),
+            ('0-unplanned', 'baseline', 'small-cell'),
+            ('1-new-cities-from-dwellings', 'baseline', 'small-cell'),
+            ('2-expansion', 'baseline', 'small-cell'),
+            ('3-new-cities23-from-dwellings', 'baseline', 'small-cell'),
+            ('4-expansion23', 'baseline', 'small-cell'),
+
+            ('baseline', 'baseline', 'small-cell-and-spectrum'),
+            ('0-unplanned', 'baseline', 'small-cell-and-spectrum'),
+            ('1-new-cities-from-dwellings', 'baseline', 'small-cell-and-spectrum'),
+            ('2-expansion', 'baseline', 'small-cell-and-spectrum'),
+            ('3-new-cities23-from-dwellings', 'baseline', 'small-cell-and-spectrum'),
+            ('4-expansion23', 'baseline', 'small-cell-and-spectrum'),
+
         ]:
-        print("Running:", pop_scenario, throughput_scenario,
-            intervention_strategy)
+        print("Running:", pop_scenario, throughput_scenario, intervention_strategy)
 
         assets = initial_system[:]
+
         for year in TIMESTEPS:
             print("-", year)
 
@@ -536,10 +646,10 @@ if __name__ == '__main__':
                 cost_by_pcd[pcd] += cost
 
             write_lad_results(system, folder, year, pop_scenario, throughput_scenario,
-                intervention_strategy, cost_by_lad)
+                intervention_strategy, cost_by_lad, LAD_AREAS)
             write_pcd_results(system, folder, year, pop_scenario, throughput_scenario,
-                intervention_strategy, cost_by_pcd)
-            write_decisions(interventions_built, folder, year, pop_scenario,
-                throughput_scenario, intervention_strategy)
+                intervention_strategy, cost_by_pcd, LAD_AREAS)
+            # write_decisions(interventions_built, folder, year, pop_scenario,
+            #     throughput_scenario, intervention_strategy, LAD_AREAS)
             write_spend(spend, folder, year, pop_scenario, throughput_scenario,
-                intervention_strategy)
+                intervention_strategy, LAD_AREAS)
