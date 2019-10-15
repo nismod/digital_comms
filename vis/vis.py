@@ -15,14 +15,10 @@ CONFIG.read(os.path.join(os.path.dirname(__file__),'..','scripts', 'script_confi
 BASE_PATH = CONFIG['file_locations']['base_path']
 
 DATA = os.path.join(BASE_PATH, '..', 'results', 'mobile_outputs')
-# DATA_OUTPUT_PLOTS = os.path.join(BASE_PATH,'..','vis','vis_5g','plots')
-# DATA_OUTPUT_GIFS = os.path.join(BASE_PATH,'..','vis','vis_5g','gifs')
+DATA_OUTPUT_PLOTS = os.path.join(BASE_PATH,'..','vis','figures')
 
-# if not os.path.exists(DATA_OUTPUT_PLOTS):
-#     os.mkdir(DATA_OUTPUT_PLOTS)
-
-# if not os.path.exists(DATA_OUTPUT_PLOTS):
-#     os.mkdir(DATA_OUTPUT_GIFS)
+if not os.path.exists(DATA_OUTPUT_PLOTS):
+    os.mkdir(DATA_OUTPUT_PLOTS)
 
 def load_in_lad_results():
 
@@ -74,15 +70,12 @@ def transform_lad_data_labels(data):
 
     data['Population Scenario'] = data['Population Scenario'].replace(
         {
-            'low': 'Low',
-            'base': 'Baseline',
-            'high': 'High'
+            'baseline': 'Baseline',
+            '0-unplanned': 'Unplanned',
+            '1-new-cities': 'New Cities',
+            '2-expansion': 'Expansion',
         }
     )
-
-    #data scenario and population scenario should be the same,
-    #so one can just be copied for the general scenario
-    data['Scenario'] = data['Population Scenario']
 
     data['Strategy'] = data['Strategy'].replace(
         {
