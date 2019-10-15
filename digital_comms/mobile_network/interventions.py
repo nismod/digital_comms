@@ -50,8 +50,8 @@ INTERVENTIONS = {
             {
                 # site_ngr to match upgraded
                 'site_ngr': None,
-                'frequency': '700',
-                'technology': 'LTE',
+                'frequency': ['700'],
+                'technology': '5G',
                 'type': 'macrocell_site',
                 'bandwidth': '2x10MHz',
                 # set build date when deciding
@@ -68,8 +68,8 @@ INTERVENTIONS = {
             {
                 # site_ngr to match upgraded
                 'site_ngr': None,
-                'frequency': '3500',
-                'technology': 'LTE',
+                'frequency': ['3500'],
+                'technology': '5G',
                 'type': 'macrocell_site',
                 'bandwidth': '2x10MHz',
                 # set build date when deciding
@@ -122,12 +122,12 @@ AVAILABLE_STRATEGY_INTERVENTIONS = {
     # Intervention Strategy 3
     # Deploy a small cell layer at 3700 MHz
     # The cost will include the small cell unit and the civil works per cell
-    'small_cell': ('upgrade_to_lte', 'small_cell'),
+    'small-cell': ('upgrade_to_lte', 'small_cell'),
 
     # Intervention Strategy 4
     # Deploy a small cell layer at 3700 MHz
     # The cost will include the small cell unit and the civil works per cell
-    'small_cell_and_spectrum': ('upgrade_to_lte', 'carrier_700',
+    'small-cell-and-spectrum': ('upgrade_to_lte', 'carrier_700',
                    'carrier_3500', 'small_cell'),
 }
 
@@ -282,19 +282,19 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, sim
 
         # build small cells to next density
         if 'small_cell' in available_interventions and timestep >= 2020:
+
+            if area.clutter_environment == 'rural':
+                continue
+
             if _area_satisfied(area, area_interventions, threshold, simulation_parameters):
                 continue
 
-            area_sq_km = area.area
-            if 'small_cell_site' in assets_by_site:
-                current_number = len(assets_by_site['small_cell_site'])
-            else:
-                current_number = 0
-            current_density = current_number / area_sq_km
             build_option = INTERVENTIONS['small_cell']['assets_to_build']
             cost = INTERVENTIONS['small_cell']['cost']
 
+            loop_number = 0
             while True:
+
                 to_build = copy.deepcopy(build_option)
                 to_build[0]['build_date'] = timestep
                 to_build[0]['pcd_sector'] = area.id
@@ -304,7 +304,12 @@ def _suggest_interventions(budget, available_interventions, areas, timestep, sim
                 spend.append((area.id, area.lad_id, 'small_cells', cost))
                 budget -= cost
 
-                if budget <= 0 or _area_satisfied(area, area_interventions, threshold, simulation_parameters):
+                loop_number += 1
+
+                if _area_satisfied(area, area_interventions, threshold, simulation_parameters):
+                    break
+
+                if budget <= 0:
                     break
 
     return built_interventions, budget, spend
@@ -315,7 +320,7 @@ def _suggest_target_postcodes(system, threshold=None):
     - if considering threshold, filter out any with capacity above threshold
     """
     postcodes = system.postcode_sectors.values()
-    total_postcodes = len(postcodes)
+
     if threshold is not None:
         considered_postcodes = [pcd for pcd in postcodes if pcd.capacity < threshold]
     else:
@@ -336,6 +341,7 @@ def _area_satisfied(area, built_interventions, threshold, simulation_parameters)
         "area_km2": area.area,
         "user_throughput": area.user_throughput,
     }
+
     assets = area.assets + built_interventions
 
     test_area = PostcodeSector(
@@ -343,7 +349,8 @@ def _area_satisfied(area, built_interventions, threshold, simulation_parameters)
         assets,
         area._capacity_lookup_table,
         area._clutter_lookup,
-        simulation_parameters
+        simulation_parameters,
+        1
     )
 
     reached_capacity = test_area.capacity
