@@ -62,5 +62,7 @@ vis/vis_5g/*
 scripts/script_config.ini
 cache
 
+arc_fixed_bb/*
+
 # logger
 fixed_runner.py_logged_info
