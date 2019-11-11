@@ -101,8 +101,8 @@ def process_area_data(dwelling_data, area_data):
                     'geotype_name': item['geotype_name'],
                     'dwelling_density': (
                         int(item['dwellings_oa__final']) /
-                        (float(area['st_areasha']) / 100)),
-                    'area_km2': float(area['st_areasha']) / 100,
+                        (float(area['st_areasha']) / 1e6)),
+                    'area_km2': float(area['st_areasha']) / 1e6,
                 })
 
     return final_data
@@ -190,6 +190,8 @@ def add_costs_to_lad_lut(lad_dwelling_density_lut, cost_data):
                     'cost': cost_item['cost'],
                 })
 
+    output = sorted(output, key=lambda x: x['dwelling_density'])
+
     return output
 
 
@@ -199,7 +201,6 @@ def add_cost_to_oas(oa_dwelling_data, lad_dwelling_density_lut):
 
     for item in lad_dwelling_density_lut:
         unique_strategies.add(item['strategy'])
-
 
     output = []
 
@@ -218,8 +219,8 @@ def add_cost_to_oas(oa_dwelling_data, lad_dwelling_density_lut):
                 'geotype_name': oa['geotype_name'],
                 'dwelling_density': (
                     int(oa['dwellings_oa__final']) /
-                    (float(oa['area_km2']) / 100)),
-                'area_km2': float(oa['area_km2']) / 100,
+                    (float(oa['area_km2']))),
+                'area_km2': float(oa['area_km2']),
                 'cost_per_dwelling': cost,
                 'total_cost': cost * int(oa['dwellings_oa__final']),
             })
@@ -251,7 +252,7 @@ def lookup_cost(dwelling_density, strategy, lad_dwelling_density_lut):
 
     lowest_density, lowest_cost = density_costs[0]
     if dwelling_density < lowest_density:
-        return interpolate(0, 0, lowest_density, lowest_cost, dwelling_density) #Tom can you check this please?
+        return interpolate(0, 0, lowest_density, lowest_cost, dwelling_density)
 
     for a, b in pairwise(density_costs):
         lower_density, lower_capacity = a
@@ -334,7 +335,7 @@ if __name__ == "__main__":
     data = read_data(path)
 
     print('processing dwelling data')
-    oa_dwelling_data = processing_dwellings(data)[:200]
+    oa_dwelling_data = processing_dwellings(data)[:1000]
 
     print('process geotypes')
     oa_dwelling_data = process_geotypes(oa_dwelling_data, urban_rural_lut, LAD_AREAS)
