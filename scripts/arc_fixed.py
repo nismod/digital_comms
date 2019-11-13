@@ -273,19 +273,27 @@ def lookup_cost(dwelling_density, strategy, lad_dwelling_density_lut):
     lowest_density, lowest_cost = density_costs[0]
     next_density, next_cost = density_costs[1]
     if dwelling_density < lowest_density:
-        return interpolate(lowest_density, lowest_cost, next_density, next_cost, dwelling_density), "<{}".format(int(lowest_density))
+        return interpolate(
+            lowest_density, lowest_cost, next_density, next_cost, dwelling_density
+            ), "<{}".format(int(lowest_density))
 
     for a, b in pairwise(density_costs):
         lower_density, lower_cost = a
         upper_density, upper_cost = b
         if lower_density <= dwelling_density and dwelling_density < upper_density:
-            return interpolate(lower_density, lower_cost, upper_density, upper_cost, dwelling_density), \
-                "{}-{} ({}-{}) {}".format(int(lower_density), int(upper_density), int(lower_cost), int(upper_cost), int(dwelling_density))
+            return interpolate(
+                lower_density, lower_cost, upper_density, upper_cost, dwelling_density
+                ), "{}-{} ({}-{}) {}".format(
+                    int(lower_density), int(upper_density), 
+                    int(lower_cost), int(upper_cost), int(dwelling_density))
 
     next_highest_density, next_highest_cost = density_costs[-2]
     highest_density, highest_cost = density_costs[-1]
 
-    cost = interpolate(next_highest_density, next_highest_cost, highest_density, highest_cost, dwelling_density)
+    cost = interpolate(
+        next_highest_density, next_highest_cost, 
+        highest_density, highest_cost, dwelling_density)
+        
     return max(cost, COST_LOWER_BOUND), ">{}".format(highest_density)
 
 
